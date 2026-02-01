@@ -94,6 +94,16 @@ class ClassicMacHardwareServer:
             print(f"Error loading config: {e}", file=sys.stderr)
             return {}
 
+    def _validate_machine_id(self, machine_id: str) -> None:
+        """Validate machine ID and raise helpful error if invalid."""
+        if machine_id not in self.machines:
+            available = ', '.join(self.machines.keys()) if self.machines else '(none configured)'
+            raise ValueError(
+                f"Unknown machine: '{machine_id}'\n\n"
+                f"Configured machines: {available}\n\n"
+                f"To add a new machine, run: /setup-machine"
+            )
+
     def _connect_ftp(self, machine_id: str) -> FTP:
         """
         Create FTP connection to Classic Mac.
@@ -101,8 +111,7 @@ class ClassicMacHardwareServer:
         Uses passive mode (PASV) for RumpusFTP compatibility.
         Plain FTP, not SFTP (Classic Macs don't support SFTP).
         """
-        if machine_id not in self.machines:
-            raise ValueError(f"Unknown machine: {machine_id}")
+        self._validate_machine_id(machine_id)
 
         machine = self.machines[machine_id]
         ftp_config = machine['ftp']
@@ -235,7 +244,13 @@ class ClassicMacHardwareServer:
         List available tools (actions with side effects).
 
         Designed for code execution pattern - minimal, focused tools.
+
+        Note: Machine enums are not included in schemas to allow hot-reloading.
+        Validation happens at execution time instead.
         """
+        # Get current machine IDs for descriptions (informational only)
+        machine_ids = ', '.join(self.machines.keys()) if self.machines else '(none configured yet)'
+
         return [
             Tool(
                 name="list_machines",
@@ -253,8 +268,7 @@ class ClassicMacHardwareServer:
                     "properties": {
                         "machine": {
                             "type": "string",
-                            "description": f"Machine ID: {', '.join(self.machines.keys())}",
-                            "enum": list(self.machines.keys())
+                            "description": f"Machine ID (configured machines: {machine_ids})"
                         },
                         "test_launchappl": {
                             "type": "boolean",
@@ -273,8 +287,7 @@ class ClassicMacHardwareServer:
                     "properties": {
                         "machine": {
                             "type": "string",
-                            "description": f"Machine ID: {', '.join(self.machines.keys())}",
-                            "enum": list(self.machines.keys())
+                            "description": f"Machine ID (configured machines: {machine_ids})"
                         },
                         "path": {
                             "type": "string",
@@ -293,8 +306,7 @@ class ClassicMacHardwareServer:
                     "properties": {
                         "machine": {
                             "type": "string",
-                            "description": f"Machine ID: {', '.join(self.machines.keys())}",
-                            "enum": list(self.machines.keys())
+                            "description": f"Machine ID (configured machines: {machine_ids})"
                         },
                         "path": {
                             "type": "string",
@@ -312,8 +324,7 @@ class ClassicMacHardwareServer:
                     "properties": {
                         "machine": {
                             "type": "string",
-                            "description": f"Machine ID: {', '.join(self.machines.keys())}",
-                            "enum": list(self.machines.keys())
+                            "description": f"Machine ID (configured machines: {machine_ids})"
                         },
                         "path": {
                             "type": "string",
@@ -336,8 +347,7 @@ class ClassicMacHardwareServer:
                     "properties": {
                         "machine": {
                             "type": "string",
-                            "description": f"Machine ID: {', '.join(self.machines.keys())}",
-                            "enum": list(self.machines.keys())
+                            "description": f"Machine ID (configured machines: {machine_ids})"
                         },
                         "platform": {
                             "type": "string",
@@ -360,8 +370,7 @@ class ClassicMacHardwareServer:
                     "properties": {
                         "machine": {
                             "type": "string",
-                            "description": f"Machine ID: {', '.join(self.machines.keys())}",
-                            "enum": list(self.machines.keys())
+                            "description": f"Machine ID (configured machines: {machine_ids})"
                         },
                         "session_id": {
                             "type": "string",
@@ -385,8 +394,7 @@ class ClassicMacHardwareServer:
                     "properties": {
                         "machine": {
                             "type": "string",
-                            "description": f"Machine ID: {', '.join(self.machines.keys())}",
-                            "enum": list(self.machines.keys())
+                            "description": f"Machine ID (configured machines: {machine_ids})"
                         },
                         "platform": {
                             "type": "string",
@@ -416,8 +424,7 @@ class ClassicMacHardwareServer:
                     "properties": {
                         "machine": {
                             "type": "string",
-                            "description": f"Machine ID: {', '.join(self.machines.keys())}",
-                            "enum": list(self.machines.keys())
+                            "description": f"Machine ID (configured machines: {machine_ids})"
                         },
                         "scope": {
                             "type": "string",
@@ -447,8 +454,7 @@ class ClassicMacHardwareServer:
                     "properties": {
                         "machine": {
                             "type": "string",
-                            "description": f"Machine ID: {', '.join(self.machines.keys())}",
-                            "enum": list(self.machines.keys())
+                            "description": f"Machine ID (configured machines: {machine_ids})"
                         },
                         "local_path": {
                             "type": "string",
@@ -470,8 +476,7 @@ class ClassicMacHardwareServer:
                     "properties": {
                         "machine": {
                             "type": "string",
-                            "description": f"Machine ID: {', '.join(self.machines.keys())}",
-                            "enum": list(self.machines.keys())
+                            "description": f"Machine ID (configured machines: {machine_ids})"
                         },
                         "remote_path": {
                             "type": "string",
@@ -784,6 +789,7 @@ class ClassicMacHardwareServer:
             binary_path = arguments.get("binary_path", "")
             args = arguments.get("args", [])
 
+            self._validate_machine_id(machine_id)
             machine = self.machines[machine_id]
             machine_ip = machine['ftp']['host']
 
