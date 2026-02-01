@@ -8,7 +8,7 @@ LDFLAGS = -lpthread
 
 # PeerTalk core library (added incrementally as sessions complete)
 CORE_SRCS = src/core/pt_version.c src/core/pt_compat.c src/core/pt_init.c src/core/protocol.c src/core/peer.c src/core/queue.c src/core/send.c
-POSIX_SRCS = src/posix/platform_posix.c
+POSIX_SRCS = src/posix/platform_posix.c src/posix/net_posix.c
 
 PEERTALK_SRCS = $(CORE_SRCS) $(POSIX_SRCS)
 PEERTALK_OBJS = $(PEERTALK_SRCS:.c=.o)
@@ -54,6 +54,9 @@ test_queue_advanced: tests/test_queue_advanced.c libpeertalk.a libptlog.a
 test_backpressure: tests/test_backpressure.c libpeertalk.a libptlog.a
 	$(CC) $(CFLAGS) -o $@ $< -L. -lpeertalk -lptlog $(LDFLAGS)
 
+test_discovery_posix: tests/test_discovery_posix.c libpeertalk.a libptlog.a
+	$(CC) $(CFLAGS) -I./src/posix -o $@ $< -L. -lpeertalk -lptlog $(LDFLAGS)
+
 test-log: test_log test_log_perf
 	@echo "Running PT_Log tests..."
 	./test_log
@@ -86,6 +89,12 @@ test-queue-advanced: test_queue_advanced
 test-backpressure: test_backpressure
 	@echo "Running Phase 3 backpressure tests..."
 	./test_backpressure
+
+test-discovery: test_discovery_posix
+	@echo "Running Phase 4.1 discovery test..."
+	@echo "NOTE: This is an interactive test. Run manually:"
+	@echo "  Terminal 1: ./test_discovery_posix Alice"
+	@echo "  Terminal 2: ./test_discovery_posix Bob"
 
 # Valgrind memory check
 valgrind: test_log

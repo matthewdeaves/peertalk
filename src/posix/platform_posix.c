@@ -9,27 +9,40 @@
 
 #if defined(PT_PLATFORM_POSIX)
 
+#include "net_posix.h"
 #include <sys/time.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <signal.h>
 
 /* ========================================================================== */
 /* Platform Operations                                                        */
 /* ========================================================================== */
 
 static int posix_init(struct pt_context *ctx) {
-    PT_LOG_INFO(ctx->log, PT_LOG_CAT_GENERAL, "POSIX platform initialized");
+    /* Ignore SIGPIPE to prevent process termination on broken pipe writes */
+    signal(SIGPIPE, SIG_IGN);
+
+    /* Initialize networking layer */
+    if (pt_posix_net_init(ctx) < 0) {
+        PT_CTX_ERR(ctx, PT_LOG_CAT_GENERAL, "Failed to initialize POSIX networking");
+        return -1;
+    }
+
+    PT_CTX_INFO(ctx, PT_LOG_CAT_GENERAL, "POSIX platform initialized");
     return 0;
 }
 
 static void posix_shutdown(struct pt_context *ctx) {
-    PT_LOG_INFO(ctx->log, PT_LOG_CAT_GENERAL, "POSIX platform shutdown");
+    /* Shutdown networking layer */
+    pt_posix_net_shutdown(ctx);
+
+    PT_CTX_INFO(ctx, PT_LOG_CAT_GENERAL, "POSIX platform shutdown");
 }
 
 static int posix_poll(struct pt_context *ctx) {
-    /* Stub - implemented in Phase 4 (POSIX Networking) */
-    (void)ctx;
-    return 0;
+    /* Delegate to networking poll (Session 4.1+) */
+    return pt_posix_poll(ctx);
 }
 
 static pt_tick_t posix_get_ticks(void) {
@@ -58,7 +71,7 @@ pt_platform_ops pt_posix_ops = {
     posix_get_ticks,
     posix_get_free_mem,
     posix_get_max_block,
-    NULL  /* send_udp - set by Phase 4 to pt_posix_send_udp */
+    pt_posix_send_udp  /* Session 4.4 implements UDP messaging */
 };
 
 /* ========================================================================== */
@@ -74,8 +87,8 @@ void pt_plat_free(void *ptr) {
 }
 
 size_t pt_plat_extra_size(void) {
-    /* No extra platform-specific data needed for POSIX */
-    return 0;
+    /* Return size needed for POSIX networking data */
+    return pt_posix_extra_size();
 }
 
 #endif /* PT_PLATFORM_POSIX */

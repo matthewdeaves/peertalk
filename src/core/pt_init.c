@@ -232,3 +232,52 @@ const char *pt_get_peer_name(struct pt_context *ctx, uint8_t name_idx) {
 
     return ctx->peer_names[name_idx];
 }
+
+/* ========================================================================== */
+/* Discovery Control (Phase 4)                                               */
+/* ========================================================================== */
+
+#if defined(PT_PLATFORM_POSIX)
+/* Forward declarations from net_posix.h */
+extern int pt_posix_discovery_start(struct pt_context *ctx);
+extern void pt_posix_discovery_stop(struct pt_context *ctx);
+#endif
+
+PeerTalk_Error PeerTalk_StartDiscovery(PeerTalk_Context *ctx_public) {
+    struct pt_context *ctx = (struct pt_context *)ctx_public;
+
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+#if defined(PT_PLATFORM_POSIX)
+    if (pt_posix_discovery_start(ctx) < 0) {
+        return PT_ERR_NETWORK;
+    }
+#else
+    /* TODO: Mac platform discovery */
+    (void)ctx;
+    return PT_ERR_NOT_SUPPORTED;
+#endif
+
+    PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY, "Discovery started");
+    return PT_OK;
+}
+
+PeerTalk_Error PeerTalk_StopDiscovery(PeerTalk_Context *ctx_public) {
+    struct pt_context *ctx = (struct pt_context *)ctx_public;
+
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+#if defined(PT_PLATFORM_POSIX)
+    pt_posix_discovery_stop(ctx);
+#else
+    /* TODO: Mac platform discovery */
+    (void)ctx;
+#endif
+
+    PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY, "Discovery stopped");
+    return PT_OK;
+}
