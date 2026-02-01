@@ -7,7 +7,28 @@
 > **Estimated Sessions:** 4
 >
 > **Build Order:** Phase 0 → 1 → 2 → {4, 5, 6.1-6.6} → 7 → 6.8-6.10 → 8 → 9
->
+
+**IMPORTANT - PT_Log API Correction (from Phase 1 implementation):**
+
+All code examples in this plan showing `PT_LogConfig` are INCORRECT. The actual API is:
+
+```c
+/* WRONG (shown in examples below): */
+PT_LogConfig log_config = {0};
+log_config.min_level = PT_LOG_DEBUG;
+PT_Log *log = PT_LogCreate(&log_config);
+
+/* CORRECT (use this instead): */
+PT_Log *log = PT_LogCreate();
+if (log) {
+    PT_LogSetLevel(log, PT_LOG_DEBUG);
+    PT_LogSetCategories(log, PT_LOG_CAT_ALL);
+    PT_LogSetOutput(log, PT_LOG_OUT_CONSOLE);
+}
+```
+
+When implementing Phase 9, replace all `PT_LogConfig` usage with the correct setter-based API.
+
 > **Note on Phase 6 Dependencies:**
 > - Sessions 6.1-6.6 (TCP/IP only) are INDEPENDENT of Phase 7
 > - Sessions 6.8-6.10 (multi-transport) REQUIRE Phase 7 completion
