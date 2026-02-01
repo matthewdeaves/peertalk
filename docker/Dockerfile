@@ -92,32 +92,43 @@ COPY --from=builder /opt/Retro68/Samples /opt/Retro68/Samples
 ENV RETRO68=/opt/Retro68-build/toolchain
 ENV PATH="${RETRO68}/bin:${PATH}"
 
-# Prebuild LaunchAPPLServer and all sample apps for both platforms
+# Prebuild LaunchAPPLServer for 68k (m68k toolchain is always available)
 RUN cd /opt/Retro68/LaunchAPPL && \
-    # Build LaunchAPPLServer for 68k (MacTCP)
     mkdir -p build-m68k && cd build-m68k && \
     cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/Retro68-build/toolchain/m68k-apple-macos/cmake/retro68.toolchain.cmake -DCMAKE_BUILD_TYPE=Release && \
-    make -j$(nproc) && \
-    # Build LaunchAPPLServer for PPC (OpenTransport)
-    cd /opt/Retro68/LaunchAPPL && \
-    mkdir -p build-ppc && cd build-ppc && \
-    cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/Retro68-build/toolchain/powerpc-apple-macos/cmake/retro68.toolchain.cmake -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc)
 
-# Prebuild all sample apps for both platforms
-RUN for sample in Dialog HelloWorld Launcher Raytracer; do \
-        echo "Building $sample for 68k and PPC..."; \
-        cd /opt/Retro68/Samples/$sample && \
-        # Build for 68k
-        mkdir -p build-m68k && cd build-m68k && \
-        cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/Retro68-build/toolchain/m68k-apple-macos/cmake/retro68.toolchain.cmake -DCMAKE_BUILD_TYPE=Release && \
-        make -j$(nproc) && \
-        # Build for PPC
-        cd /opt/Retro68/Samples/$sample && \
+# Prebuild LaunchAPPLServer for PPC (if powerpc toolchain exists)
+RUN cd /opt/Retro68/LaunchAPPL && \
+    if [ -f /opt/Retro68-build/toolchain/powerpc-apple-macos/cmake/retro68.toolchain.cmake ]; then \
         mkdir -p build-ppc && cd build-ppc && \
         cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/Retro68-build/toolchain/powerpc-apple-macos/cmake/retro68.toolchain.cmake -DCMAKE_BUILD_TYPE=Release && \
+        make -j$(nproc); \
+    else \
+        echo "PowerPC toolchain not found - skipping PPC build"; \
+    fi
+
+# Prebuild sample apps for 68k (m68k toolchain is always available)
+RUN for sample in Dialog HelloWorld Launcher Raytracer; do \
+        echo "Building $sample for 68k..."; \
+        cd /opt/Retro68/Samples/$sample && \
+        mkdir -p build-m68k && cd build-m68k && \
+        cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/Retro68-build/toolchain/m68k-apple-macos/cmake/retro68.toolchain.cmake -DCMAKE_BUILD_TYPE=Release && \
         make -j$(nproc) || true; \
     done
+
+# Prebuild sample apps for PPC (if powerpc toolchain exists)
+RUN if [ -f /opt/Retro68-build/toolchain/powerpc-apple-macos/cmake/retro68.toolchain.cmake ]; then \
+        for sample in Dialog HelloWorld Launcher Raytracer; do \
+            echo "Building $sample for PPC..."; \
+            cd /opt/Retro68/Samples/$sample && \
+            mkdir -p build-ppc && cd build-ppc && \
+            cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/Retro68-build/toolchain/powerpc-apple-macos/cmake/retro68.toolchain.cmake -DCMAKE_BUILD_TYPE=Release && \
+            make -j$(nproc) || true; \
+        done; \
+    else \
+        echo "PowerPC toolchain not found - skipping PPC sample builds"; \
+    fi
 
 # Create workspace
 WORKDIR /workspace
