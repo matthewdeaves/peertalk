@@ -111,18 +111,24 @@ tools/
 
 ## Prerequisites
 
-Run the setup script to install all dependencies:
+Run the setup script to install minimal dependencies:
 
 ```bash
 ./tools/setup.sh
 ```
 
-This installs:
-- **Required:** jq (hooks), python3, make, gcc
-- **Optional:** lcov (coverage), ctags (function analysis), clang-format
-- **Optional:** Docker (for Retro68 Mac cross-compilation)
+**Minimal requirements (Docker-based workflow):**
+- **jq** - Required by hooks to parse JSON
+- **python3** - Required for validators and book indexer
+- **Docker** - Required for all Mac builds and optional for POSIX builds
 
-Works on Linux (apt/dnf) and macOS (homebrew). Without jq, hooks will warn and skip.
+**Optional (native POSIX development only):**
+- make, gcc - Build POSIX code natively instead of Docker
+- lcov - Generate coverage reports natively
+- ctags - Analyze function length natively
+- clang-format - Check code formatting natively
+
+All optional tools are already in Docker. Hooks gracefully skip if missing on host.
 
 ## Adding New Components
 

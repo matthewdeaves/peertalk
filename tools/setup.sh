@@ -64,19 +64,20 @@ install_pkg() {
     esac
 }
 
-# Required dependencies
+# Required dependencies (minimal Docker-based workflow)
 echo "Checking required dependencies..."
 MISSING_PKGS=""
 
 install_pkg "jq" "jq" "jq" "jq"
 install_pkg "python3" "python3" "python3" "python3"
+
+# Optional: Only needed for native POSIX development (Docker has these)
+echo ""
+echo "Checking optional dependencies (for native POSIX builds)..."
+echo "Note: These are already in Docker - only install if building POSIX code natively"
+
 install_pkg "make" "make" "make" "make"
 install_pkg "gcc" "build-essential" "gcc" "gcc"
-
-# Optional but recommended
-echo ""
-echo "Checking optional dependencies..."
-
 install_pkg "lcov" "lcov" "lcov" "lcov"
 install_pkg "ctags" "universal-ctags" "universal-ctags" "ctags"
 install_pkg "clang-format" "clang-format" "clang-format" "clang-tools-extra"
@@ -165,14 +166,23 @@ echo "========================================"
 echo "Setup complete!"
 echo "========================================"
 echo ""
-echo "To activate the Python environment:"
+echo "Minimal requirements installed:"
+echo "  ✓ jq (required for hooks)"
+echo "  ✓ python3 (required for validators)"
+echo ""
+echo "Docker-based workflow (recommended):"
+echo "  1. Build Docker image:"
+echo "     ./scripts/docker-build.sh"
+echo ""
+echo "  2. Use skills (Docker handles compilation):"
+echo "     /session next        # Find next available session"
+echo "     /build test          # Build and run POSIX tests"
+echo "     /build all           # Build for all platforms (POSIX + Mac)"
+echo "     /setup-machine       # Onboard new Classic Mac hardware"
+echo ""
+echo "Native POSIX development (optional):"
+echo "  If you installed make/gcc/lcov/ctags, you can build POSIX code natively"
+echo "  Otherwise, hooks gracefully skip (all tools are in Docker)"
+echo ""
+echo "To activate Python environment:"
 echo "  source tools/.venv/bin/activate"
-echo ""
-echo "Quick start:"
-echo "  /session next        # Find next available session"
-echo "  /build test          # Build and run POSIX tests"
-echo "  /check-isr           # Validate ISR safety in Mac code"
-echo ""
-echo "For Mac cross-compilation:"
-echo "  docker compose -f docker/docker-compose.yml build"
-echo "  /build all           # Build for all platforms"

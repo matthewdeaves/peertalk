@@ -33,13 +33,17 @@ Phase specifications are in `plan/`. The [blog post](https://matthewdeaves.com/b
 git clone https://github.com/matthewdeaves/peertalk.git
 cd peertalk
 
-# For starter-template (recommended for learning how to use Claude Code with Agents, Skills and Hooks):
+# For starter-template (recommended for learning):
 git checkout starter-template
 
-# Setup
-./tools/setup.sh           # Python virtual environment
-./scripts/docker-build.sh  # Retro68 cross-compiler (~2GB)
+# Minimal setup (jq + python3 + Docker)
+./tools/setup.sh           # Installs minimal host dependencies
+./scripts/docker-build.sh  # Builds Docker image with all tools (~2GB)
 ```
+
+**What gets installed:**
+- **Host:** jq (hooks), python3 (validators)
+- **Docker:** Complete toolchain (Retro68, lcov, ctags, clang-format, etc.)
 
 ## Usage
 
