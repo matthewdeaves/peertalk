@@ -33,12 +33,14 @@ Interactive workflow to onboard a new Classic Mac to the PeerTalk development en
 
 **The skill will interactively prompt for:**
 1. Machine nickname (e.g., "performa6400", "se30")
-2. IP address (e.g., "10.188.1.102")
+2. IP address - simple text input (e.g., "10.188.1.102")
 3. Platform: **mactcp** (68k) or **opentransport** (PPC/68040)
 4. FTP username (e.g., "peertalk")
 5. FTP password
 6. System version (e.g., "7.6.1", "7.5.3")
 7. Optional description (e.g., "Performa 6400/200 - PPC")
+
+**Note:** All text fields (machine ID, IP, credentials, system version) use simple text input without numbered options to avoid input conflicts.
 
 ## What This Skill Does
 
@@ -82,14 +84,14 @@ Interactive workflow to onboard a new Classic Mac to the PeerTalk development en
 - Verify FTP server is reachable and credentials work
 
 ### 5. Build LaunchAPPLServer
-- Check if LaunchAPPL source exists (skip if not yet implemented)
-- Determine platform-specific build:
-  - **mactcp** → Build 68k MacTCP version
-  - **opentransport** → Build PPC Open Transport version
-- Run: `./scripts/build-launcher.sh <platform>`
-- Binary outputs (both .bin and .dsk):
-  - MacTCP: `LaunchAPPL/build-mactcp/Server/LaunchAPPLServer-MacTCP.{bin,dsk}`
-  - Open Transport: `LaunchAPPL/build-ppc/Server/LaunchAPPLServer-OpenTransport.{bin,dsk}`
+- LaunchAPPLServer source is in Retro68 container at `/opt/Retro68/LaunchAPPL/Server/`
+- Build platform-specific version based on machine:
+  - **mactcp** → Build 68k version using m68k-apple-macos toolchain
+  - **opentransport** → Build PPC version using powerpc-apple-macos toolchain
+- Build inside Docker container using CMake
+- Binary outputs (both .bin and .dsk) copied to workspace root:
+  - MacTCP: `LaunchAPPLServer-MacTCP.{bin,dsk}`
+  - Open Transport: `LaunchAPPLServer-OpenTransport.{bin,dsk}`
 
 ### 6. Create Directory Structure
 - Use MCP `create_directory` tool to create:
@@ -98,12 +100,14 @@ Interactive workflow to onboard a new Classic Mac to the PeerTalk development en
   - `Temp`
 - Empty FTP root is normal - just create the directories
 
-### 7. Deploy LaunchAPPLServer
-- Skip if LaunchAPPL source doesn't exist
-- Call `mcp__classic-mac-hardware__deploy_binary` twice:
-  - Deploy .bin file (MacBinary format)
-  - Deploy .dsk file (disk image with resource fork)
-- Uploads to `Applications:LaunchAPPLServer` path on the Mac
+### 7. Deploy LaunchAPPLServer and Hello World Test App
+- Deploy LaunchAPPLServer using `mcp__classic-mac-hardware__upload_file`:
+  - Upload .bin file to `Applications:LaunchAPPLServer:<filename>.bin`
+  - Upload .dsk file to `Applications:LaunchAPPLServer:<filename>.dsk`
+- Build and deploy Hello World test app from Retro68 Samples:
+  - Build using same platform toolchain as LaunchAPPLServer
+  - Upload HelloWorld.bin and HelloWorld.dsk to `Temp:` folder
+  - Provides a simple test to verify LaunchAPPL remote execution works
 
 ### 8. User Instructions
 Provide clear next steps:
@@ -112,14 +116,22 @@ Provide clear next steps:
 ✓ FTP connectivity verified
 ✓ Directory structure created
 ✓ LaunchAPPLServer built and deployed
+✓ Hello World test app deployed
 
 Next steps on your Classic Mac:
 1. Navigate to Applications:LaunchAPPLServer folder
-2. Use BinUnpk to extract LaunchAPPLServer from the .bin file
-   (or mount the .dsk disk image)
-3. Launch the LaunchAPPLServer application
-4. Enable "TCP Server" on port 1984 in preferences
-5. Run: /test-machine performa6400
+2. Mount the LaunchAPPLServer-<Platform>.dsk disk image
+   (or use StuffIt/BinUnpk to extract the .bin file)
+3. Copy LaunchAPPLServer to your Applications folder
+4. Launch LaunchAPPLServer
+5. In preferences, enable "TCP Server" on port 1984
+6. Run: /test-machine performa6400
+
+Test Hello World app:
+1. Navigate to Temp folder
+2. Mount HelloWorld.dsk (or extract HelloWorld.bin)
+3. Double-click HelloWorld application
+4. You should see a "Hello, World!" window
 
 Once LaunchAPPL connectivity is verified, you can:
   /deploy performa6400 <platform>  # Deploy PeerTalk builds

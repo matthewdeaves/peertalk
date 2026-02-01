@@ -57,10 +57,12 @@ Use **ONE SINGLE AskUserQuestion call** to collect ALL information at once.
 - **Each question should be CLEAR and DIRECT**
 
 **⚠️ CRITICAL: IP ADDRESS INPUT ⚠️**
-- IP address question MUST have empty options array: `options: []`
+- IP address question MUST NOT have ANY options - use empty array: `options: []`
+- DO NOT provide example IPs as options (like "10.188.1.100" or "192.168.1.100")
 - DO NOT ask for IP in multiple parts (no "first 3 octets" then "last octet")
-- DO NOT provide any option buttons for IP address
+- WHY: If you provide numbered options (1, 2, 3...), typing "1" to start an IP like "10.x.x.x" will select option 1 instead of allowing text input
 - User types the COMPLETE IP address in one text input (e.g., "10.188.1.102")
+- With empty options array, AskUserQuestion will show ONLY the "Type something" option
 - This is a simple text field - user types, you receive the complete IP
 
 **IMPORTANT:** Call AskUserQuestion ONCE with ALL 7 questions. Do NOT make multiple separate calls.
@@ -76,16 +78,16 @@ Question 1: Machine ID
 
 Question 2: IP Address
   Header: "IP Address"
-  Prompt: "What's the full IP address? (e.g., 10.188.1.102)"
+  Prompt: "What's the IP address of this Mac? (e.g., 10.188.1.102)"
   multiSelect: false
-  Options: [] ← EMPTY ARRAY - NO OPTIONS AT ALL
+  Options: [] ← EMPTY ARRAY - ABSOLUTELY NO OPTIONS
 
   CRITICAL RULES FOR IP ADDRESS:
+  - The options array MUST be EMPTY [] - NO example IPs, NO suggestions, NOTHING
+  - DO NOT add options like "10.188.1.100" or "192.168.1.100" - this causes option selection conflicts
   - DO NOT ask for IP in parts (no "first 3 octets" then "last octet")
-  - DO NOT provide option buttons at all
-  - DO NOT provide suggestions like "192.168.x.x" or "10.x.x.x"
-  - DO NOT ask multiple questions about the IP
-  - The options array MUST be empty [] so user gets a simple text input
+  - WHY: Example IPs like "1. 10.188.1.100" cause problems when user tries to type "10.x.x.x" (the "1" triggers option 1)
+  - With empty options, user will ONLY see the "Type something" option for text input
   - User will type the COMPLETE IP in one go (e.g., "10.188.1.102")
   - Take their answer EXACTLY as typed
 
@@ -266,61 +268,149 @@ If directories already exist, the tool will handle it gracefully. Don't fail on 
 
 ### 7. Build LaunchAPPLServer
 
-**First, check if LaunchAPPL source exists:**
+**LaunchAPPLServer source is in the Retro68 container** at `/opt/Retro68/LaunchAPPL/Server/`.
+
+Build based on the machine's platform:
 
 ```bash
-ls LaunchAPPL/Server/LaunchAPPLServer.c
+Platform: mactcp       → Build 68k version
+Platform: opentransport → Build PPC version
 ```
 
-**If LaunchAPPL/ doesn't exist:**
-- Skip build and deploy steps
-- Note in output: "LaunchAPPLServer source not yet implemented"
-- Tell user: "LaunchAPPL will be available after project implementation begins. For now, FTP-only workflow is available."
-- Continue to step 9 (provide instructions)
+**Build commands (run in Docker):**
 
-**If source exists, determine build based on platform:**
-
+For **MacTCP (68k)**:
 ```bash
-Platform: mactcp       → ./scripts/build-launcher.sh mactcp
-Platform: opentransport → ./scripts/build-launcher.sh ot
+docker compose -f docker/docker-compose.yml run --rm peertalk-dev bash -c "
+  cd /opt/Retro68/LaunchAPPL
+  rm -rf build-mactcp
+  mkdir -p build-mactcp
+  cd build-mactcp
+  cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/Retro68-build/toolchain/m68k-apple-macos/cmake/retro68.toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+  make -j\$(nproc)
+  # Copy to workspace for deployment
+  cp Server/*.bin Server/*.dsk /workspace/
+"
 ```
 
-The build script will:
-- Run in Docker container
-- Use Retro68 toolchain
-- Output both .bin (MacBinary) and .dsk (disk image)
+For **Open Transport (PPC)**:
+```bash
+docker compose -f docker/docker-compose.yml run --rm peertalk-dev bash -c "
+  cd /opt/Retro68/LaunchAPPL
+  rm -rf build-ppc
+  mkdir -p build-ppc
+  cd build-ppc
+  cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/Retro68-build/toolchain/powerpc-apple-macos/cmake/retro68.toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+  make -j\$(nproc)
+  # Copy to workspace for deployment
+  cp Server/*.bin Server/*.dsk /workspace/
+"
+```
 
 **Expected outputs:**
-- MacTCP: `LaunchAPPL/build-mactcp/Server/LaunchAPPLServer-MacTCP.bin` and `.dsk`
-- Open Transport: `LaunchAPPL/build-ppc/Server/LaunchAPPLServer-OpenTransport.bin` and `.dsk`
+- MacTCP: `LaunchAPPLServer-MacTCP.bin` and `.dsk` in workspace root
+- Open Transport: `LaunchAPPLServer-OpenTransport.bin` and `.dsk` in workspace root
 
 ### 8. Deploy LaunchAPPLServer
 
-**Skip this step if LaunchAPPL source doesn't exist (see step 7).**
-
-Map platform to binary paths:
+Map platform to binary paths in workspace root:
 
 ```
 Platform: mactcp
-  bin_path: LaunchAPPL/build-mactcp/Server/LaunchAPPLServer-MacTCP.bin
-  dsk_path: LaunchAPPL/build-mactcp/Server/LaunchAPPLServer-MacTCP.dsk
+  bin_path: LaunchAPPLServer-MacTCP.bin
+  dsk_path: LaunchAPPLServer-MacTCP.dsk
 
 Platform: opentransport
-  bin_path: LaunchAPPL/build-ppc/Server/LaunchAPPLServer-OpenTransport.bin
-  dsk_path: LaunchAPPL/build-ppc/Server/LaunchAPPLServer-OpenTransport.dsk
+  bin_path: LaunchAPPLServer-OpenTransport.bin
+  dsk_path: LaunchAPPLServer-OpenTransport.dsk
 ```
 
-Deploy BOTH files using MCP tool:
+Deploy BOTH files using MCP upload_file tool (NOT deploy_binary - that's for PeerTalk builds):
 
 ```bash
-# Deploy .bin (MacBinary format)
-mcp__classic-mac-hardware__deploy_binary machine=<machine_id> binary_path=<bin_path>
+# Deploy .bin to Applications:LaunchAPPLServer:
+mcp__classic-mac-hardware__upload_file
+  machine=<machine_id>
+  local_path=<bin_path>
+  remote_path="Applications:LaunchAPPLServer:<filename>.bin"
 
-# Deploy .dsk (disk image with resource fork)
-mcp__classic-mac-hardware__deploy_binary machine=<machine_id> binary_path=<dsk_path>
+# Deploy .dsk to Applications:LaunchAPPLServer:
+mcp__classic-mac-hardware__upload_file
+  machine=<machine_id>
+  local_path=<dsk_path>
+  remote_path="Applications:LaunchAPPLServer:<filename>.dsk"
 ```
 
-The MCP tool uploads to the `launchappl` path configured in machines.json (e.g., `Applications:LaunchAPPLServer`).
+### 8.5. Pause for User to Launch LaunchAPPLServer
+
+**IMPORTANT:** Before proceeding, the user must:
+1. Go to the Mac and navigate to Applications:LaunchAPPLServer
+2. Mount the .dsk file (or use BinUnpk/StuffIt to extract the .bin file)
+3. Copy LaunchAPPLServer application to Applications folder
+4. Launch LaunchAPPLServer
+5. In preferences, enable "TCP Server" on port 1984
+
+**Output to user:**
+```
+✓ LaunchAPPLServer deployed to Applications:LaunchAPPLServer
+
+NEXT STEP: Before continuing, you need to launch LaunchAPPLServer on your Mac:
+1. On your <machine_name>, navigate to Applications:LaunchAPPLServer
+2. Mount the .dsk disk image (or extract the .bin file with BinUnpk/StuffIt)
+3. Copy LaunchAPPLServer to your Applications folder
+4. Launch LaunchAPPLServer
+5. In preferences, enable "TCP Server" on port 1984
+
+Press Enter when LaunchAPPLServer is running and ready to test...
+```
+
+Wait for user confirmation before continuing to the next step.
+
+### 8.6. Build and Deploy Hello World Test App
+
+Build a simple Hello World app from Retro68 Samples to verify LaunchAPPL works:
+
+**Build Hello World (using same platform as machine):**
+
+For **MacTCP (68k)**:
+```bash
+docker compose -f docker/docker-compose.yml run --rm peertalk-dev bash -c "
+  cd /opt/Retro68/Samples/HelloWorld
+  rm -rf build-mactcp
+  mkdir -p build-mactcp
+  cd build-mactcp
+  cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/Retro68-build/toolchain/m68k-apple-macos/cmake/retro68.toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+  make -j\$(nproc)
+  cp HelloWorld.bin HelloWorld.dsk /workspace/
+"
+```
+
+For **Open Transport (PPC)**:
+```bash
+docker compose -f docker/docker-compose.yml run --rm peertalk-dev bash -c "
+  cd /opt/Retro68/Samples/HelloWorld
+  rm -rf build-ppc
+  mkdir -p build-ppc
+  cd build-ppc
+  cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/Retro68-build/toolchain/powerpc-apple-macos/cmake/retro68.toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+  make -j\$(nproc)
+  cp HelloWorld.bin HelloWorld.dsk /workspace/
+"
+```
+
+**Deploy Hello World to test folder:**
+
+```bash
+mcp__classic-mac-hardware__upload_file
+  machine=<machine_id>
+  local_path="HelloWorld.bin"
+  remote_path="Temp:HelloWorld.bin"
+
+mcp__classic-mac-hardware__upload_file
+  machine=<machine_id>
+  local_path="HelloWorld.dsk"
+  remote_path="Temp:HelloWorld.dsk"
+```
 
 ### 9. Provide User Instructions
 
@@ -331,17 +421,25 @@ Output clear next steps for the user:
 ✓ FTP connectivity verified
 ✓ Directory structure created
 ✓ LaunchAPPLServer built for <platform>
-✓ Deployed .bin and .dsk files
+✓ LaunchAPPLServer deployed (.bin and .dsk)
+✓ Hello World test app built and deployed
 
 Next steps on your <machine_name>:
 1. Navigate to Applications:LaunchAPPLServer folder
-2. Use BinUnpk to extract LaunchAPPLServer from the .bin file
-   (or mount the .dsk disk image)
-3. Launch the LaunchAPPLServer application
-4. Enable "TCP Server" on port 1984 in preferences
-5. Test connectivity: /test-machine <machine_id>
+2. Mount the LaunchAPPLServer-<Platform>.dsk disk image
+   (or use StuffIt/BinUnpk to extract the .bin file)
+3. Copy LaunchAPPLServer to your Applications folder
+4. Launch LaunchAPPLServer
+5. In preferences, enable "TCP Server" on port 1984
+6. Test connectivity: /test-machine <machine_id>
 
-Once LaunchAPPL is running, you can:
+Test the Hello World app:
+1. Navigate to Temp folder
+2. Mount HelloWorld.dsk (or extract HelloWorld.bin)
+3. Double-click HelloWorld application
+4. You should see a "Hello, World!" window
+
+Once LaunchAPPL connectivity is verified, you can:
   /deploy <machine_id> <platform>   # Deploy PeerTalk builds
   /fetch-logs <machine_id>          # Retrieve PT_Log output
   /implement <session>              # Start development work
@@ -400,9 +498,9 @@ async function setupMachine() {
       multiSelect: false
     },
     {
-      question: "What's the full IP address? (e.g., 10.188.1.102)",
+      question: "What's the IP address of this Mac? (e.g., 10.188.1.102)",
       header: "IP Address",
-      options: [],  // CRITICAL: Empty array = simple text input, DO NOT add any options!
+      options: [],  // CRITICAL: MUST be empty! DO NOT add example IPs like "10.188.1.100" - causes conflicts!
       multiSelect: false
     },
     {
