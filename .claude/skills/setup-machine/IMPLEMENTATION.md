@@ -47,88 +47,104 @@ ls LaunchAPPL/Server/  # Check if source code exists
 
 ### 1. Collect Information
 
-Use **AskUserQuestion** to collect the following information interactively.
+Use **ONE SINGLE AskUserQuestion call** to collect ALL information at once.
 
 **CRITICAL RULES FOR DATA COLLECTION:**
+- **Ask ALL questions in a SINGLE AskUserQuestion call** - Don't split into multiple rounds
 - **NO clever parsing** - Take user input exactly as given
-- **NO assumptions** - If unclear, ask again explicitly
-- **NO multi-step refinement** - Ask for complete values upfront
+- **NO assumptions** - If unclear, ask again explicitly after initial collection
+- **NO options for text fields** - Only use options for true choices (Platform, Description)
 - **Each question should be CLEAR and DIRECT**
+
+**IMPORTANT:** Call AskUserQuestion ONCE with ALL 7 questions. Do NOT make multiple separate calls.
 
 ```
 Question 1: Machine ID
   Header: "Machine ID"
   Prompt: "What's the machine nickname (e.g., 'performa6400', 'se30', 'iici')?"
-  - User types a value (text input)
+  multiSelect: false
+  Options: NONE - This is a TEXT INPUT question
+  - User types a value (text input via "Other")
   - TAKE EXACTLY AS PROVIDED - no validation yet
 
 Question 2: IP Address
   Header: "IP Address"
-  Prompt: "What's the complete IP address? (e.g., '10.188.1.102')"
-  - User types the FULL IP address
-  - DO NOT ask for ranges or partial IPs
-  - DO NOT try to infer or complete partial IPs
-  - If user provides incomplete IP (like "10.188.1.x"), ask again:
-    "I need the complete IP address. What is the full IP?"
+  Prompt: "What's the complete IP address of this Mac? (e.g., '10.188.1.102' or '192.168.1.50')"
+  multiSelect: false
+  Options: NONE - This is a TEXT INPUT question
+  - User types the FULL IP address (text input via "Other")
+  - DO NOT provide option buttons like "192.x.x.x" or "10.x.x.x"
+  - DO NOT try to be "helpful" with IP range suggestions
+  - Just let them type the full IP address
 
 Question 3: Platform
   Header: "Platform"
   Prompt: "Which networking platform does this Mac use?"
+  multiSelect: false
   Options:
-    - "MacTCP (System 6.0.8 - 7.5.5, 68k Macs)"
-    - "Open Transport (System 7.6.1+, PPC/68040 Macs)"
+    - label: "MacTCP", description: "System 6.0.8 - 7.5.5, 68k Macs (SE/30, IIci, LC)"
+    - label: "Open Transport", description: "System 7.6.1+ / Mac OS 8-9, PPC or late 68040 Macs"
 
 Question 4: FTP Username
   Header: "FTP Username"
   Prompt: "What's the FTP username for this Mac?"
-  - User types username (text input)
+  multiSelect: false
+  Options: NONE - This is a TEXT INPUT question
+  - User types username (text input via "Other")
   - TAKE EXACTLY AS PROVIDED
   - DO NOT try to parse phrases like "mac for both"
 
 Question 5: FTP Password
   Header: "FTP Password"
   Prompt: "What's the FTP password for this Mac?"
-  - User types password (text input)
+  multiSelect: false
+  Options: NONE - This is a TEXT INPUT question
+  - User types password (text input via "Other")
   - TAKE EXACTLY AS PROVIDED
   - DO NOT try to parse complex answers
-  - If user says something like "same as username", ask explicitly:
-    "What's the password value? (Type the password)"
 
 Question 6: System Version
   Header: "System Version"
   Prompt: "What's the System version? (e.g., '7.5.3', '7.6.1', '8.1')"
-  - User types version (text input)
+  multiSelect: false
+  Options: NONE - This is a TEXT INPUT question
+  - User types version (text input via "Other")
 
-Question 7: Machine Description
+Question 7: Description (Optional)
   Header: "Description"
-  Prompt: "Choose a description for this machine:"
+  Prompt: "Optional: Add a description for this machine (or leave blank)"
+  multiSelect: false
   Options:
-    - Generate 2-3 suggested descriptions based on collected info:
-      * If platform=mactcp: "[Machine Name] - 68k Mac running System [version]"
-      * If platform=opentransport: "[Machine Name] - PPC Mac running System [version]"
-      * Example: "Performa 6400 - PPC Mac running System 7.6.1"
-      * Example: "SE/30 - 68k Mac running System 7.5.3"
-    - "Custom description" (if selected, prompt: "Enter custom description:")
-    - "Leave blank" (sets notes to empty string)
-
-  **IMPORTANT:** If user selects "Custom description":
-    - MUST immediately ask: "What description would you like?"
-    - MUST use their exact answer as the description
-    - DO NOT use placeholder text like "TODO: Add description"
-    - DO NOT tell them to "update later"
+    - label: "Leave blank", description: "No description needed"
+    - label: "68k Mac", description: "Generic 68k Macintosh"
+    - label: "PPC Mac", description: "Generic PowerPC Macintosh"
+  - If user selects "Other", use their exact text as the description
+  - TAKE their input EXACTLY as provided
 ```
 
-**IMPORTANT:** If any answer is ambiguous or incomplete:
-1. DO NOT try to parse or infer the intent
-2. Ask a follow-up question that is COMPLETELY EXPLICIT
-3. Example: "I need the complete IP address. Please type the full IP (like 10.188.1.102):"
+**CRITICAL:** When calling AskUserQuestion:
+- Pass ALL 7 questions in the `questions` array parameter
+- Questions 1, 2, 4, 5, 6 should have NO options (empty array) - they are pure text inputs
+- Only Questions 3 and 7 should have options (Platform choice and Description choice)
+- User will type into "Other" for text-input questions automatically
 
-**Multi-step Questions:**
-- ONLY use multi-step questions when offering suggested values with a "custom" option
-- Example: Description question offers suggested descriptions + "Custom" option
-- If "Custom" is selected, IMMEDIATELY ask for the custom value
-- DO NOT use placeholder text or tell users to "update later"
-- TAKE their custom input EXACTLY as provided
+**IMPORTANT:** After collecting all answers in the single AskUserQuestion call:
+1. Validate each answer
+2. If any answer is ambiguous or incomplete (e.g., IP contains "x", username is empty):
+   - DO NOT try to parse or infer the intent
+   - Ask a NEW follow-up AskUserQuestion with just that ONE specific question
+   - Make it COMPLETELY EXPLICIT what you need
+   - Example: "I need the complete IP address. Please provide the full IP address (e.g., 10.188.1.102):"
+   - Take the new answer EXACTLY as provided
+
+**AskUserQuestion Rules:**
+- For text-input questions (Machine ID, IP, Username, Password, System Version):
+  - DO NOT provide options array (or provide empty array)
+  - User will automatically get "Other" option to type their answer
+- For choice questions (Platform, Description):
+  - Provide 2-4 options with clear labels and descriptions
+  - User can still select "Other" to type custom text
+- The tool automatically adds "Other" option - you don't need to include it
 
 ### 2. Validate Input
 
@@ -147,11 +163,9 @@ Question 7: Machine Description
 - **FTP Credentials:**
   - Username and password must be non-empty strings
   - DO NOT try to parse complex answers - take exactly as typed
-  - If user provides confusing answer (like "mac for both"), ask TWO separate questions:
-    1. "What is the FTP username?"
-    2. "What is the FTP password?"
+  - If empty or confusing, ask a follow-up AskUserQuestion with just that specific field
 
-If validation fails, provide clear error messages with examples and re-prompt.
+If validation fails, provide clear error messages with examples and re-prompt using a new AskUserQuestion call with just the invalid field(s).
 
 ### 3. Read Existing machines.json
 
@@ -325,11 +339,16 @@ Once LaunchAPPL is running, you can:
 
 ### Unclear User Input
 **NEVER try to parse or infer unclear answers. Instead:**
-- If IP is incomplete (like "10.188.1.x"): Ask "What is the complete IP address? (e.g., 10.188.1.102)"
-- If credentials are ambiguous (like "mac for both"): Ask TWO separate questions:
-  1. "What is the FTP username?"
-  2. "What is the FTP password?"
+- After the initial AskUserQuestion call, validate all answers
+- If IP is incomplete (like "10.188.1.x" or empty):
+  - Call AskUserQuestion again with JUST the IP question
+  - Make it explicit: "I need the complete IP address. Please provide the full IP address (e.g., 10.188.1.102 or 192.168.1.50)"
+  - Use empty options array (text input only)
+- If username or password is empty/ambiguous:
+  - Call AskUserQuestion again with JUST that specific question
+  - Be explicit about what you need
 - Take each answer EXACTLY as typed - no clever parsing
+- Continue validating and re-asking until you have complete, valid data
 
 ### FTP Connection Failed
 - Provide clear error message
@@ -360,12 +379,57 @@ async function setupMachine() {
     return;
   }
 
-  // 1. Collect info
+  // 1. Collect ALL info in ONE call
   const answers = await askUserQuestions([
-    { question: "Machine ID?", ... },
-    { question: "IP address?", ... },
-    { question: "Platform?", options: ["MacTCP", "Open Transport"] },
-    // ... etc
+    {
+      question: "What's the machine nickname (e.g., 'performa6400', 'se30')?",
+      header: "Machine ID",
+      options: [],  // Empty = text input
+      multiSelect: false
+    },
+    {
+      question: "What's the complete IP address of this Mac? (e.g., '10.188.1.102' or '192.168.1.50')",
+      header: "IP Address",
+      options: [],  // Empty = text input, NO option buttons
+      multiSelect: false
+    },
+    {
+      question: "Which networking platform does this Mac use?",
+      header: "Platform",
+      options: [
+        { label: "MacTCP", description: "System 6.0.8 - 7.5.5, 68k Macs" },
+        { label: "Open Transport", description: "System 7.6.1+, PPC/68040" }
+      ],
+      multiSelect: false
+    },
+    {
+      question: "What's the FTP username for this Mac?",
+      header: "FTP Username",
+      options: [],  // Empty = text input
+      multiSelect: false
+    },
+    {
+      question: "What's the FTP password for this Mac?",
+      header: "FTP Password",
+      options: [],  // Empty = text input
+      multiSelect: false
+    },
+    {
+      question: "What's the System version? (e.g., '7.5.3', '7.6.1', '8.1')",
+      header: "System Version",
+      options: [],  // Empty = text input
+      multiSelect: false
+    },
+    {
+      question: "Optional: Add a description for this machine (or leave blank)",
+      header: "Description",
+      options: [
+        { label: "Leave blank", description: "No description needed" },
+        { label: "68k Mac", description: "Generic 68k Macintosh" },
+        { label: "PPC Mac", description: "Generic PowerPC Macintosh" }
+      ],
+      multiSelect: false
+    }
   ]);
 
   // 2. Validate

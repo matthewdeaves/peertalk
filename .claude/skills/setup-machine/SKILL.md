@@ -213,9 +213,9 @@ Once verified, you can:
 
 **Workflow:**
 1. **Check MCP is available** - Call `mcp__classic-mac-hardware__list_machines`
-2. **Use AskUserQuestion** to collect all machine information
+2. **Use AskUserQuestion ONCE** to collect all machine information in a single round
 3. **Read machines.json** to check for duplicates
-4. **Validate inputs** before proceeding
+4. **Validate inputs** - If anything is incomplete, ask follow-up questions
 5. **Write to machines.json** with correct nested format
 6. **Call MCP tools:**
    - `mcp__classic-mac-hardware__reload_config`
