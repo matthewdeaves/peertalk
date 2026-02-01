@@ -40,6 +40,8 @@ Tools perform actions with side effects, require explicit consent.
 | `create_directory` | machine, path | Create directory via FTP |
 | `delete_files` | machine, path, recursive? | Delete files/directories via FTP |
 | `deploy_binary` | machine, platform, binary_path | Upload compiled binary via FTP (.bin and .dsk) |
+| `upload_file` | machine, local_path, remote_path | Upload any file to Mac via FTP |
+| `download_file` | machine, remote_path, local_path? | Download any file from Mac via FTP |
 | `fetch_logs` | machine, session_id?, destination? | Download PT_Log output via FTP |
 | `execute_binary` | machine, platform, binary_path?, args? | Execute binary via LaunchAPPL TCP |
 | `cleanup_machine` | machine, scope?, specific_path?, keep_latest? | Clean files (old_files/binaries/logs/all/specific_path) |

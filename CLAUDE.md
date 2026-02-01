@@ -133,7 +133,14 @@ These rules are automatically loaded when editing files in the corresponding `sr
 
 | Server | Purpose |
 |--------|---------|
-| `classic-mac-hardware` | FTP access to Classic Mac test machines for binary deployment and log retrieval |
+| `classic-mac-hardware` | FTP access to Classic Mac test machines for binary deployment, log retrieval, and file transfer |
+
+**Key Tools:**
+- `upload_file` / `download_file` - Transfer any file to/from Classic Mac
+- `deploy_binary` - Deploy PeerTalk builds (.bin/.dsk)
+- `fetch_logs` - Retrieve PT_Log output
+- `execute_binary` - Run binaries via LaunchAPPL (remote execution)
+- `list_directory` / `create_directory` / `delete_files` - File management
 
 **Setup:** Run `./tools/setup.sh` (sets up Docker + MCP configuration), then restart Claude Code.
 

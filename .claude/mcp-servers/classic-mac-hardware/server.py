@@ -440,6 +440,53 @@ class ClassicMacHardwareServer:
                 }
             ),
             Tool(
+                name="upload_file",
+                description="Upload any file to Classic Mac via FTP (requires user consent for non-test files)",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "machine": {
+                            "type": "string",
+                            "description": f"Machine ID: {', '.join(self.machines.keys())}",
+                            "enum": list(self.machines.keys())
+                        },
+                        "local_path": {
+                            "type": "string",
+                            "description": "Local file path to upload"
+                        },
+                        "remote_path": {
+                            "type": "string",
+                            "description": "Remote destination path on Mac (Mac-style path with colons, e.g., 'Documents:TestData:file.txt')"
+                        }
+                    },
+                    "required": ["machine", "local_path", "remote_path"]
+                }
+            ),
+            Tool(
+                name="download_file",
+                description="Download any file from Classic Mac via FTP",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "machine": {
+                            "type": "string",
+                            "description": f"Machine ID: {', '.join(self.machines.keys())}",
+                            "enum": list(self.machines.keys())
+                        },
+                        "remote_path": {
+                            "type": "string",
+                            "description": "Remote file path on Mac to download (Mac-style path with colons)"
+                        },
+                        "local_path": {
+                            "type": "string",
+                            "description": "Local destination path (optional, defaults to downloads/{machine}/{filename})",
+                            "default": None
+                        }
+                    },
+                    "required": ["machine", "remote_path"]
+                }
+            ),
+            Tool(
                 name="reload_config",
                 description="Reload machines.json configuration without restarting server",
                 inputSchema={
@@ -960,6 +1007,84 @@ class ClassicMacHardwareServer:
                          f"\n\nTotal: {len(removed)} items"
                 )]
 
+            finally:
+                ftp.quit()
+
+        elif name == "upload_file":
+            machine_id = arguments["machine"]
+            local_path = arguments["local_path"]
+            remote_path = arguments["remote_path"]
+
+            # Verify local file exists
+            if not Path(local_path).exists():
+                raise FileNotFoundError(f"Local file not found: {local_path}")
+
+            ftp = self._connect_ftp(machine_id)
+            machine = self.machines[machine_id]
+
+            try:
+                # Parse remote path to get directory and filename
+                # Mac path format: "Documents:TestData:file.txt"
+                path_parts = remote_path.split(':')
+                filename = path_parts[-1]
+                directory = ':'.join(path_parts[:-1]) if len(path_parts) > 1 else ''
+
+                # Navigate to directory if specified
+                if directory:
+                    ftp.cwd(directory)
+
+                # Upload file
+                file_size = Path(local_path).stat().st_size
+                with open(local_path, 'rb') as f:
+                    ftp.storbinary(f'STOR {filename}', f)
+
+                return [TextContent(
+                    type="text",
+                    text=f"✅ Uploaded to {machine['name']}:\n\n"
+                         f"Local:  {local_path}\n"
+                         f"Remote: {remote_path}\n"
+                         f"Size:   {file_size:,} bytes"
+                )]
+            finally:
+                ftp.quit()
+
+        elif name == "download_file":
+            machine_id = arguments["machine"]
+            remote_path = arguments["remote_path"]
+            local_path = arguments.get("local_path")
+
+            # Parse remote path to get filename
+            path_parts = remote_path.split(':')
+            filename = path_parts[-1]
+            directory = ':'.join(path_parts[:-1]) if len(path_parts) > 1 else ''
+
+            # Determine local destination
+            if not local_path:
+                download_dir = Path(f"downloads/{machine_id}")
+                download_dir.mkdir(parents=True, exist_ok=True)
+                local_path = download_dir / filename
+
+            ftp = self._connect_ftp(machine_id)
+            machine = self.machines[machine_id]
+
+            try:
+                # Navigate to directory if specified
+                if directory:
+                    ftp.cwd(directory)
+
+                # Download file
+                with open(local_path, 'wb') as f:
+                    ftp.retrbinary(f'RETR {filename}', f.write)
+
+                file_size = Path(local_path).stat().st_size
+
+                return [TextContent(
+                    type="text",
+                    text=f"✅ Downloaded from {machine['name']}:\n\n"
+                         f"Remote: {remote_path}\n"
+                         f"Local:  {local_path}\n"
+                         f"Size:   {file_size:,} bytes"
+                )]
             finally:
                 ftp.quit()
 
