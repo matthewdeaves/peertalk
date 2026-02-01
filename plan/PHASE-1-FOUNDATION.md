@@ -2441,6 +2441,8 @@ int main(void) {
 ### Objective
 Create platform abstraction layer with stub implementations that compile on all platforms.
 
+**IMPORTANT:** All platform files must include `pt_compat.h` for portable primitives (byte order, memory, atomics). MacTCP and Open Transport files also need Classic Mac system headers (`<MacTCP.h>`, `<OpenTransport.h>`, `<OSUtils.h>`).
+
 ### Tasks
 
 #### Task 1.3.1: Create `src/posix/platform_posix.c`
@@ -2451,6 +2453,7 @@ Create platform abstraction layer with stub implementations that compile on all 
  */
 
 #include "pt_internal.h"
+#include "pt_compat.h"  /* REQUIRED: for portable primitives */
 
 #if defined(PT_PLATFORM_POSIX)
 
@@ -3000,7 +3003,6 @@ Add the following to `pt_internal.h`:
 PeerTalk_Error PeerTalk_Init(PeerTalk_Context **ctx_out,
                              const PeerTalk_Config *config) {
     struct pt_context *ctx;
-    PT_LogConfig log_config = {0};
     int err;
 
     /* ... existing validation and allocation ... */
@@ -3008,20 +3010,17 @@ PeerTalk_Error PeerTalk_Init(PeerTalk_Context **ctx_out,
     /*
      * Initialize PT_Log from Phase 0.
      * Configure based on user's log_level setting.
+     *
+     * NOTE: PT_LogCreate() takes no arguments. Use setter functions
+     * to configure: PT_LogSetLevel(), PT_LogSetCategories(), PT_LogSetOutput()
      */
-    log_config.level = (PT_LogLevel)config->log_level;
-    log_config.categories = PT_LOG_CAT_ALL;
-
-    /* Enable file output if log_filename provided */
-    if (config->log_filename && config->log_filename[0]) {
-        log_config.filename = config->log_filename;
-        log_config.auto_flush = 1;  /* Flush on each write for debugging */
-    }
-
-    ctx->log = PT_LogCreate(&log_config);
-    if (!ctx->log) {
-        /* Log creation failed - continue without logging */
-        /* This is not fatal, but we lose debug capability */
+    ctx->log = PT_LogCreate();
+    if (ctx->log) {
+        if (config->log_level > 0) {
+            PT_LogSetLevel(ctx->log, (PT_LogLevel)config->log_level);
+        }
+        PT_LogSetCategories(ctx->log, PT_LOG_CAT_ALL);
+        PT_LogSetOutput(ctx->log, PT_LOG_OUT_CONSOLE);
     }
 
     PT_CTX_INFO(ctx, PT_LOG_CAT_INIT, "PeerTalk v%d.%d.%d initialized",
