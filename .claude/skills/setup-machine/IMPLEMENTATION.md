@@ -7,6 +7,10 @@ This document describes the implementation of the /setup-machine skill for Claud
 1. **ALWAYS use MCP tools** - Never use raw Python/Bash for FTP operations. All FTP must go through `mcp__classic-mac-hardware__*` tools.
 2. **Empty FTP root is normal** - Don't probe or explore the FTP server. Just create the required directories.
 3. **Check prerequisites first** - Verify MCP server and LaunchAPPL source exist before starting.
+4. **NO CLEVER PARSING** - Take user input EXACTLY as provided. If unclear, ask explicit follow-up questions.
+   - DO NOT try to infer IP ranges - ask for complete IP upfront
+   - DO NOT try to parse complex credential answers - ask username and password separately
+   - DO NOT assume or guess - be direct and explicit
 
 ## Workflow
 
@@ -43,47 +47,111 @@ ls LaunchAPPL/Server/  # Check if source code exists
 
 ### 1. Collect Information
 
-Use **AskUserQuestion** to collect the following information interactively:
+Use **AskUserQuestion** to collect the following information interactively.
+
+**CRITICAL RULES FOR DATA COLLECTION:**
+- **NO clever parsing** - Take user input exactly as given
+- **NO assumptions** - If unclear, ask again explicitly
+- **NO multi-step refinement** - Ask for complete values upfront
+- **Each question should be CLEAR and DIRECT**
 
 ```
 Question 1: Machine ID
   Header: "Machine ID"
-  Prompt: "What's the machine nickname (e.g., 'performa6400', 'se30')?"
-  Options:
-    - Provide 2-3 example IDs
-    - User can enter custom value (this is text input, not multiple choice)
+  Prompt: "What's the machine nickname (e.g., 'performa6400', 'se30', 'iici')?"
+  - User types a value (text input)
+  - TAKE EXACTLY AS PROVIDED - no validation yet
 
 Question 2: IP Address
-  Prompt: "What's the IP address of this Mac?"
+  Header: "IP Address"
+  Prompt: "What's the complete IP address? (e.g., '10.188.1.102')"
+  - User types the FULL IP address
+  - DO NOT ask for ranges or partial IPs
+  - DO NOT try to infer or complete partial IPs
+  - If user provides incomplete IP (like "10.188.1.x"), ask again:
+    "I need the complete IP address. What is the full IP?"
 
 Question 3: Platform
   Header: "Platform"
   Prompt: "Which networking platform does this Mac use?"
   Options:
-    - "MacTCP" (System 6.0.8 - 7.5.5, 68k)
-    - "Open Transport" (System 7.6.1+, PPC/68040)
+    - "MacTCP (System 6.0.8 - 7.5.5, 68k Macs)"
+    - "Open Transport (System 7.6.1+, PPC/68040 Macs)"
 
 Question 4: FTP Username
-  Prompt: "What's the FTP username?"
+  Header: "FTP Username"
+  Prompt: "What's the FTP username for this Mac?"
+  - User types username (text input)
+  - TAKE EXACTLY AS PROVIDED
+  - DO NOT try to parse phrases like "mac for both"
 
 Question 5: FTP Password
-  Prompt: "What's the FTP password?"
-  (Use secure input if available)
+  Header: "FTP Password"
+  Prompt: "What's the FTP password for this Mac?"
+  - User types password (text input)
+  - TAKE EXACTLY AS PROVIDED
+  - DO NOT try to parse complex answers
+  - If user says something like "same as username", ask explicitly:
+    "What's the password value? (Type the password)"
 
 Question 6: System Version
-  Prompt: "What's the System version (e.g., '7.5.3', '7.6.1')?"
+  Header: "System Version"
+  Prompt: "What's the System version? (e.g., '7.5.3', '7.6.1', '8.1')"
+  - User types version (text input)
 
-Question 7: Description (optional)
-  Prompt: "Optional description (e.g., 'Performa 6400/200 - PPC'):"
+Question 7: Machine Description
+  Header: "Description"
+  Prompt: "Choose a description for this machine:"
+  Options:
+    - Generate 2-3 suggested descriptions based on collected info:
+      * If platform=mactcp: "[Machine Name] - 68k Mac running System [version]"
+      * If platform=opentransport: "[Machine Name] - PPC Mac running System [version]"
+      * Example: "Performa 6400 - PPC Mac running System 7.6.1"
+      * Example: "SE/30 - 68k Mac running System 7.5.3"
+    - "Custom description" (if selected, prompt: "Enter custom description:")
+    - "Leave blank" (sets notes to empty string)
+
+  **IMPORTANT:** If user selects "Custom description":
+    - MUST immediately ask: "What description would you like?"
+    - MUST use their exact answer as the description
+    - DO NOT use placeholder text like "TODO: Add description"
+    - DO NOT tell them to "update later"
 ```
+
+**IMPORTANT:** If any answer is ambiguous or incomplete:
+1. DO NOT try to parse or infer the intent
+2. Ask a follow-up question that is COMPLETELY EXPLICIT
+3. Example: "I need the complete IP address. Please type the full IP (like 10.188.1.102):"
+
+**Multi-step Questions:**
+- ONLY use multi-step questions when offering suggested values with a "custom" option
+- Example: Description question offers suggested descriptions + "Custom" option
+- If "Custom" is selected, IMMEDIATELY ask for the custom value
+- DO NOT use placeholder text or tell users to "update later"
+- TAKE their custom input EXACTLY as provided
 
 ### 2. Validate Input
 
 - **Machine ID:** Check that it doesn't already exist in machines.json
-- **IP Address:** Basic format validation (IPv4)
-- **Platform:** Must be one of: mactcp, opentransport
+  - Must be lowercase, alphanumeric, hyphens/underscores allowed
+  - Example: "performa6400", "se_30", "iici-1"
 
-If validation fails, provide clear error messages and re-prompt.
+- **IP Address:** Must be valid IPv4 format
+  - Check regex: `^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$`
+  - If incomplete (contains 'x', missing octets), ask explicitly:
+    "I need a complete IP address. Please provide the full IP (e.g., 10.188.1.102):"
+
+- **Platform:** Must be one of: mactcp, opentransport
+  - Map user-friendly names: "MacTCP" → "mactcp", "Open Transport" → "opentransport"
+
+- **FTP Credentials:**
+  - Username and password must be non-empty strings
+  - DO NOT try to parse complex answers - take exactly as typed
+  - If user provides confusing answer (like "mac for both"), ask TWO separate questions:
+    1. "What is the FTP username?"
+    2. "What is the FTP password?"
+
+If validation fails, provide clear error messages with examples and re-prompt.
 
 ### 3. Read Existing machines.json
 
@@ -254,6 +322,14 @@ Once LaunchAPPL is running, you can:
 ```
 
 ## Error Handling
+
+### Unclear User Input
+**NEVER try to parse or infer unclear answers. Instead:**
+- If IP is incomplete (like "10.188.1.x"): Ask "What is the complete IP address? (e.g., 10.188.1.102)"
+- If credentials are ambiguous (like "mac for both"): Ask TWO separate questions:
+  1. "What is the FTP username?"
+  2. "What is the FTP password?"
+- Take each answer EXACTLY as typed - no clever parsing
 
 ### FTP Connection Failed
 - Provide clear error message
