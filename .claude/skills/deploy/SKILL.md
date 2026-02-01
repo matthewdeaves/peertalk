@@ -25,7 +25,7 @@ Deploy compiled binaries to Classic Mac test machines via FTP.
    ```
 
 2. **Machines configured:**
-   - **First time?** Run `/setup-machine` to onboard new Classic Macs
+   - **First time?** Run `/setup-machine` then `/setup-launcher` to onboard new Classic Macs
    - Check `.claude/mcp-servers/classic-mac-hardware/machines.json`
    - Or use MCP server: `/mcp` → list resources
 

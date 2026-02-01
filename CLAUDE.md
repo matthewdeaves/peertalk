@@ -59,14 +59,20 @@ tests/
   test_*.c            # POSIX tests
 plan/
   PHASE-*.md          # Implementation plans
-LaunchAPPL/
-  Server/             # LaunchAPPLServer source (Retro68 remote execution server)
-  Common/             # Shared protocol code
-  build-mactcp/       # MacTCP (68k) build artifacts
-  build-ppc/          # Open Transport (PPC) build artifacts
+.claude/
+  skills/             # Custom Claude Code skills
+  rules/              # Platform-specific coding rules
+  mcp-servers/        # MCP server configurations
+    classic-mac-hardware/
+      machines.json   # Classic Mac machine registry
+      SETUP.md        # MCP server setup guide
 scripts/
   build-launcher.sh   # Build LaunchAPPLServer for Mac platforms
+docker/
+  docker-compose.yml  # Retro68 development container
 ```
+
+**Note:** LaunchAPPL source is in the Retro68 Docker container at `/opt/Retro68/LaunchAPPL/`, not in the repository.
 
 ## Common Pitfalls
 
@@ -111,23 +117,42 @@ These rules are automatically loaded when editing files in the corresponding `sr
 
 ## Custom Skills
 
+### Development Workflow
 | Skill | When to Use |
 |-------|-------------|
 | `/session` | Check progress, find next available session |
 | `/implement X Y` | Implement a phase session (e.g., `/implement 1 1.2`) |
-| `/build test` | Compile and run POSIX tests with coverage |
-| `/build package` | Create Mac binaries for hardware transfer |
-| `/build launcher-mactcp` | Build LaunchAPPLServer for MacTCP (68k) |
-| `/build launcher-ot` | Build LaunchAPPLServer for Open Transport (PPC) |
 | `/review plan/PHASE-X.md` | Review plan before starting (recommended for Mac phases) |
 | `/check-isr` | Validate interrupt-time safety for Mac code |
+
+### Building & Testing
+| Skill | When to Use |
+|-------|-------------|
+| `/build test` | Compile and run POSIX tests with coverage |
+| `/build package` | Create Mac binaries for hardware transfer |
 | `/hw-test generate X.Y` | Create hardware test plan for Classic Mac |
-| `/setup-machine` | Onboard new Classic Mac: add to registry, build & deploy LaunchAPPLServer, test connectivity |
-| `/test-machine <id>` | Test FTP and LaunchAPPL connectivity to a Classic Mac |
-| `/backport` | Identify commits to cherry-pick to starter-template |
-| `/mac-api [query]` | Search Inside Macintosh books for API docs, interrupt safety, error codes |
-| `/deploy [machine\|platform\|all]` | Deploy binaries to Classic Mac hardware via FTP |
+
+### Hardware Setup & Deployment
+| Skill | When to Use |
+|-------|-------------|
+| `/setup-machine` | Register new Classic Mac in machine registry, verify FTP connectivity |
+| `/setup-launcher <machine>` | Build & deploy LaunchAPPLServer and demo apps to registered Mac |
+| `/test-machine <id>` | Test FTP and LaunchAPPL connectivity |
+| `/deploy [machine\|platform\|all]` | Deploy PeerTalk binaries to Classic Mac hardware |
 | `/fetch-logs [machine\|platform\|all]` | Retrieve PT_Log output from Classic Mac hardware |
+
+### Reference & Documentation
+| Skill | When to Use |
+|-------|-------------|
+| `/mac-api [query]` | Search Inside Macintosh books for API docs, interrupt safety, error codes |
+| `/backport` | Identify commits to cherry-pick to starter-template |
+
+**Setup Workflow:**
+1. `/setup-machine` - Register your Mac and create directory structure
+2. `/setup-launcher <machine>` - Build and deploy LaunchAPPLServer
+3. Run LaunchAPPLServer on your Mac (enable TCP server on port 1984)
+4. `/test-machine <machine>` - Verify LaunchAPPL connectivity
+5. `/deploy <machine> <platform>` - Deploy PeerTalk builds
 
 ## MCP Servers
 
@@ -137,14 +162,51 @@ These rules are automatically loaded when editing files in the corresponding `sr
 
 **Key Tools:**
 - `upload_file` / `download_file` - Transfer any file to/from Classic Mac
-- `deploy_binary` - Deploy PeerTalk builds (.bin/.dsk)
-- `fetch_logs` - Retrieve PT_Log output
-- `execute_binary` - Run binaries via LaunchAPPL (remote execution)
 - `list_directory` / `create_directory` / `delete_files` - File management
+- `test_connection` - Verify FTP and LaunchAPPL connectivity
+- `reload_config` - Hot-reload machine registry after changes
+
+**Machine Registry:** `.claude/mcp-servers/classic-mac-hardware/machines.json`
+
+Each machine entry includes:
+- Platform (mactcp/opentransport)
+- FTP credentials and paths
+- System version and hardware details
 
 **Setup:** Run `./tools/setup.sh` (sets up Docker + MCP configuration), then restart Claude Code.
 
-Detailed docs: `.claude/mcp-servers/classic-mac-hardware/SETUP.md`
+**Detailed docs:** `.claude/mcp-servers/classic-mac-hardware/SETUP.md`
+
+## .claude Folder Organization
+
+```
+.claude/
+  skills/                      # Custom Claude Code skills
+    setup-machine/             # Register Classic Mac in machine registry
+    setup-launcher/            # Build & deploy LaunchAPPLServer
+    deploy/                    # Deploy PeerTalk builds to hardware
+    fetch-logs/                # Retrieve PT_Log output
+    test-machine/              # Test FTP/LaunchAPPL connectivity
+    build/                     # Build system with quality gates
+    session/                   # Phase session navigation
+    implement/                 # Automated phase implementation
+    review/                    # Phase plan review & validation
+    check-isr/                 # ISR safety validation
+    hw-test/                   # Hardware test plan generation
+    mac-api/                   # Inside Macintosh API search
+    backport/                  # Cherry-pick tooling updates
+  rules/                       # Platform-specific coding rules
+    isr-safety.md              # Universal interrupt-time rules
+    mactcp.md                  # MacTCP ASR, TCPPassiveOpen, error codes
+    opentransport.md           # OT notifier, endpoint states, tilisten
+    appletalk.md               # ADSP callbacks, NBP, userFlags
+  mcp-servers/                 # MCP server configurations
+    classic-mac-hardware/
+      machines.json            # Machine registry (FTP credentials, paths)
+      SETUP.md                 # Setup guide
+```
+
+**Auto-loading rules:** When editing files in `src/mactcp/`, `src/opentransport/`, or `src/appletalk/`, the corresponding platform rules are automatically loaded.
 
 ## Agents
 

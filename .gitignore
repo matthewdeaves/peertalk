@@ -133,3 +133,4 @@ coverage.info
 *.dump
 .cache/
 .mcp.json
+LaunchAPPL-build/

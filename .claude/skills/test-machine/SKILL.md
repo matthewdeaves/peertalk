@@ -179,8 +179,7 @@ To add a new machine:
 
 ## When to Use
 
-- **After adding machine to registry** - Complete the setup by deploying LaunchAPPL
-- **After /setup-machine** - Verify new machine is fully ready
+- **After /setup-machine and /setup-launcher** - Verify new machine is fully ready
 - **Before /deploy** - Ensure target Mac is reachable
 - **Debugging** - Diagnose connectivity issues
 - **After moving Macs** - Verify IP addresses still work
@@ -188,8 +187,9 @@ To add a new machine:
 
 ## Related Skills
 
-- `/setup-machine` - Onboard new Classic Macs
-- `/deploy` - Deploy binaries to machines
+- `/setup-machine` - Register new Classic Mac in machine registry
+- `/setup-launcher` - Build and deploy LaunchAPPLServer
+- `/deploy` - Deploy PeerTalk binaries to machines
 - `/fetch-logs` - Retrieve PT_Log output
 
 ## See Also

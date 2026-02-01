@@ -100,7 +100,7 @@ Build LaunchAPPLServer for MacTCP (68k):
 ```
 Creates: `LaunchAPPL/build-mactcp/Server/LaunchAPPLServer-MacTCP.bin`
 
-**Used by:** `/setup-machine` when onboarding MacTCP machines
+**Used by:** `/setup-launcher` when deploying to MacTCP machines
 
 ### launcher-ot
 Build LaunchAPPLServer for Open Transport (PPC):
@@ -109,7 +109,7 @@ Build LaunchAPPLServer for Open Transport (PPC):
 ```
 Creates: `LaunchAPPL/build-ppc/Server/LaunchAPPLServer-OpenTransport.bin`
 
-**Used by:** `/setup-machine` when onboarding Open Transport machines
+**Used by:** `/setup-launcher` when deploying to Open Transport machines
 
 ### launcher-all
 Build both LaunchAPPLServer versions:

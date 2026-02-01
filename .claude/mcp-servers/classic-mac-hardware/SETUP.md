@@ -21,8 +21,9 @@ Then **restart Claude Code completely** (exit and reopen) to load MCP servers.
 After restart:
 
 ```bash
-/test-machine --list    # Verify MCP is working
-/setup-machine          # Add your Classic Macs
+/test-machine --list              # Verify MCP is working
+/setup-machine                    # Register your Classic Macs
+/setup-launcher <machine-id>      # Deploy LaunchAPPLServer
 ```
 
 **Requirements:**
@@ -64,19 +65,28 @@ cp .mcp.json.example .mcp.json
 
 ### Adding a New Machine
 
-After MCP is configured, run `/setup-machine` for each Classic Mac:
+After MCP is configured, use a two-step process to set up each Classic Mac:
 
+**Step 1: Register the machine**
 ```bash
 /setup-machine
 ```
 
 This interactive skill will:
 1. Collect machine details (IP, platform, credentials)
-2. Add to machines.json automatically
-3. Create directory structure on Mac via FTP
-4. Build the correct LaunchAPPLServer version for your platform
-5. Deploy LaunchAPPLServer files via FTP
-6. Guide you through final setup on the Mac (using BinUnpk)
+2. Add to `.claude/mcp-servers/classic-mac-hardware/machines.json`
+3. Verify FTP connectivity
+4. Create directory structure on Mac via FTP
+
+**Step 2: Deploy LaunchAPPLServer**
+```bash
+/setup-launcher <machine-id>
+```
+
+This skill will:
+1. Build the correct LaunchAPPLServer version for your platform
+2. Deploy LaunchAPPLServer files (.bin and .dsk) via FTP
+3. Guide you through final setup on the Mac (using BinUnpk to extract)
 
 ### RumpusFTP Server Setup
 
@@ -165,17 +175,18 @@ For remote binary execution, install LaunchAPPLServer on each Classic Mac.
 
 **Automatic Setup (Recommended):**
 
-The `/setup-machine` skill automatically builds and deploys LaunchAPPLServer. After running it:
+After running `/setup-machine` and `/setup-launcher`:
 
 1. **On your Classic Mac**, navigate to `Applications:LaunchAPPLServer` folder
-2. **Use BinUnpk** to extract LaunchAPPLServer from the .bin file
-   (BinUnpk is a standard Classic Mac utility for extracting MacBinary files)
-3. **Launch** the LaunchAPPLServer application
-4. **Configure:**
+2. **Mount the disk image** by double-clicking `LaunchAPPLServer.dsk`
+   (Or use **BinUnpk** to extract from the .bin file)
+3. **Copy LaunchAPPLServer** to your Applications folder
+4. **Launch** the LaunchAPPLServer application
+5. **Configure:**
    - Enable TCP server
    - Set port to 1984 (default)
    - Leave running
-5. **Test connectivity:**
+6. **Test connectivity:**
    ```bash
    /test-machine your-machine-id
    ```
@@ -184,7 +195,12 @@ The `/setup-machine` skill automatically builds and deploys LaunchAPPLServer. Af
 
 If you need to rebuild LaunchAPPLServer separately:
 
-1. **Build LaunchAPPLServer** (platform-specific):
+1. **Build and deploy in one step:**
+   ```bash
+   /setup-launcher your-machine-id
+   ```
+
+2. **Or build manually** (platform-specific):
    ```bash
    # MacTCP (68k, System 6.0.8 - 7.5.5)
    ./scripts/build-launcher.sh mactcp
@@ -193,17 +209,9 @@ If you need to rebuild LaunchAPPLServer separately:
    ./scripts/build-launcher.sh ot
    ```
 
-   **Outputs (both .bin and .dsk for each platform):**
-   - MacTCP: `LaunchAPPL/build-mactcp/Server/LaunchAPPLServer-MacTCP.{bin,dsk}`
-   - Open Transport: `LaunchAPPL/build-ppc/Server/LaunchAPPLServer-OpenTransport.{bin,dsk}`
+   Then deploy using MCP tools (see `/setup-launcher` skill for details).
 
-2. **Deploy to Classic Mac:**
-   ```bash
-   /deploy your-machine-id mactcp
-   # Or use MCP tool directly for specific file
-   ```
-
-3. **Follow setup steps above** (use BinUnpk to extract)
+3. **Follow setup steps above** (mount .dsk or use BinUnpk to extract)
 
 ## For Project Maintainers
 
