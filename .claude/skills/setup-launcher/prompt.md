@@ -163,16 +163,22 @@ Choose Dialog as it's the simplest test of remote execution.
 
 ### 5. Deploy to Mac
 
-Use MCP upload_file tool:
+Use MCP upload_file tool with **relative paths** (required by MCP):
 
 ```
+**IMPORTANT:** MCP requires relative paths from current working directory (/workspace)
+
 Upload LaunchAPPLServer.bin:
-- local_path: LaunchAPPL-build/LaunchAPPLServer.bin
+- local_path: LaunchAPPL-build/LaunchAPPLServer.bin (relative path)
 - remote_path: Applications:LaunchAPPLServer:LaunchAPPLServer.bin
 
 Upload LaunchAPPLServer.dsk:
-- local_path: LaunchAPPL-build/LaunchAPPLServer.dsk
+- local_path: LaunchAPPL-build/LaunchAPPLServer.dsk (relative path)
 - remote_path: Applications:LaunchAPPLServer:LaunchAPPLServer.dsk
+
+Upload demo apps (Dialog.bin, Dialog.dsk):
+- local_path: LaunchAPPL-build/Dialog.bin
+- remote_path: Temp:Dialog.bin
 ```
 
 ### 6. Verify Deployment

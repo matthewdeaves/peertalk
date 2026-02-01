@@ -19,10 +19,19 @@ Deploy compiled binaries to Classic Mac test machines via FTP.
 
 ## Prerequisites
 
+**IMPORTANT:** This skill requires PeerTalk binaries to exist. If not yet implemented:
+- Check project status: `/session status`
+- Start implementing: `/session next` or `/implement`
+- Build binaries will be created during implementation
+
 1. **Binaries built:**
    ```bash
-   /build package    # or /build compile
+   /build package    # Creates build/mactcp/ and build/ppc/ binaries
    ```
+
+   **If binaries don't exist yet:**
+   - PeerTalk SDK not implemented → Start with `/session next`
+   - Build failed → Check `/build test` output
 
 2. **Machines configured:**
    - **First time?** Run `/setup-machine` then `/setup-launcher` to onboard new Classic Macs
@@ -32,7 +41,31 @@ Deploy compiled binaries to Classic Mac test machines via FTP.
 3. **MCP server running:**
    - Configured in `.claude/settings.json`
    - machines.json configured
-   - LaunchAPPLServer installed on target Macs (if using remote execution)
+
+**For testing remote execution without PeerTalk:** Use `/execute` with Retro68 demo apps
+
+## Execution Notes
+
+**Before deploying, check if binaries exist:**
+
+```bash
+# Check for binaries
+ls build/mactcp/PeerTalk.bin build/ppc/PeerTalk.bin 2>/dev/null
+```
+
+**If binaries don't exist:**
+```
+❌ PeerTalk binaries not found
+
+The PeerTalk SDK hasn't been built yet.
+
+Next steps:
+1. Check implementation status: /session status
+2. Build PeerTalk: /build package
+3. Or start implementing: /session next
+
+To test deployment without PeerTalk, use /execute with demo apps.
+```
 
 ## Commands
 

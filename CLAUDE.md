@@ -2,6 +2,34 @@
 
 Cross-platform peer-to-peer networking library for Classic Macintosh and modern systems.
 
+## Project Status & Purpose
+
+**Current State:** Starter template with world-class Claude Code configuration
+
+This repository serves two purposes:
+
+1. **Implementation Project** - Build the PeerTalk SDK using phase plans in `plan/`
+2. **Learning Resource** - Real-world example of Claude Code customization (MCP, skills, hooks, tools)
+
+**What's Implemented:**
+- ✓ Phase plans ready in `plan/PHASE-*.md`
+- ✓ Custom skills for development workflow
+- ✓ MCP server for Classic Mac hardware access
+- ✓ Pre-commit hooks and quality gates
+- ✓ Docker environment with Retro68 toolchain
+
+**Not Yet Implemented:**
+- ⏳ PeerTalk SDK source code (`src/`, `include/`)
+- ⏳ Example chat application
+- ⏳ Platform-specific implementations
+
+**Getting Started:**
+```bash
+/session status   # Check project progress
+/session next     # Find next implementation task
+/implement        # Start implementing from plans
+```
+
 ## Platforms
 
 | Platform | System | Use Case |
@@ -138,7 +166,8 @@ These rules are automatically loaded when editing files in the corresponding `sr
 | `/setup-machine` | Register new Classic Mac in machine registry, verify FTP connectivity |
 | `/setup-launcher <machine>` | Build & deploy LaunchAPPLServer and demo apps to registered Mac |
 | `/test-machine <id>` | Test FTP and LaunchAPPL connectivity |
-| `/deploy [machine\|platform\|all]` | Deploy PeerTalk binaries to Classic Mac hardware |
+| `/deploy [machine\|platform\|all]` | Deploy PeerTalk binaries via FTP (requires PeerTalk implemented) |
+| `/execute <machine> <app-path>` | Run apps remotely via LaunchAPPL (tests without PeerTalk) |
 | `/fetch-logs [machine\|platform\|all]` | Retrieve PT_Log output from Classic Mac hardware |
 
 ### Reference & Documentation
@@ -161,7 +190,7 @@ These rules are automatically loaded when editing files in the corresponding `sr
 | `classic-mac-hardware` | FTP access to Classic Mac test machines for binary deployment, log retrieval, and file transfer |
 
 **Key Tools:**
-- `upload_file` / `download_file` - Transfer any file to/from Classic Mac
+- `upload_file` / `download_file` - Transfer any file to/from Classic Mac (**Note:** Requires relative paths from current working directory)
 - `list_directory` / `create_directory` / `delete_files` - File management
 - `test_connection` - Verify FTP and LaunchAPPL connectivity
 - `reload_config` - Hot-reload machine registry after changes
@@ -184,7 +213,8 @@ Each machine entry includes:
   skills/                      # Custom Claude Code skills
     setup-machine/             # Register Classic Mac in machine registry
     setup-launcher/            # Build & deploy LaunchAPPLServer
-    deploy/                    # Deploy PeerTalk builds to hardware
+    deploy/                    # Deploy PeerTalk builds via FTP
+    execute/                   # Remote execution via LaunchAPPL
     fetch-logs/                # Retrieve PT_Log output
     test-machine/              # Test FTP/LaunchAPPL connectivity
     build/                     # Build system with quality gates
