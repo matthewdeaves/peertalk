@@ -26,7 +26,8 @@ User-invocable commands (slash commands). Use **progressive disclosure** (main f
 | /review | Spawns 9 parallel subagents (Explore, general-purpose) to check APIs exist, docs are accurate, dependencies are met. Uses `/mac-api` for Classic Mac documentation verification. Project-specific version of [implementable](https://github.com/matthewdeaves/claude-code-prompts/tree/master/skills/implementable) | [SKILL.md](../.claude/skills/review/SKILL.md) | subagent-prompts, synthesis-format, auto-apply-rules (references) |
 | /backport | Analyze git commits for tooling improvements to cherry-pick to starter-template branch | [SKILL.md](../.claude/skills/backport/SKILL.md) | - |
 | /mac-api | Search authoritative Classic Mac reference books for API documentation, interrupt safety rules, error codes. Returns line-level citations from Inside Macintosh, MacTCP Guide, Open Transport docs | [SKILL.md](../.claude/skills/mac-api/SKILL.md) | book-catalog, search-strategy, key-line-references (references) |
-| /mac-config | Manage Classic Mac test machines configuration. Add/remove machines, test FTP connections, list configured hardware. Edits machines.json for the classic-mac-hardware MCP server | [SKILL.md](../.claude/skills/mac-config/SKILL.md) | - |
+| /setup-machine | Onboard new Classic Mac machines. Interactive workflow to collect machine details, build LaunchAPPLServer, deploy via FTP, and test connectivity. One-command setup for new hardware | [SKILL.md](../.claude/skills/setup-machine/SKILL.md) | IMPLEMENTATION.md (reference) |
+| /test-machine | Test FTP and LaunchAPPL connectivity to a Classic Mac. Simple wrapper around MCP test_connection tool with clear error messages | [SKILL.md](../.claude/skills/test-machine/SKILL.md) | - |
 | /deploy | Deploy compiled binaries to Classic Mac test machines via FTP. Uses classic-mac-hardware MCP server. Supports single machine, platform, or all machines | [SKILL.md](../.claude/skills/deploy/SKILL.md) | - |
 | /fetch-logs | Retrieve PT_Log output from Classic Mac test machines via FTP. Uses classic-mac-hardware MCP server. Supports fetching from single machine, platform, or all. Optional side-by-side comparison | [SKILL.md](../.claude/skills/fetch-logs/SKILL.md) | - |
 
@@ -86,7 +87,7 @@ Auto-triggered specialists spawned based on conversation context.
 ```
 .claude/
 ├── settings.json          # Hook configuration + permissions
-├── skills/                # Slash commands (11 skills)
+├── skills/                # Slash commands (12 skills)
 │   └── <name>/
 │       ├── SKILL.md       # Main skill definition
 │       ├── references/    # On-demand documentation

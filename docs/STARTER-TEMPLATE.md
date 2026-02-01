@@ -10,7 +10,7 @@ Use this branch to see how Claude Code skills, agents, and hooks work together o
 
 ```
 .claude/
-  skills/      # 11 skills with 13 bundled resources (references/, scripts/, assets/)
+  skills/      # 12 skills with 13 bundled resources (references/, scripts/, assets/)
   agents/      # 1 agent (cross-platform debug)
   mcp-servers/ # 1 MCP server (Classic Mac hardware FTP access)
   hooks/       # 4 hooks: ISR safety (blocks), compile check, coverage, userFlags
@@ -63,7 +63,8 @@ Each skill uses **progressive disclosure**: SKILL.md shows workflow overview (< 
 - **`/implement`** - Orchestrates implementation: gathers context, verifies deliverables. `references/` has context-gathering, verification, patterns.
 - **`/check-isr`** - Validates interrupt-safety rules in Classic Mac callback code
 - **`/mac-api`** - Search authoritative Classic Mac reference books for API documentation, interrupt safety, error codes. Returns line-level citations from Inside Macintosh. Searches rules first (already verified), then indexed books, then raw book text. `references/` has book catalog, search strategy, key line references.
-- **`/mac-config`** - Manage Classic Mac test machines (add/remove/list/test FTP connections)
+- **`/setup-machine`** - Onboard new Classic Macs with one command: collects details, builds LaunchAPPLServer, deploys via FTP, tests connectivity
+- **`/test-machine`** - Test FTP and LaunchAPPL connectivity to verify machine is ready for deployment
 - **`/deploy`** - Deploy binaries to Classic Mac hardware via FTP
 - **`/fetch-logs`** - Retrieve PT_Log output from Classic Mac hardware, compare logs
 

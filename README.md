@@ -57,7 +57,7 @@ Launch Claude Code and use skills to guide implementation:
 | Location | Contents |
 |----------|----------|
 | [docs/CLAUDE-CODE-SETUP.md](docs/CLAUDE-CODE-SETUP.md) | **Claude Code configuration guide** - skills, hooks, tools |
-| [.claude/skills/](.claude/skills/) | 8 skills with progressive disclosure (main SKILL.md + references/, scripts/, assets/) |
+| [.claude/skills/](.claude/skills/) | 12 skills with progressive disclosure (main SKILL.md + references/, scripts/, assets/) |
 | [.claude/mcp-servers/](.claude/mcp-servers/) | Classic Mac hardware FTP server for deploying binaries and fetching logs (SETUP.md, SUMMARY.md) |
 | [.claude/hooks/](.claude/hooks/) | ISR safety, compile check, coverage, userFlags |
 | [.claude/rules/](.claude/rules/) | [isr-safety](.claude/rules/isr-safety.md), [mactcp](.claude/rules/mactcp.md), [opentransport](.claude/rules/opentransport.md), [appletalk](.claude/rules/appletalk.md) |

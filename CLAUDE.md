@@ -126,7 +126,6 @@ These rules are automatically loaded when editing files in the corresponding `sr
 | `/test-machine <id>` | Test FTP and LaunchAPPL connectivity to a Classic Mac |
 | `/backport` | Identify commits to cherry-pick to starter-template |
 | `/mac-api [query]` | Search Inside Macintosh books for API docs, interrupt safety, error codes |
-| `/mac-config add\|remove\|list\|test` | Manage Classic Mac FTP server configuration |
 | `/deploy [machine\|platform\|all]` | Deploy binaries to Classic Mac hardware via FTP |
 | `/fetch-logs [machine\|platform\|all]` | Retrieve PT_Log output from Classic Mac hardware |
 
