@@ -160,7 +160,7 @@ This automated test suite serves as the protocol reference:
 
 | Session | Focus | Status | Files Created/Modified | Tests | Verify |
 |---------|-------|--------|------------------------|-------|--------|
-| 4.1 | UDP Discovery | [OPEN] | `src/posix/net_posix.c`, `src/posix/net_posix.h` | `tests/test_discovery_posix.c` | Peers discover each other via broadcast |
+| 4.1 | UDP Discovery | [DONE] | `src/posix/net_posix.c`, `src/posix/net_posix.h` | `tests/test_discovery_posix.c` | Peers discover each other via broadcast |
 | 4.2 | TCP Connections | [OPEN] | `src/posix/tcp_posix.c` | `tests/test_connect_posix.c` | Connect/disconnect lifecycle works |
 | 4.3 | Message I/O | [OPEN] | `src/posix/io_posix.c` | `tests/test_messaging_posix.c` | Send/receive messages correctly |
 | 4.4 | UDP Messaging | [OPEN] | `src/posix/udp_posix.c` | `tests/test_udp_posix.c` | PeerTalk_SendUDP works for unreliable messages |
