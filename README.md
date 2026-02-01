@@ -36,12 +36,16 @@ cd peertalk
 # For starter-template (recommended for learning):
 git checkout starter-template
 
-# Install minimal host dependencies
-./tools/setup.sh           # Installs: jq, python3
-
-# Build Docker image (all builds happen here)
-./scripts/docker-build.sh  # ~2GB, contains entire toolchain
+# ONE command to set up everything:
+./tools/setup.sh
 ```
+
+This sets up:
+- ✓ Host dependencies (jq, python3)
+- ✓ Docker environment (~2GB, contains entire toolchain)
+- ✓ MCP server configuration
+
+**Then restart Claude Code** to load MCP servers.
 
 **Philosophy: All builds in Docker**
 - **Host:** jq (hooks), python3 (MCP/validators), Docker

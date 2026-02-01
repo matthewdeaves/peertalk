@@ -135,7 +135,9 @@ These rules are automatically loaded when editing files in the corresponding `sr
 |--------|---------|
 | `classic-mac-hardware` | FTP access to Classic Mac test machines for binary deployment and log retrieval |
 
-**Setup:** See `.claude/mcp-servers/classic-mac-hardware/SETUP.md`
+**Setup:** Run `./tools/setup.sh` (sets up Docker + MCP configuration), then restart Claude Code.
+
+Detailed docs: `.claude/mcp-servers/classic-mac-hardware/SETUP.md`
 
 ## Agents
 

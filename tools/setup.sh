@@ -155,28 +155,63 @@ chmod +x ../scripts/*.sh 2>/dev/null || true
 
 echo ""
 echo "========================================"
-echo "Setup complete!"
+echo "Step 2: Docker Environment"
+echo "========================================"
+echo ""
+echo "Building Docker container with:"
+echo "  - Retro68 (Mac cross-compiler)"
+echo "  - gcc, make (POSIX builds)"
+echo "  - lcov, ctags, clang-format (quality tools)"
+echo ""
+
+# Build/pull Docker image
+cd ..
+if ./scripts/docker-build.sh; then
+    echo "  ✓ Docker image ready"
+else
+    echo "  ✗ Docker setup failed"
+    exit 1
+fi
+
+echo ""
+echo "========================================"
+echo "Step 3: MCP Server Configuration"
+echo "========================================"
+echo ""
+
+# Setup MCP configuration
+if [ ! -f ".mcp.json" ]; then
+    if [ -f ".mcp.json.example" ]; then
+        echo "Copying MCP configuration..."
+        cp .mcp.json.example .mcp.json
+        echo "  ✓ .mcp.json created"
+    else
+        echo "  ⚠ .mcp.json.example not found (MCP server won't be available)"
+    fi
+else
+    echo "  ✓ .mcp.json already exists"
+fi
+
+echo ""
+echo "========================================"
+echo "Setup Complete!"
 echo "========================================"
 echo ""
 echo "Installed on host:"
 echo "  ✓ jq (hooks)"
 echo "  ✓ python3 (MCP server, validators)"
 echo "  ✓ Docker (build environment)"
+echo "  ✓ Docker image (Retro68 + build tools)"
+echo "  ✓ MCP server configuration"
 echo ""
-echo "Next step - Build Docker image:"
-echo "  cd .."
-echo "  ./scripts/docker-build.sh"
+echo "IMPORTANT: Restart Claude Code completely to load MCP servers"
+echo "           (Exit and reopen, not just reload)"
 echo ""
-echo "This builds a container with:"
-echo "  - Retro68 (Mac cross-compiler)"
-echo "  - gcc, make (POSIX builds)"
-echo "  - lcov, ctags, clang-format (quality tools)"
-echo "  - All dependencies pre-installed"
-echo ""
-echo "After Docker builds, use skills:"
-echo "  /session next        # Find next session"
-echo "  /build test          # Build + test (in Docker)"
-echo "  /setup-machine       # Onboard Classic Mac hardware"
+echo "After restarting Claude Code:"
+echo "  /test-machine --list   # Verify MCP is loaded"
+echo "  /setup-machine         # Add your Classic Mac hardware"
+echo "  /session next          # Start development"
+echo "  /build test            # Build + test (in Docker)"
 echo ""
 echo "To activate Python environment:"
 echo "  source tools/.venv/bin/activate"

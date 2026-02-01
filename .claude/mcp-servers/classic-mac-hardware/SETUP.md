@@ -2,30 +2,65 @@
 
 Guide for configuring your personal Classic Mac test machines.
 
+## Quick Start (First Time Setup)
+
+**ONE command to set up everything:**
+
+```bash
+./tools/setup.sh
+```
+
+This single command:
+- ✓ Installs host dependencies (jq, python3)
+- ✓ Checks Docker is installed
+- ✓ Builds/pulls the Docker development image
+- ✓ Configures MCP server (creates .mcp.json)
+
+Then **restart Claude Code completely** (exit and reopen) to load MCP servers.
+
+After restart:
+
+```bash
+/test-machine --list    # Verify MCP is working
+/setup-machine          # Add your Classic Macs
+```
+
+**Requirements:**
+- Docker (install from https://docs.docker.com/get-docker/)
+- That's it! Everything else is automatic.
+
+---
+
 ## For Project Users
 
 Each developer has different Classic Mac hardware with different IP addresses and FTP credentials. The `machines.json` file is **user-specific** and **NOT committed to git**.
 
-### First-Time Project Setup
+### Detailed Setup Steps
+
+The `./tools/setup.sh` script performs these steps automatically:
 
 ```bash
-# 1. Build Docker container (one-time)
+# 1. Install host dependencies (jq, python3)
+# 2. Create Python virtual environment
+# 3. Build/pull Docker container
 ./scripts/docker-build.sh
 
-# 2. Configure Claude Code MCP
+# 4. Configure MCP server
 cp .mcp.json.example .mcp.json
 
-# 3. Restart Claude Code (or run /mcp to reload)
-# 4. Verify MCP is working:
+# 5. RESTART Claude Code completely (required to load MCP)
+#    Exit and reopen, not just reload
+
+# 6. Verify MCP is working
 /test-machine --list   # Should show "No machines configured yet"
 
-# 5. Now add your Macs:
+# 7. Add your Classic Macs
 /setup-machine
 ```
 
-**Host Requirements:**
-- Docker
-- That's it! Python/MCP dependencies are in the container.
+**Why restart?** Claude Code only loads MCP server configurations on startup, not dynamically.
+
+**Manual setup:** You can run individual scripts if needed, but `./tools/setup.sh` does it all.
 
 ### Adding a New Machine
 

@@ -28,9 +28,10 @@ tools/         # ISR validator, book indexer
 git clone https://github.com/matthewdeaves/peertalk.git
 cd peertalk
 git checkout starter-template
-./tools/setup.sh           # Install: jq, python3
-./scripts/docker-build.sh  # Build Docker image (~2GB)
+./tools/setup.sh  # Sets up: jq, python3, Docker image, MCP config
 ```
+
+**Then restart Claude Code** to load MCP servers.
 
 **All builds happen in Docker - no native toolchain needed on host.**
 
