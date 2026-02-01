@@ -52,14 +52,25 @@ Interactive workflow to onboard a new Classic Mac to the PeerTalk development en
 - Format:
   ```json
   {
-    "id": "performa6400",
-    "name": "Performa 6400",
-    "ip": "10.188.1.102",
-    "ftp_user": "peertalk",
-    "ftp_password": "hunter2",
-    "platform": "opentransport",
-    "system_version": "7.6.1",
-    "description": "Performa 6400/200 - PPC"
+    "performa6400": {
+      "name": "Performa 6400",
+      "platform": "opentransport",
+      "system": "System 7.6.1",
+      "cpu": "PPC 603e",
+      "ftp": {
+        "host": "10.188.1.102",
+        "port": 21,
+        "username": "peertalk",
+        "password": "hunter2",
+        "paths": {
+          "binaries": "Applications:PeerTalk",
+          "logs": "Documents:PeerTalk-Logs",
+          "temp": "Temp",
+          "launchappl": "Applications:LaunchAPPLServer"
+        }
+      },
+      "notes": "Performa 6400/200 - PPC"
+    }
   }
   ```
 

@@ -731,7 +731,6 @@ class ClassicMacHardwareServer:
         elif name == "execute_binary":
             # Execute binary on Classic Mac using LaunchAPPL over TCP
             import subprocess
-            import os
 
             machine_id = arguments["machine"]
             platform = arguments["platform"]
