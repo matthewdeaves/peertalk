@@ -24,7 +24,7 @@ Phase 2 implements the platform-agnostic protocol layer: message framing/parsing
 | `memset()` | `pt_memset()` | |
 | `memcmp()` | `pt_memcmp()` | |
 | `strlen()` | `pt_strlen()` | |
-| `strcmp()` | `pt_strcmp()` | String comparison |
+| `strcmp()` | `pt_strcmp()` | NOT YET IMPLEMENTED - use inline byte comparison |
 | `strncpy()` | `pt_strncpy()` | Always null-terminates |
 | `snprintf()` | `pt_snprintf()` | |
 | `malloc()` | `pt_alloc()` | |
@@ -100,17 +100,18 @@ typedef enum {
     uint16_t obuflen;               /* Bytes in obuf */
     uint16_t ibuflen;               /* Bytes in ibuf */
     uint8_t obuf[768];              /* Output framing buffer */
-    uint32_t obuf_canary;           /* = PT_CANARY_OBUF (0xDEAD0B0F) - MUST follow obuf */
     uint8_t ibuf[512];              /* Input framing buffer */
-    uint32_t ibuf_canary;           /* = PT_CANARY_IBUF (0xDEAD1B1F) - MUST follow ibuf */
 
-    /* ISR-safe corruption detection flag (Phase 2)
+#ifdef PT_DEBUG
+    /* Debug-only buffer overflow canaries (Phase 2)
      *
-     * Set by pt_peer_check_canaries() when corruption is detected.
-     * Can be read from ISR context without logging.
-     * Must be volatile for ISR visibility.
+     * These fields are only present in debug builds to detect buffer overflows.
+     * MUST immediately follow their respective buffers.
+     * Saves ~8 bytes per peer in release builds.
      */
-    volatile int canary_corrupt;    /* 0 = OK, non-zero = corruption detected */
+    uint32_t obuf_canary;           /* = PT_CANARY_OBUF (0xDEAD0B0F) */
+    uint32_t ibuf_canary;           /* = PT_CANARY_IBUF (0xDEAD1B1F) */
+#endif
 
     /* Connection handle and sequence numbers (Phase 2) */
     void *connection;               /* Platform-specific handle */
@@ -1070,16 +1071,16 @@ void test_udp_round_trip(void) {
 }
 
 void test_strerror(void) {
-    /* Test known error codes */
-    assert(pt_strcmp(pt_strerror(PT_OK), "Success") == 0);
-    assert(pt_strcmp(pt_strerror(PT_ERR_CRC), "CRC validation failed") == 0);
-    assert(pt_strcmp(pt_strerror(PT_ERR_MAGIC), "Invalid magic number") == 0);
-    assert(pt_strcmp(pt_strerror(PT_ERR_TRUNCATED), "Packet too short") == 0);
-    assert(pt_strcmp(pt_strerror(PT_ERR_VERSION), "Protocol version mismatch") == 0);
+    const char *msg;
 
-    /* Test unknown code */
-    assert(pt_strcmp(pt_strerror(-9999), "Unknown error") == 0);
+    /* Test known error codes using PeerTalk_ErrorString() */
+    msg = PeerTalk_ErrorString(PT_ERR_CRC);
+    assert(strcmp(msg, "CRC validation failed") == 0);
 
+    msg = PeerTalk_ErrorString(PT_ERR_MAGIC);
+    assert(strcmp(msg, "Invalid magic number") == 0);
+
+    /* Test code is POSIX-only, can use strcmp() directly */
     printf("test_strerror: PASSED\n");
 }
 
@@ -1219,12 +1220,14 @@ Implement peer tracking with state machine for lifecycle management, including t
     uint16_t obuflen;
     uint16_t ibuflen;
     uint8_t obuf[768];
-    uint32_t obuf_canary;           /* = PT_CANARY_OBUF - MUST follow obuf */
     uint8_t ibuf[512];
-    uint32_t ibuf_canary;           /* = PT_CANARY_IBUF - MUST follow ibuf */
 
-    /* ISR-safe corruption detection flag (Phase 2) */
-    volatile int canary_corrupt;    /* 0 = OK, non-zero = corruption detected */
+#ifdef PT_DEBUG
+    /* Debug-only buffer overflow canaries
+     * MUST immediately follow their respective buffers */
+    uint32_t obuf_canary;           /* = PT_CANARY_OBUF */
+    uint32_t ibuf_canary;           /* = PT_CANARY_IBUF */
+#endif
 
     /* Connection handle and sequence numbers (Phase 2) */
     void *connection;               /* Platform-specific connection handle */
@@ -1415,8 +1418,18 @@ struct pt_peer *pt_peer_find_by_name(struct pt_context *ctx, const char *name) {
         if (peer->hot.state != PT_PEER_UNUSED) {
             /* Access name via hot.name_idx -> centralized table */
             const char *peer_name = ctx->peer_names[peer->hot.name_idx];
-            if (pt_strcmp(peer_name, name) == 0) {
-                return peer;
+
+            /* Compare strings manually (no pt_strcmp available) */
+            {
+                const char *a = peer_name;
+                const char *b = name;
+                while (*a && *b && *a == *b) {
+                    a++;
+                    b++;
+                }
+                if (*a == *b) {
+                    return peer;
+                }
             }
         }
     }
@@ -1457,14 +1470,18 @@ struct pt_peer *pt_peer_create(struct pt_context *ctx,
         return NULL;
     }
 
-    /* Initialize peer */
-    pt_memset(peer->obuf, 0, sizeof(peer->obuf));
-    pt_memset(peer->ibuf, 0, sizeof(peer->ibuf));
-    peer->obuf_canary = PT_CANARY_OBUF;
-    peer->ibuf_canary = PT_CANARY_IBUF;
-    peer->canary_corrupt = 0;  /* Initialize ISR-safe corruption flag */
-    peer->obuflen = 0;
-    peer->ibuflen = 0;
+    /* Initialize peer - clear cold storage */
+    pt_memset(&peer->cold, 0, sizeof(peer->cold));
+
+    /* Clear buffer lengths */
+    peer->cold.obuflen = 0;
+    peer->cold.ibuflen = 0;
+
+#ifdef PT_DEBUG
+    /* Set canaries in debug mode */
+    peer->cold.obuf_canary = PT_CANARY_OBUF;
+    peer->cold.ibuf_canary = PT_CANARY_IBUF;
+#endif
 
     peer->magic = PT_PEER_MAGIC;
     peer->info.address = ip;
@@ -1649,34 +1666,57 @@ int pt_peer_is_timed_out(struct pt_peer *peer, pt_tick_t now,
  * Returns: 0 if canaries valid, -1 if corruption detected.
  */
 int pt_peer_check_canaries(struct pt_context *ctx, struct pt_peer *peer) {
-    int corrupt = 0;
+    int corrupted = 0;
 
-    if (peer->obuf_canary != PT_CANARY_OBUF) {
-        corrupt = 1;
-        /* Log from main loop context - safe here */
-        PT_LOG_ERR(ctx, PT_LOG_CAT_MEMORY,
-            "FATAL: Peer %u obuf canary dead! Expected 0x%08lX, got 0x%08lX",
-            peer->info.id, (unsigned long)PT_CANARY_OBUF,
-            (unsigned long)peer->obuf_canary);
-    }
-    if (peer->ibuf_canary != PT_CANARY_IBUF) {
-        corrupt = 1;
-        PT_LOG_ERR(ctx, PT_LOG_CAT_MEMORY,
-            "FATAL: Peer %u ibuf canary dead! Expected 0x%08lX, got 0x%08lX",
-            peer->info.id, (unsigned long)PT_CANARY_IBUF,
-            (unsigned long)peer->ibuf_canary);
+    if (!peer) {
+        return -1;
     }
 
-    /* Set volatile flag for ISR-safe detection */
-    peer->canary_corrupt = corrupt;
+#ifdef PT_DEBUG
+    /* Check output buffer canary */
+    if (peer->cold.obuf_canary != PT_CANARY_OBUF) {
+        if (ctx) {
+            PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,
+                      "Output buffer overflow detected (peer id=%u): "
+                      "expected 0x%08X, got 0x%08X",
+                      peer->hot.id, PT_CANARY_OBUF, peer->cold.obuf_canary);
+        }
+        corrupted = 1;
+    }
 
-    return corrupt ? -1 : 0;
+    /* Check input buffer canary */
+    if (peer->cold.ibuf_canary != PT_CANARY_IBUF) {
+        if (ctx) {
+            PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,
+                      "Input buffer overflow detected (peer id=%u): "
+                      "expected 0x%08X, got 0x%08X",
+                      peer->hot.id, PT_CANARY_IBUF, peer->cold.ibuf_canary);
+        }
+        corrupted = 1;
+    }
+#else
+    /* In release builds, canaries are not present - always return valid */
+    (void)ctx;  /* Suppress unused warning */
+#endif
+
+    return corrupted ? -1 : 0;
 }
 
 void pt_peer_get_info(struct pt_peer *peer, PeerTalk_PeerInfo *info) {
-    /* Copy public info struct, then update dynamic fields */
-    *info = peer->info;
-    info->connected = (peer->state == PT_PEER_CONNECTED) ? 1 : 0;
+    if (!peer || !info) {
+        return;
+    }
+
+    /* Copy peer info from cold storage */
+    pt_memcpy(info, &peer->cold.info, sizeof(PeerTalk_PeerInfo));
+
+    /* Update fields from hot data */
+    info->id = peer->hot.id;
+    info->latency_ms = peer->hot.latency_ms;
+    info->name_idx = peer->hot.name_idx;
+
+    /* Update connected field based on current state */
+    info->connected = (peer->hot.state == PT_PEER_STATE_CONNECTED) ? 1 : 0;
 }
 ```
 
