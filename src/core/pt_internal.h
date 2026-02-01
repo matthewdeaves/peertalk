@@ -8,6 +8,7 @@
 
 #include "pt_types.h"
 #include "pt_log.h"
+#include "send.h"  /* Phase 3: pt_batch type */
 
 /* ========================================================================== */
 /* PT_Log Integration (Phase 0)                                              */
@@ -181,6 +182,10 @@ struct pt_context {
     uint8_t             reserved_byte;
 
     PT_Log             *log;            /* PT_Log handle from Phase 0 */
+
+    /* Phase 3: Pre-allocated batch buffer (avoids 1.4KB stack allocation) */
+    pt_batch            send_batch;     /* For pt_drain_send_queue() */
+
     /* Platform-specific data follows (allocated via pt_plat_extra_size) */
 };
 

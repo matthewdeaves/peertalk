@@ -9,6 +9,7 @@
     #include <stdlib.h>
     #include <string.h>
     #include <stdio.h>
+    #include <time.h>  /* For clock_gettime in pt_get_ticks */
 #elif defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)
     #include <MacMemory.h>
     #ifdef PT_PLATFORM_OT
@@ -560,3 +561,32 @@ int pt_snprintf(char *buf, size_t size, const char *fmt, ...) {
 }
 
 #endif /* PT_PLATFORM_MACTCP || PT_PLATFORM_OT */
+
+/* ========================================================================== */
+/* Platform-Portable Tick Getter (Phase 3)                                   */
+/* ========================================================================== */
+
+/*
+ * Platform-portable tick getter
+ *
+ * Returns monotonically increasing tick count.
+ * Resolution varies by platform but sufficient for coalescing/priority.
+ */
+#if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)
+    /* Classic Mac - use TickCount() directly (60 ticks/sec)
+     * TickCount() is declared in OSUtils.h, NOT Timer.h
+     * NOTE: TickCount() is NOT documented as interrupt-safe in Inside Macintosh
+     * Table B-3. Do NOT call from ASR/notifier - use timestamp=0 instead.
+     */
+    #include <OSUtils.h>
+    uint32_t pt_get_ticks(void) {
+        return (uint32_t)TickCount();
+    }
+#else
+    /* POSIX - use milliseconds */
+    uint32_t pt_get_ticks(void) {
+        struct timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+    }
+#endif

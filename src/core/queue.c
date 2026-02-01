@@ -471,3 +471,456 @@ int pt_queue_coalesce(pt_queue *q, const void *data, uint16_t len)
 
     return -1;  /* No coalescable message found */
 }
+
+/* ========================================================================
+ * Phase 3: Priority & Coalescing Operations
+ * ======================================================================== */
+
+/*
+ * Initialize extended queue data structures
+ *
+ * Call this after pt_queue_init() from Phase 2 to set up
+ * priority free-lists and coalesce hash table.
+ */
+void pt_queue_ext_init(pt_queue *q) {
+    pt_queue_ext *ext;
+    uint16_t i;
+    uint16_t max_slots;  /* Loop invariant hoisted for optimization */
+
+    if (!q) {
+        /* Cannot log without context, but defend against NULL */
+        return;
+    }
+
+#ifdef PT_QUEUE_SLOT_EXPECTED_SIZE
+    /* Runtime size check for C89/C99 (C11 uses _Static_assert) */
+    if (sizeof(pt_queue_slot) != PT_QUEUE_SLOT_EXPECTED_SIZE) {
+        /* Size mismatch - likely compiler padding issue.
+         * Use #pragma pack on Classic Mac compilers if this fails. */
+        return;  /* Fail-safe: don't corrupt memory */
+    }
+#endif
+
+    /* Capacity validation - queue capacity must not exceed PT_QUEUE_MAX_SLOTS
+     * because next_slot pointers are only initialized for slots 0..MAX_SLOTS-1 */
+    if (q->capacity > PT_QUEUE_MAX_SLOTS) {
+        /* Configuration error - slots beyond MAX_SLOTS have uninitialized next_slot.
+         * Caller should use smaller capacity or increase PT_QUEUE_MAX_SLOTS.
+         * NOTE: Cannot log here since we don't have context - caller should check. */
+        return;  /* Fail-safe: don't use queue with uninitialized slots */
+    }
+
+    ext = &q->ext;
+
+    /* Initialize priority free-lists as empty */
+    for (i = 0; i < PT_PRIO_COUNT; i++) {
+        ext->prio_head[i] = PT_SLOT_NONE;
+        ext->prio_tail[i] = PT_SLOT_NONE;
+        ext->prio_count[i] = 0;
+    }
+
+    /* Initialize slot next_slot pointers (stored in slots themselves)
+     * OPTIMIZATION: Hoist loop invariant min(capacity, MAX_SLOTS) */
+    max_slots = (q->capacity < PT_QUEUE_MAX_SLOTS) ? q->capacity : PT_QUEUE_MAX_SLOTS;
+    for (i = 0; i < max_slots; i++) {
+        q->slots[i].next_slot = PT_SLOT_NONE;
+    }
+
+    /* Initialize coalesce hash table as empty */
+    for (i = 0; i < PT_COALESCE_HASH_SIZE; i++) {
+        ext->coalesce_hash[i] = PT_SLOT_NONE;
+    }
+
+    /* Initialize pending pop state */
+    q->pending_pop_prio = 0;
+    q->pending_pop_slot = PT_SLOT_NONE;
+
+    /* Initialize ISR flags (for deferred logging from interrupt context) */
+    q->isr_flags.queue_full = 0;
+    q->isr_flags.coalesce_hit = 0;
+    q->isr_flags.hash_collision = 0;
+
+    /* NOTE: Logging should be done by caller who has context:
+     * PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_PROTOCOL, "Queue ext initialized: capacity=%u", q->capacity);
+     */
+}
+
+/*
+ * Pop highest priority message - O(1) using priority free-lists
+ */
+int pt_queue_pop_priority(pt_queue *q, void *data, uint16_t *len) {
+    pt_queue_ext *ext;
+    pt_queue_slot *slot;
+    uint16_t slot_idx;
+    int prio;
+
+    if (!q || q->count == 0)
+        return -1;
+
+    ext = &q->ext;  /* Extended queue data */
+
+    /* Find highest non-empty priority level */
+    for (prio = PT_PRIO_CRITICAL; prio >= PT_PRIO_LOW; prio--) {
+        if (ext->prio_head[prio] != PT_SLOT_NONE)
+            break;
+    }
+
+    if (prio < PT_PRIO_LOW)
+        return -1;  /* All lists empty (shouldn't happen if count > 0) */
+
+    /* Pop from head of this priority's list */
+    slot_idx = ext->prio_head[prio];
+    slot = &q->slots[slot_idx];
+
+    /* Update list head (next_slot is IN the slot for traversal locality) */
+    ext->prio_head[prio] = slot->next_slot;
+    if (ext->prio_head[prio] == PT_SLOT_NONE)
+        ext->prio_tail[prio] = PT_SLOT_NONE;  /* List now empty */
+    ext->prio_count[prio]--;
+
+    /* Remove from coalesce hash if present */
+    if (slot->coalesce_key != PT_COALESCE_NONE) {
+        uint16_t hash_idx = PT_COALESCE_HASH(slot->coalesce_key);
+        if (ext->coalesce_hash[hash_idx] == slot_idx)
+            ext->coalesce_hash[hash_idx] = PT_SLOT_NONE;
+    }
+
+    /* Copy data out */
+    if (data && len) {
+        pt_memcpy(data, slot->data, slot->length);
+        *len = slot->length;
+    }
+
+    /* Clear slot */
+    slot->flags = 0;
+    slot->length = 0;
+    slot->next_slot = PT_SLOT_NONE;
+    q->count--;
+
+    if (q->count == 0)
+        q->has_data = 0;
+
+    return 0;
+}
+
+/*
+ * Direct pop - returns pointer to slot data without copying (ZERO-COPY)
+ */
+int pt_queue_pop_priority_direct(pt_queue *q, const void **data_out,
+                                  uint16_t *len_out) {
+    pt_queue_ext *ext;
+    pt_queue_slot *slot;
+    uint16_t slot_idx;
+    int prio;
+
+    if (!q || q->count == 0 || !data_out || !len_out)
+        return -1;
+
+    ext = &q->ext;
+
+    /* Find highest non-empty priority level */
+    for (prio = PT_PRIO_CRITICAL; prio >= PT_PRIO_LOW; prio--) {
+        if (ext->prio_head[prio] != PT_SLOT_NONE)
+            break;
+    }
+
+    if (prio < PT_PRIO_LOW)
+        return -1;
+
+    /* Return pointer to head slot's data */
+    slot_idx = ext->prio_head[prio];
+    slot = &q->slots[slot_idx];
+
+    *data_out = slot->data;
+    *len_out = slot->length;
+
+    /* Store pending pop info for commit (use reserved field or add to ext) */
+    q->pending_pop_prio = (uint8_t)prio;
+    q->pending_pop_slot = slot_idx;
+
+    return 0;
+}
+
+/*
+ * Commit a direct pop - actually removes the slot from queue
+ */
+void pt_queue_pop_priority_commit(pt_queue *q) {
+    pt_queue_ext *ext;
+    pt_queue_slot *slot;
+    uint16_t slot_idx;
+    int prio;
+
+    if (!q)
+        return;
+
+    ext = &q->ext;
+    prio = q->pending_pop_prio;
+    slot_idx = q->pending_pop_slot;
+    slot = &q->slots[slot_idx];
+
+    /* Update list head */
+    ext->prio_head[prio] = slot->next_slot;
+    if (ext->prio_head[prio] == PT_SLOT_NONE)
+        ext->prio_tail[prio] = PT_SLOT_NONE;
+    ext->prio_count[prio]--;
+
+    /* Remove from coalesce hash if present */
+    if (slot->coalesce_key != PT_COALESCE_NONE) {
+        uint16_t hash_idx = PT_COALESCE_HASH(slot->coalesce_key);
+        if (ext->coalesce_hash[hash_idx] == slot_idx)
+            ext->coalesce_hash[hash_idx] = PT_SLOT_NONE;
+    }
+
+    /* Clear slot */
+    slot->flags = 0;
+    slot->length = 0;
+    slot->next_slot = PT_SLOT_NONE;
+    q->count--;
+
+    if (q->count == 0)
+        q->has_data = 0;
+}
+
+/*
+ * Push with coalescing - O(1) using hash table lookup
+ */
+int pt_queue_push_coalesce(pt_queue *q, const void *data, uint16_t len,
+                            uint8_t priority, pt_coalesce_key key) {
+    pt_queue_ext *ext;
+    pt_queue_slot *slot;
+    uint16_t slot_idx;
+    uint16_t hash_idx;
+
+    if (!q || !data || len == 0 || len > PT_QUEUE_SLOT_SIZE)
+        return -1;
+
+    ext = &q->ext;
+
+    /* Check hash table for existing message with same key - O(1) */
+    if (key != PT_COALESCE_NONE) {
+        hash_idx = PT_COALESCE_HASH(key);
+        slot_idx = ext->coalesce_hash[hash_idx];
+
+        if (slot_idx != PT_SLOT_NONE) {
+            slot = &q->slots[slot_idx];
+            /* Verify it's actually our key (hash collision check) */
+            if ((slot->flags & PT_SLOT_USED) && slot->coalesce_key == key) {
+                /* Found - replace data in place */
+                /* LOGGING: Caller can log "Coalesce hit: key=0x%04X" at DEBUG level */
+                pt_memcpy(slot->data, data, len);
+                slot->length = len;
+                /* Note: priority and list position don't change on coalesce */
+                slot->timestamp = pt_get_ticks();  /* Update timestamp */
+                return 0;  /* Coalesced */
+            }
+            /* Hash collision - different key at same bucket */
+            /* LOGGING: Caller can log "Hash collision at bucket %u" at DEBUG level */
+        }
+    }
+
+    /* No existing message - allocate new slot */
+    if (q->count >= q->capacity)
+        return -1;  /* Full */
+
+    /* Find free slot (use write_idx as starting point) */
+    slot_idx = q->write_idx;
+    slot = &q->slots[slot_idx];
+
+    /* Fill slot */
+    pt_memcpy(slot->data, data, len);
+    slot->length = len;
+    slot->priority = priority;
+    slot->flags = PT_SLOT_USED;
+    slot->coalesce_key = key;
+    slot->timestamp = pt_get_ticks();
+
+    /* Add to priority list (append to tail for FIFO within priority)
+     * NOTE: next_slot is IN the slot (not ext) for traversal locality */
+    slot->next_slot = PT_SLOT_NONE;
+    if (ext->prio_tail[priority] == PT_SLOT_NONE) {
+        /* List was empty */
+        ext->prio_head[priority] = slot_idx;
+    } else {
+        /* Append to tail - update previous tail's next_slot */
+        q->slots[ext->prio_tail[priority]].next_slot = slot_idx;
+    }
+    ext->prio_tail[priority] = slot_idx;
+    ext->prio_count[priority]++;
+
+    /* Add to coalesce hash table */
+    if (key != PT_COALESCE_NONE) {
+        hash_idx = PT_COALESCE_HASH(key);
+        ext->coalesce_hash[hash_idx] = slot_idx;
+    }
+
+    q->write_idx = (q->write_idx + 1) & q->capacity_mask;
+    q->count++;
+    q->has_data = 1;
+
+    return 0;
+}
+
+/*
+ * ISR-safe push with coalescing (for MacTCP ASR) - O(1) hash lookup
+ */
+int pt_queue_push_coalesce_isr(pt_queue *q, const void *data, uint16_t len,
+                                uint8_t priority, pt_coalesce_key key) {
+    pt_queue_ext *ext;
+    pt_queue_slot *slot;
+    uint16_t slot_idx;
+    uint16_t hash_idx;
+
+    if (!q || !data || len == 0 || len > PT_QUEUE_SLOT_SIZE)
+        return -1;
+
+    ext = &q->ext;
+
+    /* Check hash table for existing message with same key - O(1) */
+    if (key != PT_COALESCE_NONE) {
+        hash_idx = PT_COALESCE_HASH(key);
+        slot_idx = ext->coalesce_hash[hash_idx];
+
+        if (slot_idx != PT_SLOT_NONE) {
+            slot = &q->slots[slot_idx];
+            if ((slot->flags & PT_SLOT_USED) && slot->coalesce_key == key) {
+                /* Found - replace using ISR-safe copy */
+                pt_memcpy_isr(slot->data, data, len);
+                slot->length = len;
+                /* Don't update timestamp in ISR - no TickCount() call */
+                q->isr_flags.coalesce_hit = 1;  /* Signal main loop for logging */
+                return 0;  /* Coalesced */
+            }
+            /* Hash collision - set flag for logging */
+            q->isr_flags.hash_collision = 1;
+        }
+    }
+
+    /* No existing message - allocate new slot */
+    if (q->count >= q->capacity) {
+        q->isr_flags.queue_full = 1;  /* Signal main loop for logging */
+        return -1;
+    }
+
+    slot_idx = q->write_idx;
+    slot = &q->slots[slot_idx];
+
+    /* Fill slot using ISR-safe copy */
+    pt_memcpy_isr(slot->data, data, len);
+    slot->length = len;
+    slot->priority = priority;
+    slot->flags = PT_SLOT_USED;
+    slot->coalesce_key = key;
+    slot->timestamp = 0;  /* No TickCount() in ISR */
+
+    /* Add to priority list (next_slot is IN the slot for traversal locality) */
+    slot->next_slot = PT_SLOT_NONE;
+    if (ext->prio_tail[priority] == PT_SLOT_NONE) {
+        ext->prio_head[priority] = slot_idx;
+    } else {
+        q->slots[ext->prio_tail[priority]].next_slot = slot_idx;
+    }
+    ext->prio_tail[priority] = slot_idx;
+    ext->prio_count[priority]++;
+
+    /* Add to coalesce hash table */
+    if (key != PT_COALESCE_NONE) {
+        hash_idx = PT_COALESCE_HASH(key);
+        ext->coalesce_hash[hash_idx] = slot_idx;
+    }
+
+    q->write_idx = (q->write_idx + 1) & q->capacity_mask;
+    q->count++;
+    q->has_data = 1;
+
+    return 0;
+}
+
+/*
+ * Check and log ISR flags from main loop
+ */
+void pt_check_queue_isr_flags(struct pt_context *ctx, pt_queue *q) {
+    if (!ctx || !ctx->log || !q)
+        return;
+
+    if (q->isr_flags.queue_full) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL, "Queue full during ISR");
+        q->isr_flags.queue_full = 0;
+    }
+    if (q->isr_flags.coalesce_hit) {
+        PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL, "Coalesce hit during ISR");
+        q->isr_flags.coalesce_hit = 0;
+    }
+    if (q->isr_flags.hash_collision) {
+        PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL, "Hash collision during ISR");
+        q->isr_flags.hash_collision = 0;
+    }
+}
+
+/* ========================================================================
+ * Phase 3: Backpressure & Batch Operations
+ * ======================================================================== */
+
+/*
+ * Get current backpressure level.
+ */
+pt_backpressure pt_queue_backpressure(pt_queue *q) {
+    uint8_t pressure;
+
+    if (!q)
+        return PT_BACKPRESSURE_BLOCKING;
+
+    pressure = pt_queue_pressure(q);
+
+    if (pressure >= PT_PRESSURE_CRITICAL)
+        return PT_BACKPRESSURE_BLOCKING;
+    if (pressure >= PT_PRESSURE_HIGH)
+        return PT_BACKPRESSURE_HEAVY;
+    if (pressure >= PT_PRESSURE_MEDIUM)
+        return PT_BACKPRESSURE_LIGHT;
+
+    return PT_BACKPRESSURE_NONE;
+}
+
+/*
+ * Try to push with backpressure awareness.
+ */
+int pt_queue_try_push(pt_queue *q, const void *data, uint16_t len,
+                      uint8_t priority, pt_coalesce_key key,
+                      pt_backpressure *pressure_out) {
+    pt_backpressure bp;
+    int result;
+
+    bp = pt_queue_backpressure(q);
+
+    if (pressure_out)
+        *pressure_out = bp;
+
+    /* Apply backpressure policy */
+    switch (bp) {
+    case PT_BACKPRESSURE_BLOCKING:
+        if (priority < PT_PRIO_CRITICAL)
+            return -1;  /* Drop - caller should log at WARN level */
+        break;
+
+    case PT_BACKPRESSURE_HEAVY:
+        if (priority < PT_PRIO_HIGH)
+            return -1;  /* Drop - caller should log at WARN level */
+        break;
+
+    case PT_BACKPRESSURE_LIGHT:
+        /* Allow but signal caller to slow down */
+        break;
+
+    case PT_BACKPRESSURE_NONE:
+        /* All clear */
+        break;
+    }
+
+    result = pt_queue_push_coalesce(q, data, len, priority, key);
+
+    /* Update pressure after push */
+    if (pressure_out)
+        *pressure_out = pt_queue_backpressure(q);
+
+    return result;
+}

@@ -240,6 +240,28 @@ int pt_vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
  */
 int pt_snprintf(char *buf, size_t size, const char *fmt, ...);
 
+/* ========================================================================== */
+/* Platform-Portable Tick Getter (Phase 3)                                   */
+/* ========================================================================== */
+
+/**
+ * Platform-portable tick getter
+ *
+ * Returns monotonically increasing tick count.
+ * Resolution varies by platform but sufficient for coalescing/priority.
+ *
+ * Classic Mac: Uses TickCount() from OSUtils.h (60 ticks/second)
+ * POSIX: Uses clock_gettime(CLOCK_MONOTONIC) converted to milliseconds
+ *
+ * CRITICAL: On Classic Mac, TickCount() is NOT documented as interrupt-safe
+ * in Inside Macintosh Table B-3. Do NOT call from ASR/notifier - use
+ * timestamp=0 instead. Use pt_queue_push_coalesce_isr() which avoids calling
+ * this function at interrupt time.
+ *
+ * @return Tick count (platform-dependent units, monotonically increasing)
+ */
+uint32_t pt_get_ticks(void);
+
 #ifdef __cplusplus
 }
 #endif
