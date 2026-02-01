@@ -1,0 +1,15 @@
+{
+  "skills": ["review"],
+  "query": "Review plan/PHASE-5-MACTCP.md",
+  "files": ["plan/PHASE-5-MACTCP.md"],
+  "expected_behavior": [
+    "Spawns 9 parallel subagents for comprehensive review",
+    "Verifies API signatures against Retro68 headers or Docker container",
+    "Checks MacTCP documentation for ASR rules and restrictions",
+    "Validates ISR-safety using Table B-3 from Inside Macintosh",
+    "Reviews logging provisions and identifies missing error/state transition logs",
+    "Evaluates struct alignment for 68k compatibility",
+    "Synthesizes findings into standardized format with priority levels",
+    "Offers to auto-apply all recommended changes with user confirmation"
+  ]
+}

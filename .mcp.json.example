@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "classic-mac-hardware": {
+      "command": ".claude/mcp-servers/classic-mac-hardware/run-in-container.sh",
+      "args": [],
+      "env": {
+        "MACHINES_CONFIG": "/workspace/.claude/mcp-servers/classic-mac-hardware/machines.json"
+      }
+    }
+  }
+}

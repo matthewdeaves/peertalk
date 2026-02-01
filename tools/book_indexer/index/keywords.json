@@ -1,0 +1,80 @@
+{
+  "interrupt_safety": {
+    "description": "Routines safe to call at interrupt time",
+    "tables": [
+      "table_b3_interrupt_safe",
+      "table_c1_ot_hw_interrupt"
+    ],
+    "books": [
+      "Inside_Macintosh_Volume_VI_1991.txt",
+      "NetworkingOpenTransport.txt"
+    ]
+  },
+  "memory_allocation": {
+    "description": "Memory allocation at interrupt time",
+    "keywords": [
+      "NewPtr",
+      "NewHandle",
+      "OTAllocMem",
+      "malloc"
+    ],
+    "books": [
+      "Inside_Macintosh_Volume_VI_1991.txt",
+      "NetworkingOpenTransport.txt"
+    ]
+  },
+  "asr_callbacks": {
+    "description": "MacTCP ASR callback restrictions",
+    "lines": {
+      "MacTCP_Programmers_Guide_1989.txt": [
+        [
+          2150,
+          2156
+        ],
+        [
+          4226,
+          4232
+        ]
+      ]
+    },
+    "books": [
+      "MacTCP_Programmers_Guide_1989.txt"
+    ]
+  },
+  "ot_notifiers": {
+    "description": "Open Transport notifier restrictions",
+    "lines": {
+      "NetworkingOpenTransport.txt": [
+        [
+          5793,
+          5826
+        ],
+        [
+          9143,
+          9148
+        ]
+      ]
+    },
+    "books": [
+      "NetworkingOpenTransport.txt"
+    ]
+  },
+  "adsp_callbacks": {
+    "description": "AppleTalk ADSP completion routine restrictions",
+    "lines": {
+      "Programming_With_AppleTalk_1991.txt": [
+        [
+          5924,
+          5926
+        ],
+        [
+          1554,
+          1558
+        ]
+      ]
+    },
+    "books": [
+      "Programming_With_AppleTalk_1991.txt"
+    ]
+  }
+}

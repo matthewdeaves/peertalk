@@ -1,0 +1,6758 @@
+{
+  "AECoerceDesc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AECoercePtr": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AECountltems": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "AECreateAppleEvent": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AECreateDesc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AECreateList": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEDeleteKeyDesc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEDeleteParam": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEDeleteltem": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEDisposeDesc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEDuplicateDesc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEGetArray": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEGetAttributeDesc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEGetAttributePtr": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEGetCoercionHandler": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEGetEventHandler": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEGetInteractionAllowed": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "AEGetKeyDesc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEGetKeyPtr": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEGetNthDesc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEGetNthPtr": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEGetParamDesc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEGetParamPtr": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEGetSpecialHandler": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEGetTheCurrentEvent": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "AEInstallCoercionHandler": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEInstallEventHandler": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEInstallSpecialHandler": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEInteractWithUser": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEProcessAppleEvent": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEPutArray": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEPutAttributeDesc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEPutAttributePtr": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEPutDesc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEPutKeyDesc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEPutKeyPtr": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEPutParamDesc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEPutParamPtr": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEPutPtr": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AERemoveCoercionHandler": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AERemoveEventHandler": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AERemoveSpecialHandler": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEResetTimer": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AEResumeTheCurrentEvent": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AESend": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AESetInteractionAllowed": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AESetTheCurrentEvent": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "AESizeOfAttribute": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AESizeOfKeyDesc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AESizeOfNthItem": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AESizeOfParam": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AESuspendTheCurrentEvent": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "AOff": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "AOnIgnoreModem": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "ATPKillAllGetReq": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "ATPreFlightEvent": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AcceptHighLevelEvent": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "ActivatePalette": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AllocContig": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "AllowPurgePixels": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "AnimateEntry": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AnimatePalette": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AppendDITL": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "AssociateSection": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "BOff": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "BatteryStatus": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "BitMapToRegion": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "CMY2RGB": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "CTab2Palette": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "CTabChanged": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "CallEditionOpenerProc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "CallFormatlOProc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "CatMove": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "CloseEdition": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "CloseWD": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "Comp3tol": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "Comp6to": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "CopyDeepMask": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "CopyPalette": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "CountDITL": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "CreateEditionContainerFile": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "CustomGetFile": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "CustomPutFile": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBBreak": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBDisposeQuery": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBEnd": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBExec": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBGetConnInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBGetErr": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBGetNewQuery": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBGetQueryResults": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBGetResultHandler": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBGetSessionNum": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBGetltem": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBInit": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBKill": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBRemoveResultHandler": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBResultsToText": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBSend": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBSendltem": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBStartQuery": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBState": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBUnGetltem": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DBiInstallResultHandler": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DebuggerEnter": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "DebuggerExit": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "DebuggerGetMax": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "DebuggerLockMemory": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "DebuggerPoll": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "DebuggerUnlockMemory": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "DeferUserFn": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "DeleteEditionContainerFile": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DeleteUserldentity": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DeviceLoop": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DirCreate": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "DisableWUTime": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "Disableldle": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "DisposGDevice": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "DisposPictInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "DisposeGWorld": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "DisposePalette": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "DisposeScreenBuffer": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "EAddMulti": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "EAttachPH": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "EDelMulti": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "EDetachPH": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "EGetInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "ERdCancel": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "ERead": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "ESetGeneral": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "EWrite": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "EditionHasFormat": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "Enableldle": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "EnterSupervisorMode": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "FSMakeFSSpec": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "FSpCatMove": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "FSpCreate": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "FSpCreateResFile": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "FSpDelete": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "FSpDirCreate": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "FSpExchangeFiles": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "FSpGetFInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "FSpOpenDF": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "FSpOpenRF": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "FSpOpenResFile": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "FSpRename": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "FSpRstFLock": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "FSpSetFInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "FSpSetFLock": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "FindFolder": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "FindScriptRun": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "Fix2SmallFract": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "FlushFonts": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "Format2Str": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "FormatStr2X": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "FormatX2Str": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "GDeviceChanged": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "Gestalt": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "GetAliasInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "GetCPUSpeed": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "GetCTable": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "GetColor": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "GetCurrentProcess": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "GetDefaultUser": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "GetDeviceList": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "GetEditionFormatMark": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "GetEditionInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "GetEditionOpenerProc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "GetEntry": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "GetEntryColor": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "GetFormatOrder": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "GetFrontProcess": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "GetGDevice": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "GetGWorld": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "GetGWorldDevice": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "GetGray": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "GetLastEditionContainerUsed": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "GetLocalZones": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "GetMainDevice": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "GetMaxDevice": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "GetMyZone": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "GetNewPalette": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "GetNextDevice": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "GetNextProcess": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "GetOutlinePreferred": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "GetPageState": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "GetPalette": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "GetPaletteUpdates": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "GetPhysical": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "GetPictInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "GetPixBaseAddr": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "GetPixMapInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "GetPixelsState": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "GetPortNameFromProcessSerialNumber": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "GetPreserveGlyph": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "GetProcessInformation": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "GetProcessSerialNumberFromPortName": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "GetSpecificHighLevelEvent": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "GetStandardFormats": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "GetWDInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "GetWUTime": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "GetZoneList": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "GoToPublisherSection": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HCreate": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "HCreateResFile": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HDelete": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "HGetFInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "HGetVol": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "HMBalloonPict": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HMBalloonRect": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HMExtractHelpMsg": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HMGetBalloonWindow": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HMGetBalloons": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "HMGetDialogResID": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HMGetFont": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HMGetFontSize": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HMGetHelpMenuHandle": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HMGetIndHelpMsg": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HMGetMenuResID": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HMIsBalloon": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HMRemoveBalloon": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HMScanTemplateltems": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HMSetBalloons": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HMSetDialogResID": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HMSetFont": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HMSetFontSize": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HMSetMenuResID": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HMShowBalloon": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HMShowMenuBalloon": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HOpen": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HOpenDF": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HOpenRF": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HOpenResFile": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HRename": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "HRstFLock": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "HSL2RGB": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HSV2RGB": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HSetFInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "HSetFLock": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "HSetVol": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "HasDepth": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HiliteText": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "HoldMemory": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "IPCListPorts": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": true,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "IUEqualPString": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "IULTimeString": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "IdleUpdate": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "InitDBPack": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "InitDateCache": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "InitEditionPack": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "InitGDevice": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "InitPalettes": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "InsTime": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "InsXTime": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "InsertSRTRec": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "Inside": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": true,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b1_moves_memory",
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "IntITokenize": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "IsOutline": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "IsRegisteredSection": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "IsSpecialFont": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "LAPAddATQ": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "LAPRmvATQ": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "LaunchApplication": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "LaunchDeskAccessory": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "Lee)": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "LockMemory": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "LockMemoryContiguous": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "LockPixels": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "LongDate2Secs": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "LongSecs2Date": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "LowerText": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "MACEVersion": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "MatchAlias": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "ModemStatus": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "NChar2Pixel": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NDrawJust": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NFindWord": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NMInstall": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "NMRemove": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "NMeasureJust": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NPixel2Char": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NPortionText": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NSetPalette": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NewAlias": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NewAliasMinimal": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NewAliasMinimalFromFullpath": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NewGDevice": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NewGWorld": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NewGestalt": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NewPalette": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NewPictInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NewPublisherDialog": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NewPublisherExpDialog": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NewScreenBuffer": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NewSection": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NewSubscriberDialog": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NewSubscriberExpDialog": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NewTempScreenBuffer": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "NoPurgePixels": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "OTAccept": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTAckSends": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTAcquireLock": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTAddFirst": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTAddLast": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTAddToHashList": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTAlloc": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTAllocMem": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTAllocSharedClientMem": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTAsyncOpenEndpoint": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTAsyncOpenMapper": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTAsyncOpenProvider": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTAsyncStreamOpen": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTAsyncStreamPoll": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTAsynchCreateStream": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTAtomicAdd16": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTAtomicAdd32": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTAtomicAdd8": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTAtomicClearBit": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTAtomicSetBit": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTAtomicTestBit": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTBind": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTBufferDataSize": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTCalculateHashListMemoryNeeds": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTCanLoadLibraries": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTCanMakeSyncCall": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTCancelReply": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCancelRequest": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCancelSynchronousCalls": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCancelSystemTask": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTCancelTimerTask": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTCancelUReply": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCancelURequest": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCfigAddChild": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCfigChangeProviderName": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCfigCloneConfiguration": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCfigDeleteConfiguration": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCfigGetChild": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCfigGetInstallFlags": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTCfigGetOptionNetbuf": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTCfigGetParent": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTCfigGetPortRef": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTCfigGetProviderName": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTCfigIsPort": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTCfigNewChild": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCfigNewConfiguration": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCfigNumberOfChildren": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTCfigPopChild": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCfigPushChild": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCfigPushNewSingleChild": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCfigPushParent": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCfigRemoveChild": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCfigSetPath": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCfigSetPortRef": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTClearBit": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTClearLock": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTCloneConfiguration": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCloseMatchingProviders": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCloseProvider": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCloseProviderByStream": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCompareAndSwap16": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTCompareAndSwap32": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTCompareAndSwap8": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTCompareAndSwapPtr": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTConfiguratorUnloaded": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTConfigureChildren": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTConnect": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCountDataBytes": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCreateConfiguration": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCreatePortRef": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTCreateStateMachine": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTCreateTimerTask": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTDeleteConfigurator": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTDeleteName": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTDeleteNameByID": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTDequeue": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTDestroyConfiguration": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTDestroyStateMachine": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTDestroyTimerTask": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTDontAckSends": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTElapsedMicroseconds": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTElapsedMilliseconds": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTEnqueue": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTEnterGate": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTEnterNotifier": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTFindAndRemoveLink": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTFindInHashList": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTFindLink": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTFindOption": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTFindPort": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTFindPortByRef": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTFree": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTFreeMem": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTFreeSharedClientMem": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTGetBusTypeFromPortRef": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTGetClockTimeInSecs": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTGetConfiguratorUserData": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTGetDeviceTypeFromPortRef": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTGetEndpointInfo": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTGetEndpointState": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTGetFirst": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTGetIndexedLink": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTGetIndexedPort": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTGetLast": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTGetMessage": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTGetPriorityMessage": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTGetProtAddress": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTGetProviderPortRef": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTGetSlotFromPortRef": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTGetTimeStamp": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTInitGate": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTInitHashList": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTInstallNotifier": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTIoctl": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTIsAtInterruptLevel": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTIsBlocking": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTIsDependentPort": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTIsInHashList": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTIsInList": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTIsMasterConfigurator": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTIsSynchronous": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTLIFODequeue": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTLIFOEnqueue": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTLIFOStealAndReverseList": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTLIFOStealList": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTLeaveGate": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTLeaveNotifier": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTListen": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTLook": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTLookupName": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTMemcmp": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTMemcpy": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTMemmove": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTMemset": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTMemzero": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTNewControlMask": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTNextOption": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTNotifyAllClients": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTNotifyUser": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTOptionManagement": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTPeekMessage": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTPutBackBuffer": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTPutBackPartialBuffer": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTPutMessage": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTPutPriorityMessage": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTRcv": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTRcvConnect": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTRcvDisconnect": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTRcvOrderlyDisconnect": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTRcvReply": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTRcvRequest": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTRcvUDErr": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTRcvUData": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTRcvUReply": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTRcvURequest": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTReadBuffer": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTReadMessage": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTRegisterName": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTRegisterPort": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTRemoveFirst": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTRemoveFromHashList": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTRemoveLast": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTRemoveLink": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTRemoveLinkFromHashList": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTRemoveNotifier": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTRemoveStreamFromProvider": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTResolveAddress": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTReverseList": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTSMCallStateProc": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSMComplete": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSMCreateControlStream": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSMCreateStream": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSMGetClientData": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSMGetMessage": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSMGetState": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSMIoctl": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSMOpenStream": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSMPopCallback": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSMPutMessage": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSMReturnToCaller": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSMSetState": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSMWaitForComplete": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTScheduleDeferredTask": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTScheduleInterruptTask": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTScheduleSystemTask": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTScheduleTimerTask": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTSetAsynchronous": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSetBit": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTSetBitRange": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTSetBlocking": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSetBusTypeInPortRef": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTSetDeviceTypeInPortRef": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTSetFirstClearBit": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTSetLastClearBit": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OTSetNonBlocking": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSetSynchronous": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSnd": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSndDisconnect": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSndReply": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSndRequest": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSndUData": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSndUReply": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTSndURequest": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTStrCat": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTStrCopy": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c1_ot_hw_interrupt"
+    ]
+  },
+  "OTStreamClose": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTStreamGetMessage": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTStreamGetPriorityMessage": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTStreamInstallNotifier": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTStreamIoctl": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTStreamIsBlocking": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTStreamIsSynchronous": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTStreamPutMessage": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c3_ot_deferred_task"
+    ]
+  },
+  "OTTestBit": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "OffscreenVersion": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "OpenCPicture": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "OpenDF": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "OpenEdition": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "OpenNewEdition": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "OpenWD": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "OutlineMetrics": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "PATalkClosePrep": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBCatSearch": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBCreateFileIDRef": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBDTAddAPPL": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBDTAddIcon": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "PBDTAddlIcon": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBDTCloseDown": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "PBDTDelete": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": true,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBDTFlush": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBDTGetAPPL": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBDTGetComment": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBDTGetInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "PBDTGetPath": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "PBDTGetlInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBDTGetlcon": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBDTGetlconInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBDTOpenInform": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "PBDTRemoveAPPL": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBDTRemoveComment": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBDTReset": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": true,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBDTSetComment": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBDeleteFileIDRef": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBExchangeFiles": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBGetForeignPrivs": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBGetVolMountInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBGetVolMountInfoSize": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBHGetVolParms": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBHOpenDF": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "PBMakeFSSpec": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBOpenDF": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "PBResolveFileIDRef": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBSetForeignPriv": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PBVolumeMount": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "PGetAppleTalkInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b2_unsafe_no_move",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PMerVersion": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PPCAccept": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": true,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PPCBrowser": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "PPCClose": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": true,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PPCEnd": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": true,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PPCInform": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": true,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PPCOpen": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": true,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PPCRead": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": true,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PPCReject": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": true,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PPCStart": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": true,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PPCWrite": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": true,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PageFaultFatal": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "Palette2CTab": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "ParseTable": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "PixPatChanged": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "PmBackColor": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "PmForeColor": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "PortChanged": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PortionText": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "PostHighLevelEvent": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "PrimeTime": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "QDDone": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "QDError": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "RGB2CMY": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "RGB2HSL": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "RGB2HSV": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "RawPrinter": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "ReadEdition": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "ReadLocation": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "ReadPartialResource": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "RecordColors": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "RecordPictInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "RecordPixMapInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "RegisterSection": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "ReplaceGestalt": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "ReplaceText": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "ResizePalette": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "ResolveAlias": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "ResolveAliasFile": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "RestoreBack": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "RestoreDeviceClut": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "RestoreFore": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "RetrievePictInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "RmvTime": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "Routines": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b1_moves_memory",
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "SCalcSPointer": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SCalcStep": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SCardChanged": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SCkCardStatus": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SDeleteSRTRec": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SExec": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SFindDevBase": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SFindSInfoRecPtr": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SFindSRsrcPtr": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SFindStruct": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SGetBlock": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SGetCString": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SGetDriver": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SGetSRsre": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SGetTypeSRsrc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SNextRsrc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SNextTypeSRsrc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SOffsetData": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SPBBytesToMilliseconds": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SPBCloseDevice": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SPBGetDevicelnfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SPBGetIndexedDevice": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SPBGetRecordingStatus": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SPBMillisecondsToBytes": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SPBOpenDevice": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SPBPauseRecording": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SPBRecord": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SPBRecordToFile": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SPBResumeRecording": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SPBSetDevicelnfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SPBSignInDevice": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SPBSignOutDevice": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SPBStopRecording": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SPBVersion": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SPtrToSlot": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SPutPRAMRec": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SReadByte": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SReadDrvrName": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SReadFHeader": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SReadInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SReadLong": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SReadPBSize": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SReadPRAMRec": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SReadStruct": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SReadWord": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SRsrcInfo": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SSearchSRT": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SVersion": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SameProcess": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SaveBack": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SaveFore": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SectionOptionsDialog": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SectionOptionsExpDialog": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SetA5": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SetCurrentA5": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "SetDepth": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SetDeviceAttribute": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "SetEditionFormatMark": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SetEditionOpenerProc": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SetEntry": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "SetEntryColor": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "SetFrontProcess": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "SetGDevice": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "SetGWorld": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "SetOutlinePreferred": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "SetPalette": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": true,
+    "sync_async_dependent": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SetPixelsState": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "SetPreserveGlyph": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "SetResourceSize": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SetSRsrcState": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SetStylScrap": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SetWUTime": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SetupAIFFHeader": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SetupSndHeader": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "ShortenDITL": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SleepQInstall": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SleepQRemove": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SmallFract2Fix": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SndAddModifier": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SndChannelStatus": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SndControl": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SndDisposeChannel": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "SndDoCommand": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SndDoImmediate": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SndGetSysBeepState": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SndManagerStatus": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SndNewChannel": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SndPauseFilePlay": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SndPlay": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SndPlayDoubleBuffer": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SndRecord": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SndRecordToFile": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SndSetSysBeepState": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SndSoundManagerVersion": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "SndStartFilePlay": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SndStopFilePlay": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "StandardGetFile": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "StandardPutFile": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "StartSecureSession": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "StoreIntoNetbuf": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "StoreMsgIntoNetbuf": {
+    "book": "NetworkingOpenTransport.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_c2_ot_hw_interrupt_native"
+    ]
+  },
+  "Str2Format": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "String2Date": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "String2Time": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "StripAddress": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "StripText": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "StripUpperText": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "StyledLineBreak": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "SysBeep": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "TEContinuousStyle": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "TECustomHook": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "TEFeatureFlag": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "TEGetPoint": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "TEKey": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "TENumStyles": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "TESetStyle": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "TUClearCache": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "TempDisposHandle": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "TempFreeMem": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "TempHLock": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "TempHUnlock": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "TempMaxMem": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "TempNewHandle": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory"
+    ]
+  },
+  "TestDeviceAttribute": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "ToggleDate": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "Translate24To32": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "TruncString": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "TruncText": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "UnRegisterSection": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "UnholdMemory": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "UnlockMemory": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "UnlockPixels": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "UpdateAlias": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "UpdateGWorld": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "UpperText": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "ValidDate": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "VisibleLength": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "WaitNextEvent": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "WakeUpProcess": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": true,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b3_interrupt_safe"
+    ]
+  },
+  "WriteEdition": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "WriteLocation": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": null,
+    "lines": [],
+    "moves_memory": null,
+    "tables": [
+      "table_b2_unsafe_no_move"
+    ]
+  },
+  "WritePartialResource": {
+    "book": "Inside_Macintosh_Volume_VI_1991.txt",
+    "interrupt_safe": false,
+    "lines": [],
+    "moves_memory": true,
+    "tables": [
+      "table_b1_moves_memory",
+      "table_b2_unsafe_no_move"
+    ]
+  }
+}

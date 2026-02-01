@@ -1,0 +1,133 @@
+# Functions forbidden in ASR/notifier/callback contexts
+# Format: function_name|category|reason
+#
+# Categories: memory, timing, memory_ops, io, sync_network, toolbox
+# This list is used by isr_safety.py to detect unsafe callback code
+
+# Memory allocation - dynamic allocation forbidden at interrupt time
+malloc|memory|Dynamic allocation forbidden at interrupt time
+calloc|memory|Dynamic allocation forbidden at interrupt time
+realloc|memory|Dynamic allocation forbidden at interrupt time
+free|memory|May trigger memory compaction
+NewPtr|memory|Toolbox memory allocation
+NewPtrClear|memory|Toolbox memory allocation
+NewHandle|memory|Toolbox memory allocation
+NewHandleClear|memory|Toolbox memory allocation
+DisposePtr|memory|May trigger memory compaction
+DisposeHandle|memory|May trigger memory compaction
+SetPtrSize|memory|May move memory
+SetHandleSize|memory|May move memory
+ReallocateHandle|memory|May move memory
+HLock|memory|May cause memory manager operations
+HUnlock|memory|May cause memory manager operations
+MoveHHi|memory|Moves memory
+
+# Timing - TickCount not in Inside Macintosh Table B-3
+TickCount|timing|Not in Inside Macintosh Table B-3 interrupt-safe list
+
+# Memory operations - may use unsafe implementations internally
+BlockMove|memory_ops|Not confirmed interrupt-safe per official docs, use pt_memcpy_isr
+BlockMoveData|memory_ops|Interrupt safety unclear, use pt_memcpy_isr
+memcpy|memory_ops|May use BlockMove internally, use pt_memcpy_isr
+memmove|memory_ops|May use BlockMove internally
+memset|memory_ops|May use Toolbox internally
+bcopy|memory_ops|May use BlockMove internally
+bzero|memory_ops|May use Toolbox internally
+
+# I/O - file and device I/O forbidden
+printf|io|Allocates internally, uses file I/O
+sprintf|io|May allocate internally
+snprintf|io|May allocate internally
+fprintf|io|File I/O forbidden
+fopen|io|File I/O forbidden
+fclose|io|File I/O forbidden
+fread|io|File I/O forbidden
+fwrite|io|File I/O forbidden
+FSRead|io|File Manager not interrupt-safe
+FSWrite|io|File Manager not interrupt-safe
+FSOpen|io|File Manager not interrupt-safe
+FSClose|io|File Manager not interrupt-safe
+PBRead|io|Synchronous Device Manager call forbidden
+PBWrite|io|Synchronous Device Manager call forbidden
+PBOpen|io|Synchronous Device Manager call forbidden
+PBClose|io|Synchronous Device Manager call forbidden
+
+# Synchronous MacTCP calls - forbidden in ASR
+TCPCreate|sync_network|Synchronous MacTCP call
+TCPPassiveOpen|sync_network|Synchronous MacTCP call
+TCPActiveOpen|sync_network|Synchronous MacTCP call
+TCPSend|sync_network|Synchronous MacTCP call
+TCPRcv|sync_network|Synchronous MacTCP call
+TCPClose|sync_network|Synchronous MacTCP call
+TCPAbort|sync_network|Synchronous MacTCP call
+TCPRelease|sync_network|Synchronous MacTCP call
+UDPCreate|sync_network|Synchronous MacTCP call
+UDPRead|sync_network|Synchronous MacTCP call
+UDPWrite|sync_network|Synchronous MacTCP call
+UDPRelease|sync_network|Synchronous MacTCP call
+TCPNoCopyRcv|sync_network|Synchronous MacTCP call
+TCPRcvBfrReturn|sync_network|Synchronous MacTCP call
+
+# Synchronous OT calls - forbidden in notifiers (when in async mode)
+OTConnect|sync_network|Synchronous OT call forbidden in async notifier
+OTRcvConnect|sync_network|Synchronous OT call
+OTListen|sync_network|Synchronous OT call
+OTAccept|sync_network|Synchronous OT call
+OTSnd|sync_network|Synchronous OT call
+OTRcv|sync_network|Synchronous OT call
+OTSndDisconnect|sync_network|Synchronous OT call
+OTRcvDisconnect|sync_network|Synchronous OT call
+OTSndOrderlyDisconnect|sync_network|Synchronous OT call
+OTRcvOrderlyDisconnect|sync_network|Synchronous OT call
+OTBind|sync_network|Synchronous OT call
+OTUnbind|sync_network|Synchronous OT call
+OTGetProtAddress|sync_network|Synchronous OT call
+OTResolveAddress|sync_network|Synchronous OT call
+
+# General Toolbox calls - most are not interrupt-safe
+GetResource|toolbox|Resource Manager not interrupt-safe
+ReleaseResource|toolbox|Resource Manager not interrupt-safe
+LoadResource|toolbox|Resource Manager not interrupt-safe
+DrawString|toolbox|QuickDraw not interrupt-safe
+DrawChar|toolbox|QuickDraw not interrupt-safe
+TextWidth|toolbox|QuickDraw not interrupt-safe
+GetPort|toolbox|QuickDraw not interrupt-safe
+SetPort|toolbox|QuickDraw not interrupt-safe
+PenNormal|toolbox|QuickDraw not interrupt-safe
+MoveTo|toolbox|QuickDraw not interrupt-safe
+LineTo|toolbox|QuickDraw not interrupt-safe
+FrameRect|toolbox|QuickDraw not interrupt-safe
+PaintRect|toolbox|QuickDraw not interrupt-safe
+EraseRect|toolbox|QuickDraw not interrupt-safe
+InvalRect|toolbox|Window Manager not interrupt-safe
+ValidRect|toolbox|Window Manager not interrupt-safe
+BeginUpdate|toolbox|Window Manager not interrupt-safe
+EndUpdate|toolbox|Window Manager not interrupt-safe
+GetWRefCon|toolbox|Window Manager not interrupt-safe
+SetWRefCon|toolbox|Window Manager not interrupt-safe
+GetNextEvent|toolbox|Event Manager not interrupt-safe
+WaitNextEvent|toolbox|Event Manager not interrupt-safe
+PostEvent|toolbox|May be unsafe depending on context
+FlushEvents|toolbox|Event Manager not interrupt-safe
+SysBeep|toolbox|Sound Manager in this form not interrupt-safe
+
+# ADSP-specific - PBControl with dspXxx csCode forbidden in completion
+dspInit|sync_network|Synchronous ADSP call
+dspOpen|sync_network|Synchronous ADSP call
+dspClose|sync_network|Synchronous ADSP call
+dspCLInit|sync_network|Synchronous ADSP call
+dspCLListen|sync_network|Synchronous ADSP call
+dspCLDeny|sync_network|Synchronous ADSP call
+dspRead|sync_network|Synchronous ADSP call
+dspWrite|sync_network|Synchronous ADSP call
+dspStatus|sync_network|Synchronous ADSP call
+dspOptions|sync_network|Synchronous ADSP call
+dspReset|sync_network|Synchronous ADSP call
+dspNewCID|sync_network|Synchronous ADSP call
+dspAttention|sync_network|Synchronous ADSP call
+
+# NBP - synchronous calls forbidden
+NBPLookup|sync_network|Synchronous NBP call
+NBPRegister|sync_network|Synchronous NBP call
+NBPRemove|sync_network|Synchronous NBP call
+NBPConfirm|sync_network|Synchronous NBP call
