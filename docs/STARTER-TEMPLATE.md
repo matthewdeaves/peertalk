@@ -28,9 +28,11 @@ tools/         # ISR validator, book indexer
 git clone https://github.com/matthewdeaves/peertalk.git
 cd peertalk
 git checkout starter-template
-./tools/setup.sh           # Python environment
-./scripts/docker-build.sh  # Retro68 cross-compiler (~2GB)
+./tools/setup.sh           # Install: jq, python3
+./scripts/docker-build.sh  # Build Docker image (~2GB)
 ```
+
+**All builds happen in Docker - no native toolchain needed on host.**
 
 For detailed documentation of all skills, agents, hooks, and tools, see **[CLAUDE-CODE-SETUP.md](CLAUDE-CODE-SETUP.md)**.
 

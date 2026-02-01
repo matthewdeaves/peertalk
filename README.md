@@ -36,14 +36,16 @@ cd peertalk
 # For starter-template (recommended for learning):
 git checkout starter-template
 
-# Minimal setup (jq + python3 + Docker)
-./tools/setup.sh           # Installs minimal host dependencies
-./scripts/docker-build.sh  # Builds Docker image with all tools (~2GB)
+# Install minimal host dependencies
+./tools/setup.sh           # Installs: jq, python3
+
+# Build Docker image (all builds happen here)
+./scripts/docker-build.sh  # ~2GB, contains entire toolchain
 ```
 
-**What gets installed:**
-- **Host:** jq (hooks), python3 (validators)
-- **Docker:** Complete toolchain (Retro68, lcov, ctags, clang-format, etc.)
+**Philosophy: All builds in Docker**
+- **Host:** jq (hooks), python3 (MCP/validators), Docker
+- **Docker:** Retro68, gcc, make, lcov, ctags, clang-format, everything else
 
 ## Usage
 

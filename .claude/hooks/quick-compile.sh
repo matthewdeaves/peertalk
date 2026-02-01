@@ -1,8 +1,8 @@
 #!/bin/bash
 # Quick Compile Check - Immediate feedback after file edits
 #
-# Runs a fast syntax check on edited C files to catch errors early.
-# Uses Docker container if Retro68 not installed locally.
+# Runs syntax check on edited C files to catch errors early.
+# ALL compilation happens in Docker (POSIX + Mac platforms).
 # This is an informational hook - it warns but doesn't block.
 #
 # Claude Code hooks receive JSON on stdin, not environment variables.
@@ -61,100 +61,61 @@ if [[ "$PROJECT_DIR" == "/" ]]; then
     PROJECT_DIR="$(dirname "$FILE_PATH")"
 fi
 
-# Check for local Retro68 or Docker availability
-RETRO68_LOCAL="${RETRO68:-}"
+# Check for Docker (required for all builds)
 DOCKER_COMPOSE="$PROJECT_DIR/docker/docker-compose.yml"
-USE_DOCKER=false
 
-# Determine if we need Retro68 (Mac-specific code)
-NEEDS_RETRO68=false
-if [[ "$FILE_PATH" == *"/mactcp/"* ]] || [[ "$FILE_PATH" == *"/opentransport/"* ]] || [[ "$FILE_PATH" == *"/appletalk/"* ]]; then
-    NEEDS_RETRO68=true
+if [[ ! -f "$DOCKER_COMPOSE" ]]; then
+    echo "[compile] No docker/docker-compose.yml found - skipping"
+    exit 0
 fi
 
-# Decide whether to use Docker
-if [[ "$NEEDS_RETRO68" == "true" ]]; then
-    if [[ -z "$RETRO68_LOCAL" ]] || [[ ! -d "$RETRO68_LOCAL" ]]; then
-        # No local Retro68, try Docker (prefer modern "docker compose" over deprecated "docker-compose")
-        if [[ -f "$DOCKER_COMPOSE" ]] && docker compose version >/dev/null 2>&1; then
-            USE_DOCKER=true
-        else
-            echo "[compile] Skipping Mac check - no Retro68 or Docker available"
-            exit 0
-        fi
-    fi
+if ! docker compose version >/dev/null 2>&1; then
+    echo "[compile] Docker not available - skipping compile check"
+    echo "[compile] Install Docker and run: ./scripts/docker-build.sh"
+    exit 0
 fi
+
+# All compilation happens in Docker
+USE_DOCKER=true
 
 # Get relative path for Docker (container mounts project at /workspace)
 REL_PATH="${FILE_PATH#$PROJECT_DIR/}"
 
-# Run syntax check based on platform
+# Run syntax check in Docker
 run_compile() {
     local compiler="$1"
     local includes="$2"
 
-    if [[ "$USE_DOCKER" == "true" ]]; then
-        # Use Docker container (modern "docker compose" command)
-        cd "$PROJECT_DIR"
-        docker compose -f docker/docker-compose.yml run --rm -T peertalk-dev \
-            $compiler -fsyntax-only -Wall $includes "/workspace/$REL_PATH" 2>&1
-    else
-        # Use local compiler
-        $compiler -fsyntax-only -Wall $includes "$FILE_PATH" 2>&1
-    fi
+    cd "$PROJECT_DIR"
+    docker compose -f docker/docker-compose.yml run --rm -T peertalk-dev \
+        $compiler -fsyntax-only -Wall $includes "/workspace/$REL_PATH" 2>&1
 }
 
+# Compile in Docker based on platform
 if [[ "$FILE_PATH" == *"/mactcp/"* ]] || [[ "$FILE_PATH" == *"/appletalk/"* ]]; then
     # 68k code
-    if [[ "$USE_DOCKER" == "true" ]]; then
-        OUTPUT=$(run_compile "m68k-apple-macos-gcc" "-I/workspace/include -I/opt/Retro68-build/toolchain/universal/CIncludes") || {
-            log_hook "ERROR: Syntax errors in $FILE_PATH"
-            echo ""
-            echo "[compile] ⚠️  Syntax errors in $(basename "$FILE_PATH"):"
-            echo "$OUTPUT" | head -20
-            echo ""
-            echo "Next step: Fix the errors above and save again (hook will re-run automatically)"
-            exit 0
-        }
-    else
-        OUTPUT=$(run_compile "$RETRO68_LOCAL/bin/m68k-apple-macos-gcc" "-I$PROJECT_DIR/include -I$RETRO68_LOCAL/universal/CIncludes") || {
-            echo ""
-            echo "[compile] ⚠️  Syntax errors in $(basename "$FILE_PATH"):"
-            echo "$OUTPUT" | head -20
-            echo ""
-            echo "Next step: Fix the errors above and save again (hook will re-run automatically)"
-            exit 0
-        }
-    fi
+    OUTPUT=$(run_compile "m68k-apple-macos-gcc" "-I/workspace/include -I/opt/Retro68-build/toolchain/universal/CIncludes") || {
+        log_hook "ERROR: Syntax errors in $FILE_PATH"
+        echo ""
+        echo "[compile] ⚠️  Syntax errors in $(basename "$FILE_PATH"):"
+        echo "$OUTPUT" | head -20
+        echo ""
+        echo "Next step: Fix the errors above and save again (hook will re-run automatically)"
+        exit 0
+    }
 elif [[ "$FILE_PATH" == *"/opentransport/"* ]]; then
     # PPC code
-    if [[ "$USE_DOCKER" == "true" ]]; then
-        OUTPUT=$(run_compile "powerpc-apple-macos-gcc" "-I/workspace/include -I/opt/Retro68-build/toolchain/universal/CIncludes") || {
-            echo ""
-            echo "[compile] ⚠️  Syntax errors in $(basename "$FILE_PATH"):"
-            echo "$OUTPUT" | head -20
-            echo ""
-            echo "Next step: Fix the errors above and save again (hook will re-run automatically)"
-            exit 0
-        }
-    else
-        OUTPUT=$(run_compile "$RETRO68_LOCAL/bin/powerpc-apple-macos-gcc" "-I$PROJECT_DIR/include -I$RETRO68_LOCAL/universal/CIncludes") || {
-            echo ""
-            echo "[compile] ⚠️  Syntax errors in $(basename "$FILE_PATH"):"
-            echo "$OUTPUT" | head -20
-            echo ""
-            echo "Next step: Fix the errors above and save again (hook will re-run automatically)"
-            exit 0
-        }
-    fi
-else
-    # POSIX code - use local gcc
-    if ! command -v gcc >/dev/null 2>&1; then
-        echo "[compile] gcc not found"
+    OUTPUT=$(run_compile "powerpc-apple-macos-gcc" "-I/workspace/include -I/opt/Retro68-build/toolchain/universal/CIncludes") || {
+        echo ""
+        echo "[compile] ⚠️  Syntax errors in $(basename "$FILE_PATH"):"
+        echo "$OUTPUT" | head -20
+        echo ""
+        echo "Next step: Fix the errors above and save again (hook will re-run automatically)"
         exit 0
-    fi
-
-    OUTPUT=$(gcc -fsyntax-only -Wall -I"$PROJECT_DIR/include" "$FILE_PATH" 2>&1) || {
+    }
+else
+    # POSIX code
+    OUTPUT=$(run_compile "gcc" "-I/workspace/include") || {
         echo ""
         echo "[compile] ⚠️  Syntax errors in $(basename "$FILE_PATH"):"
         echo "$OUTPUT" | head -20

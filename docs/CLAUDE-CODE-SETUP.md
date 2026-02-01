@@ -117,18 +117,18 @@ Run the setup script to install minimal dependencies:
 ./tools/setup.sh
 ```
 
-**Minimal requirements (Docker-based workflow):**
-- **jq** - Required by hooks to parse JSON
-- **python3** - Required for validators and book indexer
-- **Docker** - Required for all Mac builds and optional for POSIX builds
+**Requirements:**
+- **jq** - Hooks parse JSON (e.g., `.claude/hooks/isr-safety-check.sh`)
+- **python3** - MCP server + validators run on host
+- **Docker** - ALL builds happen in Docker (POSIX + Mac)
 
-**Optional (native POSIX development only):**
-- make, gcc - Build POSIX code natively instead of Docker
-- lcov - Generate coverage reports natively
-- ctags - Analyze function length natively
-- clang-format - Check code formatting natively
+**What's in Docker:**
+- Retro68 (Mac cross-compiler for 68k and PPC)
+- gcc, make (POSIX builds)
+- lcov (coverage), ctags (quality gates), clang-format
+- All dependencies pre-installed
 
-All optional tools are already in Docker. Hooks gracefully skip if missing on host.
+Hooks use Docker for compilation - no native build tools needed on host.
 
 ## Adding New Components
 

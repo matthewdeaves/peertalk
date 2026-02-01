@@ -1,15 +1,20 @@
 #!/bin/bash
-# One-command setup for PeerTalk tooling
+# Minimal setup for Docker-based PeerTalk development
 #
-# Installs system dependencies (jq, build tools) and Python environment.
-# Works on Linux (apt/dnf) and macOS (homebrew).
+# Installs only what must run on the host:
+#   - jq (hooks parse JSON)
+#   - python3 (MCP server, validators)
+#   - Docker (all builds happen here)
 
 set -e
 
 cd "$(dirname "$0")"
 
-echo "PeerTalk Tools Setup"
-echo "===================="
+echo "PeerTalk Minimal Setup"
+echo "======================"
+echo ""
+echo "Philosophy: ALL builds happen in Docker"
+echo "Host only needs: jq, python3, Docker"
 echo ""
 
 # Detect OS
@@ -64,23 +69,12 @@ install_pkg() {
     esac
 }
 
-# Required dependencies (minimal Docker-based workflow)
+# Required dependencies
 echo "Checking required dependencies..."
 MISSING_PKGS=""
 
 install_pkg "jq" "jq" "jq" "jq"
 install_pkg "python3" "python3" "python3" "python3"
-
-# Optional: Only needed for native POSIX development (Docker has these)
-echo ""
-echo "Checking optional dependencies (for native POSIX builds)..."
-echo "Note: These are already in Docker - only install if building POSIX code natively"
-
-install_pkg "make" "make" "make" "make"
-install_pkg "gcc" "build-essential" "gcc" "gcc"
-install_pkg "lcov" "lcov" "lcov" "lcov"
-install_pkg "ctags" "universal-ctags" "universal-ctags" "ctags"
-install_pkg "clang-format" "clang-format" "clang-format" "clang-tools-extra"
 
 # Prompt for apt/dnf install if packages missing
 if [[ -n "$MISSING_PKGS" && "$PKG_MGR" != "brew" ]]; then
@@ -88,10 +82,10 @@ if [[ -n "$MISSING_PKGS" && "$PKG_MGR" != "brew" ]]; then
     echo "Missing packages:$MISSING_PKGS"
     echo ""
     if [[ "$PKG_MGR" == "apt" ]]; then
-        echo "Install all with:"
+        echo "Install with:"
         echo "  sudo apt update && sudo apt install$MISSING_PKGS"
     elif [[ "$PKG_MGR" == "dnf" ]]; then
-        echo "Install all with:"
+        echo "Install with:"
         echo "  sudo dnf install$MISSING_PKGS"
     fi
     echo ""
@@ -130,59 +124,59 @@ echo "Installing Python dependencies..."
 pip install -q --upgrade pip
 pip install -q -r requirements.txt
 
-# Check if books directory has content
-BOOKS_DIR="../books"
-if [ -d "$BOOKS_DIR" ] && [ "$(ls -A $BOOKS_DIR 2>/dev/null)" ]; then
-    echo "Found books directory with $(ls -1 $BOOKS_DIR | wc -l) reference files"
-else
-    echo "Note: books/ directory is empty or missing"
-fi
-
-# Check for Docker (optional, for Mac cross-compilation)
 echo ""
-echo "Checking Docker (optional, for Mac cross-compilation)..."
+echo "Checking Docker (required for all builds)..."
 if command -v docker &> /dev/null; then
     echo "  ✓ docker"
-    if docker compose version &> /dev/null; then
+    if docker compose version &> /dev/null 2>&1; then
         echo "  ✓ docker compose"
-    elif docker-compose version &> /dev/null; then
-        echo "  ✓ docker-compose (legacy)"
+    elif docker-compose version &> /dev/null 2>&1; then
+        echo "  ⚠ docker-compose (legacy) - 'docker compose' preferred"
     else
         echo "  ✗ docker compose not found"
-        echo "    Mac cross-compilation requires Docker Compose"
+        echo ""
+        echo "ERROR: Docker Compose is required for all builds"
+        echo "Install Docker Desktop: https://docs.docker.com/get-docker/"
+        exit 1
     fi
 else
-    echo "  ✗ docker not found (optional)"
-    echo "    Install Docker for Mac cross-compilation with Retro68"
-    echo "    https://docs.docker.com/get-docker/"
+    echo "  ✗ docker not found"
+    echo ""
+    echo "ERROR: Docker is required for all builds (POSIX + Mac)"
+    echo "Install Docker Desktop: https://docs.docker.com/get-docker/"
+    echo "  https://docs.docker.com/get-docker/"
+    exit 1
 fi
 
 # Make scripts executable
 chmod +x build/*.sh 2>/dev/null || true
 chmod +x ../.claude/hooks/*.sh 2>/dev/null || true
+chmod +x ../scripts/*.sh 2>/dev/null || true
 
 echo ""
 echo "========================================"
 echo "Setup complete!"
 echo "========================================"
 echo ""
-echo "Minimal requirements installed:"
-echo "  ✓ jq (required for hooks)"
-echo "  ✓ python3 (required for validators)"
+echo "Installed on host:"
+echo "  ✓ jq (hooks)"
+echo "  ✓ python3 (MCP server, validators)"
+echo "  ✓ Docker (build environment)"
 echo ""
-echo "Docker-based workflow (recommended):"
-echo "  1. Build Docker image:"
-echo "     ./scripts/docker-build.sh"
+echo "Next step - Build Docker image:"
+echo "  cd .."
+echo "  ./scripts/docker-build.sh"
 echo ""
-echo "  2. Use skills (Docker handles compilation):"
-echo "     /session next        # Find next available session"
-echo "     /build test          # Build and run POSIX tests"
-echo "     /build all           # Build for all platforms (POSIX + Mac)"
-echo "     /setup-machine       # Onboard new Classic Mac hardware"
+echo "This builds a container with:"
+echo "  - Retro68 (Mac cross-compiler)"
+echo "  - gcc, make (POSIX builds)"
+echo "  - lcov, ctags, clang-format (quality tools)"
+echo "  - All dependencies pre-installed"
 echo ""
-echo "Native POSIX development (optional):"
-echo "  If you installed make/gcc/lcov/ctags, you can build POSIX code natively"
-echo "  Otherwise, hooks gracefully skip (all tools are in Docker)"
+echo "After Docker builds, use skills:"
+echo "  /session next        # Find next session"
+echo "  /build test          # Build + test (in Docker)"
+echo "  /setup-machine       # Onboard Classic Mac hardware"
 echo ""
 echo "To activate Python environment:"
 echo "  source tools/.venv/bin/activate"
