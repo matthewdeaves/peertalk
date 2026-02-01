@@ -73,7 +73,7 @@ const char *PeerTalk_ErrorString(PeerTalk_Error error)
 
     /* Protocol Errors (Phase 2) */
     case PT_ERR_CRC:
-        return "CRC mismatch";
+        return "CRC validation failed";
     case PT_ERR_MAGIC:
         return "Invalid magic number";
     case PT_ERR_TRUNCATED:

@@ -1,6 +1,6 @@
 # PHASE 2: Protocol Layer
 
-> **Status:** OPEN
+> **Status:** DONE
 > **Depends on:** Phase 1 (Foundation)
 > **Produces:** Message framing, peer data structures, queue implementation
 > **Risk Level:** Low
@@ -176,9 +176,9 @@ The 256-entry CRC lookup table is 512 bytes. On 68030 (256-byte cache), this exc
 
 | Session | Focus | Status | Files Created/Modified | Tests | Verify |
 |---------|-------|--------|------------------------|-------|--------|
-| 2.1 | Message Framing | [OPEN] | `src/core/protocol.c`, `src/core/protocol.h` | `tests/test_protocol.c` | Frame encode/decode round-trip |
-| 2.2 | Peer Management | [OPEN] | `src/core/peer.c`, `src/core/peer.h` | `tests/test_peer.c` | Peer add/remove/lookup, state transitions |
-| 2.3 | Message Queues | [OPEN] | `src/core/queue.c`, `src/core/queue.h` | `tests/test_queue.c` | Push/pop, backpressure, ISR-safe |
+| 2.1 | Message Framing | [DONE] | `src/core/protocol.c`, `src/core/protocol.h` | `tests/test_protocol.c` | Frame encode/decode round-trip |
+| 2.2 | Peer Management | [DONE] | `src/core/peer.c`, `src/core/peer.h` | `tests/test_peer.c` | Peer add/remove/lookup, state transitions |
+| 2.3 | Message Queues | [DONE] | `src/core/queue.c`, `src/core/queue.h` | `tests/test_queue.c` | Push/pop, backpressure, ISR-safe |
 
 ### Status Key
 - **[OPEN]** - Not started
