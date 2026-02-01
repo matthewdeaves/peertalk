@@ -1,0 +1,932 @@
+{
+  "AppleTalk": {},
+  "MacTCP": {
+    "connectionClosing": {
+      "book": "MacTCP_Programmers_Guide_1989.txt",
+      "context": "connectionClosing",
+      "line": 5988
+    },
+    "connectionDoesntExist": {
+      "book": "MacTCP_Programmers_Guide_1989.txt",
+      "context": "connectionDoesntExist",
+      "line": 6008
+    },
+    "connectionExists": {
+      "book": "MacTCP_Programmers_Guide_1989.txt",
+      "context": "connectionExists",
+      "line": 5999
+    },
+    "connectionTerminated": {
+      "book": "MacTCP_Programmers_Guide_1989.txt",
+      "context": "connectionTerminated",
+      "line": 6030
+    },
+    "insufficientResources": {
+      "book": "MacTCP_Programmers_Guide_1989.txt",
+      "context": "insufficientResources",
+      "line": 6014
+    }
+  },
+  "OpenTransport": {
+    "kOTADEVDevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTADEVDevice",
+      "line": 32106
+    },
+    "kOTATMDevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTATMDevice",
+      "line": 32112
+    },
+    "kOTATMSNAPDevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTATMSNAPDevice",
+      "line": 32148
+    },
+    "kOTAccessErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "returns the kOTAccessErr result. If a send is currently outstanding on the",
+      "line": 22058
+    },
+    "kOTAddressBusyErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTAddressBusyErr result code.",
+      "line": 19758
+    },
+    "kOTAnyFreeAddress": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "endpoint to a kOTAnyFreeAddress that includes a port",
+      "line": 37421
+    },
+    "kOTAnyInetAddress": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTAnyInetAddress for the interface address to use the default multicast",
+      "line": 14635
+    },
+    "kOTBadAddressErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "names like kOTBadAddressErr and kOTFlowErr. There is a corresponding Open",
+      "line": 42116
+    },
+    "kOTBadConfigurationErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTBadConfigurationErr",
+      "line": 42979
+    },
+    "kOTBadDataErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "returns with the result kOTBadDataErr.",
+      "line": 25316
+    },
+    "kOTBadFlagErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTBadFlagErr",
+      "line": 42164
+    },
+    "kOTBadNameErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTBadNameErr",
+      "line": 42168
+    },
+    "kOTBadOptionErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTBadOptionErr",
+      "line": 42172
+    },
+    "kOTBadQLenErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTBadQLenErr",
+      "line": 42176
+    },
+    "kOTBadReferenceErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "the port, or the port does not exist (kOTBadReferenceErr), or because the client",
+      "line": 33055
+    },
+    "kOTBadSequenceErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTBadSequenceErr",
+      "line": 42180
+    },
+    "kOTBadSyncErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTBadSyncErr",
+      "line": 5420
+    },
+    "kOTBufferOverflow": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "a kOTBufferOverflow result. You can obtain the maximum size of a buffer used",
+      "line": 10863
+    },
+    "kOTBufferOverflowErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "possible, you can set up a large buffer, test for the kOTBufferOverflowErr error,",
+      "line": 16996
+    },
+    "kOTCTSInputHandshake": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTCTSInputHandshake constant 358, 767",
+      "line": 46623
+    },
+    "kOTCanYieldPort": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "check the kOTCanYieldPort bit in the port structure\u00d5s fInfoFlags \u00deeld to see",
+      "line": 32320
+    },
+    "kOTCanceledErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "will complete with the result of kOTCanceledErr.",
+      "line": 21626
+    },
+    "kOTChangeStateErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTChangeStateErr message.",
+      "line": 22061
+    },
+    "kOTClientNotInittedErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTClientNotInittedErr",
+      "line": 5426
+    },
+    "kOTClosePortRequest": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTClosePortRequest",
+      "line": 31752
+    },
+    "kOTClosePortRequestA": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTClosePortRequestA request has been made to close or yield this port.",
+      "line": 31783
+    },
+    "kOTConfigurationChangedErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTConfigurationChangedErr",
+      "line": 42988
+    },
+    "kOTDTROutputHandshake": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTDTROutputHandshake constant 358, 767",
+      "line": 46624
+    },
+    "kOTDuplicateFoundErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTDuplicateFoundErr",
+      "line": 42755
+    },
+    "kOTEthernetDevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTEthernetDevice",
+      "line": 32115
+    },
+    "kOTEvenParity": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTEvenParity constant 766",
+      "line": 46627
+    },
+    "kOTFDDIDevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTFDDIDevice",
+      "line": 32146
+    },
+    "kOTFLowErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "function, the function returns the kOTFLowErr result. When \u00dfow-control",
+      "line": 25712
+    },
+    "kOTFastEthernetDevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTFastEthernetDevice",
+      "line": 32145
+    },
+    "kOTFibreChannelDevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTFibreChannelDevice",
+      "line": 32149
+    },
+    "kOTFireWireBus": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTFireWireBus",
+      "line": 31695
+    },
+    "kOTFireWireDevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTFireWireDevice",
+      "line": 32150
+    },
+    "kOTFlowErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "received, the function returns with the result kOTFlowErr or a number",
+      "line": 5223
+    },
+    "kOTFourByteOptionSize": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "= kOTFourByteOptionSize;",
+      "line": 11233
+    },
+    "kOTFraming8022": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTFraming8022",
+      "line": 32026
+    },
+    "kOTFraming8023": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTFraming8023",
+      "line": 32019
+    },
+    "kOTFramingAsync": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTFramingAsync constant 763",
+      "line": 46636
+    },
+    "kOTFramingEthernet": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTFramingEthernet",
+      "line": 32005
+    },
+    "kOTFramingEthernetIPX": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTFramingEthernetIPX",
+      "line": 32012
+    },
+    "kOTFramingHDLC": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTFramingHDLC constant 763",
+      "line": 46639
+    },
+    "kOTFramingSDLC": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTFramingSDLC constant 763",
+      "line": 46641
+    },
+    "kOTGeoPort": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTGeoPort",
+      "line": 31693
+    },
+    "kOTGetMiscellaneousEvents": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "provider reference value, the constant kOTGetMiscellaneousEvents as its",
+      "line": 15588
+    },
+    "kOTIPSingleLinkMultihomingVersion": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "than or equal to kOTIPSingleLinkMultihomingVersion, you can use this feature.",
+      "line": 14269
+    },
+    "kOTIRTalkDevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTIRTalkDevice",
+      "line": 32109
+    },
+    "kOTISDNDevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTISDNDevice",
+      "line": 32111
+    },
+    "kOTIndOutErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "and returns the kOTIndOutErr result.",
+      "line": 26798
+    },
+    "kOTInvalidConfigurationPtr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "#define kOTInvalidConfigurationPtr ((OTConfiguration*)-1L)",
+      "line": 20366
+    },
+    "kOTInvalidEndpointRef": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "EndpointRef ep = kOTInvalidEndpointRef;",
+      "line": 4398
+    },
+    "kOTInvalidMapperRef": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "nbpMapper = kOTInvalidMapperRef; /* for error checking */",
+      "line": 10219
+    },
+    "kOTInvalidPortRef": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTInvalidPortRef",
+      "line": 31632
+    },
+    "kOTInvalidProviderRef": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "#define kOTInvalidProviderRef((ProviderRef)(0)",
+      "line": 21043
+    },
+    "kOTIrDADevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTIrDADevice",
+      "line": 32147
+    },
+    "kOTLastBusIndex": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTLastBusIndex",
+      "line": 31696
+    },
+    "kOTLastDeviceIndex": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTLastDeviceIndex",
+      "line": 32152
+    },
+    "kOTLastOtherNumber": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTLastOtherNumber",
+      "line": 32154
+    },
+    "kOTLastSlotNumber": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTLastSlotNumber",
+      "line": 32153
+    },
+    "kOTLocalTalkDevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTLocalTalkDevice",
+      "line": 32108
+    },
+    "kOTLookErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "if (err == kOTLookErr)",
+      "line": 4497
+    },
+    "kOTMDEVDevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTMDEVDevice",
+      "line": 32107
+    },
+    "kOTModemDevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTModemDevice",
+      "line": 32118
+    },
+    "kOTMotherboardBus": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTMotherboardBus",
+      "line": 31690
+    },
+    "kOTNOError": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "noti\u00deer when the operation completes. The result parameter is kOTNOError if",
+      "line": 24540
+    },
+    "kOTNetbufDataIsOTBufferStar": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "2. Pass the constant kOTNetbufDataIsOTBufferStar for the nbytes parameter of",
+      "line": 13073
+    },
+    "kOTNewPortRegistered": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTNewPortRegistered to keep you informed. For information about port",
+      "line": 12226
+    },
+    "kOTNoAddressErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTNoAddressErr result.",
+      "line": 24291
+    },
+    "kOTNoDataErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "\u25a0 kOTNoDataErr, indicating that data has not yet arrived",
+      "line": 5592
+    },
+    "kOTNoDeviceType": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTNoDeviceType",
+      "line": 32105
+    },
+    "kOTNoDisconnectErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "with the kOTNoDisconnectErr result. If there is a disconnection request pending,",
+      "line": 28027
+    },
+    "kOTNoErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "OTConnect function returns with kOTNoErr. If the passive peer rejects the",
+      "line": 7810
+    },
+    "kOTNoError": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "(kOTNoError) or a negative number indicating an error code; a result of type",
+      "line": 5347
+    },
+    "kOTNoMemoryConfigurationPtr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "#define kOTNoMemoryConfigurationPtr ((OTConfiguration*)0)",
+      "line": 20367
+    },
+    "kOTNoParity": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "The parity option selects the parity to be used. Legal values are kOTNoParity",
+      "line": 19834
+    },
+    "kOTNoReleaseErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "with the kOTNoReleaseErr result. If there is a disconnection request pending, the",
+      "line": 28141
+    },
+    "kOTNoUDErrErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTNoUDErrErr",
+      "line": 42232
+    },
+    "kOTNotFoundErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTNotFoundErr",
+      "line": 42679
+    },
+    "kOTNotSupportedErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "call this function for a TCP/IP mapper, it will return the kOTNotSupportedErr",
+      "line": 15067
+    },
+    "kOTNuBus": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "OTPortRef ref = OTCreatePortRef(kOTNuBus, kOTEthernetDevice, 13, 0);",
+      "line": 12042
+    },
+    "kOTOddParity": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "0), kOTOddParity(1), and kOTEvenParity(2). The default value is kOTNoParity.",
+      "line": 19835
+    },
+    "kOTOptionHeaderSize": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "currentOption->len - kOTOptionHeaderSize,",
+      "line": 11412
+    },
+    "kOTOutOfMemoryErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTOutOfMemoryErr",
+      "line": 42740
+    },
+    "kOTOutStateErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTOutStateErr",
+      "line": 5427
+    },
+    "kOTPCCardBus": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "OTCreatePortRef(kOTPCCardBus, devType, slot, other)",
+      "line": 32909
+    },
+    "kOTPCCordBus": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPCCordBus",
+      "line": 31694
+    },
+    "kOTPCIBus": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPCIBus",
+      "line": 31692
+    },
+    "kOTPCMCIABus": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPCMCIABus",
+      "line": 31717
+    },
+    "kOTPPPDevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPPPDevice",
+      "line": 32117
+    },
+    "kOTPortAutoConnects": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPortAutoConnects",
+      "line": 31952
+    },
+    "kOTPortCanArbitrate": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPortCanArbitrate",
+      "line": 31939
+    },
+    "kOTPortCanYield": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "the port to you. (Check the kOTPortCanYield bit in the port record\u00d5s \u00dfags \u00deeld to",
+      "line": 12176
+    },
+    "kOTPortDisabled": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "events, you would receive the events such as kOTPortDisabled, kOTPortEnabled,",
+      "line": 12224
+    },
+    "kOTPortEnabled": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPortEnabled",
+      "line": 31749
+    },
+    "kOTPortHasDiedErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "reasons typically are kOTPortHasDiedErr,",
+      "line": 21433
+    },
+    "kOTPortIsActive": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPortIsActive",
+      "line": 31866
+    },
+    "kOTPortIsAlias": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "(portRecord.fInfoFlags & kOTPortIsAlias) == 0) {",
+      "line": 12131
+    },
+    "kOTPortIsDLPI": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPortIsDLPI",
+      "line": 31918
+    },
+    "kOTPortIsDisabled": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPortIsDisabled",
+      "line": 31886
+    },
+    "kOTPortIsOffline": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPortIsOffline",
+      "line": 31899
+    },
+    "kOTPortIsPrivate": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPortIsPrivate",
+      "line": 31969
+    },
+    "kOTPortIsSystemRegistered": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPortIsSystemRegistered",
+      "line": 31961
+    },
+    "kOTPortIsTPI": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPortIsTPI",
+      "line": 31925
+    },
+    "kOTPortIsTransitory": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPortIsTransitory",
+      "line": 31945
+    },
+    "kOTPortIsUnavailable": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPortIsUnavailable",
+      "line": 31893
+    },
+    "kOTPortLostConnection": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPortLostConnection",
+      "line": 43009
+    },
+    "kOTPortOffline": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPortOffline, kOTPortOnline, kOTClosePortRequest, kOTYieldPortRequest, and",
+      "line": 12225
+    },
+    "kOTPortWasEjectedErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPortWasEjectedErr, or kOTPortLostConnectionErr. At",
+      "line": 21434
+    },
+    "kOTPortoffLine": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTPortoffLine",
+      "line": 31750
+    },
+    "kOTProtocolErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTProtocolErr",
+      "line": 5425
+    },
+    "kOTProviderIsClosed": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "If you get a kOTProviderIsClosed event, the service underlying your provider",
+      "line": 5985
+    },
+    "kOTProviderIsDisconnected": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTProviderIsDisconnected and kOTProviderIsReconnected events when the",
+      "line": 12197
+    },
+    "kOTProviderIsReconnected": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTProviderIsReconnected",
+      "line": 21109
+    },
+    "kOTProviderMismatchErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTProviderMismatchErr",
+      "line": 42261
+    },
+    "kOTProviderWillClose": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "example, kOTProviderWillClose.",
+      "line": 5316
+    },
+    "kOTPseudoDevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "type, designated with the constant kOTPseudoDevice, that identi\u00dees unknown or",
+      "line": 11930
+    },
+    "kOTQFullErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTQFullErr",
+      "line": 42265
+    },
+    "kOTResAddressErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTResAddressErr",
+      "line": 42269
+    },
+    "kOTResQLenErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTResQLenErr",
+      "line": 42273
+    },
+    "kOTSLIPDevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSLIPDevice",
+      "line": 32116
+    },
+    "kOTSMDSDevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSMDSDevice",
+      "line": 32113
+    },
+    "kOTSerialBreakOn": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialBreakOn",
+      "line": 41131
+    },
+    "kOTSerialCTLHold": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialCTLHold",
+      "line": 41182
+    },
+    "kOTSerialCTSInputHandshake": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialCTSInputHandshake",
+      "line": 19934
+    },
+    "kOTSerialDTRNegated": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialDTRNegated",
+      "line": 41162
+    },
+    "kOTSerialDTROutputHandshake": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialDTROutputHandshake",
+      "line": 19940
+    },
+    "kOTSerialDefaultBaudRate": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialDefaultBaudRate",
+      "line": 40953
+    },
+    "kOTSerialDefaultDataBits": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialDefaultDataBits",
+      "line": 40954
+    },
+    "kOTSerialDefaultHandshake": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialDefaultHandshake",
+      "line": 40957
+    },
+    "kOTSerialDefaultOffChar": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialDefaultOffChar",
+      "line": 40959
+    },
+    "kOTSerialDefaultOnChar": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialDefaultOnChar",
+      "line": 40958
+    },
+    "kOTSerialDefaultParity": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialDefaultParity",
+      "line": 40956
+    },
+    "kOTSerialDefaultRcvBufSize": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialDefaultRcvBufSize",
+      "line": 40988
+    },
+    "kOTSerialDefaultRcvLoWat": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialDefaultRcvLoWat",
+      "line": 40990
+    },
+    "kOTSerialDefaultRcvTimeout": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialDefaultRcvTimeout",
+      "line": 40991
+    },
+    "kOTSerialDefaultSndBufSize": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialDefaultSndBufSize",
+      "line": 40960
+    },
+    "kOTSerialDefaultSndLoWat": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialDefaultSndLoWat",
+      "line": 40989
+    },
+    "kOTSerialDefaultStopBits": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialDefaultStopBits",
+      "line": 40955
+    },
+    "kOTSerialDevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "if (deviceType == kOTSerialDevice &&",
+      "line": 12130
+    },
+    "kOTSerialEvenParity": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialEvenParity",
+      "line": 41106
+    },
+    "kOTSerialForceXOffFalse": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialForceXOffFalse with this command clears the XOFF state, which is",
+      "line": 19781
+    },
+    "kOTSerialForceXOffTrue": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "character. Using a value of kOTSerialForceXOffTrue with the",
+      "line": 19778
+    },
+    "kOTSerialFramingAsync": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialFramingAsync",
+      "line": 40866
+    },
+    "kOTSerialFramingAsyncPackets": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialFramingAsyncPackets = 0x08, /* Supports async packet serial mode */};",
+      "line": 40872
+    },
+    "kOTSerialFramingErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialFramingErr",
+      "line": 41149
+    },
+    "kOTSerialFramingHDLC": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialFramingHDLC",
+      "line": 40868
+    },
+    "kOTSerialFramingSDLC": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialFramingSDLC",
+      "line": 40870
+    },
+    "kOTSerialNoParity": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "= kOTSerialNoParity, /* no parity */",
+      "line": 40972
+    },
+    "kOTSerialOddParity": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialOddParity",
+      "line": 41100
+    },
+    "kOTSerialOutputBreakOn": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialOutputBreakOn",
+      "line": 41196
+    },
+    "kOTSerialOverrunErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialOverrunErr",
+      "line": 41143
+    },
+    "kOTSerialParityErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialParityErr",
+      "line": 41137
+    },
+    "kOTSerialSendXOffAlways": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialSendXOffAlways",
+      "line": 40928
+    },
+    "kOTSerialSendXOffIfXOnTrue": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialSendXOffIfXOnTrue",
+      "line": 40929
+    },
+    "kOTSerialSendXOnAlways": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialSendXOnAlways",
+      "line": 40918
+    },
+    "kOTSerialSendXOnIfXOffTrue": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialSendXOnIfXOffTrue",
+      "line": 40919
+    },
+    "kOTSerialSetBreakOff": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialSetBreakOff",
+      "line": 40888
+    },
+    "kOTSerialSetBreakOn": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialSetBreakOn and kOTSerialSetBreakOff or you can use a number",
+      "line": 19772
+    },
+    "kOTSerialSetDTROff": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "with a value of kOTSerialSetDTROff. Likewise, you can use the",
+      "line": 19770
+    },
+    "kOTSerialSetDTROn": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialSetDTROn with the I_SetSerialDTR command and you can negate it",
+      "line": 19769
+    },
+    "kOTSerialSwOverRunErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialSwOverRunErr",
+      "line": 41125
+    },
+    "kOTSerialXOffHold": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialXOffHold",
+      "line": 41189
+    },
+    "kOTSerialXOffSent": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialXOffSent",
+      "line": 41155
+    },
+    "kOTSerialXOnOffInputHandshake": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialXOnOffInputHandshake",
+      "line": 19922
+    },
+    "kOTSerialXOnOffOutputHandshake": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSerialXOnOffOutputHandshake",
+      "line": 19928
+    },
+    "kOTStateChangeErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTStateChangeErr",
+      "line": 5428
+    },
+    "kOTStructureTypeErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTStructureTypeErr",
+      "line": 42224
+    },
+    "kOTSyncIdle": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "noti\u00deer, which calls printf periodically in response to a kOTSyncIdle event. (The",
+      "line": 10144
+    },
+    "kOTSyncIdleEvent": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "case kOTSyncIdleEvent:",
+      "line": 4365
+    },
+    "kOTSyncIdleEvents": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "Transport to send kOTSyncIdleEvents to this endpoint; the noti\u00deer responds to",
+      "line": 4672
+    },
+    "kOTSysErrorErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTSysErrorErr",
+      "line": 42285
+    },
+    "kOTTokenRingDevice": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTTokenRingDevice",
+      "line": 32110
+    },
+    "kOTUnknownBusPort": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTUnknownBusPort",
+      "line": 31689
+    },
+    "kOTUserRequestedErr": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "denial (normally you use the kOTUserRequestedErr error).",
+      "line": 32317
+    },
+    "kOTXOnOffInputHandshake": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTXOnOffInputHandshake constant 358, 767",
+      "line": 46747
+    },
+    "kOTXOnOffOutputHandshake": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTXOnOffOutputHandshake constant 358, 767",
+      "line": 46748
+    },
+    "kOTYieldPortRequest": {
+      "book": "NetworkingOpenTransport.txt",
+      "context": "kOTYieldPortRequest event to each provider of any registered clients for that",
+      "line": 12178
+    }
+  }
+}

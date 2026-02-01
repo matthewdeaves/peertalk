@@ -1,0 +1,22 @@
+services:
+  peertalk-dev:
+    # Use pre-built image from Docker Hub (faster)
+    # To build locally instead: docker compose build
+    image: mndeaves/peertalk:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: peertalk-dev
+    volumes:
+      # Mount project directory
+      - ..:/workspace
+      # Persist Python venv across container restarts
+      - peertalk-venv:/workspace/tools/.venv
+    environment:
+      - RETRO68=/opt/Retro68-build/toolchain
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+
+volumes:
+  peertalk-venv:

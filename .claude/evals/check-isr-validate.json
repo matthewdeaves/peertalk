@@ -1,0 +1,12 @@
+{
+  "skills": ["check-isr"],
+  "query": "Validate ISR safety for MacTCP code",
+  "files": ["src/mactcp/"],
+  "expected_behavior": [
+    "Detects callback functions by naming pattern (_asr, _notifier, _completion) or signatures",
+    "Scans for forbidden calls: malloc, memcpy, TickCount, printf, BlockMove, etc.",
+    "Reports violations with file path, line number, callback name, and forbidden function",
+    "Suggests correct ISR-safe pattern for each violation",
+    "Confirms code is ISR-safe if no violations found"
+  ]
+}

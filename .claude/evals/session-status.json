@@ -1,0 +1,11 @@
+{
+  "skills": ["session"],
+  "query": "What's the project status?",
+  "expected_behavior": [
+    "Reads all plan files using Grep (not Read)",
+    "Extracts phase numbers, titles, and status from plan files",
+    "Parses Session Scope Tables to count sessions by status",
+    "Displays overall completion percentage",
+    "Shows phase-by-phase progress table with session counts"
+  ]
+}

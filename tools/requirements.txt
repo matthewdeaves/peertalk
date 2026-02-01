@@ -1,0 +1,8 @@
+# PeerTalk Tools - Python Dependencies
+#
+# Note: The doc-oracle is now a subagent that searches books directly.
+# These dependencies are for other tools (validators, navigator, testing).
+
+# CLI utilities
+click>=8.0                      # CLI interface
+rich>=13.0                      # Pretty terminal output
