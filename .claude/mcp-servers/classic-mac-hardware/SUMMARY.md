@@ -39,11 +39,16 @@ Following [MCP Specification](https://modelcontextprotocol.io/specification/2025
 - `mac://{machine}/files/{path}` - File listings
 
 **Tools** (actions, require consent):
-- `deploy_binary` - Upload via FTP
-- `fetch_logs` - Download via FTP
-- `execute_binary` - ⚠️ Placeholder (returns manual instructions)
-- `cleanup_machine` - Remove old files
 - `list_machines` - Show configured hardware
+- `test_connection` - Test FTP and LaunchAPPL connectivity
+- `list_directory` - Browse files and directories
+- `create_directory` - Create directories via FTP
+- `delete_files` - Delete files/directories recursively
+- `deploy_binary` - Upload compiled binaries (.bin and .dsk)
+- `fetch_logs` - Download PT_Log output
+- `execute_binary` - Run binaries via LaunchAPPL TCP (port 1984)
+- `cleanup_machine` - Remove files (old_files/binaries/logs/all/specific_path)
+- `reload_config` - Hot-reload machines.json (auto-reloads on file change)
 
 **Prompts** (workflow templates):
 - `deploy-and-test` - Full test cycle
@@ -60,6 +65,8 @@ Following [MCP Security Best Practices](https://modelcontextprotocol.io/specific
 4. **Access Controls**: Separate FTP credentials per machine, environment variables for passwords
 
 ## Configuration
+
+**Hot-Reload:** The server automatically detects changes to `machines.json` and reloads on every operation - no restart needed!
 
 **User-specific** (not committed to git):
 ```bash
@@ -179,21 +186,15 @@ python .claude/mcp-servers/classic-mac-hardware/server.py
 
 ## Status
 
-✅ **Production-ready design**
+✅ **Production-ready and battle-tested**
 - Full MCP spec compliance
 - Security best practices
 - Token-efficient code execution pattern
 - Multi-developer configuration support
-
-⚠️ **Requires testing**
-- RumpusFTP server integration
-- Passive mode FTP
-- Cross-platform log parsing
-- Error handling edge cases
-
-## Next Steps
-
-1. Test with real RumpusFTP servers on Classic Macs
-2. Add remote execution via AppleScript (optional)
-3. Create optional skills for manual deployment
-4. Add mock FTP server for development without hardware
+- Hot-reload configuration (no restarts)
+- Comprehensive file operations (list/create/delete directories)
+- Remote execution via LaunchAPPL TCP
+- Connection testing (FTP + LaunchAPPL)
+- Tested with RumpusFTP on System 7.5.3 (MacTCP) and 7.6.1 (Open Transport)
+- Passive mode FTP working
+- Dual-format deployment (.bin + .dsk)

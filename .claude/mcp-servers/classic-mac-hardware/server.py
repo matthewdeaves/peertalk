@@ -38,7 +38,9 @@ class ClassicMacHardwareServer:
     def __init__(self, config_path: str):
         """Initialize with machines configuration."""
         self.config_path = config_path
-        self.machines = self._load_config()
+        self.machines = {}
+        self._config_mtime = 0
+        self._reload_if_changed()  # Initial load
         self.server = Server("classic-mac-hardware")
 
         # Register handlers
@@ -48,6 +50,23 @@ class ClassicMacHardwareServer:
         self.server.call_tool()(self.call_tool)
         self.server.list_prompts()(self.list_prompts)
         self.server.get_prompt()(self.get_prompt)
+
+    def _reload_if_changed(self) -> bool:
+        """
+        Hot-reload configuration if machines.json has changed.
+        Returns True if config was reloaded.
+        """
+        try:
+            current_mtime = os.path.getmtime(self.config_path)
+            if current_mtime > self._config_mtime:
+                self.machines = self._load_config()
+                self._config_mtime = current_mtime
+                print(f"✓ Reloaded config: {len(self.machines)} machines", file=sys.stderr)
+                return True
+            return False
+        except Exception as e:
+            print(f"⚠ Config reload failed: {e}", file=sys.stderr)
+            return False
 
     def _load_config(self) -> dict:
         """Load and validate machines configuration."""
@@ -94,6 +113,7 @@ class ClassicMacHardwareServer:
 
         Resources follow URI scheme: mac://{machine}/{type}/{identifier}
         """
+        self._reload_if_changed()  # Hot-reload config
         resources = []
 
         for machine_id, machine in self.machines.items():
@@ -129,6 +149,8 @@ class ClassicMacHardwareServer:
 
         Returns data without side effects (read-only).
         """
+        self._reload_if_changed()  # Hot-reload config
+
         # Parse URI: mac://{machine}/{type}/{identifier}
         if not uri.startswith("mac://"):
             raise ValueError(f"Invalid URI scheme: {uri}")
@@ -209,6 +231,97 @@ class ClassicMacHardwareServer:
         """
         return [
             Tool(
+                name="list_machines",
+                description="List all configured Classic Mac machines",
+                inputSchema={
+                    "type": "object",
+                    "properties": {}
+                }
+            ),
+            Tool(
+                name="test_connection",
+                description="Test FTP and LaunchAPPL connectivity to Classic Mac",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "machine": {
+                            "type": "string",
+                            "description": f"Machine ID: {', '.join(self.machines.keys())}",
+                            "enum": list(self.machines.keys())
+                        },
+                        "test_launchappl": {
+                            "type": "boolean",
+                            "description": "Test LaunchAPPL TCP connection (port 1984)",
+                            "default": True
+                        }
+                    },
+                    "required": ["machine"]
+                }
+            ),
+            Tool(
+                name="list_directory",
+                description="List files and directories on Classic Mac via FTP",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "machine": {
+                            "type": "string",
+                            "description": f"Machine ID: {', '.join(self.machines.keys())}",
+                            "enum": list(self.machines.keys())
+                        },
+                        "path": {
+                            "type": "string",
+                            "description": "Directory path (e.g., /Applications/ or / for root)",
+                            "default": "/"
+                        }
+                    },
+                    "required": ["machine"]
+                }
+            ),
+            Tool(
+                name="create_directory",
+                description="Create directory on Classic Mac via FTP",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "machine": {
+                            "type": "string",
+                            "description": f"Machine ID: {', '.join(self.machines.keys())}",
+                            "enum": list(self.machines.keys())
+                        },
+                        "path": {
+                            "type": "string",
+                            "description": "Directory path to create (e.g., /Applications/PeerTalk/)"
+                        }
+                    },
+                    "required": ["machine", "path"]
+                }
+            ),
+            Tool(
+                name="delete_files",
+                description="Delete files or directories on Classic Mac via FTP (requires user consent)",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "machine": {
+                            "type": "string",
+                            "description": f"Machine ID: {', '.join(self.machines.keys())}",
+                            "enum": list(self.machines.keys())
+                        },
+                        "path": {
+                            "type": "string",
+                            "description": "Path to delete (file or directory)"
+                        },
+                        "recursive": {
+                            "type": "boolean",
+                            "description": "Recursively delete directory contents",
+                            "default": False
+                        }
+                    },
+                    "required": ["machine", "path"]
+                }
+            ),
+            Tool(
                 name="deploy_binary",
                 description="Deploy compiled binary to Classic Mac via FTP (requires user consent)",
                 inputSchema={
@@ -259,7 +372,7 @@ class ClassicMacHardwareServer:
             ),
             Tool(
                 name="execute_binary",
-                description="Run deployed binary on Classic Mac (requires user consent)",
+                description="Run deployed binary on Classic Mac via LaunchAPPL (requires user consent)",
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -273,6 +386,11 @@ class ClassicMacHardwareServer:
                             "description": "Platform: mactcp, opentransport, appletalk",
                             "enum": ["mactcp", "opentransport", "appletalk"]
                         },
+                        "binary_path": {
+                            "type": "string",
+                            "description": "Local path to binary to execute (e.g., build/mactcp/PeerTalk.bin)",
+                            "default": ""
+                        },
                         "args": {
                             "type": "array",
                             "items": {"type": "string"},
@@ -285,7 +403,7 @@ class ClassicMacHardwareServer:
             ),
             Tool(
                 name="cleanup_machine",
-                description="Remove old binaries and logs from Classic Mac (requires user consent)",
+                description="Clean files and directories on Classic Mac (requires user consent)",
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -294,9 +412,20 @@ class ClassicMacHardwareServer:
                             "description": f"Machine ID: {', '.join(self.machines.keys())}",
                             "enum": list(self.machines.keys())
                         },
+                        "scope": {
+                            "type": "string",
+                            "description": "What to clean",
+                            "enum": ["old_files", "binaries", "logs", "all", "specific_path"],
+                            "default": "old_files"
+                        },
+                        "specific_path": {
+                            "type": "string",
+                            "description": "Path to clean if scope=specific_path (e.g., /Applications/)",
+                            "default": "/"
+                        },
                         "keep_latest": {
                             "type": "boolean",
-                            "description": "Keep most recent binary and log",
+                            "description": "Keep most recent files when cleaning (only for old_files scope)",
                             "default": True
                         }
                     },
@@ -304,8 +433,8 @@ class ClassicMacHardwareServer:
                 }
             ),
             Tool(
-                name="list_machines",
-                description="List all configured Classic Mac machines",
+                name="reload_config",
+                description="Reload machines.json configuration without restarting server",
                 inputSchema={
                     "type": "object",
                     "properties": {}
@@ -315,6 +444,8 @@ class ClassicMacHardwareServer:
 
     async def call_tool(self, name: str, arguments: dict) -> list[TextContent]:
         """Execute tool with side effects."""
+        self._reload_if_changed()  # Hot-reload config
+
         if name == "list_machines":
             machines_info = []
             for machine_id, machine in self.machines.items():
@@ -330,6 +461,180 @@ class ClassicMacHardwareServer:
                 type="text",
                 text=json.dumps(machines_info, indent=2)
             )]
+
+        elif name == "reload_config":
+            old_count = len(self.machines)
+            self.machines = self._load_config()
+            self._config_mtime = os.path.getmtime(self.config_path)
+            new_count = len(self.machines)
+
+            return [TextContent(
+                type="text",
+                text=f"✅ Configuration reloaded (forced)\n\n" +
+                     f"Machines: {old_count} → {new_count}\n\n" +
+                     json.dumps(list(self.machines.keys()), indent=2) +
+                     f"\n\nNote: Config is automatically hot-reloaded when machines.json changes."
+            )]
+
+        elif name == "test_connection":
+            machine_id = arguments["machine"]
+            test_launchappl = arguments.get("test_launchappl", True)
+            machine = self.machines[machine_id]
+
+            results = []
+
+            # Test FTP connection
+            try:
+                ftp = self._connect_ftp(machine_id)
+                ftp.quit()
+                results.append(f"✓ FTP: Connected to {machine['ftp']['host']}:{machine['ftp'].get('port', 21)}")
+            except Exception as e:
+                results.append(f"✗ FTP: Failed - {str(e)}")
+                return [TextContent(type="text", text="\n".join(results))]
+
+            # Test LaunchAPPL connection if requested
+            if test_launchappl and machine.get('launchappl', {}).get('enabled'):
+                import socket
+                try:
+                    port = machine['launchappl'].get('port', 1984)
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(2)
+                    result = sock.connect_ex((machine['ftp']['host'], port))
+                    sock.close()
+
+                    if result == 0:
+                        results.append(f"✓ LaunchAPPL: Listening on port {port}")
+                    else:
+                        results.append(f"✗ LaunchAPPL: Not listening on port {port}")
+                except Exception as e:
+                    results.append(f"✗ LaunchAPPL: Test failed - {str(e)}")
+
+            return [TextContent(
+                type="text",
+                text=f"Connection test for {machine['name']}:\n\n" + "\n".join(results)
+            )]
+
+        elif name == "list_directory":
+            machine_id = arguments["machine"]
+            path = arguments.get("path", "/")
+
+            ftp = self._connect_ftp(machine_id)
+            machine = self.machines[machine_id]
+
+            try:
+                ftp.cwd(path)
+                items = []
+                ftp.retrlines('LIST', items.append)
+
+                return [TextContent(
+                    type="text",
+                    text=f"Directory listing: {machine['name']}:{path}\n\n" + "\n".join(items)
+                )]
+            finally:
+                ftp.quit()
+
+        elif name == "create_directory":
+            machine_id = arguments["machine"]
+            path = arguments["path"]
+
+            ftp = self._connect_ftp(machine_id)
+            machine = self.machines[machine_id]
+
+            try:
+                ftp.mkd(path)
+                return [TextContent(
+                    type="text",
+                    text=f"✅ Created directory: {machine['name']}:{path}"
+                )]
+            except Exception as e:
+                return [TextContent(
+                    type="text",
+                    text=f"✗ Failed to create directory: {str(e)}"
+                )]
+            finally:
+                ftp.quit()
+
+        elif name == "delete_files":
+            machine_id = arguments["machine"]
+            path = arguments["path"]
+            recursive = arguments.get("recursive", False)
+
+            ftp = self._connect_ftp(machine_id)
+            machine = self.machines[machine_id]
+
+            try:
+                deleted = []
+
+                if recursive:
+                    # Recursively delete directory and contents
+                    def delete_recursive(ftp, dir_path):
+                        try:
+                            # Try to CWD - if it works, it's a directory
+                            original_dir = ftp.pwd()
+                            ftp.cwd(dir_path)
+
+                            # List contents
+                            items = []
+                            ftp.retrlines('LIST', items.append)
+
+                            for item in items:
+                                parts = item.split(None, 8)
+                                if len(parts) < 9:
+                                    continue
+                                name = parts[8]
+                                if name in ['.', '..']:
+                                    continue
+
+                                item_path = name  # Relative to current dir
+
+                                # Check if directory (first char is 'd')
+                                if item.startswith('d'):
+                                    delete_recursive(ftp, item_path)
+                                else:
+                                    try:
+                                        ftp.delete(item_path)
+                                        deleted.append(f"{dir_path}/{name}")
+                                    except:
+                                        pass
+
+                            # Go back and remove the directory
+                            ftp.cwd(original_dir)
+                            try:
+                                ftp.rmd(dir_path)
+                                deleted.append(f"{dir_path}/ (directory)")
+                            except:
+                                pass
+                        except:
+                            # Not a directory, try to delete as file
+                            try:
+                                ftp.delete(dir_path)
+                                deleted.append(dir_path)
+                            except:
+                                pass
+
+                    delete_recursive(ftp, path)
+                else:
+                    # Delete single file/empty directory
+                    try:
+                        ftp.delete(path)
+                        deleted.append(path)
+                    except:
+                        try:
+                            ftp.rmd(path)
+                            deleted.append(f"{path}/ (directory)")
+                        except Exception as e:
+                            return [TextContent(
+                                type="text",
+                                text=f"✗ Failed to delete {path}: {str(e)}"
+                            )]
+
+                return [TextContent(
+                    type="text",
+                    text=f"✅ Deleted from {machine['name']}:\n\n" + "\n".join(deleted) +
+                         f"\n\nTotal: {len(deleted)} items"
+                )]
+            finally:
+                ftp.quit()
 
         elif name == "deploy_binary":
             machine_id = arguments["machine"]
@@ -485,6 +790,8 @@ class ClassicMacHardwareServer:
 
         elif name == "cleanup_machine":
             machine_id = arguments["machine"]
+            scope = arguments.get("scope", "old_files")
+            specific_path = arguments.get("specific_path", "/")
             keep_latest = arguments.get("keep_latest", True)
 
             ftp = self._connect_ftp(machine_id)
@@ -493,24 +800,158 @@ class ClassicMacHardwareServer:
             try:
                 removed = []
 
-                # Clean binaries
-                binary_path = machine['ftp']['paths']['binaries']
-                ftp.cwd(binary_path)
-                files = []
-                ftp.retrlines('LIST', files.append)
+                if scope == "old_files":
+                    # Clean .old files from binaries and logs directories
+                    for path_key in ['binaries', 'logs']:
+                        if path_key in machine['ftp']['paths']:
+                            try:
+                                path = machine['ftp']['paths'][path_key]
+                                ftp.cwd(path)
+                                files = []
+                                ftp.retrlines('LIST', files.append)
 
-                # Remove old binaries (keep latest if requested)
-                # Simplified: remove all .old files
-                for file_line in files:
-                    filename = file_line.split()[-1]
-                    if filename.endswith('.old'):
-                        ftp.delete(filename)
-                        removed.append(filename)
+                                for file_line in files:
+                                    filename = file_line.split()[-1]
+                                    if filename.endswith('.old') or filename.endswith('.bak'):
+                                        ftp.delete(filename)
+                                        removed.append(f"{path}{filename}")
+                            except:
+                                pass
+
+                elif scope == "binaries":
+                    # Clean entire binaries directory
+                    binary_path = machine['ftp']['paths'].get('binaries', '/Applications/PeerTalk/')
+                    try:
+                        ftp.cwd(binary_path)
+                        files = []
+                        ftp.retrlines('LIST', files.append)
+
+                        for file_line in files:
+                            filename = file_line.split()[-1]
+                            if filename not in ['.', '..']:
+                                try:
+                                    ftp.delete(filename)
+                                    removed.append(f"{binary_path}{filename}")
+                                except:
+                                    pass
+                    except:
+                        pass
+
+                elif scope == "logs":
+                    # Clean logs directory
+                    logs_path = machine['ftp']['paths'].get('logs', '/Documents/PeerTalk-Logs/')
+                    try:
+                        ftp.cwd(logs_path)
+                        files = []
+                        ftp.retrlines('LIST', files.append)
+
+                        for file_line in files:
+                            filename = file_line.split()[-1]
+                            if filename not in ['.', '..']:
+                                try:
+                                    ftp.delete(filename)
+                                    removed.append(f"{logs_path}{filename}")
+                                except:
+                                    pass
+                    except:
+                        pass
+
+                elif scope == "all":
+                    # Clean everything (FTP root)
+                    ftp.cwd('/')
+                    items = []
+                    ftp.retrlines('LIST', items.append)
+
+                    def delete_recursive(ftp, dir_path, from_root=False):
+                        try:
+                            original_dir = ftp.pwd()
+                            ftp.cwd(dir_path)
+
+                            items = []
+                            ftp.retrlines('LIST', items.append)
+
+                            for item in items:
+                                parts = item.split(None, 8)
+                                if len(parts) < 9:
+                                    continue
+                                name = parts[8]
+                                if name in ['.', '..']:
+                                    continue
+
+                                if item.startswith('d'):
+                                    delete_recursive(ftp, name)
+                                else:
+                                    try:
+                                        ftp.delete(name)
+                                        removed.append(f"{dir_path}/{name}")
+                                    except:
+                                        pass
+
+                            ftp.cwd(original_dir)
+                            if not from_root:
+                                try:
+                                    ftp.rmd(dir_path)
+                                    removed.append(f"{dir_path}/ (directory)")
+                                except:
+                                    pass
+                        except:
+                            pass
+
+                    for item in items:
+                        parts = item.split(None, 8)
+                        if len(parts) < 9:
+                            continue
+                        name = parts[8]
+                        if name in ['.', '..']:
+                            continue
+
+                        if item.startswith('d'):
+                            delete_recursive(ftp, name, from_root=True)
+                            try:
+                                ftp.rmd(name)
+                                removed.append(f"/{name}/ (directory)")
+                            except:
+                                pass
+                        else:
+                            try:
+                                ftp.delete(name)
+                                removed.append(f"/{name}")
+                            except:
+                                pass
+
+                elif scope == "specific_path":
+                    # Clean specific path
+                    try:
+                        ftp.cwd(specific_path)
+                        files = []
+                        ftp.retrlines('LIST', files.append)
+
+                        for file_line in files:
+                            parts = file_line.split(None, 8)
+                            if len(parts) < 9:
+                                continue
+                            filename = parts[8]
+                            if filename not in ['.', '..']:
+                                if file_line.startswith('d'):
+                                    # Directory - skip for now
+                                    pass
+                                else:
+                                    try:
+                                        ftp.delete(filename)
+                                        removed.append(f"{specific_path}{filename}")
+                                    except:
+                                        pass
+                    except Exception as e:
+                        return [TextContent(
+                            type="text",
+                            text=f"✗ Failed to clean {specific_path}: {str(e)}"
+                        )]
 
                 return [TextContent(
                     type="text",
-                    text=f"Cleaned {machine['name']}:\nRemoved {len(removed)} files\n" +
-                         '\n'.join(removed)
+                    text=f"✅ Cleaned {machine['name']} (scope: {scope}):\n\n" +
+                         ('\n'.join(removed) if removed else "No files to remove") +
+                         f"\n\nTotal: {len(removed)} items"
                 )]
 
             finally:

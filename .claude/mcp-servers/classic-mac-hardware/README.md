@@ -34,12 +34,18 @@ Tools perform actions with side effects, require explicit consent.
 
 | Tool | Parameters | Purpose |
 |------|------------|---------|
-| `deploy_binary` | machine, platform, binary_path | Upload compiled binary via FTP |
-| `fetch_logs` | machine, session_id?, destination? | Download logs via FTP |
-| `execute_binary` | machine, platform, args? | ⚠️ Not yet implemented - returns manual instructions |
-| `cleanup_machine` | machine, keep_latest? | Remove old binaries and logs |
+| `list_machines` | - | List all configured Classic Mac machines |
+| `test_connection` | machine, test_launchappl? | Test FTP and LaunchAPPL connectivity |
+| `list_directory` | machine, path? | List files and directories via FTP |
+| `create_directory` | machine, path | Create directory via FTP |
+| `delete_files` | machine, path, recursive? | Delete files/directories via FTP |
+| `deploy_binary` | machine, platform, binary_path | Upload compiled binary via FTP (.bin and .dsk) |
+| `fetch_logs` | machine, session_id?, destination? | Download PT_Log output via FTP |
+| `execute_binary` | machine, platform, binary_path?, args? | Execute binary via LaunchAPPL TCP |
+| `cleanup_machine` | machine, scope?, specific_path?, keep_latest? | Clean files (old_files/binaries/logs/all/specific_path) |
+| `reload_config` | - | Reload machines.json without restarting |
 
-**Note:** `execute_binary` currently returns instructions for manual execution. Remote execution via AppleScript may be added in the future.
+**Security:** All destructive operations (delete_files, cleanup_machine with scope=all) require explicit user consent.
 
 ### Prompts
 
@@ -77,6 +83,8 @@ cp .mcp.json.example .mcp.json
 - That's it! No Python, no pip, no host dependencies.
 
 ## Configuration
+
+**Hot-Reload:** The MCP server automatically detects changes to `machines.json` and reloads the configuration on every operation. No need to restart!
 
 **machines.json** format:
 

@@ -87,17 +87,67 @@ source .env
 
 ### Testing the Connection
 
-```bash
-# Test FTP connection
-python3 .claude/mcp-servers/classic-mac-hardware/test_connection.py se30
+Use the MCP server's built-in connection test:
 
-# Or test manually with ftp command
+```bash
+# Via Claude Code (preferred - uses MCP server)
+/test-connection se30
+
+# Or use MCP tool directly
+mcp__classic-mac-hardware__test_connection machine=se30
+```
+
+This tests both FTP and LaunchAPPL connectivity.
+
+**Manual FTP test:**
+```bash
 ftp -n 192.168.1.10
 # user peertalk your-password
 # passive
 # ls
 # quit
 ```
+
+### LaunchAPPLServer Setup (Remote Execution)
+
+For remote binary execution, install LaunchAPPLServer on each Classic Mac:
+
+1. **Build LaunchAPPLServer** (two versions needed):
+   ```bash
+   # MacTCP-only (for System 7.5.3 and earlier)
+   /build launchappl-mactcp
+
+   # Open Transport (for System 7.6.1+)
+   /build launchappl-ot
+   ```
+
+2. **Deploy to Classic Macs:**
+   - Use MCP server to upload .dsk and .bin files
+   - Mount .dsk file on Classic Mac
+   - Copy LaunchAPPLServer app to /Applications/
+
+3. **Configure LaunchAPPLServer:**
+   - Launch the app
+   - Enable TCP server
+   - Set port to 1984 (default)
+   - Leave running
+
+4. **Update machines.json:**
+   ```json
+   {
+     "se30": {
+       "launchappl": {
+         "enabled": true,
+         "port": 1984
+       }
+     }
+   }
+   ```
+
+5. **Test remote execution:**
+   ```bash
+   /test-hardware se30
+   ```
 
 ## For Project Maintainers
 
