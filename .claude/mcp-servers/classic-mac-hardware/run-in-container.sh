@@ -28,5 +28,7 @@ fi
 
 # Run the MCP server inside the container
 # Use exec -i to pass stdin/stdout for MCP protocol
-exec docker exec -i "$CONTAINER_NAME" \
+# Change to project directory first to avoid mount namespace issues
+cd "$PROJECT_DIR" || exit 1
+exec docker exec -i -w /workspace "$CONTAINER_NAME" \
     python3 /workspace/.claude/mcp-servers/classic-mac-hardware/server.py
