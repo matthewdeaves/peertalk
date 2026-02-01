@@ -101,11 +101,11 @@ PT_Log structures are designed for CPU cache efficiency:
 
 | Session | Focus | Status | Files Created/Modified | Tests | Verify |
 |---------|-------|--------|------------------------|-------|--------|
-| 0.1 | Core API & Types | [OPEN] | `include/pt_log.h` | None | Header compiles; PT_LogPerfEntry.category field present |
-| 0.2 | POSIX Implementation | [OPEN] | `src/log/pt_log_posix.c` | `tests/test_log_posix.c` | Logs to file/console; hot fields first; valgrind clean |
-| 0.3.1 | Classic Mac Implementation | [OPEN] | `src/log/pt_log_mac.c` | None | 256-byte buffer; inline copy; sprintf retval; real Mac test |
-| 0.3.2 | Retro68 Build Config | [OPEN] | `src/log/CMakeLists.txt` | None | Builds for 68k and PPC with Retro68 |
-| 0.4 | Callbacks & Performance | [OPEN] | `src/log/pt_log.c` (shared) | `tests/test_log_perf.c` | Callbacks fire; perf category filtering works |
+| 0.1 | Core API & Types | [DONE] | `include/pt_log.h` | None | Header compiles; PT_LogPerfEntry.category field present |
+| 0.2 | POSIX Implementation | [DONE] | `src/log/pt_log_posix.c` | `tests/test_log_posix.c` | Logs to file/console; hot fields first; valgrind clean |
+| 0.3.1 | Classic Mac Implementation | [DONE] | `src/log/pt_log_mac.c` | None | 256-byte buffer; inline copy; sprintf retval; real Mac test |
+| 0.3.2 | Retro68 Build Config | [DONE] | `src/log/CMakeLists.txt` | None | Builds for 68k and PPC with Retro68 |
+| 0.4 | Callbacks & Performance | [DONE] | `tests/test_log_perf.c`, `Makefile` | `tests/test_log_perf.c` | Callbacks fire; perf category filtering works |
 
 ### Status Key
 - **[OPEN]** - Not started
