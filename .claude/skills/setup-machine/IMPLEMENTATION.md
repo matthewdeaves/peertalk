@@ -56,6 +56,13 @@ Use **ONE SINGLE AskUserQuestion call** to collect ALL information at once.
 - **NO options for text fields** - Only use options for true choices (Platform, Description)
 - **Each question should be CLEAR and DIRECT**
 
+**⚠️ CRITICAL: IP ADDRESS INPUT ⚠️**
+- IP address question MUST have empty options array: `options: []`
+- DO NOT ask for IP in multiple parts (no "first 3 octets" then "last octet")
+- DO NOT provide any option buttons for IP address
+- User types the COMPLETE IP address in one text input (e.g., "10.188.1.102")
+- This is a simple text field - user types, you receive the complete IP
+
 **IMPORTANT:** Call AskUserQuestion ONCE with ALL 7 questions. Do NOT make multiple separate calls.
 
 ```
@@ -69,13 +76,18 @@ Question 1: Machine ID
 
 Question 2: IP Address
   Header: "IP Address"
-  Prompt: "What's the complete IP address of this Mac? (e.g., '10.188.1.102' or '192.168.1.50')"
+  Prompt: "What's the full IP address? (e.g., 10.188.1.102)"
   multiSelect: false
-  Options: NONE - This is a TEXT INPUT question
-  - User types the FULL IP address (text input via "Other")
-  - DO NOT provide option buttons like "192.x.x.x" or "10.x.x.x"
-  - DO NOT try to be "helpful" with IP range suggestions
-  - Just let them type the full IP address
+  Options: [] ← EMPTY ARRAY - NO OPTIONS AT ALL
+
+  CRITICAL RULES FOR IP ADDRESS:
+  - DO NOT ask for IP in parts (no "first 3 octets" then "last octet")
+  - DO NOT provide option buttons at all
+  - DO NOT provide suggestions like "192.168.x.x" or "10.x.x.x"
+  - DO NOT ask multiple questions about the IP
+  - The options array MUST be empty [] so user gets a simple text input
+  - User will type the COMPLETE IP in one go (e.g., "10.188.1.102")
+  - Take their answer EXACTLY as typed
 
 Question 3: Platform
   Header: "Platform"
@@ -388,9 +400,9 @@ async function setupMachine() {
       multiSelect: false
     },
     {
-      question: "What's the complete IP address of this Mac? (e.g., '10.188.1.102' or '192.168.1.50')",
+      question: "What's the full IP address? (e.g., 10.188.1.102)",
       header: "IP Address",
-      options: [],  // Empty = text input, NO option buttons
+      options: [],  // CRITICAL: Empty array = simple text input, DO NOT add any options!
       multiSelect: false
     },
     {
