@@ -6,38 +6,42 @@ Guide for configuring your personal Classic Mac test machines.
 
 Each developer has different Classic Mac hardware with different IP addresses and FTP credentials. The `machines.json` file is **user-specific** and **NOT committed to git**.
 
-### Quick Setup (Recommended)
-
-**New Machine Onboarding - One Command:**
+### First-Time Project Setup
 
 ```bash
-# After setting up RumpusFTP on your Classic Mac, run:
+# 1. Build Docker container (one-time)
+./scripts/docker-build.sh
+
+# 2. Configure Claude Code MCP
+cp .mcp.json.example .mcp.json
+
+# 3. Restart Claude Code (or run /mcp to reload)
+# 4. Verify MCP is working:
+/test-machine --list   # Should show "No machines configured yet"
+
+# 5. Now add your Macs:
+/setup-machine
+```
+
+**Host Requirements:**
+- Docker
+- That's it! Python/MCP dependencies are in the container.
+
+### Adding a New Machine
+
+After MCP is configured, run `/setup-machine` for each Classic Mac:
+
+```bash
 /setup-machine
 ```
 
 This interactive skill will:
 1. Collect machine details (IP, platform, credentials)
 2. Add to machines.json automatically
-3. Build the correct LaunchAPPLServer version for your platform
-4. Deploy LaunchAPPLServer via FTP
-5. Test connectivity
-6. Guide you through final setup on the Mac
-
-**First-Time Project Setup:**
-
-```bash
-# 1. Build Docker container (one-time, ~2GB download or 30-60 min build)
-./scripts/docker-build.sh
-
-# 2. Configure Claude Code MCP
-cp .mcp.json.example .mcp.json
-
-# Done! Start a new Claude Code session and use /setup-machine to add your Macs
-```
-
-**Host Requirements:**
-- Docker
-- That's it! Python/MCP dependencies are in the container.
+3. Create directory structure on Mac via FTP
+4. Build the correct LaunchAPPLServer version for your platform
+5. Deploy LaunchAPPLServer files via FTP
+6. Guide you through final setup on the Mac (using BinUnpk)
 
 ### RumpusFTP Server Setup
 
@@ -47,16 +51,18 @@ cp .mcp.json.example .mcp.json
 2. Configure FTP server:
    - Enable passive mode (PASV) - required for NAT traversal
    - Set port to 21 (standard)
-   - Create user account (e.g., "peertalk")
-3. Create directories:
-   - `/Applications/PeerTalk/` - for binaries
-   - `/Documents/PeerTalk-Logs/` - for log files
-   - `/Temp/` - for temporary files
-4. Set permissions for FTP user to read/write these directories
+   - Create user account (e.g., "mac")
+3. Ensure FTP user has read/write permissions to create directories
+
+**Note:** The `/setup-machine` skill will create the required directory structure automatically:
+- `Applications:PeerTalk` - for binaries
+- `Applications:LaunchAPPLServer` - for LaunchAPPLServer app
+- `Documents:PeerTalk-Logs` - for log files
+- `Temp` - for temporary files
 
 ### Configuration File
 
-**machines.json** format:
+**machines.json** format (created automatically by /setup-machine):
 
 ```json
 {
@@ -68,30 +74,31 @@ cp .mcp.json.example .mcp.json
     "ftp": {
       "host": "192.168.1.10",
       "port": 21,
-      "username": "peertalk",
-      "password": "${PEERTALK_SE30_FTP_PASSWORD}",
+      "username": "mac",
+      "password": "mac",
       "paths": {
-        "binaries": "/Applications/PeerTalk/",
-        "logs": "/Documents/PeerTalk-Logs/",
-        "temp": "/Temp/"
+        "binaries": "Applications:PeerTalk",
+        "logs": "Documents:PeerTalk-Logs",
+        "temp": "Temp",
+        "launchappl": "Applications:LaunchAPPLServer"
       }
-    }
+    },
+    "notes": "SE/30 with 8MB RAM"
   }
 }
 ```
 
-### Environment Variables
+**Note:** Paths use Mac-style colons (`:`) for subdirectories, not slashes.
 
-Store FTP passwords in environment variables (more secure than hardcoding):
+### Credentials
 
-```bash
-# Add to ~/.bashrc or ~/.zshrc
-export PEERTALK_SE30_FTP_PASSWORD="your-password"
-export PEERTALK_IICI_FTP_PASSWORD="your-password"
+FTP credentials are stored directly in machines.json (which is gitignored). Since Classic Mac FTP is unencrypted anyway and runs on a local network, there's no benefit to environment variables - just use plain credentials.
 
-# Or use a .env file (also gitignored)
-echo "PEERTALK_SE30_FTP_PASSWORD=your-password" >> .env
-source .env
+```json
+"ftp": {
+  "username": "mac",
+  "password": "mac"
+}
 ```
 
 ### Testing the Connection
@@ -125,8 +132,9 @@ For remote binary execution, install LaunchAPPLServer on each Classic Mac.
 
 The `/setup-machine` skill automatically builds and deploys LaunchAPPLServer. After running it:
 
-1. **On your Classic Mac**, navigate to `/Applications/LaunchAPPLServer/`
+1. **On your Classic Mac**, navigate to `Applications:LaunchAPPLServer` folder
 2. **Use BinUnpk** to extract LaunchAPPLServer from the .bin file
+   (BinUnpk is a standard Classic Mac utility for extracting MacBinary files)
 3. **Launch** the LaunchAPPLServer application
 4. **Configure:**
    - Enable TCP server
@@ -134,8 +142,7 @@ The `/setup-machine` skill automatically builds and deploys LaunchAPPLServer. Af
    - Leave running
 5. **Test connectivity:**
    ```bash
-   # Uses MCP tool to verify LaunchAPPL port 1984
-   mcp__classic-mac-hardware__test_connection machine=your-machine-id
+   /test-machine your-machine-id
    ```
 
 **Manual Build & Deploy:**
@@ -149,24 +156,19 @@ If you need to rebuild LaunchAPPLServer separately:
 
    # Open Transport (PPC, System 7.6.1+)
    ./scripts/build-launcher.sh ot
-
-   # Both platforms
-   ./scripts/build-launcher.sh both
    ```
 
-   **Outputs:**
-   - MacTCP: `LaunchAPPL/build-mactcp/Server/LaunchAPPLServer-MacTCP.bin`
-   - Open Transport: `LaunchAPPL/build-ppc/Server/LaunchAPPLServer-OpenTransport.bin`
+   **Outputs (both .bin and .dsk for each platform):**
+   - MacTCP: `LaunchAPPL/build-mactcp/Server/LaunchAPPLServer-MacTCP.{bin,dsk}`
+   - Open Transport: `LaunchAPPL/build-ppc/Server/LaunchAPPLServer-OpenTransport.{bin,dsk}`
 
 2. **Deploy to Classic Mac:**
    ```bash
-   mcp__classic-mac-hardware__deploy_binary \
-     machine=your-machine-id \
-     platform=mactcp \
-     binary_path=LaunchAPPL/build-mactcp/Server/LaunchAPPLServer-MacTCP.bin
+   /deploy your-machine-id mactcp
+   # Or use MCP tool directly for specific file
    ```
 
-3. **Follow setup steps above**
+3. **Follow setup steps above** (use BinUnpk to extract)
 
 ## For Project Maintainers
 
@@ -246,8 +248,8 @@ sudo ufw allow 49152:65535/tcp
 
 When multiple developers work on the project:
 
-1. Each developer runs `setup.sh` on their workstation
-2. Each configures their own Classic Mac hardware
+1. Each developer configures MCP: `cp .mcp.json.example .mcp.json`
+2. Each uses `/setup-machine` to add their Classic Mac hardware
 3. `machines.json` is never shared (gitignored)
 4. Only `machines.example.json` is version-controlled
 
@@ -255,26 +257,21 @@ When multiple developers work on the project:
 
 ```
 Developer A:
-  SE/30:   192.168.1.10
-  IIci:    192.168.1.11
+  SE/30:       192.168.1.10 (mactcp)
+  Performa:    192.168.1.11 (opentransport)
 
 Developer B:
-  SE/30:   192.168.2.20
-  Quadra:  192.168.2.21
-
-Developer C:
-  IIci:    10.0.1.5
-  Quadra:  10.0.1.6
+  IIci:        192.168.2.20 (mactcp)
+  PowerMac:    192.168.2.21 (opentransport)
 ```
 
 Each has different IPs, different machine combinations - all work seamlessly.
 
 ## Security Notes
 
-1. **FTP is unencrypted** - Use only on trusted local networks
-2. **Passwords in environment** - Better than hardcoding, use secrets manager for production
-3. **Network isolation** - Classic Macs should be on isolated VLAN/subnet if possible
-4. **Read-only where possible** - Configure FTP user with minimal permissions
+1. **FTP is unencrypted** - Classic Macs don't support SFTP, so this is unavoidable
+2. **Credentials in machines.json** - File is gitignored, and FTP is unencrypted anyway
+3. **Local network only** - Keep Classic Macs on a trusted local network
 
 ## See Also
 

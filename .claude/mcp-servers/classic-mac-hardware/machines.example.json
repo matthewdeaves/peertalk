@@ -7,15 +7,16 @@
     "ftp": {
       "host": "192.168.1.10",
       "port": 21,
-      "username": "peertalk",
-      "password": "${PEERTALK_SE30_FTP_PASSWORD}",
+      "username": "mac",
+      "password": "mac",
       "paths": {
-        "binaries": "/Applications/PeerTalk/",
-        "logs": "/Documents/PeerTalk-Logs/",
-        "temp": "/Temp/"
+        "binaries": "Applications:PeerTalk",
+        "logs": "Documents:PeerTalk-Logs",
+        "temp": "Temp",
+        "launchappl": "Applications:LaunchAPPLServer"
       }
     },
-    "notes": "RumpusFTP server, passive mode"
+    "notes": "SE/30 with 8MB RAM"
   },
   "iici": {
     "name": "IIci",
@@ -25,32 +26,15 @@
     "ftp": {
       "host": "192.168.1.11",
       "port": 21,
-      "username": "peertalk",
-      "password": "${PEERTALK_IICI_FTP_PASSWORD}",
+      "username": "mac",
+      "password": "mac",
       "paths": {
-        "binaries": "/Applications/PeerTalk/",
-        "logs": "/Documents/PeerTalk-Logs/",
-        "temp": "/Temp/"
+        "binaries": "Applications:PeerTalk",
+        "logs": "Documents:PeerTalk-Logs",
+        "temp": "Temp",
+        "launchappl": "Applications:LaunchAPPLServer"
       }
     },
-    "notes": "RumpusFTP server, passive mode"
-  },
-  "quadra": {
-    "name": "Quadra 950",
-    "platform": "appletalk",
-    "system": "System 7.5.5",
-    "cpu": "68040",
-    "ftp": {
-      "host": "192.168.1.12",
-      "port": 21,
-      "username": "peertalk",
-      "password": "${PEERTALK_QUADRA_FTP_PASSWORD}",
-      "paths": {
-        "binaries": "/Applications/PeerTalk/",
-        "logs": "/Documents/PeerTalk-Logs/",
-        "temp": "/Temp/"
-      }
-    },
-    "notes": "RumpusFTP server, passive mode, AppleTalk only"
+    "notes": "IIci with 32MB RAM, Open Transport"
   }
 }
