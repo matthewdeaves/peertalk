@@ -7,8 +7,8 @@ CFLAGS += -DPT_LOG_ENABLED -DPT_PLATFORM_POSIX
 LDFLAGS = -lpthread
 
 # PeerTalk core library (added incrementally as sessions complete)
-CORE_SRCS = src/core/pt_version.c
-POSIX_SRCS =
+CORE_SRCS = src/core/pt_version.c src/core/pt_compat.c src/core/pt_init.c
+POSIX_SRCS = src/posix/platform_posix.c
 
 PEERTALK_SRCS = $(CORE_SRCS) $(POSIX_SRCS)
 PEERTALK_OBJS = $(PEERTALK_SRCS:.c=.o)
@@ -33,24 +33,40 @@ test_log: tests/test_log_posix.c libptlog.a
 test_log_perf: tests/test_log_perf.c libptlog.a
 	$(CC) $(CFLAGS) -o $@ $< -L. -lptlog $(LDFLAGS)
 
+test_compat: tests/test_compat.c libpeertalk.a
+	$(CC) $(CFLAGS) -o $@ $< -L. -lpeertalk $(LDFLAGS)
+
+test_foundation: tests/test_foundation.c libpeertalk.a libptlog.a
+	$(CC) $(CFLAGS) -o $@ $< -L. -lpeertalk -lptlog $(LDFLAGS)
+
 test-log: test_log test_log_perf
 	@echo "Running PT_Log tests..."
 	./test_log
 	./test_log_perf
+
+test-compat: test_compat
+	@echo "Running pt_compat tests..."
+	./test_compat
+
+test-foundation: test_foundation
+	@echo "Running foundation integration tests..."
+	./test_foundation
 
 # Valgrind memory check
 valgrind: test_log
 	@echo "Running valgrind memory check..."
 	valgrind --leak-check=full --error-exitcode=1 ./test_log
 
-# Test target (placeholder until Session 1.5)
-test:
-	@echo "No PeerTalk tests yet"
+# Test target (runs all tests)
+test: test-log test-compat test-foundation
+	@echo ""
+	@echo "All tests passed!"
 
 # Clean
 clean:
-	rm -f $(LOG_OBJS) $(PEERTALK_OBJS) libptlog.a libpeertalk.a test_log test_log_perf
+	rm -f $(LOG_OBJS) $(PEERTALK_OBJS) libptlog.a libpeertalk.a
+	rm -f test_log test_log_perf test_compat test_foundation
 	rm -f src/log/*.o src/core/*.o src/posix/*.o
 	find . -name "*.o" -delete
 
-.PHONY: all test test-log valgrind clean
+.PHONY: all test test-log test-compat test-foundation valgrind clean

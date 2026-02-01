@@ -32,6 +32,7 @@ a.out
 *.su
 *.idb
 *.pdb
+*.gdb
 
 # Coverage and profiling
 *.gcda

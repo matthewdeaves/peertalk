@@ -10,6 +10,32 @@
 #include "pt_log.h"
 
 /* ========================================================================== */
+/* PT_Log Integration (Phase 0)                                              */
+/* ========================================================================== */
+
+/**
+ * Convenience Macros for Context-Based Logging
+ *
+ * These macros extract the log handle from a pt_context pointer,
+ * reducing boilerplate in PeerTalk internal code.
+ *
+ * Usage:
+ *     PT_CTX_ERR(ctx, PT_LOG_CAT_NETWORK, "Connection failed: %d", err);
+ *     PT_CTX_INFO(ctx, PT_LOG_CAT_INIT, "PeerTalk initialized");
+ */
+#define PT_CTX_ERR(ctx, cat, ...) \
+    PT_LOG_ERR((ctx)->log, cat, __VA_ARGS__)
+
+#define PT_CTX_WARN(ctx, cat, ...) \
+    PT_LOG_WARN((ctx)->log, cat, __VA_ARGS__)
+
+#define PT_CTX_INFO(ctx, cat, ...) \
+    PT_LOG_INFO((ctx)->log, cat, __VA_ARGS__)
+
+#define PT_CTX_DEBUG(ctx, cat, ...) \
+    PT_LOG_DEBUG((ctx)->log, cat, __VA_ARGS__)
+
+/* ========================================================================== */
 /* Platform Abstraction Layer                                                */
 /* ========================================================================== */
 

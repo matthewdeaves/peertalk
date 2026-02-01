@@ -1,6 +1,6 @@
 # PHASE 1: Foundation
 
-> **Status:** [OPEN]
+> **Status:** [DONE]
 > **Depends on:** Phase 0 (PT_Log)
 > **Produces:** Complete public API, internal type system, platform abstraction layer, and portable compatibility functions for all platforms
 > **Risk Level:** Low
@@ -118,10 +118,10 @@ All APIs have been verified against `/home/matthew/Retro68/InterfacesAndLibrarie
 |---------|-------|--------|------------------------|-------|--------|
 | 1.0 | Build System | [DONE] | `Makefile`, `Makefile.retro68`, `CMakeLists.txt`, `.clang-format` | None | `make` succeeds with empty lib |
 | 1.1 | Public API & Types | [DONE] | `include/peertalk.h`, `src/core/pt_types.h`, `src/core/pt_internal.h`, `src/core/pt_version.c` | None | Headers compile on all platforms |
-| 1.2 | Portable Primitives | [OPEN] | `src/core/pt_compat.h`, `src/core/pt_compat.c` | `tests/test_compat.c` | Byte order, memory, atomics work |
-| 1.3 | Platform Stubs | [OPEN] | `src/posix/platform_posix.c`, `src/mactcp/platform_mactcp.c`, `src/opentransport/platform_ot.c` | None | All platforms link |
-| 1.4 | PT_Log Integration | [OPEN] | `src/core/pt_internal.h` (update) | None | PeerTalk uses PT_Log from Phase 0 |
-| 1.5 | Integration Test | [OPEN] | None | `tests/test_foundation.c` | Platform init/shutdown, version string |
+| 1.2 | Portable Primitives | [DONE] | `src/core/pt_compat.h`, `src/core/pt_compat.c` | `tests/test_compat.c` | Byte order, memory, atomics work |
+| 1.3 | Platform Stubs | [DONE] | `src/posix/platform_posix.c`, `src/mactcp/platform_mactcp.c`, `src/opentransport/platform_ot.c` | None | All platforms link |
+| 1.4 | PT_Log Integration | [DONE] | `src/core/pt_internal.h` (update), `src/core/pt_init.c` (new) | None | PeerTalk uses PT_Log from Phase 0 |
+| 1.5 | Integration Test | [DONE] | None | `tests/test_foundation.c` | Platform init/shutdown, version string |
 
 ### Status Key
 - **[OPEN]** - Not started
