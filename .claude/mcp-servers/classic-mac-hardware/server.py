@@ -40,7 +40,9 @@ class ClassicMacHardwareServer:
         self.config_path = config_path
         self.machines = {}
         self._config_mtime = 0
+        self._first_load = True
         self._reload_if_changed()  # Initial load
+        self._first_load = False
         self.server = Server("classic-mac-hardware")
 
         # Register handlers
@@ -63,6 +65,11 @@ class ClassicMacHardwareServer:
                 self._config_mtime = current_mtime
                 print(f"✓ Reloaded config: {len(self.machines)} machines", file=sys.stderr)
                 return True
+            return False
+        except FileNotFoundError:
+            if self._first_load:
+                print(f"ℹ No machines configured yet. Run /setup-machine to add Classic Mac hardware.", file=sys.stderr)
+                print(f"  Expected config at: {self.config_path}", file=sys.stderr)
             return False
         except Exception as e:
             print(f"⚠ Config reload failed: {e}", file=sys.stderr)

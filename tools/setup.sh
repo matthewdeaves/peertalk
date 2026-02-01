@@ -128,6 +128,16 @@ echo ""
 echo "Checking Docker (required for all builds)..."
 if command -v docker &> /dev/null; then
     echo "  ✓ docker"
+
+    # Check if Docker daemon is running
+    if ! docker info &> /dev/null; then
+        echo "  ✗ Docker daemon not running"
+        echo ""
+        echo "ERROR: Docker is installed but not running"
+        echo "Please start Docker Desktop or Docker daemon"
+        exit 1
+    fi
+
     if docker compose version &> /dev/null 2>&1; then
         echo "  ✓ docker compose"
     elif docker-compose version &> /dev/null 2>&1; then
@@ -148,10 +158,10 @@ else
     exit 1
 fi
 
-# Make scripts executable
-chmod +x build/*.sh 2>/dev/null || true
-chmod +x ../.claude/hooks/*.sh 2>/dev/null || true
-chmod +x ../scripts/*.sh 2>/dev/null || true
+# Make scripts executable (ignore errors if directories don't exist)
+[ -d "build" ] && chmod +x build/*.sh 2>/dev/null || true
+[ -d "../.claude/hooks" ] && chmod +x ../.claude/hooks/*.sh 2>/dev/null || true
+[ -d "../scripts" ] && chmod +x ../scripts/*.sh 2>/dev/null || true
 
 echo ""
 echo "========================================"

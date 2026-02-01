@@ -19,6 +19,18 @@ IMAGE_NAME="mndeaves/peertalk:latest"
 
 cd "$PROJECT_DIR"
 
+# Check if Docker is available and running
+if ! command -v docker &> /dev/null; then
+    echo "ERROR: Docker not found. Please install Docker first."
+    echo "Visit: https://docs.docker.com/get-docker/"
+    exit 1
+fi
+
+if ! docker info &> /dev/null; then
+    echo "ERROR: Docker daemon is not running. Please start Docker."
+    exit 1
+fi
+
 # Check for --build flag
 if [[ "$1" == "--build" ]]; then
     echo "Building PeerTalk development container locally..."
@@ -46,7 +58,20 @@ else
     echo "Pulling PeerTalk development container from Docker Hub..."
     echo ""
 
-    docker pull "$IMAGE_NAME"
+    if ! docker pull "$IMAGE_NAME"; then
+        echo ""
+        echo "ERROR: Failed to pull $IMAGE_NAME"
+        echo "You may need to build locally instead:"
+        echo "  ./scripts/docker-build.sh --build"
+        exit 1
+    fi
+fi
+
+# Verify image exists
+if ! docker image inspect "$IMAGE_NAME" &> /dev/null; then
+    echo ""
+    echo "ERROR: Image $IMAGE_NAME not found after build/pull"
+    exit 1
 fi
 
 echo ""
