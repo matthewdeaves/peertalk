@@ -2167,6 +2167,7 @@ void test_perf_sequence(void) {
 
     PT_Log *log = PT_LogCreate();
     PT_LogSetPerfCallback(log, collect_perf, NULL);
+    PT_LogSetCategories(log, PT_LOG_CAT_ALL);  /* Enable all categories */
     g_perf_count = 0;
 
     /* Log a sequence of events */
@@ -2178,6 +2179,7 @@ void test_perf_sequence(void) {
         entry.value1 = i * 100;
         entry.value2 = i * 10;
         entry.flags = 0x01;
+        entry.category = PT_LOG_CAT_NETWORK;  /* Set category */
 
         PT_LogPerf(log, &entry, NULL);
     }
@@ -2306,6 +2308,7 @@ void test_perf_category_field(void) {
 
     PT_Log *log = PT_LogCreate();
     PT_LogSetPerfCallback(log, collect_perf, NULL);
+    PT_LogSetCategories(log, PT_LOG_CAT_ALL);  /* Enable all categories */
     g_perf_count = 0;
 
     /* Log perf entries with different categories */
@@ -2371,6 +2374,52 @@ test-log: test_log test_log_perf
 	./test_log
 	./test_log_perf
 ```
+
+### CRITICAL: Performance Entry Category Filtering
+
+**Important implementation detail discovered during Session 0.4:**
+
+The `PT_LogPerf()` function filters performance entries by category before calling callbacks or writing to output. This means:
+
+1. **The log context must have categories enabled** via `PT_LogSetCategories()`
+2. **Each performance entry must have its `category` field set** to a non-zero value
+3. **The entry's category must match at least one enabled category**, or it's silently dropped
+
+**Example of the filtering logic** (from `src/log/pt_log_posix.c:327`):
+```c
+void PT_LogPerf(PT_Log *log, const PT_LogPerfEntry *entry, const char *label) {
+    if (!log || !entry) return;
+
+    /* Filter by category - entry is silently dropped if no match */
+    if (!(entry->category & log->categories)) return;
+
+    /* Callback/text output happens here... */
+}
+```
+
+**Common mistake in test code:**
+```c
+/* WRONG - will not trigger callback! */
+PT_Log *log = PT_LogCreate();
+PT_LogSetPerfCallback(log, my_callback, NULL);
+PT_LogPerfEntry entry = {0};  /* category = 0 */
+PT_LogPerf(log, &entry, NULL);  /* Silently filtered out! */
+
+/* CORRECT - callback fires */
+PT_Log *log = PT_LogCreate();
+PT_LogSetPerfCallback(log, my_callback, NULL);
+PT_LogSetCategories(log, PT_LOG_CAT_ALL);  /* Enable categories */
+PT_LogPerfEntry entry = {0};
+entry.category = PT_LOG_CAT_NETWORK;  /* Set category */
+PT_LogPerf(log, &entry, NULL);  /* Callback fires! */
+```
+
+**Why this design?**
+- Consistent filtering behavior between text logging and performance logging
+- Allows selective performance instrumentation (e.g., only log network events)
+- Zero-overhead for disabled categories (callback not called, no formatting done)
+
+**Testing note:** All test functions that use `PT_LogPerf()` must call `PT_LogSetCategories(log, PT_LOG_CAT_ALL)` or enable specific categories, and set `entry.category` to a matching value.
 
 ### Verification
 - [ ] `make test-log` passes all tests
