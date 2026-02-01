@@ -44,24 +44,48 @@
 
 **IMPORTANT:** Phase 3 requires additions to Phase 1/2 structures. These should be added when implementing the relevant sessions:
 
-### Add to `struct pt_peer` (in `src/core/pt_internal.h`):
-```c
-/* Add after existing fields in struct pt_peer.
- * NOTE: send_queue, recv_queue, send_seq, and recv_seq are already added
- * by Phase 2. Only queue_pressure is new in Phase 3. */
-uint8_t             queue_pressure;  /* Current queue fill percentage */
-```
+### Queue Pressure Design Decision
+
+**NOTE:** The plan originally suggested adding a `queue_pressure` field to `struct pt_peer`, but the implementation uses on-demand calculation via `pt_queue_pressure()` instead. This design decision:
+- Avoids field synchronization bugs (no stale cached values)
+- Reduces memory footprint per peer
+- Is more efficient (pressure calculated only when needed)
+
+Queue pressure is queried via `pt_queue_backpressure(peer->send_queue)` which internally calls `pt_queue_pressure()` from Phase 2. No additional field in `pt_peer` is required.
 
 ### Add to `struct pt_context` (in `src/core/pt_internal.h`):
 ```c
 /* Add to struct pt_context - logging context and batch buffer.
- * PT_Log *log is REQUIRED for PT_LOG_DEBUG/PT_LOG_WARN/PT_LOG_ERR macros.
+ * PT_Log *log is REQUIRED for PT_CTX_DEBUG/PT_CTX_WARN/PT_CTX_ERR macros.
  * MUST be initialized with PT_LogCreate() before calling any Phase 3 queue
- * functions that log (pt_drain_send_queue, etc.).
+ * functions that log (pt_drain_send_queue, pt_check_queue_isr_flags, etc.).
  * send_batch avoids 1.4KB stack allocation per pt_drain_send_queue() call. */
 PT_Log             *log;             /* Logging context (from Phase 0) - REQUIRED */
 pt_batch            send_batch;      /* Pre-allocated batch buffer */
 ```
+
+### Initialization Requirements
+
+**CRITICAL:** Before using Phase 3 queue functions, initialize the logging context:
+
+```c
+/* In your application initialization code (after pt_context_create): */
+ctx->log = PT_LogCreate("peertalk.log", PT_LOG_LEVEL_DEBUG);
+if (!ctx->log) {
+    /* Handle error - Phase 3 functions will crash without valid ctx->log */
+    return PT_ERR_MEMORY;
+}
+
+/* Later, before shutdown: */
+PT_LogDestroy(ctx->log);
+ctx->log = NULL;
+```
+
+Functions that require `ctx->log` to be initialized:
+- `pt_drain_send_queue()` - logs batch operations at DEBUG, WARN, ERR levels
+- `pt_check_queue_isr_flags()` - logs deferred ISR events at DEBUG, WARN levels
+- `pt_queue_push()` - logs queue full warnings (if ctx provided)
+- Backpressure logging in `pt_queue_try_push()`
 
 ### Add to `pt_queue` (in `src/core/queue.h`):
 ```c
@@ -185,12 +209,16 @@ Phase 3 queue operations should log via PT_Log using the following categories an
 | Queue push failed (oversized) | `PT_LOG_CAT_PROTOCOL` | WARN | "Queue push failed: message too large (%u bytes)" |
 | Coalesce hit | `PT_LOG_CAT_PROTOCOL` | DEBUG | "Coalesce hit: key=0x%04X" |
 | Hash collision | `PT_LOG_CAT_PROTOCOL` | DEBUG | "Hash collision at bucket %u" |
-| Backpressure transition | `PT_LOG_CAT_PROTOCOL` | WARN | "Queue pressure: %s (%u%% full)" |
+| Backpressure transition | `PT_LOG_CAT_PERF` | WARN | "Queue pressure CRITICAL: %u%% (%u/%u slots)" |
 | Message dropped (backpressure) | `PT_LOG_CAT_PROTOCOL` | WARN | "Message dropped: backpressure %s" |
 | Batch sent | `PT_LOG_CAT_PROTOCOL` | DEBUG | "Batch sent: %u messages, %u bytes" |
 | Batch send failed | `PT_LOG_CAT_PROTOCOL` | ERR | "Batch send failed" |
 | Message oversized | `PT_LOG_CAT_PROTOCOL` | WARN | "Message too large for batch" |
 | ISR queue full (deferred) | `PT_LOG_CAT_PROTOCOL` | WARN | "Queue full during ISR" |
+
+**Logging Category Rationale:**
+- **Backpressure transitions** use `PT_LOG_CAT_PERF` (performance category) to allow filtering in production. High-frequency queue operations can spam logs; performance category allows applications to suppress these warnings while keeping protocol error logging enabled.
+- **Protocol operations** (coalesce, batch, ISR flags) use `PT_LOG_CAT_PROTOCOL` for correctness tracking.
 
 **CRITICAL ISR-Safety Rule:** Do NOT call PT_Log from `pt_queue_push_coalesce_isr()` or any other interrupt-level code. PT_Log is not interrupt-safe (uses File Manager, vsprintf, memory allocation). Instead:
 1. Set a volatile flag in the ISR (e.g., `q->isr_flags.queue_full = 1`)
@@ -323,7 +351,12 @@ typedef struct {
 /* Priority free-list constants */
 #define PT_PRIO_COUNT        4   /* Number of priority levels */
 #define PT_SLOT_NONE         0xFFFF  /* Invalid slot index (end of list) */
-#define PT_QUEUE_MAX_SLOTS   32  /* Maximum slots per queue (for Classic Mac memory) */
+#define PT_QUEUE_MAX_SLOTS   32  /* Maximum slots per queue - HARD LIMIT
+                                   * This is not just a memory optimization but a data
+                                   * structure correctness constraint. pt_queue_ext_init()
+                                   * only initializes next_slot pointers for slots 0..31.
+                                   * Queues with capacity > 32 will have uninitialized
+                                   * next_slot fields causing corruption. */
 
 /* Coalesce hash table size - power of 2 for fast modulo
  *
@@ -1106,10 +1139,13 @@ int pt_queue_try_push(pt_queue *q, const void *data, uint16_t len,
  *   static pt_backpressure last_bp = PT_BACKPRESSURE_NONE;
  *   pt_backpressure bp = pt_queue_backpressure(q);
  *   if (bp != last_bp) {
- *       PT_LOG_WARN(ctx->log, PT_LOG_CAT_PROTOCOL, "Queue pressure: %s (%u%% full)",
+ *       PT_CTX_WARN(ctx, PT_LOG_CAT_PERF, "Queue pressure: %s (%u%% full)",
  *               pressure_names[bp], pt_queue_pressure(q));
  *       last_bp = bp;
  *   }
+ *
+ * Note: Uses PT_LOG_CAT_PERF (not PT_LOG_CAT_PROTOCOL) to allow filtering
+ * performance warnings without disabling protocol error logging.
  */
 pt_backpressure pt_queue_backpressure(pt_queue *q) {
     uint8_t pressure;
@@ -1597,7 +1633,7 @@ int main(void) {
 
 12. **Do NOT use pt_queue_peek/pt_queue_consume** - These functions were REMOVED because they bypass the priority free-lists and coalesce hash, causing data structure corruption. Use `pt_queue_pop_priority()` instead.
 
-13. **Use PT_LOG_CAT_PROTOCOL for queue operations** - Queue and batch operations in Phase 3 use `PT_LOG_CAT_PROTOCOL`. The `PT_LOG_CAT_SEND` category IS defined (in PHASE-0-LOGGING.md) but is reserved for Phase 3.5's SendEx API which handles the actual send operations.
+13. **Logging categories differ by operation type** - Queue and batch operations use `PT_LOG_CAT_PROTOCOL`. **Exception:** Backpressure transitions use `PT_LOG_CAT_PERF` to allow applications to filter performance warnings without disabling protocol error logging. The `PT_LOG_CAT_SEND` category is reserved for Phase 3.5's SendEx API.
 
 14. **Direct pop requires commit** - When using `pt_queue_pop_priority_direct()`, you MUST call `pt_queue_pop_priority_commit()` after processing the data. Failure to commit leaves the slot in an inconsistent state (data accessible but not removed from queue).
 
