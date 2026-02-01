@@ -59,6 +59,13 @@ tests/
   test_*.c            # POSIX tests
 plan/
   PHASE-*.md          # Implementation plans
+LaunchAPPL/
+  Server/             # LaunchAPPLServer source (Retro68 remote execution server)
+  Common/             # Shared protocol code
+  build-mactcp/       # MacTCP (68k) build artifacts
+  build-ppc/          # Open Transport (PPC) build artifacts
+scripts/
+  build-launcher.sh   # Build LaunchAPPLServer for Mac platforms
 ```
 
 ## Common Pitfalls
@@ -110,9 +117,13 @@ These rules are automatically loaded when editing files in the corresponding `sr
 | `/implement X Y` | Implement a phase session (e.g., `/implement 1 1.2`) |
 | `/build test` | Compile and run POSIX tests with coverage |
 | `/build package` | Create Mac binaries for hardware transfer |
+| `/build launcher-mactcp` | Build LaunchAPPLServer for MacTCP (68k) |
+| `/build launcher-ot` | Build LaunchAPPLServer for Open Transport (PPC) |
 | `/review plan/PHASE-X.md` | Review plan before starting (recommended for Mac phases) |
 | `/check-isr` | Validate interrupt-time safety for Mac code |
 | `/hw-test generate X.Y` | Create hardware test plan for Classic Mac |
+| `/setup-machine` | Onboard new Classic Mac: add to registry, build & deploy LaunchAPPLServer, test connectivity |
+| `/test-machine <id>` | Test FTP and LaunchAPPL connectivity to a Classic Mac |
 | `/backport` | Identify commits to cherry-pick to starter-template |
 | `/mac-api [query]` | Search Inside Macintosh books for API docs, interrupt safety, error codes |
 | `/mac-config add\|remove\|list\|test` | Manage Classic Mac FTP server configuration |

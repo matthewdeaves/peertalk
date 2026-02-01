@@ -6,24 +6,33 @@ Guide for configuring your personal Classic Mac test machines.
 
 Each developer has different Classic Mac hardware with different IP addresses and FTP credentials. The `machines.json` file is **user-specific** and **NOT committed to git**.
 
-### Quick Setup
+### Quick Setup (Recommended)
 
-**Everything runs in Docker - zero host dependencies!**
+**New Machine Onboarding - One Command:**
+
+```bash
+# After setting up RumpusFTP on your Classic Mac, run:
+/setup-machine
+```
+
+This interactive skill will:
+1. Collect machine details (IP, platform, credentials)
+2. Add to machines.json automatically
+3. Build the correct LaunchAPPLServer version for your platform
+4. Deploy LaunchAPPLServer via FTP
+5. Test connectivity
+6. Guide you through final setup on the Mac
+
+**First-Time Project Setup:**
 
 ```bash
 # 1. Build Docker container (one-time, ~2GB download or 30-60 min build)
 ./scripts/docker-build.sh
 
-# 2. Configure your machines
-cd .claude/mcp-servers/classic-mac-hardware
-cp machines.example.json machines.json
-# Edit machines.json with your FTP details
-
-# 3. Configure Claude Code MCP
-cd ../../..
+# 2. Configure Claude Code MCP
 cp .mcp.json.example .mcp.json
 
-# Done! Start a new Claude Code session and the MCP server will run automatically in Docker
+# Done! Start a new Claude Code session and use /setup-machine to add your Macs
 ```
 
 **Host Requirements:**
@@ -110,44 +119,54 @@ ftp -n 192.168.1.10
 
 ### LaunchAPPLServer Setup (Remote Execution)
 
-For remote binary execution, install LaunchAPPLServer on each Classic Mac:
+For remote binary execution, install LaunchAPPLServer on each Classic Mac.
 
-1. **Build LaunchAPPLServer** (two versions needed):
-   ```bash
-   # MacTCP-only (for System 7.5.3 and earlier)
-   /build launchappl-mactcp
+**Automatic Setup (Recommended):**
 
-   # Open Transport (for System 7.6.1+)
-   /build launchappl-ot
-   ```
+The `/setup-machine` skill automatically builds and deploys LaunchAPPLServer. After running it:
 
-2. **Deploy to Classic Macs:**
-   - Use MCP server to upload .dsk and .bin files
-   - Mount .dsk file on Classic Mac
-   - Copy LaunchAPPLServer app to /Applications/
-
-3. **Configure LaunchAPPLServer:**
-   - Launch the app
+1. **On your Classic Mac**, navigate to `/Applications/LaunchAPPLServer/`
+2. **Use BinUnpk** to extract LaunchAPPLServer from the .bin file
+3. **Launch** the LaunchAPPLServer application
+4. **Configure:**
    - Enable TCP server
    - Set port to 1984 (default)
    - Leave running
-
-4. **Update machines.json:**
-   ```json
-   {
-     "se30": {
-       "launchappl": {
-         "enabled": true,
-         "port": 1984
-       }
-     }
-   }
-   ```
-
-5. **Test remote execution:**
+5. **Test connectivity:**
    ```bash
-   /test-hardware se30
+   # Uses MCP tool to verify LaunchAPPL port 1984
+   mcp__classic-mac-hardware__test_connection machine=your-machine-id
    ```
+
+**Manual Build & Deploy:**
+
+If you need to rebuild LaunchAPPLServer separately:
+
+1. **Build LaunchAPPLServer** (platform-specific):
+   ```bash
+   # MacTCP (68k, System 6.0.8 - 7.5.5)
+   ./scripts/build-launcher.sh mactcp
+
+   # Open Transport (PPC, System 7.6.1+)
+   ./scripts/build-launcher.sh ot
+
+   # Both platforms
+   ./scripts/build-launcher.sh both
+   ```
+
+   **Outputs:**
+   - MacTCP: `LaunchAPPL/build-mactcp/Server/LaunchAPPLServer-MacTCP.bin`
+   - Open Transport: `LaunchAPPL/build-ppc/Server/LaunchAPPLServer-OpenTransport.bin`
+
+2. **Deploy to Classic Mac:**
+   ```bash
+   mcp__classic-mac-hardware__deploy_binary \
+     machine=your-machine-id \
+     platform=mactcp \
+     binary_path=LaunchAPPL/build-mactcp/Server/LaunchAPPLServer-MacTCP.bin
+   ```
+
+3. **Follow setup steps above**
 
 ## For Project Maintainers
 

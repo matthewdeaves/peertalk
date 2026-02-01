@@ -10,6 +10,8 @@ Build PeerTalk for POSIX, 68k MacTCP, and PPC Open Transport platforms with inte
 
 ## Modes
 
+### PeerTalk Builds
+
 | Mode | Description |
 |------|-------------|
 | `quick` | Syntax check only (fastest) |
@@ -19,14 +21,30 @@ Build PeerTalk for POSIX, 68k MacTCP, and PPC Open Transport platforms with inte
 | `package` | Build + create .bin files for Mac transfer |
 | `release` | Full pipeline with all quality gates |
 
+### LaunchAPPLServer Builds
+
+| Mode | Description |
+|------|-------------|
+| `launcher-mactcp` | Build LaunchAPPLServer for MacTCP (68k, System 6.0.8 - 7.5.5) |
+| `launcher-ot` | Build LaunchAPPLServer for Open Transport (PPC, System 7.6.1+) |
+| `launcher-all` | Build both LaunchAPPLServer versions |
+
 ## Usage
 
+### PeerTalk Library
 ```
-/build quick
-/build test
-/build all
-/build package
-/build release
+/build quick              # Fast syntax check
+/build test               # Build + tests + coverage
+/build all                # All platforms (POSIX + Mac)
+/build package            # Create .bin files for Macs
+/build release            # Full pipeline with quality gates
+```
+
+### LaunchAPPLServer (Remote Execution)
+```
+/build launcher-mactcp    # For MacTCP machines (68k)
+/build launcher-ot        # For Open Transport machines (PPC)
+/build launcher-all       # Build both versions
 ```
 
 ## Process
@@ -74,6 +92,33 @@ make test
 python tools/validators/isr_safety.py src/
 ./tools/build/package.sh
 ```
+
+### launcher-mactcp
+Build LaunchAPPLServer for MacTCP (68k):
+```bash
+./scripts/build-launcher.sh mactcp
+```
+Creates: `LaunchAPPL/build-mactcp/Server/LaunchAPPLServer-MacTCP.bin`
+
+**Used by:** `/setup-machine` when onboarding MacTCP machines
+
+### launcher-ot
+Build LaunchAPPLServer for Open Transport (PPC):
+```bash
+./scripts/build-launcher.sh ot
+```
+Creates: `LaunchAPPL/build-ppc/Server/LaunchAPPLServer-OpenTransport.bin`
+
+**Used by:** `/setup-machine` when onboarding Open Transport machines
+
+### launcher-all
+Build both LaunchAPPLServer versions:
+```bash
+./scripts/build-launcher.sh both
+```
+Creates both MacTCP and Open Transport binaries.
+
+**Note:** LaunchAPPLServer is the remote execution server for Classic Macs, not the PeerTalk library itself. See `.claude/mcp-servers/classic-mac-hardware/SETUP.md` for deployment instructions.
 
 ## Quality Gates
 
