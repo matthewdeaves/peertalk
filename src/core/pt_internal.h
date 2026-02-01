@@ -1,0 +1,308 @@
+/*
+ * PeerTalk Internal Declarations
+ * Platform abstraction, internal peer structures, context definition
+ */
+
+#ifndef PT_INTERNAL_H
+#define PT_INTERNAL_H
+
+#include "pt_types.h"
+#include "pt_log.h"
+
+/* ========================================================================== */
+/* Platform Abstraction Layer                                                */
+/* ========================================================================== */
+
+/**
+ * Platform-specific operations
+ */
+typedef struct {
+    int             (*init)(struct pt_context *ctx);
+    void            (*shutdown)(struct pt_context *ctx);
+    int             (*poll)(struct pt_context *ctx);
+    pt_tick_t       (*get_ticks)(void);
+    unsigned long   (*get_free_mem)(void);
+    unsigned long   (*get_max_block)(void);
+    int             (*send_udp)(struct pt_context *ctx, struct pt_peer *peer,
+                                const void *data, uint16_t len);
+} pt_platform_ops;
+
+/* Platform ops implementations (defined in platform-specific files) */
+#ifdef PT_PLATFORM_POSIX
+extern pt_platform_ops pt_posix_ops;
+#endif
+
+#ifdef PT_PLATFORM_MACTCP
+extern pt_platform_ops pt_mactcp_ops;
+#endif
+
+#ifdef PT_PLATFORM_OT
+extern pt_platform_ops pt_ot_ops;
+#endif
+
+#if defined(PT_PLATFORM_APPLETALK) || defined(PT_HAS_APPLETALK)
+extern pt_platform_ops pt_appletalk_ops;
+#endif
+
+/* ========================================================================== */
+/* Internal Peer Address Structure                                           */
+/* ========================================================================== */
+
+#define PT_MAX_PEER_ADDRESSES 2
+
+/**
+ * Per-peer address entry
+ */
+typedef struct {
+    uint32_t            address;        /* IP or synthesized AppleTalk address */
+    uint16_t            port;
+    uint16_t            transport;      /* PT_TRANSPORT_* */
+} pt_peer_address;  /* 8 bytes */
+
+/* ========================================================================== */
+/* Internal Peer Structure - Hot/Cold Split                                  */
+/* ========================================================================== */
+
+/**
+ * Hot peer data - accessed every poll cycle
+ * Optimized for cache efficiency (designed for 68030 32-byte cache lines)
+ */
+typedef struct {
+    void               *connection;     /* Platform-specific connection handle (Phase 5) */
+    uint32_t            magic;          /* PT_PEER_MAGIC - validation */
+    pt_tick_t           last_seen;      /* Last activity timestamp */
+    PeerTalk_PeerID     id;
+    uint16_t            peer_flags;     /* PT_PEER_FLAG_* from discovery */
+    uint16_t            latency_ms;     /* Estimated RTT */
+    pt_peer_state       state;
+    uint8_t             address_count;
+    uint8_t             preferred_transport;
+    uint8_t             send_seq;       /* Send sequence number (Phase 2) */
+    uint8_t             recv_seq;       /* Receive sequence number (Phase 2) */
+    uint8_t             name_idx;       /* Index into context name table */
+    uint8_t             reserved[3];    /* Padding for alignment */
+} pt_peer_hot;
+
+/**
+ * Cold peer data - accessed infrequently
+ */
+typedef struct {
+    char                name[PT_MAX_PEER_NAME + 1];     /* 32 bytes */
+    PeerTalk_PeerInfo   info;                           /* ~20 bytes */
+    pt_peer_address     addresses[PT_MAX_PEER_ADDRESSES];  /* 16 bytes */
+    pt_tick_t           last_discovery;
+    PeerTalk_PeerStats  stats;
+    pt_tick_t           ping_sent_time;
+    uint16_t            rtt_samples[8];     /* Rolling RTT samples */
+    uint8_t             rtt_index;
+    uint8_t             rtt_count;
+    uint8_t             obuf[768];          /* Output framing buffer */
+    uint8_t             ibuf[512];          /* Input framing buffer */
+    uint16_t            obuflen;
+    uint16_t            ibuflen;
+#ifdef PT_DEBUG
+    uint32_t            obuf_canary;
+    uint32_t            ibuf_canary;
+#endif
+} pt_peer_cold;
+
+/**
+ * Complete peer structure
+ */
+struct pt_peer {
+    pt_peer_hot         hot;            /* 32 bytes - frequently accessed */
+    pt_peer_cold        cold;           /* ~1.4KB - rarely accessed */
+    struct pt_queue    *send_queue;
+    struct pt_queue    *recv_queue;
+};
+
+/* ========================================================================== */
+/* Internal Context Structure                                                */
+/* ========================================================================== */
+
+#define PT_MAX_PEER_ID  256
+
+/**
+ * PeerTalk context (opaque to public API)
+ */
+struct pt_context {
+    uint32_t            magic;          /* PT_CONTEXT_MAGIC */
+    PeerTalk_Config     config;
+    PeerTalk_Callbacks  callbacks;
+    pt_platform_ops    *plat;
+    PeerTalk_PeerInfo   local_info;
+    PeerTalk_GlobalStats global_stats;
+    struct pt_peer     *peers;          /* Array of peers */
+
+    /* O(1) Peer ID Lookup Table */
+    uint8_t             peer_id_to_index[PT_MAX_PEER_ID];  /* 0xFF = invalid */
+
+    /* Centralized Name Table */
+    char                peer_names[PT_MAX_PEERS][PT_MAX_PEER_NAME + 1];
+
+    uint32_t            next_message_id;
+    uint32_t            peers_version;      /* Increments when peers added/removed */
+    uint16_t            local_flags;
+    uint16_t            max_peers;
+    uint16_t            peer_count;
+    PeerTalk_PeerID     next_peer_id;
+    uint16_t            available_transports;
+    uint16_t            active_transports;
+    uint16_t            log_categories;
+    uint8_t             discovery_active;
+    uint8_t             listening;
+    uint8_t             initialized;
+    uint8_t             reserved_byte;
+
+    PT_Log             *log;            /* PT_Log handle from Phase 0 */
+    /* Platform-specific data follows (allocated via pt_plat_extra_size) */
+};
+
+/* ========================================================================== */
+/* Validation Functions                                                       */
+/* ========================================================================== */
+
+/**
+ * Validate context magic number (inline for performance)
+ */
+static inline int pt_context_valid(const struct pt_context *ctx)
+{
+    return ctx != NULL && ctx->magic == PT_CONTEXT_MAGIC;
+}
+
+/**
+ * Validate peer magic number (inline for performance)
+ */
+static inline int pt_peer_valid(const struct pt_peer *peer)
+{
+    return peer != NULL && peer->hot.magic == PT_PEER_MAGIC;
+}
+
+/**
+ * Validate context structure (full validation)
+ */
+int pt_validate_context(struct pt_context *ctx);
+
+/**
+ * Validate peer structure (full validation)
+ */
+int pt_validate_peer(struct pt_peer *peer);
+
+/**
+ * Validate configuration
+ */
+int pt_validate_config(const PeerTalk_Config *config);
+
+/* Validation macros for debug builds */
+#ifdef PT_DEBUG
+    #define PT_VALIDATE_CONTEXT(ctx) \
+        do { \
+            if (!pt_context_valid(ctx)) { \
+                PT_Log_Err(ctx ? ctx->log : NULL, PT_LOG_CORE, \
+                           "Invalid context magic: 0x%08X", \
+                           ctx ? ctx->magic : 0); \
+                return PT_ERR_INVALID_PARAM; \
+            } \
+        } while (0)
+
+    #define PT_VALIDATE_PEER(peer) \
+        do { \
+            if (!pt_peer_valid(peer)) { \
+                return PT_ERR_INVALID_PARAM; \
+            } \
+        } while (0)
+#else
+    #define PT_VALIDATE_CONTEXT(ctx) ((void)0)
+    #define PT_VALIDATE_PEER(peer)   ((void)0)
+#endif
+
+/* ========================================================================== */
+/* Peer Management Functions                                                 */
+/* ========================================================================== */
+
+/**
+ * O(1) peer lookup by ID
+ *
+ * Returns NULL if peer not found
+ */
+static inline struct pt_peer *pt_find_peer_by_id(struct pt_context *ctx, PeerTalk_PeerID id)
+{
+    uint8_t index;
+
+    if (id == 0 || id >= PT_MAX_PEER_ID)
+        return NULL;
+
+    index = ctx->peer_id_to_index[id];
+    if (index == 0xFF || index >= ctx->peer_count)
+        return NULL;
+
+    return &ctx->peers[index];
+}
+
+/**
+ * Linear scan for address lookup (called rarely)
+ */
+struct pt_peer *pt_find_peer_by_address(struct pt_context *ctx, uint32_t addr, uint16_t port);
+
+/**
+ * Linear scan for name lookup (cold path)
+ */
+struct pt_peer *pt_find_peer_by_name(struct pt_context *ctx, const char *name);
+
+/**
+ * Allocate peer slot (uses swap-back removal for O(1) allocation)
+ */
+struct pt_peer *pt_alloc_peer(struct pt_context *ctx);
+
+/**
+ * Free peer slot (uses swap-back removal for O(1) deallocation)
+ *
+ * Algorithm:
+ * 1. Copy last peer to removed slot
+ * 2. Update peer_id_to_index for moved peer's ID
+ * 3. Decrement peer_count
+ * 4. Invalidate old last slot
+ *
+ * IMPORTANT: Peer ordering is NOT preserved. Iterate by peer_id if ordering matters.
+ */
+void pt_free_peer(struct pt_context *ctx, struct pt_peer *peer);
+
+/* ========================================================================== */
+/* Name Table Access                                                          */
+/* ========================================================================== */
+
+/**
+ * Get peer name from centralized table
+ */
+const char *pt_get_peer_name(struct pt_context *ctx, uint8_t name_idx);
+
+/**
+ * Allocate name slot in centralized table
+ */
+uint8_t pt_alloc_peer_name(struct pt_context *ctx, const char *name);
+
+/**
+ * Free name slot in centralized table
+ */
+void pt_free_peer_name(struct pt_context *ctx, uint8_t name_idx);
+
+/* ========================================================================== */
+/* Platform-Specific Allocation                                              */
+/* ========================================================================== */
+
+/**
+ * Platform-agnostic memory allocation
+ */
+void *pt_plat_alloc(size_t size);
+
+/**
+ * Platform-agnostic memory deallocation
+ */
+void pt_plat_free(void *ptr);
+
+/**
+ * Platform-specific extra context size
+ */
+size_t pt_plat_extra_size(void);
+
+#endif /* PT_INTERNAL_H */

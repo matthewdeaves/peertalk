@@ -1,0 +1,49 @@
+# PeerTalk Retro68 Makefile for Classic Mac
+# Usage: make -f Makefile.retro68 PLATFORM=mactcp
+#    or: make -f Makefile.retro68 PLATFORM=ot
+
+RETRO68 ?= /opt/Retro68-build/toolchain
+
+# Select toolchain based on platform
+ifeq ($(PLATFORM),mactcp)
+    # 68k for MacTCP (System 6/7)
+    PREFIX = $(RETRO68)/bin/m68k-apple-macos-
+    CFLAGS = -DPT_PLATFORM_MACTCP
+    PLAT_DIR = mactcp
+else ifeq ($(PLATFORM),ot)
+    # PowerPC for Open Transport (can also target late 68k)
+    PREFIX = $(RETRO68)/bin/powerpc-apple-macos-
+    CFLAGS = -DPT_PLATFORM_OT
+    PLAT_DIR = opentransport
+else
+    $(error PLATFORM must be mactcp or ot)
+endif
+
+CC = $(PREFIX)gcc
+AR = $(PREFIX)ar
+
+CFLAGS += -Wall -Werror -O2 -I include -I src/core
+CFLAGS += -DPT_LOG_ENABLED
+
+# Source files (added incrementally as sessions complete)
+CORE_SRCS = src/core/pt_version.c
+PLAT_SRCS =
+
+SRCS = $(CORE_SRCS) $(PLAT_SRCS)
+OBJS = $(SRCS:.c=.o)
+
+LIBNAME = libpeertalk_$(PLATFORM).a
+
+all: $(LIBNAME)
+
+$(LIBNAME): $(OBJS)
+	$(AR) rcs $@ $^
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+clean:
+	rm -f $(OBJS) $(LIBNAME)
+	find src -name "*.o" -delete
+
+.PHONY: all clean

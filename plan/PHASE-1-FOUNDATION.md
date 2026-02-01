@@ -116,8 +116,8 @@ All APIs have been verified against `/home/matthew/Retro68/InterfacesAndLibrarie
 
 | Session | Focus | Status | Files Created/Modified | Tests | Verify |
 |---------|-------|--------|------------------------|-------|--------|
-| 1.0 | Build System | [OPEN] | `Makefile`, `Makefile.retro68`, `CMakeLists.txt`, `.clang-format` | None | `make` succeeds with empty lib |
-| 1.1 | Public API & Types | [OPEN] | `include/peertalk.h`, `src/core/pt_types.h`, `src/core/pt_internal.h`, `src/core/pt_version.c` | None | Headers compile on all platforms |
+| 1.0 | Build System | [DONE] | `Makefile`, `Makefile.retro68`, `CMakeLists.txt`, `.clang-format` | None | `make` succeeds with empty lib |
+| 1.1 | Public API & Types | [DONE] | `include/peertalk.h`, `src/core/pt_types.h`, `src/core/pt_internal.h`, `src/core/pt_version.c` | None | Headers compile on all platforms |
 | 1.2 | Portable Primitives | [OPEN] | `src/core/pt_compat.h`, `src/core/pt_compat.c` | `tests/test_compat.c` | Byte order, memory, atomics work |
 | 1.3 | Platform Stubs | [OPEN] | `src/posix/platform_posix.c`, `src/mactcp/platform_mactcp.c`, `src/opentransport/platform_ot.c` | None | All platforms link |
 | 1.4 | PT_Log Integration | [OPEN] | `src/core/pt_internal.h` (update) | None | PeerTalk uses PT_Log from Phase 0 |
