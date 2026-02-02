@@ -2601,7 +2601,7 @@ int pt_ot_poll(struct pt_context *ctx) {
     /* Periodic announce */
     if (ctx->discovery_active &&
         (now - od->last_announce_tick) > 10 * 60) {
-        pt_ot_discovery_send(ctx, PT_DISC_ANNOUNCE);
+        pt_ot_discovery_send(ctx, PT_DISC_TYPE_ANNOUNCE);
         od->last_announce_tick = now;
     }
 

@@ -1348,7 +1348,7 @@ int pt_mactcp_discovery_start(struct pt_context *ctx) {
         return result;
 
     /* Send initial announcement */
-    pt_mactcp_discovery_send(ctx, PT_DISC_ANNOUNCE);
+    pt_mactcp_discovery_send(ctx, PT_DISC_TYPE_ANNOUNCE);
 
     md->last_announce_tick = Ticks;
 
@@ -1363,7 +1363,7 @@ int pt_mactcp_discovery_start(struct pt_context *ctx) {
  */
 void pt_mactcp_discovery_stop(struct pt_context *ctx) {
     /* Send goodbye */
-    pt_mactcp_discovery_send(ctx, PT_DISC_GOODBYE);
+    pt_mactcp_discovery_send(ctx, PT_DISC_TYPE_GOODBYE);
 
     /* Release UDP stream */
     pt_mactcp_udp_release(ctx);
@@ -1437,7 +1437,7 @@ int pt_mactcp_discovery_poll(struct pt_context *ctx) {
         pt_discovery_type_str(pkt.type), pkt.name, from_ip, pkt.sender_port);
 
     switch (pkt.type) {
-    case PT_DISC_ANNOUNCE:
+    case PT_DISC_TYPE_ANNOUNCE:
         peer = pt_peer_create(ctx, pkt.name, from_ip, pkt.sender_port);
         if (peer && ctx->callbacks.on_peer_discovered) {
             PeerTalk_PeerInfo info;
@@ -1447,11 +1447,11 @@ int pt_mactcp_discovery_poll(struct pt_context *ctx) {
         }
         break;
 
-    case PT_DISC_QUERY:
-        pt_mactcp_discovery_send(ctx, PT_DISC_ANNOUNCE);
+    case PT_DISC_TYPE_QUERY:
+        pt_mactcp_discovery_send(ctx, PT_DISC_TYPE_ANNOUNCE);
         break;
 
-    case PT_DISC_GOODBYE:
+    case PT_DISC_TYPE_GOODBYE:
         peer = pt_peer_find_by_addr(ctx, from_ip, pkt.sender_port);
         if (peer) {
             if (ctx->callbacks.on_peer_lost) {
@@ -2867,7 +2867,7 @@ int pt_mactcp_poll(struct pt_context *ctx) {
     /* Signed comparison for Ticks wrap */
     if (ctx->discovery_active &&
         (int32_t)(now - md->last_announce_tick) > (int32_t)announce_interval) {
-        pt_mactcp_discovery_send(ctx, PT_DISC_ANNOUNCE);
+        pt_mactcp_discovery_send(ctx, PT_DISC_TYPE_ANNOUNCE);
         md->last_announce_tick = now;
     }
 

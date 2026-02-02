@@ -328,11 +328,9 @@ message boundaries and doesn't require streaming reassembly.
 #define PT_MAGIC_UDP        0x50545544  /* "PTUD" */
 
 /* Discovery packet types */
-typedef enum {
-    PT_DISC_ANNOUNCE = 0x01,
-    PT_DISC_QUERY    = 0x02,
-    PT_DISC_GOODBYE  = 0x03
-} pt_discovery_type;
+#define PT_DISC_TYPE_ANNOUNCE   0x01
+#define PT_DISC_TYPE_QUERY      0x02
+#define PT_DISC_TYPE_GOODBYE    0x03
 
 /* Discovery flags (match PT_PEER_FLAG_* from peertalk.h) */
 #define PT_DISC_FLAG_HOST       0x0001
@@ -621,7 +619,7 @@ int pt_discovery_decode(struct pt_context *ctx, const uint8_t *buf, size_t len,
 
     /* Type */
     pkt->type = buf[pos++];
-    if (pkt->type < PT_DISC_ANNOUNCE || pkt->type > PT_DISC_GOODBYE) {
+    if (pkt->type < PT_DISC_TYPE_ANNOUNCE || pkt->type > PT_DISC_TYPE_GOODBYE) {
         PT_LOG_WARN(ctx, PT_LOG_CAT_PROTOCOL,
             "Discovery packet invalid type: %u", pkt->type);
         return PT_ERR_INVALID;
@@ -848,7 +846,7 @@ void test_discovery_round_trip(void) {
     int len;
 
     /* Setup original packet */
-    original.type = PT_DISC_ANNOUNCE;
+    original.type = PT_DISC_TYPE_ANNOUNCE;
     original.flags = PT_DISC_FLAG_ACCEPTING;
     original.sender_port = 5001;
     original.transports = PT_DISC_TRANSPORT_TCP | PT_DISC_TRANSPORT_UDP;
@@ -903,7 +901,7 @@ void test_crc_corruption(void) {
     uint8_t buf[PT_DISCOVERY_MAX_SIZE];
     int len;
 
-    pkt.type = PT_DISC_ANNOUNCE;
+    pkt.type = PT_DISC_TYPE_ANNOUNCE;
     pkt.flags = 0;
     pkt.sender_port = 5000;
     pkt.transports = PT_DISC_TRANSPORT_TCP;
@@ -935,7 +933,7 @@ void test_invalid_version(void) {
     uint8_t buf[PT_DISCOVERY_MAX_SIZE];
     int len;
 
-    pkt.type = PT_DISC_ANNOUNCE;
+    pkt.type = PT_DISC_TYPE_ANNOUNCE;
     pkt.flags = 0;
     pkt.sender_port = 5000;
     pkt.transports = PT_DISC_TRANSPORT_TCP;
@@ -964,7 +962,7 @@ void test_truncated_packet(void) {
     uint8_t buf[PT_DISCOVERY_MAX_SIZE];
     int len;
 
-    pkt.type = PT_DISC_ANNOUNCE;
+    pkt.type = PT_DISC_TYPE_ANNOUNCE;
     pkt.flags = 0;
     pkt.sender_port = 5000;
     pkt.transports = PT_DISC_TRANSPORT_TCP;
