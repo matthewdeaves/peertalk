@@ -293,3 +293,106 @@ PeerTalk_Error PeerTalk_StopDiscovery(PeerTalk_Context *ctx_public) {
     PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY, "Discovery stopped");
     return PT_OK;
 }
+
+/* ========================================================================== */
+/* Connection Control (Phase 4 Session 4.2)                                  */
+/* ========================================================================== */
+
+#if defined(PT_PLATFORM_POSIX)
+/* Forward declarations from net_posix.h */
+extern int pt_posix_listen_start(struct pt_context *ctx);
+extern void pt_posix_listen_stop(struct pt_context *ctx);
+extern int pt_posix_connect(struct pt_context *ctx, struct pt_peer *peer);
+extern int pt_posix_disconnect(struct pt_context *ctx, struct pt_peer *peer);
+#endif
+
+PeerTalk_Error PeerTalk_StartListening(PeerTalk_Context *ctx_public) {
+    struct pt_context *ctx = (struct pt_context *)ctx_public;
+
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+#if defined(PT_PLATFORM_POSIX)
+    if (pt_posix_listen_start(ctx) < 0) {
+        return PT_ERR_NETWORK;
+    }
+#else
+    /* TODO: Mac platform TCP listening */
+    (void)ctx;
+    return PT_ERR_NOT_SUPPORTED;
+#endif
+
+    PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT, "TCP listening started");
+    return PT_OK;
+}
+
+PeerTalk_Error PeerTalk_StopListening(PeerTalk_Context *ctx_public) {
+    struct pt_context *ctx = (struct pt_context *)ctx_public;
+
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+#if defined(PT_PLATFORM_POSIX)
+    pt_posix_listen_stop(ctx);
+#else
+    /* TODO: Mac platform TCP listening */
+    (void)ctx;
+#endif
+
+    PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT, "TCP listening stopped");
+    return PT_OK;
+}
+
+PeerTalk_Error PeerTalk_Connect(PeerTalk_Context *ctx_public,
+                                PeerTalk_PeerID peer_id) {
+    struct pt_context *ctx = (struct pt_context *)ctx_public;
+    struct pt_peer *peer;
+
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Find peer by ID */
+    peer = pt_peer_find_by_id(ctx, peer_id);
+    if (!peer) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_CONNECT,
+                    "Connect failed: Peer %u not found", peer_id);
+        return PT_ERR_PEER_NOT_FOUND;
+    }
+
+#if defined(PT_PLATFORM_POSIX)
+    return pt_posix_connect(ctx, peer);
+#else
+    /* TODO: Mac platform TCP connect */
+    (void)peer;
+    return PT_ERR_NOT_SUPPORTED;
+#endif
+}
+
+PeerTalk_Error PeerTalk_Disconnect(PeerTalk_Context *ctx_public,
+                                   PeerTalk_PeerID peer_id) {
+    struct pt_context *ctx = (struct pt_context *)ctx_public;
+    struct pt_peer *peer;
+
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Find peer by ID */
+    peer = pt_peer_find_by_id(ctx, peer_id);
+    if (!peer) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_CONNECT,
+                    "Disconnect failed: Peer %u not found", peer_id);
+        return PT_ERR_PEER_NOT_FOUND;
+    }
+
+#if defined(PT_PLATFORM_POSIX)
+    return pt_posix_disconnect(ctx, peer);
+#else
+    /* TODO: Mac platform TCP disconnect */
+    (void)peer;
+    return PT_ERR_NOT_SUPPORTED;
+#endif
+}
