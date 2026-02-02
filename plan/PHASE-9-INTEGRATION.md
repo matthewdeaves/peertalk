@@ -878,9 +878,9 @@ void validate_discovery_packet(const uint8_t *buf, size_t len,
     PT_INFO(g_log, PT_LOG_CAT_PROTOCOL, "  VALID discovery packet:");
     PT_INFO(g_log, PT_LOG_CAT_PROTOCOL, "    Version: %u", pkt.version);
     PT_INFO(g_log, PT_LOG_CAT_PROTOCOL, "    Type: %s (%u)",
-           pkt.type == PT_DISC_ANNOUNCE ? "ANNOUNCE" :
-           pkt.type == PT_DISC_QUERY ? "QUERY" :
-           pkt.type == PT_DISC_GOODBYE ? "GOODBYE" : "UNKNOWN",
+           pkt.type == PT_DISC_TYPE_ANNOUNCE ? "ANNOUNCE" :
+           pkt.type == PT_DISC_TYPE_QUERY ? "QUERY" :
+           pkt.type == PT_DISC_TYPE_GOODBYE ? "GOODBYE" : "UNKNOWN",
            pkt.type);
     PT_INFO(g_log, PT_LOG_CAT_PROTOCOL, "    Flags: 0x%04X", pkt.flags);
     PT_INFO(g_log, PT_LOG_CAT_PROTOCOL, "    Port: %u", pkt.sender_port);
@@ -907,7 +907,7 @@ void validate_discovery_packet(const uint8_t *buf, size_t len,
         warnings++;
     }
 
-    if (pkt.type > PT_DISC_GOODBYE) {
+    if (pkt.type > PT_DISC_TYPE_GOODBYE) {
         PT_WARN(g_log, PT_LOG_CAT_PROTOCOL, "  WARNING: Unknown packet type %u", pkt.type);
         warnings++;
     }

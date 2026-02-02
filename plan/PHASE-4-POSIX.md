@@ -83,10 +83,10 @@ void pt_peer_check_canaries(struct pt_peer *peer);
 #define PT_MAX_MESSAGE_SIZE      4096  /* Max payload size (configurable) */
 #define PT_PEER_NAME_MAX         31    /* Max peer name length */
 
-/* Discovery packet types */
-#define PT_DISC_ANNOUNCE         0
-#define PT_DISC_GOODBYE          1
-#define PT_DISC_QUERY            2
+/* Discovery packet types (defined in protocol.h from Phase 2) */
+/* #define PT_DISC_TYPE_ANNOUNCE   0x01 */
+/* #define PT_DISC_TYPE_QUERY      0x02 */
+/* #define PT_DISC_TYPE_GOODBYE    0x03 */
 
 /* Discovery flags */
 #define PT_DISC_FLAG_ACCEPTING   0x0001
@@ -193,9 +193,9 @@ your own IP address. Use Docker Compose with bridge networking for multi-peer te
 3. **Socket helpers need context** - Pass `struct pt_context *ctx` for proper error logging
 
 **Protocol Constant Naming:**
-- Use `PT_DISC_TYPE_ANNOUNCE` (not `PT_DISC_ANNOUNCE`)
-- Use `PT_DISC_TYPE_QUERY` (not `PT_DISC_QUERY`)
-- Use `PT_DISC_TYPE_GOODBYE` (not `PT_DISC_GOODBYE`)
+- Use `PT_DISC_TYPE_ANNOUNCE` (not `PT_DISC_TYPE_ANNOUNCE`)
+- Use `PT_DISC_TYPE_QUERY` (not `PT_DISC_TYPE_QUERY`)
+- Use `PT_DISC_TYPE_GOODBYE` (not `PT_DISC_TYPE_GOODBYE`)
 
 **Logging Levels:**
 - Discovery events should use `PT_CTX_INFO` (not `PT_CTX_DEBUG`) for visibility
@@ -726,7 +726,7 @@ int pt_posix_discovery_start(struct pt_context *ctx) {
         "Discovery started on port %u", DISCOVERY_PORT(ctx));
 
     /* Send initial announcement */
-    pt_posix_discovery_send(ctx, PT_DISC_ANNOUNCE);
+    pt_posix_discovery_send(ctx, PT_DISC_TYPE_ANNOUNCE);
 
     return 0;
 }
@@ -736,7 +736,7 @@ void pt_posix_discovery_stop(struct pt_context *ctx) {
 
     if (pd->discovery_sock >= 0) {
         /* Send goodbye */
-        pt_posix_discovery_send(ctx, PT_DISC_GOODBYE);
+        pt_posix_discovery_send(ctx, PT_DISC_TYPE_GOODBYE);
 
         close(pd->discovery_sock);
         pd->discovery_sock = -1;
@@ -832,7 +832,7 @@ int pt_posix_discovery_poll(struct pt_context *ctx) {
         pt_discovery_type_str(pkt.type), pkt.name, from_ip, pkt.sender_port);
 
     switch (pkt.type) {
-    case PT_DISC_ANNOUNCE:
+    case PT_DISC_TYPE_ANNOUNCE:
         /* Create or update peer */
         peer = pt_peer_create(ctx, pkt.name, from_ip, pkt.sender_port);
         if (peer && ctx->callbacks.on_peer_discovered) {
@@ -843,12 +843,12 @@ int pt_posix_discovery_poll(struct pt_context *ctx) {
         }
         break;
 
-    case PT_DISC_QUERY:
+    case PT_DISC_TYPE_QUERY:
         /* Respond with announce */
-        pt_posix_discovery_send(ctx, PT_DISC_ANNOUNCE);
+        pt_posix_discovery_send(ctx, PT_DISC_TYPE_ANNOUNCE);
         break;
 
-    case PT_DISC_GOODBYE:
+    case PT_DISC_TYPE_GOODBYE:
         /* Find and remove peer */
         peer = pt_peer_find_by_addr(ctx, from_ip, pkt.sender_port);
         if (peer) {
@@ -867,9 +867,9 @@ int pt_posix_discovery_poll(struct pt_context *ctx) {
 /* Helper for logging */
 static const char *pt_discovery_type_str(uint8_t type) {
     switch (type) {
-    case PT_DISC_ANNOUNCE: return "ANNOUNCE";
-    case PT_DISC_QUERY:    return "QUERY";
-    case PT_DISC_GOODBYE:  return "GOODBYE";
+    case PT_DISC_TYPE_ANNOUNCE: return "ANNOUNCE";
+    case PT_DISC_TYPE_QUERY:    return "QUERY";
+    case PT_DISC_TYPE_GOODBYE:  return "GOODBYE";
     default:               return "UNKNOWN";
     }
 }
@@ -3036,7 +3036,7 @@ int pt_posix_poll(struct pt_context *ctx) {
     if (ctx->discovery_active && (poll_time - pd->last_announce) > 10000) {
         PT_LOG_DEBUG(ctx, PT_LOG_CAT_DISCOVERY,
             "Sending periodic discovery announce (interval: 10s)");
-        pt_posix_discovery_send(ctx, PT_DISC_ANNOUNCE);
+        pt_posix_discovery_send(ctx, PT_DISC_TYPE_ANNOUNCE);
         pd->last_announce = poll_time;
     }
 
@@ -3575,7 +3575,7 @@ After committing the workflow file:
 
 21. **Socket helpers without context** - Pass `struct pt_context *ctx` to socket helper functions (`set_nonblocking`, `set_broadcast`, `set_reuseaddr`) so they can log errors properly with category tags. Silent socket setup failures (wrong signature taking just `int fd`) are extremely difficult to debug, especially when testing on different platforms.
 
-22. **Wrong discovery constant names** - Use `PT_DISC_TYPE_ANNOUNCE` (not `PT_DISC_ANNOUNCE`), `PT_DISC_TYPE_QUERY` (not `PT_DISC_QUERY`), `PT_DISC_TYPE_GOODBYE` (not `PT_DISC_GOODBYE`). The constants include `_TYPE_` in their names for consistency with message type naming.
+22. **Wrong discovery constant names** - Use `PT_DISC_TYPE_ANNOUNCE` (not `PT_DISC_TYPE_ANNOUNCE`), `PT_DISC_TYPE_QUERY` (not `PT_DISC_TYPE_QUERY`), `PT_DISC_TYPE_GOODBYE` (not `PT_DISC_TYPE_GOODBYE`). The constants include `_TYPE_` in their names for consistency with message type naming.
 
 23. **Config field confusion** - Use `ctx->config.local_name` (embedded char array, not pointer), `ctx->config.tcp_port` (not `listen_port`), and remember to use `strncpy` for the name since it's a char array, not a pointer assignment. Code like `config.local_name = name;` will compile but cause memory corruption.
 
@@ -3604,9 +3604,9 @@ After committing the workflow file:
 - Updated socket helper functions to accept `ctx` parameter for proper error logging with categories
 
 **Protocol Constant Corrections:**
-- Changed all `PT_DISC_ANNOUNCE` → `PT_DISC_TYPE_ANNOUNCE` throughout Session 4.1
-- Changed all `PT_DISC_QUERY` → `PT_DISC_TYPE_QUERY` throughout Session 4.1
-- Changed all `PT_DISC_GOODBYE` → `PT_DISC_TYPE_GOODBYE` throughout Session 4.1
+- Changed all `PT_DISC_TYPE_ANNOUNCE` → `PT_DISC_TYPE_ANNOUNCE` throughout Session 4.1
+- Changed all `PT_DISC_TYPE_QUERY` → `PT_DISC_TYPE_QUERY` throughout Session 4.1
+- Changed all `PT_DISC_TYPE_GOODBYE` → `PT_DISC_TYPE_GOODBYE` throughout Session 4.1
 - Added missing `pkt.transports` field initialization (must set to `PT_TRANSPORT_TCP | PT_TRANSPORT_UDP`)
 
 **Configuration Field Corrections:**
