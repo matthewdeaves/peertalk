@@ -123,7 +123,7 @@ static uint32_t get_local_ip(struct pt_context *ctx) {
 
                 /* Found valid interface */
                 local_ip = ip;
-                PT_CTX_DEBUG(ctx, PT_LOG_CAT_NETWORK,
+                PT_CTX_INFO(ctx, PT_LOG_CAT_NETWORK,
                             "Local IP detected via getifaddrs: %u.%u.%u.%u",
                             (ip >> 24) & 0xFF, (ip >> 16) & 0xFF,
                             (ip >> 8) & 0xFF, ip & 0xFF);
@@ -148,7 +148,7 @@ static uint32_t get_local_ip(struct pt_context *ctx) {
                 socklen_t len = sizeof(local_addr);
                 if (getsockname(sock, (struct sockaddr *)&local_addr, &len) == 0) {
                     local_ip = ntohl(local_addr.sin_addr.s_addr);
-                    PT_CTX_DEBUG(ctx, PT_LOG_CAT_NETWORK,
+                    PT_CTX_INFO(ctx, PT_LOG_CAT_NETWORK,
                                 "Local IP detected via 8.8.8.8 trick: %u.%u.%u.%u",
                                 (local_ip >> 24) & 0xFF, (local_ip >> 16) & 0xFF,
                                 (local_ip >> 8) & 0xFF, local_ip & 0xFF);
@@ -418,6 +418,9 @@ int pt_posix_discovery_send(struct pt_context *ctx, uint8_t type) {
         pt_strncpy(pkt.name, "PeerTalk", PT_MAX_PEER_NAME);
     }
 
+    /* Set name length */
+    pkt.name_len = pt_strlen(pkt.name);
+
     /* Encode packet */
     encoded_len = pt_discovery_encode(&pkt, buf, sizeof(buf));
     if (encoded_len < 0) {
@@ -447,10 +450,15 @@ int pt_posix_discovery_send(struct pt_context *ctx, uint8_t type) {
         return -1;
     }
 
-    PT_CTX_DEBUG(ctx, PT_LOG_CAT_DISCOVERY,
-                "Discovery %s sent (%zd bytes)",
+    PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY,
+                "Discovery %s sent to %u.%u.%u.%u:%u (%zd bytes)",
                 type == PT_DISC_TYPE_ANNOUNCE ? "ANNOUNCE" :
                 type == PT_DISC_TYPE_QUERY ? "QUERY" : "GOODBYE",
+                (pd->broadcast_addr >> 24) & 0xFF,
+                (pd->broadcast_addr >> 16) & 0xFF,
+                (pd->broadcast_addr >> 8) & 0xFF,
+                pd->broadcast_addr & 0xFF,
+                pd->discovery_port,
                 sent);
 
     return 0;
@@ -494,6 +502,10 @@ int pt_posix_discovery_poll(struct pt_context *ctx) {
 
     /* CRITICAL: Ignore broadcasts from our own IP */
     if (sender_ip == pd->local_ip) {
+        PT_CTX_DEBUG(ctx, PT_LOG_CAT_DISCOVERY,
+                    "Ignoring packet from our own IP %u.%u.%u.%u",
+                    (sender_ip >> 24) & 0xFF, (sender_ip >> 16) & 0xFF,
+                    (sender_ip >> 8) & 0xFF, sender_ip & 0xFF);
         return 0;  /* Our own broadcast, ignore */
     }
 
@@ -506,8 +518,8 @@ int pt_posix_discovery_poll(struct pt_context *ctx) {
         return 0;  /* Ignore invalid packets */
     }
 
-    PT_CTX_DEBUG(ctx, PT_LOG_CAT_DISCOVERY,
-                "Discovery %s from %u.%u.%u.%u:%u (%s)",
+    PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY,
+                "Discovery %s received from %u.%u.%u.%u:%u (%s)",
                 pkt.type == PT_DISC_TYPE_ANNOUNCE ? "ANNOUNCE" :
                 pkt.type == PT_DISC_TYPE_QUERY ? "QUERY" : "GOODBYE",
                 (sender_ip >> 24) & 0xFF, (sender_ip >> 16) & 0xFF,
@@ -515,12 +527,24 @@ int pt_posix_discovery_poll(struct pt_context *ctx) {
                 pkt.sender_port, pkt.name);
 
     /* Handle packet type */
+    PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY,
+               "Processing packet type %u", pkt.type);
     switch (pkt.type) {
     case PT_DISC_TYPE_ANNOUNCE:
+        PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY,
+                   "Handling ANNOUNCE packet");
         /* Find or create peer */
         peer = pt_peer_find_by_addr(ctx, sender_ip, pkt.sender_port);
+        PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY,
+                   "pt_peer_find_by_addr returned: %p", (void*)peer);
         if (!peer) {
             /* Create new peer */
+            PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY,
+                       "Creating new peer: %s at %u.%u.%u.%u:%u",
+                       pkt.name,
+                       (sender_ip >> 24) & 0xFF, (sender_ip >> 16) & 0xFF,
+                       (sender_ip >> 8) & 0xFF, sender_ip & 0xFF,
+                       pkt.sender_port);
             peer = pt_peer_create(ctx, pkt.name, sender_ip, pkt.sender_port);
             if (!peer) {
                 PT_CTX_WARN(ctx, PT_LOG_CAT_DISCOVERY,
@@ -528,12 +552,20 @@ int pt_posix_discovery_poll(struct pt_context *ctx) {
                 return 0;
             }
 
+            PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY,
+                       "Peer created successfully, firing callback");
+
             /* Fire on_peer_discovered callback */
             if (ctx->callbacks.on_peer_discovered) {
                 PeerTalk_PeerInfo info;
                 pt_peer_get_info(peer, &info);
+                PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY,
+                           "Calling on_peer_discovered callback");
                 ctx->callbacks.on_peer_discovered((PeerTalk_Context *)ctx,
                                                   &info, ctx->callbacks.user_data);
+            } else {
+                PT_CTX_WARN(ctx, PT_LOG_CAT_DISCOVERY,
+                           "No on_peer_discovered callback registered!");
             }
         } else {
             /* Update existing peer */

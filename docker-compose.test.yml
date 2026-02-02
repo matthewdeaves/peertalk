@@ -1,0 +1,45 @@
+# docker-compose.yml for PeerTalk POSIX discovery testing
+
+services:
+  alice:
+    build:
+      context: .
+      dockerfile: Dockerfile.test.build
+    container_name: peertalk-alice
+    command: ["/app/test_discovery_posix", "Alice"]
+    tty: true
+    stdin_open: true
+    networks:
+      peertalk_test_net:
+        ipv4_address: 192.168.200.2
+
+  bob:
+    build:
+      context: .
+      dockerfile: Dockerfile.test.build
+    container_name: peertalk-bob
+    command: ["/app/test_discovery_posix", "Bob"]
+    tty: true
+    stdin_open: true
+    networks:
+      peertalk_test_net:
+        ipv4_address: 192.168.200.3
+
+  charlie:
+    build:
+      context: .
+      dockerfile: Dockerfile.test.build
+    container_name: peertalk-charlie
+    command: ["/app/test_discovery_posix", "Charlie"]
+    tty: true
+    stdin_open: true
+    networks:
+      peertalk_test_net:
+        ipv4_address: 192.168.200.4
+
+networks:
+  peertalk_test_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.200.0/24

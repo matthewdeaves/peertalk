@@ -7,6 +7,7 @@
 
 #include "pt_internal.h"
 #include "pt_compat.h"
+#include "peer.h"
 #include <string.h>
 
 /* ========================================================================== */
@@ -97,6 +98,17 @@ PeerTalk_Context *PeerTalk_Init(const PeerTalk_Config *config) {
     /* Initialize peer ID lookup table (0xFF = invalid) */
     pt_memset(ctx->peer_id_to_index, 0xFF,
               sizeof(ctx->peer_id_to_index));
+
+    /* Allocate peer list */
+    if (pt_peer_list_init(ctx, ctx->max_peers) != 0) {
+        PT_CTX_ERR(ctx, PT_LOG_CAT_INIT,
+                  "Failed to initialize peer list");
+        if (ctx->log) {
+            PT_LogDestroy(ctx->log);
+        }
+        pt_plat_free(ctx);
+        return NULL;
+    }
 
     /* Select platform operations based on compile-time platform */
 #if defined(PT_PLATFORM_POSIX)

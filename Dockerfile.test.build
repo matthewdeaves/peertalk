@@ -1,0 +1,23 @@
+FROM debian:bookworm-slim
+
+# Install build tools
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    net-tools \
+    iputils-ping \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app directory
+WORKDIR /app
+
+# Copy source and build files
+COPY Makefile ./
+COPY include ./include/
+COPY src ./src/
+COPY tests ./tests/
+
+# Build the test
+RUN make test_discovery_posix
+
+# Run the test
+CMD ["/app/test_discovery_posix", "default"]
