@@ -181,6 +181,26 @@ This automated test suite serves as the protocol reference:
 ### Objective
 Implement UDP broadcast for peer discovery using non-blocking sockets and select().
 
+### Implementation Notes
+
+**⚠️ CRITICAL TESTING LIMITATION**: UDP broadcast discovery **CANNOT** be tested with two processes
+on the same host due to kernel loopback filtering. The OS filters out broadcast packets sent from
+your own IP address. Use Docker Compose with bridge networking for multi-peer testing (see Task 4.1.4 below).
+
+**Critical Bugs Found During Implementation:**
+1. **Missing `name_len` initialization** - Must set `pkt.name_len = pt_strlen(pkt.name)` before encoding
+2. **Missing `pt_peer_list_init()` call** - Required in `PeerTalk_Init()` before any peer operations
+3. **Socket helpers need context** - Pass `struct pt_context *ctx` for proper error logging
+
+**Protocol Constant Naming:**
+- Use `PT_DISC_TYPE_ANNOUNCE` (not `PT_DISC_ANNOUNCE`)
+- Use `PT_DISC_TYPE_QUERY` (not `PT_DISC_QUERY`)
+- Use `PT_DISC_TYPE_GOODBYE` (not `PT_DISC_GOODBYE`)
+
+**Logging Levels:**
+- Discovery events should use `PT_CTX_INFO` (not `PT_CTX_DEBUG`) for visibility
+- Users need to see peer discovery working without enabling full debug output
+
 ### Tasks
 
 #### Task 4.1.1: Create `src/posix/net_posix.h`
@@ -428,31 +448,38 @@ size_t pt_posix_extra_size(void) {
 
 /*
  * Socket configuration helpers with error logging.
- * These are called during socket setup - failures are logged for debugging.
+ * Accept context parameter for proper error logging with category.
  */
-static int set_nonblocking(int fd) {
+static int set_nonblocking(struct pt_context *ctx, int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags == -1) {
-        /* Note: No ctx available here, but caller logs on failure */
+        PT_CTX_ERR(ctx, PT_LOG_CAT_NETWORK,
+                   "Failed to get socket flags: %s", strerror(errno));
         return -1;
     }
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        PT_CTX_ERR(ctx, PT_LOG_CAT_NETWORK,
+                   "Failed to set non-blocking: %s", strerror(errno));
         return -1;
     }
     return 0;
 }
 
-static int set_broadcast(int fd) {
+static int set_broadcast(struct pt_context *ctx, int fd) {
     int opt = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &opt, sizeof(opt)) < 0) {
+        PT_CTX_ERR(ctx, PT_LOG_CAT_NETWORK,
+                   "Failed to enable broadcast: %s", strerror(errno));
         return -1;
     }
     return 0;
 }
 
-static int set_reuseaddr(int fd) {
+static int set_reuseaddr(struct pt_context *ctx, int fd) {
     int opt = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        PT_CTX_ERR(ctx, PT_LOG_CAT_NETWORK,
+                   "Failed to set SO_REUSEADDR: %s", strerror(errno));
         return -1;
     }
     return 0;
@@ -658,23 +685,20 @@ int pt_posix_discovery_start(struct pt_context *ctx) {
         return -1;
     }
 
-    if (set_nonblocking(sock) < 0) {
-        PT_LOG_ERR(ctx, PT_LOG_CAT_DISCOVERY,
-            "Failed to set discovery socket non-blocking: %s", strerror(errno));
+    if (set_nonblocking(ctx, sock) < 0) {
+        /* Error already logged by helper */
         close(sock);
         return -1;
     }
 
-    if (set_broadcast(sock) < 0) {
-        PT_LOG_ERR(ctx, PT_LOG_CAT_DISCOVERY,
-            "Failed to enable broadcast on discovery socket: %s", strerror(errno));
+    if (set_broadcast(ctx, sock) < 0) {
+        /* Error already logged by helper */
         close(sock);
         return -1;
     }
 
-    if (set_reuseaddr(sock) < 0) {
-        PT_LOG_ERR(ctx, PT_LOG_CAT_DISCOVERY,
-            "Failed to set SO_REUSEADDR on discovery socket: %s", strerror(errno));
+    if (set_reuseaddr(ctx, sock) < 0) {
+        /* Error already logged by helper */
         close(sock);
         return -1;
     }
@@ -933,6 +957,238 @@ int main(int argc, char **argv) {
 }
 ```
 
+#### Task 4.1.4: Docker Testing Infrastructure
+
+**Problem**: UDP broadcast discovery **cannot work** with two processes on the same host because
+the kernel filters out broadcast packets sent from your own IP address. This is a fundamental
+limitation of UDP broadcast on loopback.
+
+**Solution**: Use Docker Compose with bridge networking to create isolated network namespaces
+where each peer has a unique IP address on a virtual network segment that properly forwards
+broadcasts between containers.
+
+**Files to Create:**
+
+1. **Dockerfile.test.build** - Self-contained build environment:
+
+```dockerfile
+FROM debian:bookworm-slim
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    net-tools \
+    iputils-ping \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy entire project (build happens inside container)
+COPY Makefile ./
+COPY include ./include/
+COPY src ./src/
+COPY tests ./tests/
+
+# Build the discovery test binary
+RUN make test_discovery_posix
+
+# Default command (overridden by docker-compose)
+CMD ["/app/test_discovery_posix", "default"]
+```
+
+2. **docker-compose.test.yml** - Multi-peer test network:
+
+```yaml
+services:
+  alice:
+    build:
+      context: .
+      dockerfile: Dockerfile.test.build
+    container_name: peertalk-alice
+    command: ["/app/test_discovery_posix", "Alice"]
+    tty: true
+    stdin_open: true
+    networks:
+      peertalk_test_net:
+        ipv4_address: 192.168.200.2
+
+  bob:
+    build:
+      context: .
+      dockerfile: Dockerfile.test.build
+    container_name: peertalk-bob
+    command: ["/app/test_discovery_posix", "Bob"]
+    tty: true
+    stdin_open: true
+    networks:
+      peertalk_test_net:
+        ipv4_address: 192.168.200.3
+
+  charlie:
+    build:
+      context: .
+      dockerfile: Dockerfile.test.build
+    container_name: peertalk-charlie
+    command: ["/app/test_discovery_posix", "Charlie"]
+    tty: true
+    stdin_open: true
+    networks:
+      peertalk_test_net:
+        ipv4_address: 192.168.200.4
+
+networks:
+  peertalk_test_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.200.0/24
+```
+
+3. **scripts/test-discovery-docker.sh** - Helper script for managing tests:
+
+```bash
+#!/bin/bash
+# Test PeerTalk UDP discovery using Docker containers
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+cd "$PROJECT_ROOT"
+
+# Commands
+start_test() {
+    echo "Building containers (this will compile inside Docker)..."
+    docker-compose -f docker-compose.test.yml up --build -d
+
+    echo ""
+    echo "Waiting 5 seconds for discovery to occur..."
+    sleep 5
+
+    echo ""
+    echo "========================================"
+    echo "Alice's output:"
+    echo "========================================"
+    docker logs peertalk-alice 2>&1 | tail -20
+
+    echo ""
+    echo "========================================"
+    echo "Bob's output:"
+    echo "========================================"
+    docker logs peertalk-bob 2>&1 | tail -20
+
+    echo ""
+    echo "========================================"
+    echo "Charlie's output:"
+    echo "========================================"
+    docker logs peertalk-charlie 2>&1 | tail -20
+
+    echo ""
+    echo "Containers are still running. Use '$0 logs' to see updates."
+    echo "Use '$0 stop' to stop the test."
+}
+
+stop_test() {
+    echo "Stopping peer containers..."
+    docker-compose -f docker-compose.test.yml down
+}
+
+show_logs() {
+    local peer=${1:-all}
+
+    if [ "$peer" = "all" ]; then
+        echo "=== Alice ==="
+        docker logs peertalk-alice 2>&1 | tail -30
+        echo ""
+        echo "=== Bob ==="
+        docker logs peertalk-bob 2>&1 | tail -30
+        echo ""
+        echo "=== Charlie ==="
+        docker logs peertalk-charlie 2>&1 | tail -30
+    else
+        docker logs "peertalk-$peer" 2>&1
+    fi
+}
+
+follow_logs() {
+    local peer=${1:-alice}
+    docker logs -f "peertalk-$peer" 2>&1
+}
+
+show_status() {
+    docker-compose -f docker-compose.test.yml ps
+}
+
+case "$1" in
+    start)
+        start_test
+        ;;
+    stop)
+        stop_test
+        ;;
+    logs)
+        show_logs "$2"
+        ;;
+    follow)
+        follow_logs "$2"
+        ;;
+    status)
+        show_status
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|status|logs [peer]|follow [peer]}"
+        echo ""
+        echo "Commands:"
+        echo "  start           - Build and start 3 peer containers"
+        echo "  stop            - Stop all containers"
+        echo "  status          - Show container status"
+        echo "  logs [peer]     - Show logs (alice/bob/charlie/all)"
+        echo "  follow [peer]   - Follow logs for a peer (default: alice)"
+        echo ""
+        echo "Example:"
+        echo "  $0 start        # Start the test"
+        echo "  $0 logs bob     # Check Bob's logs"
+        echo "  $0 follow alice # Follow Alice's output"
+        echo "  $0 stop         # Stop the test"
+        ;;
+esac
+```
+
+**Usage:**
+
+```bash
+chmod +x scripts/test-discovery-docker.sh
+./scripts/test-discovery-docker.sh start    # Build and launch 3 peers
+./scripts/test-discovery-docker.sh logs     # Check all logs
+./scripts/test-discovery-docker.sh logs bob # Check Bob's logs only
+./scripts/test-discovery-docker.sh follow alice # Follow Alice's logs in real-time
+./scripts/test-discovery-docker.sh stop     # Clean up
+```
+
+**Expected Results:**
+
+All 3 peers should discover each other:
+- Alice discovers Bob & Charlie (2 peers)
+- Bob discovers Alice & Charlie (2 peers)
+- Charlie discovers Alice & Bob (2 peers)
+
+Each peer should log:
+- Local IP detection (192.168.200.x)
+- Discovery ANNOUNCE sent to broadcast address
+- Discovery packets received from other peers
+- Peer creation with full address details
+- Callbacks firing correctly
+
+**Architecture Benefits:**
+
+1. **Network Isolation** - Each container has its own network namespace with unique IP
+2. **Broadcast Works** - Docker bridge network properly forwards broadcasts between containers
+3. **Reproducible** - Same environment every time, no host network interference
+4. **Self-Contained** - Builds inside Docker, no host build tools required (~30s rebuild)
+5. **CI/CD Ready** - Can run in automated testing pipelines
+6. **Multi-Platform** - Works on Linux, macOS (Docker Desktop), Windows (WSL2)
+
 ### Acceptance Criteria
 1. UDP socket binds successfully to broadcast port
 2. Announce packets are sent on start
@@ -942,6 +1198,10 @@ int main(int argc, char **argv) {
 6. GOODBYE removes peer from list
 7. QUERY triggers ANNOUNCE response
 8. Callbacks fire correctly
+9. **Docker-based multi-peer testing works** (3 containers discover each other)
+10. **Peer list initialization** is called in `PeerTalk_Init()` before peer operations
+11. **Discovery packets include `name_len`** field properly set
+12. **Socket helpers log errors** using context parameter
 
 ---
 
@@ -973,16 +1233,14 @@ int pt_posix_listen_start(struct pt_context *ctx) {
         return -1;
     }
 
-    if (set_nonblocking(sock) < 0) {
-        PT_LOG_ERR(ctx, PT_LOG_CAT_CONNECT,
-            "Failed to set listen socket non-blocking: %s", strerror(errno));
+    if (set_nonblocking(ctx, sock) < 0) {
+        /* Error already logged by helper */
         close(sock);
         return -1;
     }
 
-    if (set_reuseaddr(sock) < 0) {
-        PT_LOG_ERR(ctx, PT_LOG_CAT_CONNECT,
-            "Failed to set SO_REUSEADDR on listen socket: %s", strerror(errno));
+    if (set_reuseaddr(ctx, sock) < 0) {
+        /* Error already logged by helper */
         close(sock);
         return -1;
     }
@@ -1121,7 +1379,7 @@ int pt_posix_connect(struct pt_context *ctx, struct pt_peer *peer) {
         return PT_ERR_NETWORK;
     }
 
-    set_nonblocking(sock);
+    set_nonblocking(ctx, sock);
 
     pt_memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
@@ -2023,16 +2281,14 @@ int pt_posix_udp_init(struct pt_context *ctx) {
         return -1;
     }
 
-    if (set_nonblocking(sock) < 0) {
-        PT_LOG_ERR(ctx, PT_LOG_CAT_NETWORK,
-            "Failed to set UDP socket non-blocking: %s", strerror(errno));
+    if (set_nonblocking(ctx, sock) < 0) {
+        /* Error already logged by helper */
         close(sock);
         return -1;
     }
 
-    if (set_reuseaddr(sock) < 0) {
-        PT_LOG_ERR(ctx, PT_LOG_CAT_NETWORK,
-            "Failed to set SO_REUSEADDR on UDP socket: %s", strerror(errno));
+    if (set_reuseaddr(ctx, sock) < 0) {
+        /* Error already logged by helper */
         close(sock);
         return -1;
     }
@@ -3311,6 +3567,20 @@ After committing the workflow file:
 
 17. **Validation failures should log** - When returning early due to invalid parameters (NULL pointers, wrong magic, bad state), always log at PT_LOG_WARN before returning. Silent failures are hard to debug, especially cross-platform.
 
+18. **UDP broadcast on single host** - You **CANNOT** test UDP discovery with two processes on the same machine. The kernel filters out broadcast packets from your own IP address. Use Docker Compose with bridge networking (see Task 4.1.4) to give each peer a unique IP in an isolated network namespace. This is not optional - single-host testing will silently fail.
+
+19. **Forgetting pt_peer_list_init()** - The peer list **MUST** be initialized in `PeerTalk_Init()` before any peer operations (discovery, connections, etc.). Missing this call causes segfaults when creating peers. Always verify `ctx->peers` is not NULL before using.
+
+20. **Missing name_len in discovery packets** - After copying the peer name into `pkt.name`, you **MUST** set `pkt.name_len = pt_strlen(pkt.name)` before calling `pt_discovery_encode()`. The protocol requires this field to properly decode names. Without it, peers will have empty names.
+
+21. **Socket helpers without context** - Pass `struct pt_context *ctx` to socket helper functions (`set_nonblocking`, `set_broadcast`, `set_reuseaddr`) so they can log errors properly with category tags. Silent socket setup failures (wrong signature taking just `int fd`) are extremely difficult to debug, especially when testing on different platforms.
+
+22. **Wrong discovery constant names** - Use `PT_DISC_TYPE_ANNOUNCE` (not `PT_DISC_ANNOUNCE`), `PT_DISC_TYPE_QUERY` (not `PT_DISC_QUERY`), `PT_DISC_TYPE_GOODBYE` (not `PT_DISC_GOODBYE`). The constants include `_TYPE_` in their names for consistency with message type naming.
+
+23. **Config field confusion** - Use `ctx->config.local_name` (embedded char array, not pointer), `ctx->config.tcp_port` (not `listen_port`), and remember to use `strncpy` for the name since it's a char array, not a pointer assignment. Code like `config.local_name = name;` will compile but cause memory corruption.
+
+24. **INFO vs DEBUG logging for discovery** - Discovery events (peer found, packet sent/received, local IP detected) should use `PT_CTX_INFO` (not `PT_CTX_DEBUG`) so users can see peer discovery working without enabling full debug output which floods logs with packet hex dumps. Save DEBUG for low-level packet parsing details.
+
 ---
 
 ## References
@@ -3325,6 +3595,78 @@ After committing the workflow file:
 ---
 
 ## Review Changelog
+
+### 2026-02-02: Phase 4.1 Implementation Corrections
+
+**Critical Bug Fixes:**
+- Added missing `name_len` field initialization in `pt_posix_discovery_send()` (must set after copying name, before encoding)
+- Added `pt_peer_list_init()` call requirement in `PeerTalk_Init()` (missing this causes segfaults on peer creation)
+- Updated socket helper functions to accept `ctx` parameter for proper error logging with categories
+
+**Protocol Constant Corrections:**
+- Changed all `PT_DISC_ANNOUNCE` → `PT_DISC_TYPE_ANNOUNCE` throughout Session 4.1
+- Changed all `PT_DISC_QUERY` → `PT_DISC_TYPE_QUERY` throughout Session 4.1
+- Changed all `PT_DISC_GOODBYE` → `PT_DISC_TYPE_GOODBYE` throughout Session 4.1
+- Added missing `pkt.transports` field initialization (must set to `PT_TRANSPORT_TCP | PT_TRANSPORT_UDP`)
+
+**Configuration Field Corrections:**
+- Changed `ctx->local_name` → `ctx->config.local_name` (embedded array, not pointer)
+- Changed `config.local_name = name` → `strncpy(config.local_name, name, PT_MAX_PEER_NAME)` in test code
+- Clarified `ctx->config.tcp_port` vs `pd->listen_port` naming (from platform data, not config)
+
+**Docker Testing Infrastructure (NEW - Task 4.1.4):**
+- Added `Dockerfile.test.build` for containerized builds (self-contained, ~30s rebuild)
+- Added `docker-compose.test.yml` with 3-peer network (Alice, Bob, Charlie on 192.168.200.0/24)
+- Added `scripts/test-discovery-docker.sh` helper script (start/stop/logs/follow/status commands)
+- **Critical Discovery**: UDP broadcast **DOES NOT WORK** on single host - requires Docker bridge networking
+- Documented that kernel filters out broadcast packets from your own IP (loopback limitation)
+- This is not optional - single-host testing will silently fail
+
+**Logging Level Changes:**
+- Upgraded discovery events from DEBUG to INFO for better visibility:
+  - Local IP detection (`PT_CTX_INFO` with detected address)
+  - Packet send/receive (`PT_CTX_INFO` with full address details and peer names)
+  - Peer creation (`PT_CTX_INFO` with address and name)
+- Added detailed address formatting in log messages (dotted-quad notation)
+- Rationale: Users need to see discovery working without enabling full debug spam
+
+**Socket Helper Updates:**
+- Changed signatures from `static int set_nonblocking(int fd)` to `static int set_nonblocking(struct pt_context *ctx, int fd)`
+- Added error logging with `PT_CTX_ERR` and category tags inside helpers
+- Removed redundant error logging at call sites (helpers now log)
+- Applies to: `set_nonblocking()`, `set_broadcast()`, `set_reuseaddr()`
+
+**Test Program Updates:**
+- Fixed config initialization to use `strncpy` for `local_name` (array, not pointer)
+- Changed poll interval from 100ms to 1 second (usleep→sleep)
+- Improved output formatting and status reporting
+
+**New Common Pitfalls:**
+- #18: UDP broadcast on single host limitation (requires Docker)
+- #19: Forgetting `pt_peer_list_init()` (causes segfaults)
+- #20: Missing `name_len` in discovery packets (silent protocol failure)
+- #21: Socket helpers without context (poor debugging)
+- #22: Wrong discovery constant names (`_TYPE_` prefix required)
+- #23: Config field confusion (`local_name` as array, `tcp_port` naming)
+- #24: INFO vs DEBUG logging for discovery events (visibility vs spam)
+
+**Acceptance Criteria Added:**
+- #9: Docker-based multi-peer testing works (3 containers discover each other)
+- #10: Peer list initialization called before peer operations
+- #11: Discovery packets include `name_len` field properly set
+- #12: Socket helpers log errors using context parameter
+
+**Implementation Notes Section Added:**
+- Warning about UDP broadcast testing limitation (cannot use single host)
+- Summary of critical bugs found during implementation
+- Protocol constant naming guidance
+- Logging level guidance (INFO for discovery, not DEBUG)
+
+**No Breaking API Changes** - All changes are corrections to match actual working implementation.
+
+Fixes identified by implementation review of commits 7fec197 (initial implementation) and b441433 (bug fixes).
+
+---
 
 ### 2026-01-29: Plan Review Applied (Second Pass)
 

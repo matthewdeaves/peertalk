@@ -10,11 +10,7 @@ cd "$PROJECT_ROOT"
 
 # Commands
 start_test() {
-    echo "Building test binary..."
-    make test_discovery_posix
-
-    echo ""
-    echo "Starting 3 peer containers (Alice, Bob, Charlie)..."
+    echo "Building containers (this will compile inside Docker)..."
     docker-compose -f docker-compose.test.yml up --build -d
 
     echo ""
