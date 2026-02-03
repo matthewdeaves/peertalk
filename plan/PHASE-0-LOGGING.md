@@ -1,6 +1,6 @@
 # PHASE 0: PT_Log - Cross-Platform Logging Library
 
-> **Status:** [OPEN]
+> **Status:** [DONE]
 > **Depends on:** None
 > **Produces:** Standalone logging library for POSIX and Classic Mac
 > **Risk Level:** Low
