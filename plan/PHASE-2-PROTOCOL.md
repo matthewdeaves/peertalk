@@ -3006,3 +3006,13 @@ When a peer is reachable via both TCP/IP and AppleTalk:
 - CLAUDE.md: Magic numbers, system limits
 - Programming_With_AppleTalk_1991.txt: NBP registration, ADSP EOM framing
 - PHASE-2-PROTOCOL-REVIEW.md: Design review with corrections (2026-01-24)
+
+## Test Coverage Updates (2026-02-03)
+
+**Additional tests implemented** to address gaps identified in TEST_GAP_ANALYSIS.md:
+
+1. **test_discovery_name_overflow()** (HIGH) - Verifies malformed packet with name_len > PT_MAX_PEER_NAME is rejected
+2. **test_message_header_malformed()** (HIGH) - Verifies wrong magic, wrong version, and invalid type are detected
+3. **test_crc16_error_detection()** (MEDIUM) - Verifies CRC catches single bit flips, byte swaps, and length changes
+
+All tests pass (14/14). Phase 2 test coverage: 85%+

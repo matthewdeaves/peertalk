@@ -1689,3 +1689,15 @@ The `pt_queue_slot.timestamp` field captures when a message was enqueued. This e
 - **Performance analysis:** Track queue residence time for optimization
 
 Note: ISR-enqueued messages have `timestamp = 0` (TickCount not interrupt-safe). Filter these when computing latency statistics.
+
+## Test Coverage Updates (2026-02-03)
+
+**Additional tests implemented** to address gaps identified in TEST_GAP_ANALYSIS.md:
+
+1. **test_peer_state_edge_cases()** (HIGH) - Added to test_peer.c:
+   - Verifies invalid state transitions (DISCOVERED → FAILED) are rejected
+   - Verifies destroyed peer magic is cleared
+   - Verifies FAILED → CONNECTED is rejected
+   - Verifies idempotent FAILED state transitions
+
+All tests pass (8/8). Phase 3 test coverage: 90%+

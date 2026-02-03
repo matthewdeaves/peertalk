@@ -4633,3 +4633,14 @@ int main(void) {
 - 68030: 256-byte cache - keep hot loop data under 256 bytes for single cache frame
 - 68040: 4KB cache - more forgiving but still benefit from locality
 - PPC: 32-byte cache lines - group related fields into 32-byte aligned chunks
+
+## Test Coverage Updates (2026-02-03)
+
+**Additional tests implemented** to address gaps identified in TEST_GAP_ANALYSIS.md:
+
+1. **test_init_null_config()** (HIGH) - Verifies NULL config is rejected gracefully
+2. **test_shutdown_double_call()** (HIGH) - Verifies double shutdown and NULL shutdown don't crash
+3. **test_ptlog_integration()** (HIGH) - Verifies PT_Log is initialized in PeerTalk_Init()
+4. **test_lifecycle_stress()** (HIGH) - 100 init/shutdown cycles to detect memory leaks
+
+All tests pass (15/15). Phase 1 test coverage: 80%+
