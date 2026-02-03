@@ -106,6 +106,17 @@ test: test-log test-compat test-foundation test-protocol test-peer test-queue te
 	@echo ""
 	@echo "All tests passed!"
 
+# Coverage target
+# Rebuilds with coverage instrumentation, runs tests, generates HTML report
+coverage:
+	$(MAKE) clean
+	$(MAKE) CFLAGS="$(CFLAGS) -O0 -g --coverage" LDFLAGS="$(LDFLAGS) --coverage" all test_log test_log_perf test_compat test_foundation test_protocol test_peer test_queue test_queue_advanced test_backpressure
+	$(MAKE) test
+	lcov --capture --directory . --output-file coverage.info
+	lcov --remove coverage.info '/usr/*' --output-file coverage.info
+	genhtml coverage.info --output-directory coverage_html
+	@echo "Coverage report: coverage_html/index.html"
+
 # Clean
 clean:
 	rm -f $(LOG_OBJS) $(PEERTALK_OBJS) libptlog.a libpeertalk.a
@@ -113,4 +124,4 @@ clean:
 	rm -f src/log/*.o src/core/*.o src/posix/*.o
 	find . -name "*.o" -delete
 
-.PHONY: all test test-log test-compat test-foundation valgrind clean
+.PHONY: all test test-log test-compat test-foundation valgrind coverage clean
