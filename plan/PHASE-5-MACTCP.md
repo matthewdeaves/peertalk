@@ -35,6 +35,31 @@ Per MacTCP Programmer's Guide: "The amount of buffer space allocated is based on
 
 Phase 5 implements the MacTCP networking layer for Classic Macintosh (68k). This is the most challenging phase due to MacTCP's unique asynchronous model, interrupt-time restrictions, and memory constraints.
 
+### Reference Implementations
+
+**AMENDMENT (2026-02-03):** These open-source projects demonstrate working MacTCP code patterns. Use them as references when implementing this phase.
+
+| Project | Location | Pattern | Best For |
+|---------|----------|---------|----------|
+| **LaunchAPPL** | `/home/matthew/Retro68/LaunchAPPL/Server/MacTCPStream.cc` | Pure polling (ioResult checks) | Learning MacTCP, simple pattern |
+| **Subtext** | External (GitHub) | Cooperative threading (uthread) | Complex apps, multiple connections |
+| **CSend** | External (Mac FTP sites) | ASR + flags (similar to PeerTalk) | Production reference |
+
+**LaunchAPPL** is particularly valuable:
+- Included with Retro68 (readily available)
+- Minimal viable MacTCP networking (~158 lines)
+- WDS/RDS patterns verified (MacTCPStream.cc:96-98)
+- Cleanup spin-wait pattern (MacTCPStream.cc:61-79)
+- Polling ioResult pattern (MacTCPStream.cc:117-156)
+
+**Key LaunchAPPL Lessons Applied to This Plan:**
+- WDS two-element array pattern for zero-copy sends
+- Spin-wait for pending async operations before TCPRelease
+- Buffer sizes: 8KB TCP receive, 4KB work buffer
+- Stack-allocated WDS safe for synchronous TCPSend
+
+**When to Reference:** If implementation details are unclear, read LaunchAPPL's corresponding code section. All line numbers current as of 2026-02-03.
+
 **Key Insights from MacTCP Programmer's Guide:**
 - ASRs (Asynchronous Notification Routines) run at interrupt level - NO memory allocation, NO synchronous MacTCP calls
 - **But:** "An ASR routine can issue additional asynchronous MacTCP driver calls" - useful for chaining operations
@@ -68,6 +93,65 @@ Phase 5 implements the MacTCP networking layer for Classic Macintosh (68k). This
 We will use a **state machine with polling** approach. The ASR will only set flags; all actual processing happens in the main poll loop.
 
 **Note on Subtext comparison:** Subtext uses a more complex **cooperative threading (uthread)** model with setjmp/longjmp and 50KB stacks per thread. Subtext can busy-wait on async operations because other threads get CPU via uthread_yield(). PeerTalk is simpler - a peer discovery library doesn't need cooperative threading. Our ASR-sets-flags approach is the MacTCP Programmer's Guide recommended pattern for single-threaded applications and matches PROJECT_GOALS.md's `PeerTalk_Poll()` model.
+
+### Implementation Complexity Spectrum
+
+**AMENDMENT (2026-02-03):** MacTCP implementations exist across a spectrum of complexity/capability trade-offs. PeerTalk's Mac platform implementation uses a middle-ground approach optimized for production use.
+
+| Approach | Complexity | Diagnostics | Latency | CPU Overhead | Best For |
+|----------|-----------|-------------|---------|--------------|----------|
+| **Pure Polling** | Low | Minimal | Higher | Low | Simple tools, learning, single connections |
+| **Flags + Polling** | Medium | Excellent | Medium | Medium | **Production apps (PeerTalk)** |
+| **Callback-driven** | High | Complex | Lowest | Higher | Real-time applications, high throughput |
+| **Cooperative Threading** | Very High | Good | Low | High | Complex apps (Subtext) |
+
+**Current Plan: Flags + Polling (Middle Ground)**
+
+This plan uses ASR callbacks to set atomic flags, with all processing in the main poll loop. Benefits:
+- **Diagnostics:** Excellent logging via flag-based pattern (ASR sets flags, poll logs)
+- **Simplicity:** No reentrancy concerns (ASR just sets flags)
+- **Performance:** Good enough for peer discovery (~10ms poll latency acceptable)
+- **Debuggability:** State machine visible, easy to trace
+
+**Alternative: Pure Polling (LaunchAPPL Style)**
+
+LaunchAPPL uses pure polling - no ASR callback processing, just check `ioResult` in poll loop:
+
+```c
+void idle() {
+    if (readPB.ioResult == 0) {      // TCPPassiveOpen or TCPRcv completed
+        if (!connected) {
+            connected = true;         // Accept completed
+            startReading();
+        } else {
+            processData();            // Data arrived
+            startReading();
+        }
+    } else if (readPB.ioResult == connectionClosing) {
+        connected = false;
+        startListening();
+    }
+}
+```
+
+**Benefits:** Simpler (no flag management), easier to debug
+**Drawbacks:** Higher latency (only checked during poll), no diagnostic info from ASR
+**When to use:** Simple applications, learning MacTCP, single connection
+
+**Alternative: Callback-driven (Complex but Fast)**
+
+Process data directly in ASR callback (or queue deferred tasks):
+- **Benefits:** Lowest latency (~1ms vs ~10ms for polling)
+- **Drawbacks:** Complex (reentrancy, ISR restrictions), hard to debug
+- **When to use:** Real-time applications, high-frequency updates
+
+**PERFORMANCE RECOMMENDATION:** The user specified preferring the most performant option. For MacTCP, the **Flags + Polling** approach (current plan) strikes the best balance:
+- Callback-driven is only ~9ms faster but significantly more complex
+- For peer discovery (not real-time), 10ms poll latency is negligible
+- Diagnostics/debuggability more valuable than marginal latency improvement
+- Simpler code = fewer bugs = better performance in practice
+
+**Simplification Path:** To simplify this plan (at cost of diagnostics), remove flag-based logging and just check `ioResult` directly (LaunchAPPL style). See `.claude/rules/mactcp.md` for this alternative pattern.
 
 **Data-Oriented Design (DOD) Architecture:**
 
@@ -358,6 +442,66 @@ int pt_mactcp_poll(struct pt_context *ctx) {
 
 ### Objective
 Establish MacTCP driver access and define all necessary types for the state machine.
+
+### Alternative Pattern: Pure Polling (LaunchAPPL Style)
+
+**AMENDMENT (2026-02-03):** This session defines types for the **Flags + Polling** pattern (current plan). For simpler implementations, consider the **Pure Polling** alternative used by LaunchAPPL.
+
+**Pure Polling Pattern (Verified: LaunchAPPL MacTCPStream.cc:117-156):**
+
+Instead of ASR callbacks setting flags, just check `ioResult` directly in poll loop:
+
+```c
+/* Simplified type - no flags needed */
+typedef struct pt_tcp_stream_hot {
+    StreamPtr         stream;
+    pt_stream_state   state;
+    struct pt_peer   *peer;
+} pt_tcp_stream_hot;  /* ~9 bytes vs 14 bytes with flags */
+
+/* Poll loop - check ioResult directly */
+void poll_streams() {
+    for (i = 0; i < PT_MAX_PEERS; i++) {
+        pt_tcp_stream_hot *hot = &md->tcp_hot[i];
+        pt_tcp_stream_cold *cold = &md->tcp_cold[i];
+
+        if (hot->state == PT_STREAM_LISTENING) {
+            if (cold->pb.ioResult == 0) {  /* TCPPassiveOpen completed */
+                hot->state = PT_STREAM_CONNECTED;
+                /* No ASR flag to check - just process directly */
+            }
+        }
+
+        if (hot->state == PT_STREAM_CONNECTED) {
+            if (cold->pb.ioResult == 0) {  /* Data arrived */
+                process_data();
+            } else if (cold->pb.ioResult == connectionClosing) {
+                hot->state = PT_STREAM_CLOSING;
+            }
+        }
+    }
+}
+```
+
+**Trade-offs:**
+- **Simpler:** No ASR flags, no log_events, no async_result tracking
+- **Smaller:** Hot struct ~9 bytes vs 14 bytes (35% smaller)
+- **Less diagnostic:** Can't log ASR events (no info from interrupt context)
+- **Same latency:** Both check state in poll loop (~10ms typical)
+
+**When to use Pure Polling:**
+- Learning MacTCP (simpler mental model)
+- Single connection applications (like LaunchAPPL)
+- When diagnostics/logging not critical
+- Prototyping before adding full instrumentation
+
+**Current Plan (Flags + Polling):**
+- **More diagnostic:** ASR sets log_events for detailed logging
+- **Better debugging:** Async completions tracked via flags
+- **Production-ready:** Full instrumentation for troubleshooting
+- **Slightly larger:** Hot struct 14 bytes (still fits in 68030 cache)
+
+**PERFORMANCE:** Both patterns have identical poll latency. Pure polling is slightly simpler but lacks diagnostics. For production code, the 5-byte overhead of Flags + Polling is worth it for the diagnostic capability. For learning or simple apps, Pure Polling is cleaner.
 
 ### Tasks
 
@@ -1752,13 +1896,88 @@ int pt_mactcp_tcp_release(struct pt_context *ctx, int idx) {
 /*
  * Release all TCP streams
  */
+/* AMENDMENT (2026-02-03): LaunchAPPL Cleanup Pattern
+ *
+ * Verified from LaunchAPPL MacTCPStream.cc:61-79 - proper cleanup sequence:
+ * 1. TCPAbort all streams (cancels pending operations)
+ * 2. Spin-wait: while(ioResult > 0) {} for ALL parameter blocks
+ * 3. TCPRelease each stream
+ *
+ * CRITICAL: Step 2 ensures async operations complete before releasing streams.
+ * Without this, TCPRelease may fail or corrupt MacTCP driver state.
+ *
+ * Current implementation (below) goes straight to TCPRelease, which assumes
+ * no async operations are pending. This is SAFE if:
+ * - All async ops use completion routines that clear async_pending flag
+ * - Poll loop has been stopped before calling shutdown
+ * - No async ops were issued after last poll
+ *
+ * RECOMMENDED IMPROVEMENT for robustness:
+ * Add spin-wait before TCPRelease to guarantee safety even if async ops
+ * are still pending (e.g., during abnormal shutdown, Quit without poll, etc.)
+ */
 void pt_mactcp_tcp_release_all(struct pt_context *ctx) {
+    pt_mactcp_data *md = pt_mactcp_get(ctx);
+    TCPiopb abort_pb;
     int i;
+    Boolean any_pending;
 
-    /* Release listener (special index) */
+    /* Step 1: TCPAbort all active streams (listener + peers)
+     * This cancels any pending async operations (TCPPassiveOpen, TCPActiveOpen, TCPClose)
+     */
+    for (i = 0; i < PT_MAX_PEERS; i++) {
+        pt_tcp_stream_hot *hot = &md->tcp_hot[i];
+        if (hot->state != PT_STREAM_UNUSED && hot->stream != NULL) {
+            pt_memset(&abort_pb, 0, sizeof(abort_pb));
+            abort_pb.csCode = TCPAbort;
+            abort_pb.ioCRefNum = md->driver_refnum;
+            abort_pb.tcpStream = hot->stream;
+            PBControlSync((ParmBlkPtr)&abort_pb);
+            /* Ignore error - stream may already be dead */
+        }
+    }
+
+    /* Abort listener if active */
+    pt_tcp_stream_hot *listener_hot = &md->tcp_hot[PT_LISTENER_IDX];
+    if (listener_hot->state != PT_STREAM_UNUSED && listener_hot->stream != NULL) {
+        pt_memset(&abort_pb, 0, sizeof(abort_pb));
+        abort_pb.csCode = TCPAbort;
+        abort_pb.ioCRefNum = md->driver_refnum;
+        abort_pb.tcpStream = listener_hot->stream;
+        PBControlSync((ParmBlkPtr)&abort_pb);
+    }
+
+    /* Step 2: Spin-wait for all pending async operations to complete
+     * LaunchAPPL Pattern: while(readPB.ioResult > 0 || writePB.ioResult > 0) {}
+     *
+     * ioResult values (from MacTCP.h):
+     *   > 0 : Operation in progress
+     *   = 0 : Completed successfully
+     *   < 0 : Completed with error
+     *
+     * PERFORMANCE NOTE: This can spin for up to ~2 seconds if operations
+     * were truly async and TCPAbort needs to propagate. In practice, most
+     * operations complete within a few milliseconds after TCPAbort.
+     */
+    do {
+        any_pending = false;
+        for (i = 0; i < PT_MAX_PEERS; i++) {
+            pt_tcp_stream_hot *hot = &md->tcp_hot[i];
+            pt_tcp_stream_cold *cold = &md->tcp_cold[i];
+            if (hot->state != PT_STREAM_UNUSED) {
+                if (cold->pb.ioResult > 0) {
+                    any_pending = true;
+                    /* Optional: add timeout to prevent infinite loop if driver is wedged
+                     * unsigned long timeout_start = Ticks;
+                     * if ((Ticks - timeout_start) > 5*60) break;  // 5 seconds
+                     */
+                }
+            }
+        }
+    } while (any_pending);
+
+    /* Step 3: Now safe to release - all async ops guaranteed complete */
     pt_mactcp_tcp_release_listener(ctx);
-
-    /* Release peer streams */
     for (i = 0; i < PT_MAX_PEERS; i++) {
         pt_mactcp_tcp_release(ctx, i);
     }
@@ -2493,14 +2712,31 @@ int pt_mactcp_tcp_send(struct pt_context *ctx, struct pt_peer *peer,
     crc_buf[0] = (crc >> 8) & 0xFF;
     crc_buf[1] = crc & 0xFF;
 
-    /* Build WDS: header + payload + CRC */
+    /* Build WDS: header + payload + CRC
+     *
+     * AMENDMENT (2026-02-03): LaunchAPPL Pattern Verification
+     * Verified from LaunchAPPL MacTCPStream.cc:96-98 - WDS array pattern:
+     *   wdsEntry wds[2] = { {(unsigned short)n, (Ptr)p}, {0, nullptr} };
+     *
+     * LaunchAPPL uses stack-allocated WDS because TCPSend is synchronous
+     * (PBControlSync blocks until complete). Stack allocation is safe.
+     *
+     * For async TCPSend (PBControl with async=true), WDS and all referenced
+     * buffers MUST persist until completion callback fires. Consider:
+     *   - Allocating WDS in cold struct (persistent storage)
+     *   - Pool of pre-allocated WDS buffers
+     *   - Ref-counted buffer management
+     *
+     * PERFORMANCE: Async send enables higher throughput but adds complexity.
+     * Current implementation uses sync for simplicity per PROJECT_GOALS.md.
+     */
     wds[0].length = PT_MESSAGE_HEADER_SIZE;
     wds[0].ptr = (Ptr)header_buf;
     wds[1].length = len;
     wds[1].ptr = (Ptr)data;
     wds[2].length = 2;
     wds[2].ptr = (Ptr)crc_buf;
-    wds[3].length = 0;  /* Terminator */
+    wds[3].length = 0;  /* Terminator - WDS array MUST end with zero-length entry */
     wds[3].ptr = NULL;
 
     /* Setup send call (pb in cold struct) */

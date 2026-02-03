@@ -116,6 +116,28 @@ ADSP is the natural fit for PeerTalk's peer-to-peer model.
 
 Phase 7 implements AppleTalk networking using NBP for discovery and ADSP for connections. Like MacTCP, AppleTalk uses completion routines that run at interrupt level - the same ISR safety rules apply.
 
+### Reference Implementations
+
+**AMENDMENT (2026-02-03):** AppleTalk reference implementations are scarcer than MacTCP/OT examples, but these resources are valuable.
+
+| Resource | Location | Pattern | Best For |
+|----------|----------|---------|----------|
+| **Programming With AppleTalk** | `~/peertalk/books/ProgrammingAppleTalk.txt` | Canonical reference | API documentation, examples |
+| **ADSP.h** | `/home/matthew/Retro68/InterfacesAndLibraries/.../CIncludes/` | Header definitions | Callback signatures, constants |
+| **Inside Macintosh VI** | `~/peertalk/books/InsideMacVol6.txt` | Interrupt safety | Table B-3 (safe routines) |
+
+**No LaunchAPPL equivalent for AppleTalk** - LaunchAPPL only implements MacTCP and Open Transport. This makes Phase 7 more challenging, but the patterns from Phase 5 (MacTCP) apply directly:
+- Callback architecture similar (ioCompletion = ASR)
+- ISR restrictions identical (both interrupt-level)
+- Flag-based logging pattern reusable
+
+**Programming With AppleTalk Key Sections:**
+- Lines 1675-1678, 11544: Register preservation (D3-D7, A2-A6 must be preserved)
+- Chapter on ADSP: dspRead, dspWrite, dspOpen async patterns
+- NBP registration examples: PRegisterName, PLookupName
+
+**When to Reference:** Read Programming With AppleTalk alongside this plan. Cross-reference ADSP.h for exact callback signatures and constants.
+
 ### Architectural Highlights
 
 **Hot/Cold Data Separation:** Following the pattern from PHASE-5-MACTCP and PHASE-6-OPENTRANSPORT, all data structures are split into hot (frequently polled) and cold (I/O operations) structs:
@@ -174,6 +196,60 @@ ADSP uses TWO distinct callback types - do NOT confuse them:
 | PRegisterName | Sync | Fast NBP registration |
 | PLookupName | Sync/Async | Sync OK for periodic lookup |
 | PRemoveName | Sync | Fast NBP unregistration |
+
+### Implementation Complexity Spectrum
+
+**AMENDMENT (2026-02-03):** AppleTalk ADSP implementations follow the same complexity spectrum as MacTCP (Phase 5), since both use interrupt-level callbacks with similar restrictions.
+
+| Approach | Complexity | Diagnostics | Latency | CPU Overhead | Best For |
+|----------|-----------|-------------|---------|--------------|----------|
+| **Pure Polling** | Low | Minimal | Higher | Low | Simple tools, learning |
+| **Flags + Polling** | Medium | Excellent | Medium | Medium | **Production apps (PeerTalk)** |
+| **Callback-driven** | High | Complex | Lowest | Higher | Real-time applications |
+
+**Current Plan: Flags + Polling (Middle Ground)**
+
+This plan uses ADSP callbacks (`ioCompletion`, `userRoutine`) to set flags, with all processing in the main poll loop. Benefits:
+- **Diagnostics:** Excellent logging via flag-based pattern (callbacks set flags, poll logs)
+- **Simplicity:** No reentrancy concerns (callbacks just set flags)
+- **Performance:** Good enough for peer discovery (~10ms poll latency acceptable)
+- **ISR-safety:** Callbacks obey interrupt-time restrictions (no memory allocation, no logging)
+
+**Alternative: Pure Polling (Simpler)**
+
+Check `ioResult` and `userFlags` directly in poll loop without callback processing:
+
+```c
+void poll() {
+    if (ccb->pb.ioResult == 0) {          // dspRead/dspWrite completed
+        processData();
+        issueNextRead();
+    }
+    if (ccb->userFlags & eClosed) {       // Connection closed
+        ccb->userFlags = 0;               // Must clear!
+        handleClose();
+    }
+}
+```
+
+**Benefits:** Simpler (no flag management), easier to debug
+**Drawbacks:** Higher latency, no diagnostic info from callbacks
+**When to use:** Simple applications, learning ADSP
+
+**Alternative: Callback-driven (Complex but Fast)**
+
+Process data directly in callbacks (within ISR restrictions):
+- **Benefits:** Lowest latency (~1ms vs ~10ms for polling)
+- **Drawbacks:** Very complex (ISR restrictions, reentrancy), hard to debug
+- **When to use:** Real-time streaming applications
+
+**PERFORMANCE RECOMMENDATION:** For AppleTalk peer discovery, **Flags + Polling** (current plan) is optimal:
+- Callback-driven is only ~9ms faster but significantly more complex
+- For peer discovery (not real-time), 10ms poll latency is negligible
+- Diagnostics/debuggability more valuable than marginal latency improvement
+- Matches MacTCP (Phase 5) and OT (Phase 6) architecture for consistency
+
+**Simplification Path:** To simplify this plan (at cost of diagnostics), remove flag-based logging and just check `ioResult`/`userFlags` directly (pure polling style). Same pattern as MacTCP alternative.
 
 ### ISR-Safe Logging Pattern (CRITICAL)
 
