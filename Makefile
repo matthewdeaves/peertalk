@@ -138,7 +138,7 @@ test: test-log test-compat test-foundation test-protocol test-peer test-queue te
 # Rebuilds with coverage instrumentation, runs tests, generates HTML report
 coverage:
 	$(MAKE) clean
-	$(MAKE) CFLAGS="$(CFLAGS) -O0 -g --coverage" LDFLAGS="$(LDFLAGS) --coverage" all test_log test_log_perf test_log_threads test_compat test_foundation test_protocol test_peer test_queue test_queue_advanced test_backpressure
+	$(MAKE) CFLAGS="$(CFLAGS) -O0 -g --coverage" LDFLAGS="$(LDFLAGS) --coverage" all test_log test_log_perf test_log_threads test_compat test_foundation test_protocol test_peer test_queue test_queue_advanced test_backpressure test_queue_threads
 	$(MAKE) test
 	lcov --capture --directory . --output-file coverage.info
 	lcov --remove coverage.info '/usr/*' --output-file coverage.info
@@ -148,7 +148,7 @@ coverage:
 # Clean
 clean:
 	rm -f $(LOG_OBJS) $(PEERTALK_OBJS) libptlog.a libpeertalk.a
-	rm -f test_log test_log_perf test_log_threads test_compat test_foundation test_protocol test_peer test_queue test_queue_advanced test_backpressure
+	rm -f test_log test_log_perf test_log_threads test_compat test_foundation test_protocol test_peer test_queue test_queue_advanced test_backpressure test_queue_threads
 	rm -f src/log/*.o src/core/*.o src/posix/*.o
 	find . -name "*.o" -delete
 

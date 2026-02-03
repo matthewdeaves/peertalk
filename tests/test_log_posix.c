@@ -324,6 +324,111 @@ void test_version(void) {
     printf(" OK\n");
 }
 
+/* Test callback user_data parameter (LOW PRIORITY) */
+typedef struct {
+    int magic;
+    int count;
+} UserContext;
+
+static void callback_with_userdata(
+    PT_LogLevel     level,
+    PT_LogCategory  category,
+    uint32_t        timestamp_ms,
+    const char     *message,
+    void           *user_data
+) {
+    (void)level;
+    (void)category;
+    (void)timestamp_ms;
+    (void)message;
+
+    UserContext *ctx = (UserContext *)user_data;
+    assert(ctx->magic == 0xCAFEBABE);
+    ctx->count++;
+}
+
+void test_callback_user_data(void) {
+    printf("test_callback_user_data...");
+
+    UserContext ctx = { .magic = 0xCAFEBABE, .count = 0 };
+
+    PT_Log *log = PT_LogCreate();
+    assert(log != NULL);
+
+    PT_LogSetCallback(log, callback_with_userdata, &ctx);
+    PT_LogSetOutput(log, PT_LOG_OUT_CALLBACK);
+    PT_LogSetLevel(log, PT_LOG_DEBUG);
+
+    PT_LOG_INFO(log, PT_LOG_CAT_GENERAL, "Test 1");
+    PT_LOG_WARN(log, PT_LOG_CAT_NETWORK, "Test 2");
+    PT_LOG_DEBUG(log, PT_LOG_CAT_MEMORY, "Test 3");
+
+    assert(ctx.count == 3);
+    assert(ctx.magic == 0xCAFEBABE);  /* Not corrupted */
+
+    PT_LogDestroy(log);
+    printf(" OK\n");
+}
+
+/* Test output mode combinations (LOW PRIORITY) */
+static int g_combo_callback_count = 0;
+
+static void combo_callback(
+    PT_LogLevel     level,
+    PT_LogCategory  category,
+    uint32_t        timestamp_ms,
+    const char     *message,
+    void           *user_data
+) {
+    (void)level;
+    (void)category;
+    (void)timestamp_ms;
+    (void)message;
+    (void)user_data;
+    g_combo_callback_count++;
+}
+
+void test_output_combinations(void) {
+    printf("test_output_combinations...");
+
+    const char *test_file = "/tmp/pt_log_combo_test.log";
+    unlink(test_file);
+
+    PT_Log *log = PT_LogCreate();
+    assert(log != NULL);
+
+    PT_LogSetLevel(log, PT_LOG_INFO);
+    PT_LogSetCallback(log, combo_callback, NULL);
+    PT_LogSetFile(log, test_file);
+
+    /* Test: FILE | CALLBACK */
+    g_combo_callback_count = 0;
+    PT_LogSetOutput(log, PT_LOG_OUT_FILE | PT_LOG_OUT_CALLBACK);
+
+    PT_LOG_INFO(log, PT_LOG_CAT_GENERAL, "Combo test 1");
+    PT_LOG_INFO(log, PT_LOG_CAT_NETWORK, "Combo test 2");
+
+    PT_LogFlush(log);
+
+    /* Verify callback was called */
+    assert(g_combo_callback_count == 2);
+
+    /* Verify file has messages */
+    FILE *f = fopen(test_file, "r");
+    assert(f != NULL);
+    char line[512];
+    int file_lines = 0;
+    while (fgets(line, sizeof(line), f)) {
+        file_lines++;
+    }
+    fclose(f);
+    assert(file_lines == 2);
+
+    unlink(test_file);
+    PT_LogDestroy(log);
+    printf(" OK\n");
+}
+
 int main(void) {
     printf("PT_Log POSIX Tests\n");
     printf("==================\n\n");
@@ -338,6 +443,8 @@ int main(void) {
     test_performance_logging();
     test_level_names();
     test_version();
+    test_callback_user_data();
+    test_output_combinations();
 
     printf("\n==================\n");
     printf("All tests PASSED\n");
