@@ -33,6 +33,9 @@ test_log: tests/test_log_posix.c libptlog.a
 test_log_perf: tests/test_log_perf.c libptlog.a
 	$(CC) $(CFLAGS) -o $@ $< -L. -lptlog $(LDFLAGS)
 
+test_log_threads: tests/test_log_threads.c libptlog.a
+	$(CC) $(CFLAGS) -o $@ $< -L. -lptlog $(LDFLAGS)
+
 test_compat: tests/test_compat.c libpeertalk.a
 	$(CC) $(CFLAGS) -o $@ $< -L. -lpeertalk $(LDFLAGS)
 
@@ -57,10 +60,11 @@ test_backpressure: tests/test_backpressure.c libpeertalk.a libptlog.a
 test_discovery_posix: tests/test_discovery_posix.c libpeertalk.a libptlog.a
 	$(CC) $(CFLAGS) -I./src/posix -o $@ $< -L. -lpeertalk -lptlog $(LDFLAGS)
 
-test-log: test_log test_log_perf
+test-log: test_log test_log_perf test_log_threads
 	@echo "Running PT_Log tests..."
 	./test_log
 	./test_log_perf
+	./test_log_threads
 
 test-compat: test_compat
 	@echo "Running pt_compat tests..."
@@ -96,10 +100,34 @@ test-discovery: test_discovery_posix
 	@echo "  Terminal 1: ./test_discovery_posix Alice"
 	@echo "  Terminal 2: ./test_discovery_posix Bob"
 
-# Valgrind memory check
-valgrind: test_log
-	@echo "Running valgrind memory check..."
-	valgrind --leak-check=full --error-exitcode=1 ./test_log
+# Valgrind memory check (MEDIUM PRIORITY - comprehensive leak detection)
+valgrind: test_log test_log_perf test_log_threads test_compat test_foundation test_protocol test_peer test_queue test_queue_advanced test_backpressure
+	@echo "=== Valgrind Memory Leak Detection ==="
+	@echo "Running all tests through valgrind..."
+	@echo ""
+	@echo "PT_Log tests..."
+	valgrind --leak-check=full --error-exitcode=1 --quiet ./test_log
+	valgrind --leak-check=full --error-exitcode=1 --quiet ./test_log_perf
+	valgrind --leak-check=full --error-exitcode=1 --quiet ./test_log_threads
+	@echo ""
+	@echo "Compat tests..."
+	valgrind --leak-check=full --error-exitcode=1 --quiet ./test_compat
+	@echo ""
+	@echo "Foundation tests..."
+	valgrind --leak-check=full --error-exitcode=1 --quiet ./test_foundation
+	@echo ""
+	@echo "Protocol tests..."
+	valgrind --leak-check=full --error-exitcode=1 --quiet ./test_protocol
+	@echo ""
+	@echo "Peer tests..."
+	valgrind --leak-check=full --error-exitcode=1 --quiet ./test_peer
+	@echo ""
+	@echo "Queue tests..."
+	valgrind --leak-check=full --error-exitcode=1 --quiet ./test_queue
+	valgrind --leak-check=full --error-exitcode=1 --quiet ./test_queue_advanced
+	valgrind --leak-check=full --error-exitcode=1 --quiet ./test_backpressure
+	@echo ""
+	@echo "=== All valgrind checks PASSED ==="
 
 # Test target (runs all tests)
 test: test-log test-compat test-foundation test-protocol test-peer test-queue test-queue-advanced test-backpressure
@@ -110,7 +138,7 @@ test: test-log test-compat test-foundation test-protocol test-peer test-queue te
 # Rebuilds with coverage instrumentation, runs tests, generates HTML report
 coverage:
 	$(MAKE) clean
-	$(MAKE) CFLAGS="$(CFLAGS) -O0 -g --coverage" LDFLAGS="$(LDFLAGS) --coverage" all test_log test_log_perf test_compat test_foundation test_protocol test_peer test_queue test_queue_advanced test_backpressure
+	$(MAKE) CFLAGS="$(CFLAGS) -O0 -g --coverage" LDFLAGS="$(LDFLAGS) --coverage" all test_log test_log_perf test_log_threads test_compat test_foundation test_protocol test_peer test_queue test_queue_advanced test_backpressure
 	$(MAKE) test
 	lcov --capture --directory . --output-file coverage.info
 	lcov --remove coverage.info '/usr/*' --output-file coverage.info
@@ -120,7 +148,7 @@ coverage:
 # Clean
 clean:
 	rm -f $(LOG_OBJS) $(PEERTALK_OBJS) libptlog.a libpeertalk.a
-	rm -f test_log test_log_perf test_compat test_foundation test_protocol test_peer test_queue test_queue_advanced test_backpressure
+	rm -f test_log test_log_perf test_log_threads test_compat test_foundation test_protocol test_peer test_queue test_queue_advanced test_backpressure
 	rm -f src/log/*.o src/core/*.o src/posix/*.o
 	find . -name "*.o" -delete
 

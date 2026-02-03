@@ -572,6 +572,91 @@ static void test_peer_get_info(void)
     PASS();
 }
 
+/* Test peer state machine edge cases (HIGH PRIORITY) */
+static void test_peer_state_edge_cases(void)
+{
+    TEST("test_peer_state_edge_cases");
+
+    struct pt_context *ctx = create_test_context();
+    struct pt_peer *peer;
+    int ret;
+
+    if (!ctx) {
+        FAIL("Failed to create context");
+        return;
+    }
+
+    pt_peer_list_init(ctx, 8);
+
+    /* Edge Case 1: Invalid transition to FAILED from DISCOVERED (without CONNECTING) */
+    peer = pt_peer_create(ctx, "EdgeTest1", 0xC0A80001, 5004);
+    if (!peer) {
+        FAIL("pt_peer_create failed");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Try DISCOVERED → FAILED (should fail - FAILED only allowed from CONNECTING/CONNECTED) */
+    ret = pt_peer_set_state(ctx, peer, PT_PEER_STATE_FAILED);
+    if (ret == 0) {
+        FAIL("DISCOVERED → FAILED should not be allowed (must go through CONNECTING first)");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Verify state didn't change */
+    if (peer->hot.state != PT_PEER_STATE_DISCOVERED) {
+        FAIL("State should remain DISCOVERED after failed transition");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Edge Case 2: Destroy peer and verify magic is cleared */
+    uint32_t *magic_ptr = (uint32_t *)peer;  /* First field should be magic */
+
+    pt_peer_destroy(ctx, peer);
+
+    /* After destroy, magic should be cleared (0) */
+    if (*magic_ptr == PT_PEER_MAGIC) {
+        FAIL("Magic should be cleared after destroy");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Edge Case 3: Try invalid transition FAILED → CONNECTED */
+    peer = pt_peer_create(ctx, "EdgeTest2", 0xC0A80002, 5005);
+    if (!peer) {
+        FAIL("pt_peer_create failed");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    pt_peer_set_state(ctx, peer, PT_PEER_STATE_CONNECTING);
+    pt_peer_set_state(ctx, peer, PT_PEER_STATE_FAILED);
+
+    /* Try FAILED → CONNECTED (should fail) */
+    ret = pt_peer_set_state(ctx, peer, PT_PEER_STATE_CONNECTED);
+    if (ret == 0) {
+        FAIL("FAILED → CONNECTED should not be allowed");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Edge Case 4: Multiple consecutive FAILED states (should be idempotent) */
+    pt_peer_set_state(ctx, peer, PT_PEER_STATE_FAILED);
+    pt_peer_set_state(ctx, peer, PT_PEER_STATE_FAILED);
+    pt_peer_set_state(ctx, peer, PT_PEER_STATE_FAILED);
+
+    if (peer->hot.state != PT_PEER_STATE_FAILED) {
+        FAIL("Multiple FAILED transitions should be idempotent");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    destroy_test_context(ctx);
+    PASS();
+}
+
 /* ========================================================================
  * Main
  * ======================================================================== */
@@ -585,6 +670,7 @@ int main(void)
     test_peer_create_destroy();
     test_peer_find();
     test_peer_state_transitions();
+    test_peer_state_edge_cases();
     test_peer_timeout();
     test_peer_canaries();
     test_peer_get_info();

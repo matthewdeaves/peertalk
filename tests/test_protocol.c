@@ -421,6 +421,165 @@ static void test_strerror(void)
     PASS();
 }
 
+/* Test discovery packet name overflow (HIGH PRIORITY) */
+static void test_discovery_name_overflow(void)
+{
+    TEST("test_discovery_name_overflow");
+
+    uint8_t buf[PT_DISCOVERY_MAX_SIZE];
+    pt_discovery_packet pkt;
+
+    /* Create packet with valid structure but malicious name_len */
+    buf[0] = 'P';
+    buf[1] = 'T';
+    buf[2] = 'L';
+    buf[3] = 'K';
+    buf[4] = PT_PROTOCOL_VERSION;
+    buf[5] = PT_DISC_TYPE_ANNOUNCE;
+    buf[6] = 0;  /* flags high byte */
+    buf[7] = 0;  /* flags low byte */
+    buf[8] = 0x1C;  /* sender_port high byte (7354) */
+    buf[9] = 0xBA;  /* sender_port low byte */
+    buf[10] = PT_DISC_TRANSPORT_TCP;
+    buf[11] = 200;  /* name_len - MALICIOUS: > PT_PEER_NAME_MAX (31) */
+
+    /* Fill rest with data to prevent truncation error */
+    memset(buf + 12, 'A', PT_DISCOVERY_MAX_SIZE - 14);
+
+    /* Add valid CRC */
+    uint16_t crc = pt_crc16(buf, PT_DISCOVERY_MAX_SIZE - 2);
+    buf[PT_DISCOVERY_MAX_SIZE - 2] = (uint8_t)(crc >> 8);
+    buf[PT_DISCOVERY_MAX_SIZE - 1] = (uint8_t)(crc & 0xFF);
+
+    /* Decode should fail with invalid param */
+    int ret = pt_discovery_decode(NULL, buf, PT_DISCOVERY_MAX_SIZE, &pkt);
+    if (ret != PT_ERR_INVALID_PARAM) {
+        FAIL("Expected PT_ERR_INVALID_PARAM for name overflow, got %d", ret);
+        return;
+    }
+
+    PASS();
+}
+
+/* Test malformed message header (HIGH PRIORITY) */
+static void test_message_header_malformed(void)
+{
+    TEST("test_message_header_malformed");
+
+    uint8_t buf[PT_MESSAGE_HEADER_SIZE];
+    pt_message_header hdr;
+    int ret;
+
+    /* Test 1: Wrong magic */
+    memcpy(buf, "XXXX", 4);  /* Not "PTMG" */
+    buf[4] = PT_PROTOCOL_VERSION;
+    buf[5] = PT_MSG_TYPE_DATA;
+    buf[6] = 0;
+    buf[7] = 0;
+    buf[8] = 0;
+    buf[9] = 100;
+
+    ret = pt_message_decode_header(NULL, buf, PT_MESSAGE_HEADER_SIZE, &hdr);
+    if (ret != PT_ERR_MAGIC) {
+        FAIL("Expected PT_ERR_MAGIC for wrong magic, got %d", ret);
+        return;
+    }
+
+    /* Test 2: Wrong version */
+    buf[0] = 'P';
+    buf[1] = 'T';
+    buf[2] = 'M';
+    buf[3] = 'G';
+    buf[4] = 99;  /* Invalid version */
+    buf[5] = PT_MSG_TYPE_DATA;
+    buf[6] = 0;
+    buf[7] = 0;
+    buf[8] = 0;
+    buf[9] = 100;
+
+    ret = pt_message_decode_header(NULL, buf, PT_MESSAGE_HEADER_SIZE, &hdr);
+    if (ret != PT_ERR_VERSION) {
+        FAIL("Expected PT_ERR_VERSION for wrong version, got %d", ret);
+        return;
+    }
+
+    /* Test 3: Invalid type */
+    buf[0] = 'P';
+    buf[1] = 'T';
+    buf[2] = 'M';
+    buf[3] = 'G';
+    buf[4] = PT_PROTOCOL_VERSION;
+    buf[5] = 0xFF;  /* Invalid type (> PT_MSG_TYPE_STATUS) */
+    buf[6] = 0;
+    buf[7] = 0;
+    buf[8] = 0;
+    buf[9] = 100;
+
+    ret = pt_message_decode_header(NULL, buf, PT_MESSAGE_HEADER_SIZE, &hdr);
+    if (ret != PT_ERR_INVALID_PARAM) {
+        FAIL("Expected PT_ERR_INVALID_PARAM for invalid type, got %d", ret);
+        return;
+    }
+
+    PASS();
+}
+
+/* Test CRC-16 error detection capability (MEDIUM PRIORITY) */
+static void test_crc16_error_detection(void)
+{
+    TEST("test_crc16_error_detection");
+
+    /* Test 1: Single bit flip */
+    uint8_t data1[] = "Hello, World!";
+    uint8_t data2[] = "Hello, World?";  /* Last char changed */
+
+    uint16_t crc1 = pt_crc16(data1, strlen((char *)data1));
+    uint16_t crc2 = pt_crc16(data2, strlen((char *)data2));
+
+    if (crc1 == crc2) {
+        FAIL("CRC failed to detect single character change");
+        return;
+    }
+
+    /* Test 2: Byte swap */
+    uint8_t data3[] = {0x01, 0x02, 0x03, 0x04};
+    uint8_t data4[] = {0x02, 0x01, 0x03, 0x04};  /* First two bytes swapped */
+
+    crc1 = pt_crc16(data3, 4);
+    crc2 = pt_crc16(data4, 4);
+
+    if (crc1 == crc2) {
+        FAIL("CRC failed to detect byte swap");
+        return;
+    }
+
+    /* Test 3: All zeros vs one zero */
+    uint8_t zeros1[10] = {0};
+    uint8_t zeros2[10] = {0};
+    zeros2[5] = 1;
+
+    crc1 = pt_crc16(zeros1, 10);
+    crc2 = pt_crc16(zeros2, 10);
+
+    if (crc1 == crc2) {
+        FAIL("CRC failed to detect single bit flip in zeros");
+        return;
+    }
+
+    /* Test 4: Length change */
+    uint8_t data5[] = "Test";
+
+    crc1 = pt_crc16(data5, 4);
+    crc2 = pt_crc16(data5, 3);  /* One byte shorter */
+
+    if (crc1 == crc2) {
+        FAIL("CRC failed to detect length change");
+        return;
+    }
+
+    PASS();
+}
+
 /* ========================================================================
  * Main
  * ======================================================================== */
@@ -436,8 +595,11 @@ int main(void)
     test_invalid_magic();
     test_invalid_version();
     test_truncated_packet();
+    test_discovery_name_overflow();
+    test_message_header_malformed();
     test_crc16_known_values();
     test_crc16_update();
+    test_crc16_error_detection();
     test_udp_round_trip();
     test_udp_errors();
     test_strerror();

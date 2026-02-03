@@ -256,6 +256,77 @@ TEST(dod_lookup_table) {
 }
 
 /* ========================================================================== */
+/* Lifecycle and Error Handling Tests (HIGH PRIORITY)                         */
+/* ========================================================================== */
+
+TEST(init_null_config) {
+    /* NULL config should fail gracefully */
+    PeerTalk_Context *ctx = PeerTalk_Init(NULL);
+
+    /* Current behavior: returns NULL */
+    ASSERT(ctx == NULL);
+}
+
+TEST(shutdown_double_call) {
+    PeerTalk_Config config;
+    memset(&config, 0, sizeof(config));
+    strcpy(config.local_name, "test");
+
+    PeerTalk_Context *ctx = PeerTalk_Init(&config);
+    ASSERT(ctx != NULL);
+
+    /* First shutdown - should work */
+    PeerTalk_Shutdown(ctx);
+
+    /* Second shutdown - should not crash */
+    PeerTalk_Shutdown(ctx);
+
+    /* Shutdown NULL - should not crash */
+    PeerTalk_Shutdown(NULL);
+}
+
+TEST(ptlog_integration) {
+    PeerTalk_Config config;
+    memset(&config, 0, sizeof(config));
+    strcpy(config.local_name, "test");
+
+    PeerTalk_Context *ctx = PeerTalk_Init(&config);
+    ASSERT(ctx != NULL);
+
+    struct pt_context *internal = (struct pt_context *)ctx;
+
+    /* Logger should be initialized */
+    ASSERT(internal->log != NULL);
+
+    /* Logger should be functional (already tested in test_log_posix.c) */
+    /* Just verify it exists and is of correct type */
+
+    PeerTalk_Shutdown(ctx);
+
+    /* After shutdown, logger should be destroyed (verified by valgrind) */
+}
+
+TEST(lifecycle_stress) {
+    /* Run 100 init/shutdown cycles (reduced from 1000 for speed) */
+    for (int i = 0; i < 100; i++) {
+        PeerTalk_Config config;
+        memset(&config, 0, sizeof(config));
+        sprintf(config.local_name, "peer_%d", i);
+
+        PeerTalk_Context *ctx = PeerTalk_Init(&config);
+        ASSERT(ctx != NULL);
+
+        /* Minimal work */
+        const char *version = PeerTalk_Version();
+        ASSERT(version != NULL);
+
+        PeerTalk_Shutdown(ctx);
+    }
+
+    /* Memory leaks will be caught by valgrind */
+}
+
+/* ========================================================================== */
 /* Main                                                                        */
 /* ========================================================================== */
 
@@ -288,6 +359,13 @@ int main(void) {
     printf("\nDOD (Data-Oriented Design):\n");
     RUN_TEST(dod_struct_sizes);
     RUN_TEST(dod_lookup_table);
+
+    /* Lifecycle and error handling tests */
+    printf("\nLifecycle & Error Handling:\n");
+    RUN_TEST(init_null_config);
+    RUN_TEST(shutdown_double_call);
+    RUN_TEST(ptlog_integration);
+    RUN_TEST(lifecycle_stress);
 
     /* Summary */
     printf("\n======================================\n");
