@@ -1537,6 +1537,58 @@ PT_LOG_INFO(log, CAT, "File: %s", truncated);
 
 ---
 
+### Platform-Specific Message Size Limits
+
+The following table summarizes the buffer and message size constraints for each platform:
+
+| Platform | Buffer Size | Safe Message Length | Rationale | Enforcement |
+|----------|-------------|---------------------|-----------|-------------|
+| **POSIX** | 512 bytes | ~460 bytes | Standard library has bounds checking (vsnprintf) | Runtime truncation |
+| **Classic Mac** | **256 bytes** | **192 bytes** | vsprintf has NO bounds checking; 68030 cache is 256 bytes | **CALLER MUST ENSURE** |
+
+**Critical Notes:**
+
+1. **Mac message limit is HARD:** Messages exceeding 192 bytes WILL corrupt the stack. There is no runtime protection.
+2. **Buffer includes timestamp:** The 256-byte buffer holds timestamp (e.g., `[00001234][INF] `) + message + newline, so the actual message space is ~192 bytes.
+3. **POSIX is safer:** vsnprintf truncates safely, but you should still keep messages under 460 bytes for clarity.
+4. **Cache optimization:** 256 bytes fits exactly in the 68030's data cache, improving performance on cache-equipped 68k Macs.
+
+**Recommended Practices:**
+
+```c
+/* DO: Keep messages concise and bounded */
+PT_LOG_INFO(log, CAT, "Peer connected: id=%u", peer_id);
+PT_LOG_ERR(log, CAT, "Connection failed: err=%d", err_code);
+
+/* DON'T: Log unbounded strings */
+PT_LOG_DEBUG(log, CAT, "User input: %s", user_input);  /* BAD: could be 1KB+ */
+
+/* DO: Truncate before logging */
+char name_trunc[32];
+strncpy(name_trunc, peer_name, 31);
+name_trunc[31] = '\0';
+PT_LOG_INFO(log, CAT, "Peer: %s", name_trunc);
+```
+
+**Compile-Time Verification:**
+
+Consider adding a compile-time assertion to verify buffer size constraints:
+
+```c
+#ifdef PT_PLATFORM_MAC
+    #if PT_LOG_BUFFER_SIZE > 256
+        #error "Mac PT_Log buffer must be <= 256 bytes (cache efficiency)"
+    #endif
+    #if PT_LOG_LINE_MAX > 192
+        #error "Mac PT_Log line max must be <= 192 bytes (vsprintf safety)"
+    #endif
+#endif
+```
+
+This assertion can be added to `src/log/pt_log_mac.c` to catch accidental buffer size increases during development.
+
+---
+
 ### Tasks
 
 #### Task 0.3.1: Create `src/log/pt_log_mac.c`

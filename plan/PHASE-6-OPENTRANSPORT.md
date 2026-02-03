@@ -1155,6 +1155,115 @@ void pt_ot_close_all_endpoints(struct pt_context *ctx) {
 8. **Logging uses correct categories** - `PT_LOG_CAT_INIT` for startup/shutdown, `PT_LOG_CAT_MEMORY` for allocation, `PT_LOG_CAT_PLATFORM` for OT-specific operations
 9. **Memory allocation failures logged** - `PT_LOG_ERR(ctx, PT_LOG_CAT_MEMORY, ...)` on NewPtrClear failure
 
+#### Task 6.1.4: Add ISR Safety Compile-Time Test
+
+Create `tests/test_isr_safety_ot.c` to provide static verification that PT_Log cannot be called from notifier context:
+
+```c
+/*
+ * ISR Safety Compile-Time Test for Open Transport
+ *
+ * This file MUST NOT compile. It verifies that the PT_ISR_CONTEXT guard
+ * macro correctly blocks PT_Log calls from notifier (deferred task) code.
+ *
+ * DO NOT add this to the Makefile test target - it's intentionally designed
+ * to fail compilation as a safety check.
+ */
+
+#define PT_ISR_CONTEXT  /* Mark as deferred task context */
+#include "pt_log.h"
+#include <OpenTransport.h>
+#include <OpenTptInternet.h>
+
+/*
+ * Example notifier callback that violates ISR safety
+ *
+ * If PT_ISR_CONTEXT guard is working, this should produce:
+ * "error: PT_Log functions cannot be called at interrupt time"
+ *
+ * Note: Open Transport notifiers run at "deferred task time" not hardware
+ * interrupt time, but have similar restrictions (no File Manager, no sync I/O,
+ * etc). The PT_ISR_CONTEXT guard applies to both.
+ */
+static pascal void test_notifier_violates_isr_safety(
+    void *contextPtr,
+    OTEventCode code,
+    OTResult result,
+    void *cookie)
+{
+    PT_Log *log = (PT_Log *)contextPtr;
+
+    /* These should cause compile errors */
+    PT_LOG_ERR(log, PT_LOG_CAT_PLATFORM, "Notifier event: %ld", code);
+    PT_LOG_INFO(log, PT_LOG_CAT_NETWORK, "Result: %ld", result);
+    PT_LOG_DEBUG(log, PT_LOG_CAT_PLATFORM, "Cookie: %p", cookie);
+}
+
+int main(void) {
+    /* This file should never reach the linker */
+    return 0;
+}
+```
+
+**Verification Steps:**
+
+1. **Manual compile test:**
+   ```bash
+   # This should FAIL with error about PT_Log at interrupt time
+   powerpc-apple-macos-gcc -c tests/test_isr_safety_ot.c -I include -I src/core
+   ```
+
+2. **Add to CI workflow** (`.github/workflows/ci.yml`):
+   ```yaml
+   - name: ISR safety check (Open Transport)
+     run: |
+       # Verify PT_ISR_CONTEXT blocks PT_Log calls
+       if powerpc-apple-macos-gcc -c tests/test_isr_safety_ot.c -I include -I src/core 2>&1 | \
+          grep -q "cannot be called at interrupt time"; then
+         echo "✓ ISR safety guard working correctly"
+       else
+         echo "✗ ISR safety guard failed - PT_Log may be callable from notifiers!"
+         exit 1
+       fi
+   ```
+
+3. **Expected result:** Compilation fails with explicit error message about interrupt-time restrictions.
+
+**Why This Matters for Open Transport:**
+
+Open Transport notifiers run at "deferred task time" (Table C-3 functions), not hardware interrupt time (Table C-1). However, they still have severe restrictions:
+- Cannot call File Manager (PT_Log writes to files)
+- Cannot allocate memory reliably (PT_Log may allocate)
+- Cannot call most Toolbox routines
+
+The PT_ISR_CONTEXT guard treats deferred task time and hardware interrupt time the same—both are forbidden from calling PT_Log.
+
+**Integration with Notifier Code:**
+
+When implementing notifiers in Sessions 6.2-6.7, add `#define PT_ISR_CONTEXT` at the top of each notifier function to enable compile-time checking:
+
+```c
+static pascal void pt_tcp_notifier(...) {
+    #define PT_ISR_CONTEXT  /* Enable ISR safety checks */
+
+    /* Notifier implementation - PT_Log calls will fail to compile */
+    PT_FLAG_SET(hot->flags, PT_FLAG_DATA_AVAILABLE);
+
+    #undef PT_ISR_CONTEXT
+}
+```
+
+This provides per-function ISR safety verification during development.
+
+**Deferred Task vs. Hardware Interrupt:**
+
+From Networking With Open Transport (lines 5793-5826):
+- **Hardware interrupt time** (Table C-1): Most restricted
+- **Deferred task time** (Table C-3): Notifiers run here, still restricted
+- **System task time**: Normal app code, full API available
+
+PT_ISR_CONTEXT blocks PT_Log for both hardware interrupt and deferred task contexts, since both share similar restrictions on File Manager and memory allocation.
+
 ---
 
 ## Session 6.2: UDP Endpoint
@@ -2657,6 +2766,94 @@ void pt_ot_leak_test(struct pt_context *ctx) {
     }
 }
 ```
+
+---
+
+## Emulator-Based Smoke Tests (Build Validation)
+
+**Purpose:** Verify Open Transport builds execute without crashes. Does NOT replace real hardware testing.
+
+**Critical Limitation:** Open Transport emulators (SheepShaver, Basilisk II with OT) are useful for build validation but should be followed by verification on real PPC hardware when possible.
+
+**Emulator Capabilities:**
+
+| Emulator | System | OT Version | Use Case | Limitations |
+|----------|--------|------------|----------|-------------|
+| **SheepShaver** | Mac OS 9 | 2.7+ | PPC emulation, good OT support | Timing differs, network quirks |
+| **Basilisk II** | Mac OS 8.6+ | 2.5+ | 68k/PPC hybrid, basic OT | Limited network, timing differs |
+
+**What Emulators CAN Verify:**
+- ✅ Application launches without crash
+- ✅ PT_Log file created successfully
+- ✅ InitOpenTransport succeeds
+- ✅ Endpoint creation works (OTOpenEndpoint returns valid ref)
+- ✅ Basic API calls don't crash immediately
+- ✅ Gestalt checks work correctly
+- ✅ Memory allocation patterns work
+
+**What Emulators CANNOT Fully Verify:**
+- ⚠️ Discovery (network behavior may differ)
+- ⚠️ Cross-platform interop (emulator networking is limited)
+- ⚠️ Timing-sensitive operations (notifier timing differs)
+- ⚠️ Real-world performance characteristics
+- ⚠️ Memory fragmentation under load
+
+**Emulator Smoke Test Workflow:**
+
+```bash
+# 1. Build for Open Transport
+make opentransport
+
+# 2. Transfer to SheepShaver shared folder
+cp build/opentransport/PeerTalk.bin /path/to/sheepshaver/shared/
+
+# 3. Launch in emulator and check for:
+#    - No crash on startup
+#    - PT_Log file appears
+#    - No error dialogs
+#    - Application responds
+```
+
+**Emulator Smoke Test Checklist:**
+- [ ] Application launches (no bus error or unimplemented trap)
+- [ ] PT_Log file created in System Folder
+- [ ] About box displays correct version
+- [ ] InitOpenTransport succeeds (check PT_Log for success message)
+- [ ] FreeMem shows reasonable values
+- [ ] Quit works cleanly
+- [ ] No "Application has unexpectedly quit" dialogs
+
+**When to Use Emulators:**
+
+1. **During development:** Quick iteration on build issues
+2. **Pre-hardware validation:** Smoke test before deploying to real PPC Mac
+3. **Regression testing:** Quick check that changes didn't break basic functionality
+4. **NOT for final acceptance:** Real hardware testing is strongly recommended
+
+**Real Hardware Testing Priority:**
+
+Open Transport runs on a wide range of hardware:
+- Power Mac G3/G4 (primary targets - good OT support)
+- iMac G3/G4 (excellent OT support)
+- PowerBook G3/G4 (portable testing)
+- Late 68k Macs with OT (limited, prefer PPC)
+
+Unlike MacTCP (which MUST be tested on real SE/30 due to severe hardware differences), Open Transport on emulators is more reliable. However, real hardware testing is still recommended for:
+- Cross-platform interop verification
+- Performance tuning
+- Final acceptance testing
+
+**Integration with Hardware Testing:**
+
+Emulator smoke tests are a **pre-flight check**. The workflow is:
+
+```
+Code Change → Emulator Smoke Test → Real Hardware Test (if available) → DONE
+                     ↓ (if fail)              ↓ (if fail)
+                Fix Build Issue         Fix Hardware-Specific Issue
+```
+
+For Open Transport, emulator testing is more reliable than for MacTCP, so the "Real Hardware Test" step is **recommended** but not **mandatory** if emulator tests pass comprehensively.
 
 ---
 
