@@ -3244,3 +3244,17 @@ This plan incorporates the following performance improvements based on data-orie
 | PT_LogPerfEntry.category filtering | Category is metadata for callbacks; global PT_LOG_CAT_PERF controls text output |
 | g_level_names inlining | Array lookup is after filtering; cost is minimal |
 | Mutex-free POSIX logging | Would require lock-free buffer; complexity not justified |
+
+## Test Coverage Updates (2026-02-03)
+
+**Additional tests implemented** to address gaps identified in TEST_GAP_ANALYSIS.md:
+
+1. **tests/test_isr_safety_compile.c** (HIGH) - Compile-time verification that PT_ISR_CONTEXT disables all logging macros. Intentionally causes linker error to catch ISR logging bugs.
+
+2. **tests/test_log_threads.c** (MEDIUM) - Multi-threaded stress test:
+   - 8 threads × 1000 messages = 8000 total
+   - Verifies file output integrity
+   - Verifies callback message counting
+   - Verifies sequence number uniqueness and monotonicity
+
+All tests pass. Phase 0 test coverage: 85%+
