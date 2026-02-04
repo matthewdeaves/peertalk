@@ -1,0 +1,415 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - posix/net_posix.h</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">posix</a> - net_posix.h<span style="font-size: 80%;"> (source / <a href="net_posix.h.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">2</td>
+            <td class="headerCovTableEntry">2</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-02-04 22:15:29</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">1</td>
+          </tr>
+                  <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /*</span>
+<span id="L2"><span class="lineNum">       2</span>              :  * PeerTalk POSIX Networking Layer</span>
+<span id="L3"><span class="lineNum">       3</span>              :  *</span>
+<span id="L4"><span class="lineNum">       4</span>              :  * Platform-specific networking implementation using BSD sockets.</span>
+<span id="L5"><span class="lineNum">       5</span>              :  * Implements UDP discovery, TCP connections, and message I/O.</span>
+<span id="L6"><span class="lineNum">       6</span>              :  */</span>
+<span id="L7"><span class="lineNum">       7</span>              : </span>
+<span id="L8"><span class="lineNum">       8</span>              : #ifndef PT_NET_POSIX_H</span>
+<span id="L9"><span class="lineNum">       9</span>              : #define PT_NET_POSIX_H</span>
+<span id="L10"><span class="lineNum">      10</span>              : </span>
+<span id="L11"><span class="lineNum">      11</span>              : #include &quot;pt_internal.h&quot;</span>
+<span id="L12"><span class="lineNum">      12</span>              : #include &quot;protocol.h&quot;</span>
+<span id="L13"><span class="lineNum">      13</span>              : #include &lt;sys/uio.h&gt;     /* For struct iovec, writev() */</span>
+<span id="L14"><span class="lineNum">      14</span>              : #include &lt;sys/select.h&gt;  /* For fd_set, FD_SET, etc. */</span>
+<span id="L15"><span class="lineNum">      15</span>              : </span>
+<span id="L16"><span class="lineNum">      16</span>              : /* ========================================================================== */</span>
+<span id="L17"><span class="lineNum">      17</span>              : /* Receive State Machine (Data-Oriented Design)                              */</span>
+<span id="L18"><span class="lineNum">      18</span>              : /* ========================================================================== */</span>
+<span id="L19"><span class="lineNum">      19</span>              : </span>
+<span id="L20"><span class="lineNum">      20</span>              : /**</span>
+<span id="L21"><span class="lineNum">      21</span>              :  * Receive state - using uint8_t instead of enum for cache efficiency</span>
+<span id="L22"><span class="lineNum">      22</span>              :  *</span>
+<span id="L23"><span class="lineNum">      23</span>              :  * On 68030, enum uses 4 bytes. Using uint8_t reduces hot section from</span>
+<span id="L24"><span class="lineNum">      24</span>              :  * 4 bytes to 1 byte, keeping per-peer state smaller.</span>
+<span id="L25"><span class="lineNum">      25</span>              :  */</span>
+<span id="L26"><span class="lineNum">      26</span>              : typedef uint8_t pt_recv_state;</span>
+<span id="L27"><span class="lineNum">      27</span>              : #define PT_RECV_HEADER   0   /* Waiting for header bytes */</span>
+<span id="L28"><span class="lineNum">      28</span>              : #define PT_RECV_PAYLOAD  1   /* Waiting for payload bytes */</span>
+<span id="L29"><span class="lineNum">      29</span>              : #define PT_RECV_CRC      2   /* Waiting for CRC bytes */</span>
+<span id="L30"><span class="lineNum">      30</span>              : </span>
+<span id="L31"><span class="lineNum">      31</span>              : /* ========================================================================== */</span>
+<span id="L32"><span class="lineNum">      32</span>              : /* Per-Peer Receive Buffers (HOT/COLD Separation)                           */</span>
+<span id="L33"><span class="lineNum">      33</span>              : /* ========================================================================== */</span>
+<span id="L34"><span class="lineNum">      34</span>              : </span>
+<span id="L35"><span class="lineNum">      35</span>              : /**</span>
+<span id="L36"><span class="lineNum">      36</span>              :  * HOT Section - checked every poll cycle per active connection (8 bytes)</span>
+<span id="L37"><span class="lineNum">      37</span>              :  *</span>
+<span id="L38"><span class="lineNum">      38</span>              :  * CRITICAL 68k ALIGNMENT: _pad0 ensures bytes_needed starts at even offset.</span>
+<span id="L39"><span class="lineNum">      39</span>              :  * On 68000/68020/68030, uint16_t at odd offsets causes performance penalty</span>
+<span id="L40"><span class="lineNum">      40</span>              :  * or crashes. This padding is NOT optional.</span>
+<span id="L41"><span class="lineNum">      41</span>              :  *</span>
+<span id="L42"><span class="lineNum">      42</span>              :  * With 16 peers, hot scan touches only 128 bytes (fits in 68030 L1 cache)</span>
+<span id="L43"><span class="lineNum">      43</span>              :  * instead of 131KB if payload buffers were inline.</span>
+<span id="L44"><span class="lineNum">      44</span>              :  */</span>
+<span id="L45"><span class="lineNum">      45</span>              : typedef struct {</span>
+<span id="L46"><span class="lineNum">      46</span>              :     pt_recv_state state;           /* 1 byte at offset 0 */</span>
+<span id="L47"><span class="lineNum">      47</span>              :     uint8_t       _pad0;           /* 1 byte at offset 1: CRITICAL for 68k alignment */</span>
+<span id="L48"><span class="lineNum">      48</span>              :     uint16_t      bytes_needed;    /* 2 bytes at offset 2 */</span>
+<span id="L49"><span class="lineNum">      49</span>              :     uint16_t      bytes_received;  /* 2 bytes at offset 4 */</span>
+<span id="L50"><span class="lineNum">      50</span>              :     uint16_t      _pad1;           /* 2 bytes at offset 6: align to 8 bytes */</span>
+<span id="L51"><span class="lineNum">      51</span>              : } pt_recv_hot;  /* Total: 8 bytes, all uint16_t at even offsets */</span>
+<span id="L52"><span class="lineNum">      52</span>              : </span>
+<span id="L53"><span class="lineNum">      53</span>              : /**</span>
+<span id="L54"><span class="lineNum">      54</span>              :  * COLD Section - only accessed when actual I/O happens</span>
+<span id="L55"><span class="lineNum">      55</span>              :  *</span>
+<span id="L56"><span class="lineNum">      56</span>              :  * Large buffers separated to avoid cache pollution during hot scans.</span>
+<span id="L57"><span class="lineNum">      57</span>              :  */</span>
+<span id="L58"><span class="lineNum">      58</span>              : typedef struct {</span>
+<span id="L59"><span class="lineNum">      59</span>              :     pt_message_header hdr;</span>
+<span id="L60"><span class="lineNum">      60</span>              :     uint8_t header_buf[PT_MESSAGE_HEADER_SIZE];  /* 10 bytes */</span>
+<span id="L61"><span class="lineNum">      61</span>              :     uint8_t crc_buf[2];</span>
+<span id="L62"><span class="lineNum">      62</span>              :     uint8_t payload_buf[PT_MAX_MESSAGE_SIZE];</span>
+<span id="L63"><span class="lineNum">      63</span>              : } pt_recv_cold;</span>
+<span id="L64"><span class="lineNum">      64</span>              : </span>
+<span id="L65"><span class="lineNum">      65</span>              : /**</span>
+<span id="L66"><span class="lineNum">      66</span>              :  * Complete receive buffer - hot and cold sections</span>
+<span id="L67"><span class="lineNum">      67</span>              :  *</span>
+<span id="L68"><span class="lineNum">      68</span>              :  * IMPORTANT: These are allocated separately (not inline in pt_posix_data)</span>
+<span id="L69"><span class="lineNum">      69</span>              :  * to prevent massive payload buffers from polluting cache when accessing</span>
+<span id="L70"><span class="lineNum">      70</span>              :  * hot fields in the platform context.</span>
+<span id="L71"><span class="lineNum">      71</span>              :  */</span>
+<span id="L72"><span class="lineNum">      72</span>              : typedef struct {</span>
+<span id="L73"><span class="lineNum">      73</span>              :     pt_recv_hot  hot;</span>
+<span id="L74"><span class="lineNum">      74</span>              :     pt_recv_cold cold;</span>
+<span id="L75"><span class="lineNum">      75</span>              : } pt_recv_buffer;</span>
+<span id="L76"><span class="lineNum">      76</span>              : </span>
+<span id="L77"><span class="lineNum">      77</span>              : /* ========================================================================== */</span>
+<span id="L78"><span class="lineNum">      78</span>              : /* Platform Context Extension (pt_posix_data)                                */</span>
+<span id="L79"><span class="lineNum">      79</span>              : /* ========================================================================== */</span>
+<span id="L80"><span class="lineNum">      80</span>              : </span>
+<span id="L81"><span class="lineNum">      81</span>              : /**</span>
+<span id="L82"><span class="lineNum">      82</span>              :  * POSIX platform-specific data</span>
+<span id="L83"><span class="lineNum">      83</span>              :  *</span>
+<span id="L84"><span class="lineNum">      84</span>              :  * Extends pt_context with networking state. Allocated after pt_context</span>
+<span id="L85"><span class="lineNum">      85</span>              :  * structure via pt_posix_extra_size().</span>
+<span id="L86"><span class="lineNum">      86</span>              :  *</span>
+<span id="L87"><span class="lineNum">      87</span>              :  * Field ordering follows Data-Oriented Design:</span>
+<span id="L88"><span class="lineNum">      88</span>              :  * - HOT: Accessed every poll cycle</span>
+<span id="L89"><span class="lineNum">      89</span>              :  * - WARM: Accessed on socket operations</span>
+<span id="L90"><span class="lineNum">      90</span>              :  * - COLD: Per-peer data</span>
+<span id="L91"><span class="lineNum">      91</span>              :  *</span>
+<span id="L92"><span class="lineNum">      92</span>              :  * recv_bufs is a POINTER, not inline array, to avoid cache pollution.</span>
+<span id="L93"><span class="lineNum">      93</span>              :  */</span>
+<span id="L94"><span class="lineNum">      94</span>              : typedef struct {</span>
+<span id="L95"><span class="lineNum">      95</span>              :     /* HOT - accessed every poll cycle (20 bytes on 32-bit) */</span>
+<span id="L96"><span class="lineNum">      96</span>              :     int max_fd;                    /* 4 bytes: highest fd for select() */</span>
+<span id="L97"><span class="lineNum">      97</span>              :     uint8_t active_count;          /* 1 byte: number of active peer connections */</span>
+<span id="L98"><span class="lineNum">      98</span>              :     uint8_t fd_dirty;              /* 1 byte: non-zero when fd_sets need rebuild */</span>
+<span id="L99"><span class="lineNum">      99</span>              :     uint16_t batch_count;          /* 2 bytes: messages in current batch */</span>
+<span id="L100"><span class="lineNum">     100</span>              :     pt_tick_t last_announce;       /* 4 bytes: tick of last discovery announce */</span>
+<span id="L101"><span class="lineNum">     101</span>              :     uint32_t local_ip;             /* 4 bytes: our IP (for filtering own broadcasts) */</span>
+<span id="L102"><span class="lineNum">     102</span>              :     uint8_t _pad0[4];              /* 4 bytes: align to 8-byte boundary */</span>
+<span id="L103"><span class="lineNum">     103</span>              : </span>
+<span id="L104"><span class="lineNum">     104</span>              :     /* Active peer tracking - O(1) removal via swap-back */</span>
+<span id="L105"><span class="lineNum">     105</span>              :     uint8_t active_peers[PT_MAX_PEERS];     /* Indices of peers with active sockets */</span>
+<span id="L106"><span class="lineNum">     106</span>              :     uint8_t active_position[PT_MAX_PEERS];  /* Reverse mapping for O(1) removal */</span>
+<span id="L107"><span class="lineNum">     107</span>              : </span>
+<span id="L108"><span class="lineNum">     108</span>              :     /* WARM - accessed on socket operations (24 bytes) */</span>
+<span id="L109"><span class="lineNum">     109</span>              :     int discovery_sock;</span>
+<span id="L110"><span class="lineNum">     110</span>              :     int listen_sock;</span>
+<span id="L111"><span class="lineNum">     111</span>              :     int udp_msg_sock;</span>
+<span id="L112"><span class="lineNum">     112</span>              :     uint32_t broadcast_addr;       /* INADDR_BROADCAST */</span>
+<span id="L113"><span class="lineNum">     113</span>              :     uint16_t discovery_port;</span>
+<span id="L114"><span class="lineNum">     114</span>              :     uint16_t listen_port;</span>
+<span id="L115"><span class="lineNum">     115</span>              :     uint16_t udp_msg_port;</span>
+<span id="L116"><span class="lineNum">     116</span>              :     uint16_t _pad1;</span>
+<span id="L117"><span class="lineNum">     117</span>              : </span>
+<span id="L118"><span class="lineNum">     118</span>              :     /* Cached fd_set - rebuilt only when fd_dirty is set */</span>
+<span id="L119"><span class="lineNum">     119</span>              :     fd_set cached_read_fds;</span>
+<span id="L120"><span class="lineNum">     120</span>              :     fd_set cached_write_fds;</span>
+<span id="L121"><span class="lineNum">     121</span>              : </span>
+<span id="L122"><span class="lineNum">     122</span>              :     /* COLD - per-peer data */</span>
+<span id="L123"><span class="lineNum">     123</span>              :     int tcp_socks[PT_MAX_PEERS];   /* TCP socket per peer, -1 if not connected */</span>
+<span id="L124"><span class="lineNum">     124</span>              : </span>
+<span id="L125"><span class="lineNum">     125</span>              :     /* SEPARATE ALLOCATION - do NOT embed inline */</span>
+<span id="L126"><span class="lineNum">     126</span>              :     pt_recv_buffer *recv_bufs;     /* Pointer to allocated array */</span>
+<span id="L127"><span class="lineNum">     127</span>              : } pt_posix_data;</span>
+<span id="L128"><span class="lineNum">     128</span>              : </span>
+<span id="L129"><span class="lineNum">     129</span>              : /* ========================================================================== */</span>
+<span id="L130"><span class="lineNum">     130</span>              : /* Helper Inline Functions                                                   */</span>
+<span id="L131"><span class="lineNum">     131</span>              : /* ========================================================================== */</span>
+<span id="L132"><span class="lineNum">     132</span>              : </span>
+<span id="L133"><span class="lineNum">     133</span>              : /**</span>
+<span id="L134"><span class="lineNum">     134</span>              :  * Get POSIX platform data from context</span>
+<span id="L135"><span class="lineNum">     135</span>              :  *</span>
+<span id="L136"><span class="lineNum">     136</span>              :  * The platform data is allocated immediately after the context structure.</span>
+<span id="L137"><span class="lineNum">     137</span>              :  */</span>
+<span id="L138"><span class="lineNum">     138</span> <span class="tlaGNC tlaBgGNC">         471 : static inline pt_posix_data *pt_posix_get(struct pt_context *ctx) {</span></span>
+<span id="L139"><span class="lineNum">     139</span> <span class="tlaGNC">         471 :     return (pt_posix_data *)((char *)ctx + sizeof(struct pt_context));</span></span>
+<span id="L140"><span class="lineNum">     140</span>              : }</span>
+<span id="L141"><span class="lineNum">     141</span>              : </span>
+<span id="L142"><span class="lineNum">     142</span>              : /* ========================================================================== */</span>
+<span id="L143"><span class="lineNum">     143</span>              : /* Platform Size/Init                                                        */</span>
+<span id="L144"><span class="lineNum">     144</span>              : /* ========================================================================== */</span>
+<span id="L145"><span class="lineNum">     145</span>              : </span>
+<span id="L146"><span class="lineNum">     146</span>              : /**</span>
+<span id="L147"><span class="lineNum">     147</span>              :  * Return extra memory size needed for POSIX platform data</span>
+<span id="L148"><span class="lineNum">     148</span>              :  */</span>
+<span id="L149"><span class="lineNum">     149</span>              : size_t pt_posix_extra_size(void);</span>
+<span id="L150"><span class="lineNum">     150</span>              : </span>
+<span id="L151"><span class="lineNum">     151</span>              : /**</span>
+<span id="L152"><span class="lineNum">     152</span>              :  * Initialize POSIX networking subsystem</span>
+<span id="L153"><span class="lineNum">     153</span>              :  *</span>
+<span id="L154"><span class="lineNum">     154</span>              :  * Creates sockets, initializes data structures, detects local IP.</span>
+<span id="L155"><span class="lineNum">     155</span>              :  * Called from PeerTalk_Init().</span>
+<span id="L156"><span class="lineNum">     156</span>              :  *</span>
+<span id="L157"><span class="lineNum">     157</span>              :  * Returns: 0 on success, -1 on failure</span>
+<span id="L158"><span class="lineNum">     158</span>              :  */</span>
+<span id="L159"><span class="lineNum">     159</span>              : int pt_posix_net_init(struct pt_context *ctx);</span>
+<span id="L160"><span class="lineNum">     160</span>              : </span>
+<span id="L161"><span class="lineNum">     161</span>              : /**</span>
+<span id="L162"><span class="lineNum">     162</span>              :  * Shutdown POSIX networking subsystem</span>
+<span id="L163"><span class="lineNum">     163</span>              :  *</span>
+<span id="L164"><span class="lineNum">     164</span>              :  * Closes all sockets, frees allocated buffers.</span>
+<span id="L165"><span class="lineNum">     165</span>              :  * Called from PeerTalk_Shutdown().</span>
+<span id="L166"><span class="lineNum">     166</span>              :  */</span>
+<span id="L167"><span class="lineNum">     167</span>              : void pt_posix_net_shutdown(struct pt_context *ctx);</span>
+<span id="L168"><span class="lineNum">     168</span>              : </span>
+<span id="L169"><span class="lineNum">     169</span>              : /* ========================================================================== */</span>
+<span id="L170"><span class="lineNum">     170</span>              : /* Discovery                                                                  */</span>
+<span id="L171"><span class="lineNum">     171</span>              : /* ========================================================================== */</span>
+<span id="L172"><span class="lineNum">     172</span>              : </span>
+<span id="L173"><span class="lineNum">     173</span>              : /**</span>
+<span id="L174"><span class="lineNum">     174</span>              :  * Start UDP discovery broadcasts</span>
+<span id="L175"><span class="lineNum">     175</span>              :  *</span>
+<span id="L176"><span class="lineNum">     176</span>              :  * Creates discovery socket, enables broadcast, sends initial announcement.</span>
+<span id="L177"><span class="lineNum">     177</span>              :  *</span>
+<span id="L178"><span class="lineNum">     178</span>              :  * Returns: 0 on success, -1 on failure</span>
+<span id="L179"><span class="lineNum">     179</span>              :  */</span>
+<span id="L180"><span class="lineNum">     180</span>              : int pt_posix_discovery_start(struct pt_context *ctx);</span>
+<span id="L181"><span class="lineNum">     181</span>              : </span>
+<span id="L182"><span class="lineNum">     182</span>              : /**</span>
+<span id="L183"><span class="lineNum">     183</span>              :  * Stop UDP discovery broadcasts</span>
+<span id="L184"><span class="lineNum">     184</span>              :  *</span>
+<span id="L185"><span class="lineNum">     185</span>              :  * Closes discovery socket.</span>
+<span id="L186"><span class="lineNum">     186</span>              :  */</span>
+<span id="L187"><span class="lineNum">     187</span>              : void pt_posix_discovery_stop(struct pt_context *ctx);</span>
+<span id="L188"><span class="lineNum">     188</span>              : </span>
+<span id="L189"><span class="lineNum">     189</span>              : /**</span>
+<span id="L190"><span class="lineNum">     190</span>              :  * Poll discovery socket for incoming packets</span>
+<span id="L191"><span class="lineNum">     191</span>              :  *</span>
+<span id="L192"><span class="lineNum">     192</span>              :  * Non-blocking receive of discovery packets. Processes ANNOUNCE, QUERY,</span>
+<span id="L193"><span class="lineNum">     193</span>              :  * GOODBYE types. Creates/updates/removes peers as appropriate.</span>
+<span id="L194"><span class="lineNum">     194</span>              :  *</span>
+<span id="L195"><span class="lineNum">     195</span>              :  * Returns: 1 if packet processed, 0 if no data, -1 on error</span>
+<span id="L196"><span class="lineNum">     196</span>              :  */</span>
+<span id="L197"><span class="lineNum">     197</span>              : int pt_posix_discovery_poll(struct pt_context *ctx);</span>
+<span id="L198"><span class="lineNum">     198</span>              : </span>
+<span id="L199"><span class="lineNum">     199</span>              : /**</span>
+<span id="L200"><span class="lineNum">     200</span>              :  * Send discovery packet</span>
+<span id="L201"><span class="lineNum">     201</span>              :  *</span>
+<span id="L202"><span class="lineNum">     202</span>              :  * @param ctx Context</span>
+<span id="L203"><span class="lineNum">     203</span>              :  * @param type PT_DISC_TYPE_ANNOUNCE, PT_DISC_TYPE_QUERY, or PT_DISC_TYPE_GOODBYE</span>
+<span id="L204"><span class="lineNum">     204</span>              :  *</span>
+<span id="L205"><span class="lineNum">     205</span>              :  * Returns: 0 on success, -1 on failure</span>
+<span id="L206"><span class="lineNum">     206</span>              :  */</span>
+<span id="L207"><span class="lineNum">     207</span>              : int pt_posix_discovery_send(struct pt_context *ctx, uint8_t type);</span>
+<span id="L208"><span class="lineNum">     208</span>              : </span>
+<span id="L209"><span class="lineNum">     209</span>              : /* ========================================================================== */</span>
+<span id="L210"><span class="lineNum">     210</span>              : /* TCP Server                                                                 */</span>
+<span id="L211"><span class="lineNum">     211</span>              : /* ========================================================================== */</span>
+<span id="L212"><span class="lineNum">     212</span>              : </span>
+<span id="L213"><span class="lineNum">     213</span>              : /**</span>
+<span id="L214"><span class="lineNum">     214</span>              :  * Start TCP listening socket</span>
+<span id="L215"><span class="lineNum">     215</span>              :  *</span>
+<span id="L216"><span class="lineNum">     216</span>              :  * Creates listening socket on TCP port for incoming connections.</span>
+<span id="L217"><span class="lineNum">     217</span>              :  *</span>
+<span id="L218"><span class="lineNum">     218</span>              :  * Returns: 0 on success, -1 on failure</span>
+<span id="L219"><span class="lineNum">     219</span>              :  */</span>
+<span id="L220"><span class="lineNum">     220</span>              : int pt_posix_listen_start(struct pt_context *ctx);</span>
+<span id="L221"><span class="lineNum">     221</span>              : </span>
+<span id="L222"><span class="lineNum">     222</span>              : /**</span>
+<span id="L223"><span class="lineNum">     223</span>              :  * Stop TCP listening socket</span>
+<span id="L224"><span class="lineNum">     224</span>              :  */</span>
+<span id="L225"><span class="lineNum">     225</span>              : void pt_posix_listen_stop(struct pt_context *ctx);</span>
+<span id="L226"><span class="lineNum">     226</span>              : </span>
+<span id="L227"><span class="lineNum">     227</span>              : /**</span>
+<span id="L228"><span class="lineNum">     228</span>              :  * Poll TCP listening socket for incoming connections</span>
+<span id="L229"><span class="lineNum">     229</span>              :  *</span>
+<span id="L230"><span class="lineNum">     230</span>              :  * Non-blocking accept() of incoming connections.</span>
+<span id="L231"><span class="lineNum">     231</span>              :  *</span>
+<span id="L232"><span class="lineNum">     232</span>              :  * Returns: 1 if connection accepted, 0 if no pending, -1 on error</span>
+<span id="L233"><span class="lineNum">     233</span>              :  */</span>
+<span id="L234"><span class="lineNum">     234</span>              : int pt_posix_listen_poll(struct pt_context *ctx);</span>
+<span id="L235"><span class="lineNum">     235</span>              : </span>
+<span id="L236"><span class="lineNum">     236</span>              : /* ========================================================================== */</span>
+<span id="L237"><span class="lineNum">     237</span>              : /* TCP Client                                                                 */</span>
+<span id="L238"><span class="lineNum">     238</span>              : /* ========================================================================== */</span>
+<span id="L239"><span class="lineNum">     239</span>              : </span>
+<span id="L240"><span class="lineNum">     240</span>              : /**</span>
+<span id="L241"><span class="lineNum">     241</span>              :  * Connect to a peer via TCP</span>
+<span id="L242"><span class="lineNum">     242</span>              :  *</span>
+<span id="L243"><span class="lineNum">     243</span>              :  * Initiates non-blocking connection to peer. Connection completes</span>
+<span id="L244"><span class="lineNum">     244</span>              :  * asynchronously; poll for writability to detect completion.</span>
+<span id="L245"><span class="lineNum">     245</span>              :  *</span>
+<span id="L246"><span class="lineNum">     246</span>              :  * Returns: 0 on success (connecting), -1 on failure</span>
+<span id="L247"><span class="lineNum">     247</span>              :  */</span>
+<span id="L248"><span class="lineNum">     248</span>              : int pt_posix_connect(struct pt_context *ctx, struct pt_peer *peer);</span>
+<span id="L249"><span class="lineNum">     249</span>              : </span>
+<span id="L250"><span class="lineNum">     250</span>              : /**</span>
+<span id="L251"><span class="lineNum">     251</span>              :  * Disconnect from a peer</span>
+<span id="L252"><span class="lineNum">     252</span>              :  *</span>
+<span id="L253"><span class="lineNum">     253</span>              :  * Closes TCP connection, removes from active peer tracking.</span>
+<span id="L254"><span class="lineNum">     254</span>              :  *</span>
+<span id="L255"><span class="lineNum">     255</span>              :  * Returns: 0 on success, -1 on failure</span>
+<span id="L256"><span class="lineNum">     256</span>              :  */</span>
+<span id="L257"><span class="lineNum">     257</span>              : int pt_posix_disconnect(struct pt_context *ctx, struct pt_peer *peer);</span>
+<span id="L258"><span class="lineNum">     258</span>              : </span>
+<span id="L259"><span class="lineNum">     259</span>              : /* ========================================================================== */</span>
+<span id="L260"><span class="lineNum">     260</span>              : /* I/O                                                                        */</span>
+<span id="L261"><span class="lineNum">     261</span>              : /* ========================================================================== */</span>
+<span id="L262"><span class="lineNum">     262</span>              : </span>
+<span id="L263"><span class="lineNum">     263</span>              : /**</span>
+<span id="L264"><span class="lineNum">     264</span>              :  * Send data to peer</span>
+<span id="L265"><span class="lineNum">     265</span>              :  *</span>
+<span id="L266"><span class="lineNum">     266</span>              :  * Non-blocking send. If socket buffer is full, returns PT_ERR_WOULD_BLOCK.</span>
+<span id="L267"><span class="lineNum">     267</span>              :  *</span>
+<span id="L268"><span class="lineNum">     268</span>              :  * Returns: 0 on success, PT_ERR_WOULD_BLOCK if would block, -1 on error</span>
+<span id="L269"><span class="lineNum">     269</span>              :  */</span>
+<span id="L270"><span class="lineNum">     270</span>              : int pt_posix_send(struct pt_context *ctx, struct pt_peer *peer,</span>
+<span id="L271"><span class="lineNum">     271</span>              :                   const void *data, size_t len);</span>
+<span id="L272"><span class="lineNum">     272</span>              : </span>
+<span id="L273"><span class="lineNum">     273</span>              : /**</span>
+<span id="L274"><span class="lineNum">     274</span>              :  * Receive data from peer</span>
+<span id="L275"><span class="lineNum">     275</span>              :  *</span>
+<span id="L276"><span class="lineNum">     276</span>              :  * Non-blocking receive with state machine for header/payload/CRC.</span>
+<span id="L277"><span class="lineNum">     277</span>              :  *</span>
+<span id="L278"><span class="lineNum">     278</span>              :  * Returns: 1 if complete message received, 0 if incomplete, -1 on error</span>
+<span id="L279"><span class="lineNum">     279</span>              :  */</span>
+<span id="L280"><span class="lineNum">     280</span>              : int pt_posix_recv(struct pt_context *ctx, struct pt_peer *peer);</span>
+<span id="L281"><span class="lineNum">     281</span>              : </span>
+<span id="L282"><span class="lineNum">     282</span>              : /**</span>
+<span id="L283"><span class="lineNum">     283</span>              :  * Send control message to peer</span>
+<span id="L284"><span class="lineNum">     284</span>              :  *</span>
+<span id="L285"><span class="lineNum">     285</span>              :  * Helper for sending protocol control messages (PING, PONG, etc).</span>
+<span id="L286"><span class="lineNum">     286</span>              :  *</span>
+<span id="L287"><span class="lineNum">     287</span>              :  * Returns: 0 on success, -1 on failure</span>
+<span id="L288"><span class="lineNum">     288</span>              :  */</span>
+<span id="L289"><span class="lineNum">     289</span>              : int pt_posix_send_control(struct pt_context *ctx, struct pt_peer *peer,</span>
+<span id="L290"><span class="lineNum">     290</span>              :                           uint8_t msg_type);</span>
+<span id="L291"><span class="lineNum">     291</span>              : </span>
+<span id="L292"><span class="lineNum">     292</span>              : /* ========================================================================== */</span>
+<span id="L293"><span class="lineNum">     293</span>              : /* UDP Messaging (Session 4.4)                                               */</span>
+<span id="L294"><span class="lineNum">     294</span>              : /* ========================================================================== */</span>
+<span id="L295"><span class="lineNum">     295</span>              : </span>
+<span id="L296"><span class="lineNum">     296</span>              : /**</span>
+<span id="L297"><span class="lineNum">     297</span>              :  * Initialize UDP messaging socket (separate from discovery)</span>
+<span id="L298"><span class="lineNum">     298</span>              :  *</span>
+<span id="L299"><span class="lineNum">     299</span>              :  * Returns: 0 on success, -1 on failure</span>
+<span id="L300"><span class="lineNum">     300</span>              :  */</span>
+<span id="L301"><span class="lineNum">     301</span>              : int pt_posix_udp_init(struct pt_context *ctx);</span>
+<span id="L302"><span class="lineNum">     302</span>              : </span>
+<span id="L303"><span class="lineNum">     303</span>              : /**</span>
+<span id="L304"><span class="lineNum">     304</span>              :  * Shutdown UDP messaging socket</span>
+<span id="L305"><span class="lineNum">     305</span>              :  */</span>
+<span id="L306"><span class="lineNum">     306</span>              : void pt_posix_udp_shutdown(struct pt_context *ctx);</span>
+<span id="L307"><span class="lineNum">     307</span>              : </span>
+<span id="L308"><span class="lineNum">     308</span>              : /**</span>
+<span id="L309"><span class="lineNum">     309</span>              :  * Send unreliable UDP message to peer</span>
+<span id="L310"><span class="lineNum">     310</span>              :  *</span>
+<span id="L311"><span class="lineNum">     311</span>              :  * Returns: 0 on success, -1 on failure</span>
+<span id="L312"><span class="lineNum">     312</span>              :  */</span>
+<span id="L313"><span class="lineNum">     313</span>              : int pt_posix_send_udp(struct pt_context *ctx, struct pt_peer *peer,</span>
+<span id="L314"><span class="lineNum">     314</span>              :                       const void *data, uint16_t len);</span>
+<span id="L315"><span class="lineNum">     315</span>              : </span>
+<span id="L316"><span class="lineNum">     316</span>              : /**</span>
+<span id="L317"><span class="lineNum">     317</span>              :  * Receive UDP message</span>
+<span id="L318"><span class="lineNum">     318</span>              :  *</span>
+<span id="L319"><span class="lineNum">     319</span>              :  * Non-blocking receive of UDP messages (not discovery packets).</span>
+<span id="L320"><span class="lineNum">     320</span>              :  *</span>
+<span id="L321"><span class="lineNum">     321</span>              :  * Returns: 1 if message received, 0 if no data, -1 on error</span>
+<span id="L322"><span class="lineNum">     322</span>              :  */</span>
+<span id="L323"><span class="lineNum">     323</span>              : int pt_posix_recv_udp(struct pt_context *ctx);</span>
+<span id="L324"><span class="lineNum">     324</span>              : </span>
+<span id="L325"><span class="lineNum">     325</span>              : /* ========================================================================== */</span>
+<span id="L326"><span class="lineNum">     326</span>              : /* Main Poll                                                                  */</span>
+<span id="L327"><span class="lineNum">     327</span>              : /* ========================================================================== */</span>
+<span id="L328"><span class="lineNum">     328</span>              : </span>
+<span id="L329"><span class="lineNum">     329</span>              : /**</span>
+<span id="L330"><span class="lineNum">     330</span>              :  * Main POSIX poll function</span>
+<span id="L331"><span class="lineNum">     331</span>              :  *</span>
+<span id="L332"><span class="lineNum">     332</span>              :  * Polls all sockets (discovery, listen, UDP, TCP peers) using select().</span>
+<span id="L333"><span class="lineNum">     333</span>              :  * Delegates to appropriate handlers based on ready sockets.</span>
+<span id="L334"><span class="lineNum">     334</span>              :  *</span>
+<span id="L335"><span class="lineNum">     335</span>              :  * Returns: 0 on success, -1 on error</span>
+<span id="L336"><span class="lineNum">     336</span>              :  */</span>
+<span id="L337"><span class="lineNum">     337</span>              : int pt_posix_poll(struct pt_context *ctx);</span>
+<span id="L338"><span class="lineNum">     338</span>              : </span>
+<span id="L339"><span class="lineNum">     339</span>              : #endif /* PT_NET_POSIX_H */</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>
