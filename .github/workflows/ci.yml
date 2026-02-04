@@ -2,9 +2,9 @@ name: PeerTalk CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 jobs:
   # POSIX build and tests (runs on every push/PR)
@@ -27,7 +27,8 @@ jobs:
       - name: Run tests
         run: |
           if [ -f "Makefile" ]; then
-            make test
+            make test || exit 1
+            echo "✓ All tests passed"
           else
             echo "No Makefile yet - skipping tests"
           fi
