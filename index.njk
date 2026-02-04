@@ -36,6 +36,8 @@ title: PeerTalk Metrics Dashboard
       {% if allMetrics.length > 1 %}
       <span class="trend">{{ allMetrics[0].coverage.line_coverage | percentChange(allMetrics[1].coverage.line_coverage) }}% change</span>
       {% endif %}
+      <br>
+      <a href="/peertalk/coverage/" class="coverage-link">View detailed coverage report →</a>
     </p>
   </div>
 

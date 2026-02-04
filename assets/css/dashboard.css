@@ -111,6 +111,19 @@ main {
   margin-top: 0.25rem;
 }
 
+.coverage-link {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  display: inline-block;
+  margin-top: 0.5rem;
+}
+
+.coverage-link:hover {
+  text-decoration: underline;
+}
+
 .charts-section {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
