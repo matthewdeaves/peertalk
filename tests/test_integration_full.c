@@ -101,12 +101,19 @@ void signal_handler(int sig) {
 
 void on_peer_discovered(PeerTalk_Context *ctx, const PeerTalk_PeerInfo *peer,
                         void *user_data) {
-    (void)ctx;
     (void)user_data;
 
     g_state.peers_discovered++;
     printf("\n[DISCOVERY] Peer discovered!\n");
     print_peer_info(peer);
+
+    /* Automatically connect to discovered peers */
+    PeerTalk_Error err = PeerTalk_Connect(ctx, peer->id);
+    if (err == PT_OK) {
+        printf("  → Initiating TCP connection...\n");
+    } else {
+        printf("  ✗ Connect failed: error %d\n", err);
+    }
 }
 
 void on_peer_connected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
@@ -215,6 +222,44 @@ void send_messages_to_peers(void) {
     }
 }
 
+void print_peer_stats(void) {
+    uint16_t peer_count = 0;
+    PeerTalk_PeerInfo peers[16];
+    PeerTalk_PeerStats peer_stats;
+    uint16_t pending, available;
+
+    /* Get all peers */
+    if (PeerTalk_GetPeers(g_state.ctx, peers, 16, &peer_count) != PT_OK) {
+        return;
+    }
+
+    if (peer_count == 0) {
+        return;
+    }
+
+    printf("\n[PEER STATS] Per-Peer Performance:\n");
+    for (uint16_t i = 0; i < peer_count; i++) {
+        printf("  Peer %u (%s): ", peers[i].id,
+               peers[i].connected ? "CONNECTED" : "DISCOVERED");
+
+        /* Get peer statistics */
+        if (PeerTalk_GetPeerStats(g_state.ctx, peers[i].id, &peer_stats) == PT_OK) {
+            printf("\n    Bytes: %u sent, %u received\n",
+                   peer_stats.bytes_sent, peer_stats.bytes_received);
+            printf("    Messages: %u sent, %u received\n",
+                   peer_stats.messages_sent, peer_stats.messages_received);
+            printf("    Latency: %u ms (variance: %u ms)\n",
+                   peer_stats.latency_ms, peer_stats.latency_variance_ms);
+            printf("    Quality: %u/100\n", peer_stats.quality);
+        }
+
+        /* Get queue status */
+        if (PeerTalk_GetQueueStatus(g_state.ctx, peers[i].id, &pending, &available) == PT_OK) {
+            printf("    Queue: %u pending, %u available\n", pending, available);
+        }
+    }
+}
+
 void print_statistics(void) {
     PeerTalk_GlobalStats stats;
 
@@ -231,6 +276,11 @@ void print_statistics(void) {
            stats.total_bytes_received, stats.total_messages_received);
     printf("  Discovery:  %u sent, %u received\n",
            stats.discovery_packets_sent, stats.discovery_packets_received);
+    printf("  Connections: %u accepted, %u rejected\n",
+           stats.connections_accepted, stats.connections_rejected);
+
+    /* Print per-peer stats */
+    print_peer_stats();
 }
 
 void run_test_loop(void) {
@@ -321,6 +371,8 @@ int main(int argc, char *argv[]) {
     strncpy(config.local_name, peer_name, PT_MAX_PEER_NAME - 1);
     config.max_peers = 16;
     config.discovery_interval = 3000;  /* Faster discovery for testing */
+    config.auto_accept = 1;  /* Enable auto-accept for TCP connections */
+    config.auto_cleanup = 1; /* Enable auto-cleanup of timed-out peers */
 
     g_state.ctx = PeerTalk_Init(&config);
     if (!g_state.ctx) {
@@ -382,24 +434,88 @@ int main(int argc, char *argv[]) {
 
     /* Test success criteria */
     int success = 1;
+    int warnings = 0;
+
+    printf("\n[VALIDATION] Checking test criteria:\n");
+
+    /* Check discovery */
     if (g_state.peers_discovered < 2) {
-        printf("\n✗ FAIL: Expected at least 2 peers discovered, got %d\n",
+        printf("  ✗ FAIL: Expected at least 2 peers discovered, got %d\n",
                g_state.peers_discovered);
         success = 0;
+    } else {
+        printf("  ✓ Discovery: %d peers found\n", g_state.peers_discovered);
     }
 
-    if (g_state.mode == MODE_SENDER || g_state.mode == MODE_BOTH) {
-        if (g_state.messages_sent == 0) {
-            printf("\n✗ FAIL: Expected messages to be sent\n");
+    /* Check connections */
+    PeerTalk_GlobalStats final_stats;
+    if (PeerTalk_GetGlobalStats(g_state.ctx, &final_stats) == PT_OK) {
+        if (final_stats.peers_connected == 0) {
+            printf("  ✗ FAIL: Expected peer connections, got 0\n");
             success = 0;
+        } else {
+            printf("  ✓ Connections: %u peers connected\n", final_stats.peers_connected);
+        }
+
+        if (final_stats.connections_accepted == 0) {
+            printf("  ⚠ WARNING: No connections accepted\n");
+            warnings++;
+        } else {
+            printf("  ✓ Accepted: %u connections\n", final_stats.connections_accepted);
         }
     }
 
+    /* Check messaging (mode-dependent) */
+    if (g_state.mode == MODE_SENDER || g_state.mode == MODE_BOTH) {
+        if (g_state.messages_sent == 0) {
+            printf("  ✗ FAIL: Expected messages to be sent in sender mode\n");
+            success = 0;
+        } else {
+            printf("  ✓ Sent: %d messages\n", g_state.messages_sent);
+        }
+    }
+
+    if (g_state.mode == MODE_RECEIVER || g_state.mode == MODE_BOTH) {
+        if (g_state.messages_received > 0) {
+            printf("  ✓ Received: %d messages\n", g_state.messages_received);
+        }
+    }
+
+    /* Check broadcasts */
+    if (g_state.broadcasts_sent > 0) {
+        printf("  ✓ Broadcasts: %d sent\n", g_state.broadcasts_sent);
+    }
+
+    /* Performance validation */
+    printf("\n[PERFORMANCE] Validating metrics:\n");
+    uint16_t peer_count = 0;
+    PeerTalk_PeerInfo peers[16];
+    if (PeerTalk_GetPeers(g_state.ctx, peers, 16, &peer_count) == PT_OK) {
+        for (uint16_t i = 0; i < peer_count; i++) {
+            if (!peers[i].connected) continue;
+
+            PeerTalk_PeerStats peer_stats;
+            if (PeerTalk_GetPeerStats(g_state.ctx, peers[i].id, &peer_stats) == PT_OK) {
+                if (peer_stats.quality > 0) {
+                    printf("  ✓ Peer %u quality: %u/100\n", peers[i].id, peer_stats.quality);
+                }
+                if (peer_stats.latency_ms > 0 && peer_stats.latency_ms < 1000) {
+                    printf("  ✓ Peer %u latency: %u ms\n", peers[i].id, peer_stats.latency_ms);
+                }
+            }
+        }
+    }
+
+    printf("\n");
     if (success) {
-        printf("\n✓ TEST PASSED\n");
+        if (warnings > 0) {
+            printf("✓ TEST PASSED (with %d warnings)\n", warnings);
+        } else {
+            printf("✓ TEST PASSED\n");
+        }
         return 0;
     } else {
-        printf("\n✗ TEST FAILED\n");
+        printf("✗ TEST FAILED\n");
         return 1;
     }
 }
