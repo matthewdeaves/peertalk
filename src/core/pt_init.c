@@ -8,6 +8,7 @@
 #include "pt_internal.h"
 #include "pt_compat.h"
 #include "peer.h"
+#include "queue.h"
 #include <string.h>
 
 /* ========================================================================== */
@@ -453,6 +454,152 @@ PeerTalk_Error PeerTalk_GetPeers(PeerTalk_Context *ctx_pub,
     return PT_OK;
 }
 
+/**
+ * Get peer list version (increments when peers added/removed)
+ *
+ * Allows detecting changes without copying entire peer list.
+ *
+ * @param ctx Valid PeerTalk context
+ * @return Current peers version counter, 0 on error
+ */
+uint32_t PeerTalk_GetPeersVersion(PeerTalk_Context *ctx_pub) {
+    struct pt_context *ctx = (struct pt_context *)ctx_pub;
+
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return 0;
+    }
+
+    return ctx->peers_version;
+}
+
+/**
+ * Get peer info by ID (returns pointer to internal structure)
+ *
+ * Returns pointer valid until next Poll call. Does not copy data.
+ *
+ * @param ctx Valid PeerTalk context
+ * @param peer_id Peer ID to look up
+ * @return Pointer to peer info, or NULL if not found
+ */
+const PeerTalk_PeerInfo *PeerTalk_GetPeerByID(PeerTalk_Context *ctx_pub,
+                                               PeerTalk_PeerID peer_id) {
+    struct pt_context *ctx = (struct pt_context *)ctx_pub;
+    struct pt_peer *peer;
+
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return NULL;
+    }
+
+    peer = pt_peer_find_by_id(ctx, peer_id);
+    if (!peer) {
+        return NULL;
+    }
+
+    /* Return pointer to cold info - valid until next Poll */
+    return &peer->cold.info;
+}
+
+/**
+ * Get peer info by ID (copies to caller-provided structure)
+ *
+ * Safer than GetPeerByID - copies data so it remains valid.
+ *
+ * @param ctx Valid PeerTalk context
+ * @param peer_id Peer ID to look up
+ * @param info Buffer to receive peer info (caller-allocated)
+ * @return PT_OK on success, PT_ERR_* on failure
+ */
+PeerTalk_Error PeerTalk_GetPeer(PeerTalk_Context *ctx_pub,
+                                 PeerTalk_PeerID peer_id,
+                                 PeerTalk_PeerInfo *info) {
+    struct pt_context *ctx = (struct pt_context *)ctx_pub;
+    struct pt_peer *peer;
+
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_STATE;
+    }
+    if (!info) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    peer = pt_peer_find_by_id(ctx, peer_id);
+    if (!peer) {
+        return PT_ERR_PEER_NOT_FOUND;
+    }
+
+    /* Copy peer info using existing helper */
+    pt_peer_get_info(peer, info);
+    return PT_OK;
+}
+
+/**
+ * Find peer by name
+ *
+ * Searches for peer with matching name string.
+ *
+ * @param ctx Valid PeerTalk context
+ * @param name Name to search for (not null)
+ * @param info Optional buffer to receive peer info (can be NULL)
+ * @return Peer ID if found, 0 if not found
+ */
+PeerTalk_PeerID PeerTalk_FindPeerByName(PeerTalk_Context *ctx_pub,
+                                         const char *name,
+                                         PeerTalk_PeerInfo *info) {
+    struct pt_context *ctx = (struct pt_context *)ctx_pub;
+    struct pt_peer *peer;
+
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC || !name) {
+        return 0;
+    }
+
+    peer = pt_peer_find_by_name(ctx, name);
+    if (!peer) {
+        return 0;
+    }
+
+    /* Optionally copy peer info */
+    if (info) {
+        pt_peer_get_info(peer, info);
+    }
+
+    return peer->hot.id;
+}
+
+/**
+ * Find peer by address
+ *
+ * Searches for peer with matching IP address and port.
+ *
+ * @param ctx Valid PeerTalk context
+ * @param address IP address (host byte order)
+ * @param port Port number (host byte order)
+ * @param info Optional buffer to receive peer info (can be NULL)
+ * @return Peer ID if found, 0 if not found
+ */
+PeerTalk_PeerID PeerTalk_FindPeerByAddress(PeerTalk_Context *ctx_pub,
+                                            uint32_t address,
+                                            uint16_t port,
+                                            PeerTalk_PeerInfo *info) {
+    struct pt_context *ctx = (struct pt_context *)ctx_pub;
+    struct pt_peer *peer;
+
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return 0;
+    }
+
+    peer = pt_peer_find_by_addr(ctx, address, port);
+    if (!peer) {
+        return 0;
+    }
+
+    /* Optionally copy peer info */
+    if (info) {
+        pt_peer_get_info(peer, info);
+    }
+
+    return peer->hot.id;
+}
+
 /* ========================================================================== */
 /* Broadcast Message (Phase 1)                                               */
 /* ========================================================================== */
@@ -523,6 +670,58 @@ PeerTalk_Error PeerTalk_Broadcast(PeerTalk_Context *ctx_pub,
 
     PT_CTX_DEBUG(ctx, PT_LOG_CAT_SEND,
                 "Broadcast sent to %u peer(s)", sent_count);
+
+    return PT_OK;
+}
+
+/* ========================================================================== */
+/* Queue Status (Phase 4)                                                    */
+/* ========================================================================== */
+
+/**
+ * Get send queue status for peer
+ *
+ * Returns the number of pending messages in the send queue and available
+ * slots. Useful for monitoring backpressure and flow control.
+ *
+ * @param ctx Valid PeerTalk context
+ * @param peer_id Peer ID to query
+ * @param out_pending Receives count of pending messages (can be NULL)
+ * @param out_available Receives count of available slots (can be NULL)
+ * @return PT_OK on success, PT_ERR_* on failure
+ */
+PeerTalk_Error PeerTalk_GetQueueStatus(PeerTalk_Context *ctx_pub,
+                                        PeerTalk_PeerID peer_id,
+                                        uint16_t *out_pending,
+                                        uint16_t *out_available) {
+    struct pt_context *ctx = (struct pt_context *)ctx_pub;
+    struct pt_peer *peer;
+    struct pt_queue *queue;
+
+    /* Validate parameters */
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_STATE;
+    }
+
+    /* Find peer by ID */
+    peer = pt_peer_find_by_id(ctx, peer_id);
+    if (!peer) {
+        return PT_ERR_PEER_NOT_FOUND;
+    }
+
+    /* Get send queue */
+    queue = peer->send_queue;
+    if (!queue || queue->magic != PT_QUEUE_MAGIC) {
+        return PT_ERR_INVALID_STATE;
+    }
+
+    /* Return queue status */
+    if (out_pending) {
+        *out_pending = queue->count;
+    }
+    if (out_available) {
+        *out_available = queue->capacity - queue->count;
+    }
 
     return PT_OK;
 }

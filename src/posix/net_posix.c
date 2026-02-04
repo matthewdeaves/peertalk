@@ -2235,3 +2235,60 @@ PeerTalk_Error PeerTalk_GetPeerStats(PeerTalk_Context *ctx, PeerTalk_PeerID peer
     return PT_OK;
 }
 
+/**
+ * Reset statistics for peer (or all peers if peer_id == 0)
+ *
+ * Clears all counters for the specified peer, or for all peers and global
+ * stats if peer_id is 0.
+ *
+ * Returns: PT_OK on success, PT_ERR_* on failure
+ */
+PeerTalk_Error PeerTalk_ResetStats(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id) {
+    struct pt_context *ictx = (struct pt_context *)ctx;
+    struct pt_peer *peer;
+    uint16_t i;
+
+    /* Validate parameters */
+    if (!ictx || ictx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_STATE;
+    }
+
+    if (peer_id == 0) {
+        /* Reset global statistics */
+        pt_memset(&ictx->global_stats, 0, sizeof(PeerTalk_GlobalStats));
+
+        /* Reset all peer statistics */
+        for (i = 0; i < ictx->max_peers; i++) {
+            peer = &ictx->peers[i];
+            if (peer->hot.state != PT_PEER_UNUSED) {
+                pt_memset(&peer->cold.stats, 0, sizeof(PeerTalk_PeerStats));
+                /* Reset latency tracking */
+                peer->hot.latency_ms = 0;
+                peer->cold.rtt_index = 0;
+                peer->cold.rtt_count = 0;
+                pt_memset(peer->cold.rtt_samples, 0, sizeof(peer->cold.rtt_samples));
+            }
+        }
+
+        PT_CTX_INFO(ictx, PT_LOG_CAT_PERF, "Reset all statistics");
+    } else {
+        /* Reset single peer statistics */
+        peer = pt_peer_find_by_id(ictx, peer_id);
+        if (!peer) {
+            return PT_ERR_PEER_NOT_FOUND;
+        }
+
+        pt_memset(&peer->cold.stats, 0, sizeof(PeerTalk_PeerStats));
+        /* Reset latency tracking */
+        peer->hot.latency_ms = 0;
+        peer->cold.rtt_index = 0;
+        peer->cold.rtt_count = 0;
+        pt_memset(peer->cold.rtt_samples, 0, sizeof(peer->cold.rtt_samples));
+
+        PT_CTX_INFO(ictx, PT_LOG_CAT_PERF,
+                   "Reset statistics for peer %u", peer_id);
+    }
+
+    return PT_OK;
+}
+
