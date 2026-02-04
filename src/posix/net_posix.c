@@ -10,6 +10,7 @@
 #include "net_posix.h"
 #include "protocol.h"
 #include "peer.h"
+#include "queue.h"
 #include "pt_compat.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -287,6 +288,52 @@ void pt_posix_net_shutdown(struct pt_context *ctx) {
     }
 
     PT_CTX_INFO(ctx, PT_LOG_CAT_NETWORK, "POSIX networking shut down");
+}
+
+/* ========================================================================== */
+/* Queue Lifecycle Helpers (Session 4.3.5)                                   */
+/* ========================================================================== */
+
+/**
+ * Allocate and initialize a peer queue
+ *
+ * @param ctx PeerTalk context
+ * @return Allocated queue or NULL on failure
+ */
+static pt_queue *pt_alloc_peer_queue(struct pt_context *ctx) {
+    pt_queue *q;
+    int result;
+
+    q = (pt_queue *)pt_alloc(sizeof(pt_queue));
+    if (!q) {
+        PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,
+            "Failed to allocate queue: out of memory");
+        return NULL;
+    }
+
+    result = pt_queue_init(ctx, q, 16);
+    if (result != 0) {
+        PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,
+            "Failed to initialize queue: error %d", result);
+        pt_free(q);
+        return NULL;
+    }
+
+    /* Phase 3 extensions initialized automatically by pt_queue_init() */
+
+    return q;
+}
+
+/**
+ * Free a peer queue
+ *
+ * @param q Queue to free (can be NULL)
+ */
+static void pt_free_peer_queue(pt_queue *q) {
+    if (q) {
+        pt_queue_free(q);
+        pt_free(q);
+    }
 }
 
 /* ========================================================================== */
@@ -844,6 +891,29 @@ int pt_posix_listen_poll(struct pt_context *ctx) {
     /* Add to active peers list and mark fd_sets dirty */
     pt_posix_add_active_peer(pd, peer_idx);
 
+    /* Allocate send and receive queues */
+    peer->send_queue = pt_alloc_peer_queue(ctx);
+    peer->recv_queue = pt_alloc_peer_queue(ctx);
+
+    if (!peer->send_queue || !peer->recv_queue) {
+        /* Allocation failed - clean up and reject connection */
+        PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,
+            "Failed to allocate queues for peer %u, rejecting connection",
+            peer->hot.id);
+
+        /* Free any partially allocated queues */
+        pt_free_peer_queue(peer->send_queue);
+        pt_free_peer_queue(peer->recv_queue);
+        peer->send_queue = NULL;
+        peer->recv_queue = NULL;
+
+        /* Close socket and clean up peer */
+        close(client_sock);
+        pd->tcp_socks[peer_idx] = -1;
+        pt_posix_remove_active_peer(pd, peer_idx);
+        return 0;
+    }
+
     /* Update state with logging */
     pt_peer_set_state(ctx, peer, PT_PEER_CONNECTED);
     peer->hot.last_seen = ctx->plat->get_ticks();
@@ -941,6 +1011,28 @@ int pt_posix_connect(struct pt_context *ctx, struct pt_peer *peer) {
     /* Add to active peers list and mark fd_sets dirty */
     pt_posix_add_active_peer(pd, peer_idx);
 
+    /* Allocate send and receive queues */
+    peer->send_queue = pt_alloc_peer_queue(ctx);
+    peer->recv_queue = pt_alloc_peer_queue(ctx);
+
+    if (!peer->send_queue || !peer->recv_queue) {
+        /* Allocation failed - clean up */
+        PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,
+            "Failed to allocate queues for peer %u",
+            peer->hot.id);
+
+        pt_free_peer_queue(peer->send_queue);
+        pt_free_peer_queue(peer->recv_queue);
+        peer->send_queue = NULL;
+        peer->recv_queue = NULL;
+
+        close(sock);
+        pd->tcp_socks[peer_idx] = -1;
+        pt_posix_remove_active_peer(pd, peer_idx);
+        pt_peer_set_state(ctx, peer, PT_PEER_FAILED);
+        return PT_ERR_NO_MEMORY;
+    }
+
     pt_peer_set_state(ctx, peer, PT_PEER_CONNECTED);
     peer->hot.last_seen = ctx->plat->get_ticks();
 
@@ -1005,6 +1097,12 @@ int pt_posix_disconnect(struct pt_context *ctx, struct pt_peer *peer) {
                                             peer->hot.id, PT_OK,
                                             ctx->callbacks.user_data);
     }
+
+    /* Free queues */
+    pt_free_peer_queue(peer->send_queue);
+    pt_free_peer_queue(peer->recv_queue);
+    peer->send_queue = NULL;
+    peer->recv_queue = NULL;
 
     pt_peer_set_state(ctx, peer, PT_PEER_UNUSED);
 
@@ -2033,7 +2131,28 @@ int pt_posix_poll(struct pt_context *ctx) {
                 continue;
             }
 
-            /* Connection successful - transition to CONNECTED */
+            /* Connection successful - allocate queues */
+            peer->send_queue = pt_alloc_peer_queue(ctx);
+            peer->recv_queue = pt_alloc_peer_queue(ctx);
+
+            if (!peer->send_queue || !peer->recv_queue) {
+                /* Allocation failed - disconnect */
+                PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,
+                    "Failed to allocate queues for peer %u", peer->hot.id);
+
+                pt_free_peer_queue(peer->send_queue);
+                pt_free_peer_queue(peer->recv_queue);
+                peer->send_queue = NULL;
+                peer->recv_queue = NULL;
+
+                pt_peer_set_state(ctx, peer, PT_PEER_FAILED);
+                close(sock);
+                pd->tcp_socks[peer_idx] = -1;
+                pt_posix_remove_active_peer(pd, peer_idx);
+                continue;
+            }
+
+            /* Transition to CONNECTED */
             pt_peer_set_state(ctx, peer, PT_PEER_CONNECTED);
             peer->hot.last_seen = poll_time;
 
@@ -2065,6 +2184,12 @@ int pt_posix_poll(struct pt_context *ctx) {
                 PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT,
                     "Closing connection to peer %u", peer->hot.id);
 
+                /* Free queues before closing */
+                pt_free_peer_queue(peer->send_queue);
+                pt_free_peer_queue(peer->recv_queue);
+                peer->send_queue = NULL;
+                peer->recv_queue = NULL;
+
                 close(sock);
                 pd->tcp_socks[peer_idx] = -1;
                 pt_posix_remove_active_peer(pd, peer_idx);
@@ -2084,6 +2209,32 @@ int pt_posix_poll(struct pt_context *ctx) {
     }
 
 periodic_work:
+    /* Drain send queues for all connected peers (Session 4.3.5) */
+    for (uint8_t i = 0; i < ctx->max_peers; i++) {
+        struct pt_peer *peer = &ctx->peers[i];
+
+        if (peer->hot.state == PT_PEER_CONNECTED && peer->send_queue) {
+            /* Try to send one message from the queue using direct API */
+            const void *data;
+            uint16_t len;
+
+            if (pt_queue_pop_priority_direct(peer->send_queue, &data, &len) == 0) {
+                /* Got a message - send it */
+                int result = pt_posix_send(ctx, peer, data, len);
+
+                /* Consume the message from queue */
+                pt_queue_consume(peer->send_queue);
+
+                if (result != PT_OK && result != PT_ERR_WOULD_BLOCK) {
+                    /* Send failed - message lost */
+                    PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+                        "Failed to drain message for peer %u: error %d",
+                        peer->hot.id, result);
+                }
+            }
+        }
+    }
+
     /* Periodic discovery announce every 10 seconds */
     if (pd->discovery_sock >= 0 && (poll_time - pd->last_announce >= 10000)) {
         pt_posix_discovery_send(ctx, PT_DISC_TYPE_ANNOUNCE);
