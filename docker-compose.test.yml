@@ -2,9 +2,7 @@
 
 services:
   alice:
-    build:
-      context: .
-      dockerfile: Dockerfile.test.build
+    image: peertalk-test
     container_name: peertalk-alice
     command: ["/app/test_integration_full", "Alice", "sender"]
     tty: true
@@ -14,9 +12,7 @@ services:
         ipv4_address: 192.168.200.2
 
   bob:
-    build:
-      context: .
-      dockerfile: Dockerfile.test.build
+    image: peertalk-test
     container_name: peertalk-bob
     command: ["/app/test_integration_full", "Bob", "both"]
     tty: true
@@ -26,9 +22,7 @@ services:
         ipv4_address: 192.168.200.3
 
   charlie:
-    build:
-      context: .
-      dockerfile: Dockerfile.test.build
+    image: peertalk-test
     container_name: peertalk-charlie
     command: ["/app/test_integration_full", "Charlie", "receiver"]
     tty: true

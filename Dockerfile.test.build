@@ -16,7 +16,7 @@ COPY include ./include/
 COPY src ./src/
 COPY tests ./tests/
 
-# Build all tests
+# Build PeerTalk library
 RUN make
 
 # Build the integration test
@@ -26,4 +26,4 @@ RUN gcc -Wall -Werror -std=c99 -g -O2 -I./include -I./src/core \
     -L./build/lib -lpeertalk -lptlog -lpthread
 
 # Run the test
-CMD ["/app/test_integration_full", "default", "both"]
+CMD ["./test_integration_full", "default", "both"]

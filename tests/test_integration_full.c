@@ -125,12 +125,12 @@ void on_peer_connected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
 }
 
 void on_peer_disconnected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
-                          void *user_data) {
+                          PeerTalk_Error reason, void *user_data) {
     (void)ctx;
     (void)user_data;
 
     g_state.peers_connected--;
-    printf("\n[DISCONNECT] Peer %u disconnected\n", peer_id);
+    printf("\n[DISCONNECT] Peer %u disconnected (reason=%d)\n", peer_id, reason);
 }
 
 void on_message_received(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
@@ -225,11 +225,11 @@ void print_statistics(void) {
     printf("\n[STATS] Global Statistics:\n");
     printf("  Discovered: %u peers\n", stats.peers_discovered);
     printf("  Connected:  %u peers\n", stats.peers_connected);
-    printf("  Sent:       %llu bytes, %llu messages\n",
+    printf("  Sent:       %u bytes, %u messages\n",
            stats.total_bytes_sent, stats.total_messages_sent);
-    printf("  Received:   %llu bytes, %llu messages\n",
+    printf("  Received:   %u bytes, %u messages\n",
            stats.total_bytes_received, stats.total_messages_received);
-    printf("  Discovery:  %llu sent, %llu received\n",
+    printf("  Discovery:  %u sent, %u received\n",
            stats.discovery_packets_sent, stats.discovery_packets_received);
 }
 
@@ -269,7 +269,11 @@ void run_test_loop(void) {
         }
 
         /* Sleep to avoid busy loop */
-        usleep(POLL_INTERVAL_MS * 1000);
+        struct timespec sleep_time = {
+            .tv_sec = 0,
+            .tv_nsec = POLL_INTERVAL_MS * 1000000L
+        };
+        nanosleep(&sleep_time, NULL);
     }
 }
 
@@ -279,6 +283,7 @@ void run_test_loop(void) {
 
 int main(int argc, char *argv[]) {
     PeerTalk_Config config;
+    PeerTalk_Callbacks callbacks;
     const char *peer_name = "TestPeer";
     const char *mode_str = "both";
 
@@ -324,14 +329,14 @@ int main(int argc, char *argv[]) {
     }
 
     /* Set callbacks */
-    PeerTalk_SetCallback(g_state.ctx, PT_CB_PEER_DISCOVERED,
-                         (PeerTalk_CallbackFunc)on_peer_discovered, NULL);
-    PeerTalk_SetCallback(g_state.ctx, PT_CB_PEER_CONNECTED,
-                         (PeerTalk_CallbackFunc)on_peer_connected, NULL);
-    PeerTalk_SetCallback(g_state.ctx, PT_CB_PEER_DISCONNECTED,
-                         (PeerTalk_CallbackFunc)on_peer_disconnected, NULL);
-    PeerTalk_SetCallback(g_state.ctx, PT_CB_MESSAGE_RECEIVED,
-                         (PeerTalk_CallbackFunc)on_message_received, NULL);
+    memset(&callbacks, 0, sizeof(callbacks));
+    callbacks.on_peer_discovered = on_peer_discovered;
+    callbacks.on_peer_connected = on_peer_connected;
+    callbacks.on_peer_disconnected = on_peer_disconnected;
+    callbacks.on_message_received = on_message_received;
+    callbacks.user_data = NULL;
+
+    PeerTalk_SetCallbacks(g_state.ctx, &callbacks);
 
     /* Start discovery and listening */
     PeerTalk_Error err;
