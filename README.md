@@ -2,6 +2,8 @@
 
 Cross-platform peer-to-peer networking library for Classic Macintosh and modern systems.
 
+[![Metrics Dashboard](https://img.shields.io/badge/metrics-dashboard-blue)](https://matthewdeaves.github.io/peertalk/) [![Coverage](https://img.shields.io/badge/coverage-40.9%25-yellow)](https://matthewdeaves.github.io/peertalk/coverage/)
+
 ## What It Is
 
 PeerTalk is an SDK for peer-to-peer communication across:

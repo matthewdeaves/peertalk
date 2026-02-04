@@ -274,7 +274,8 @@ def display_violations(violations: list[Violation]):
 @click.argument("target", required=False)
 @click.option("--check-content", "-c", help="Check code content directly (for hooks)")
 @click.option("--quiet", "-q", is_flag=True, help="Only output violations, no decoration")
-def main(target: Optional[str], check_content: Optional[str], quiet: bool):
+@click.option("--json", "-j", "output_json", is_flag=True, help="Output violations as JSON")
+def main(target: Optional[str], check_content: Optional[str], quiet: bool, output_json: bool):
     """Check Classic Mac callback code for ISR safety violations.
 
     TARGET can be a file or directory to scan.
@@ -304,7 +305,33 @@ def main(target: Optional[str], check_content: Optional[str], quiet: bool):
             console.print("Usage: python tools/validators/isr_safety.py <file-or-directory>")
             sys.exit(0)
 
-    if quiet:
+    if output_json:
+        # Output violations as JSON
+        import json
+
+        violations_data = []
+        categories = {}
+
+        for v in violations:
+            violations_data.append({
+                "file": v.file,
+                "line": v.line,
+                "callback_name": v.callback_name,
+                "forbidden_call": v.forbidden_call,
+                "category": v.category,
+                "reason": v.reason,
+                "context": v.context
+            })
+            categories[v.category] = categories.get(v.category, 0) + 1
+
+        output = {
+            "total_violations": len(violations),
+            "by_category": categories,
+            "violations": violations_data
+        }
+
+        print(json.dumps(output, indent=2))
+    elif quiet:
         for v in violations:
             print(f"{v.file}:{v.line}: {v.forbidden_call} in {v.callback_name} - {v.reason}")
     else:

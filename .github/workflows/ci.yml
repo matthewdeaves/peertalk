@@ -37,7 +37,7 @@ jobs:
         run: |
           if [ -f "Makefile" ]; then
             make coverage
-            COVERAGE=$(lcov --summary coverage.info 2>&1 | grep "lines" | awk '{print $2}' | tr -d '%')
+            COVERAGE=$(lcov --summary build/coverage/coverage.info 2>&1 | grep "lines" | awk '{print $2}' | tr -d '%')
             echo "Coverage: ${COVERAGE}%"
             if (( $(echo "$COVERAGE < 10.0" | bc -l) )); then
               echo "::warning::Coverage ${COVERAGE}% is below 10% threshold"
@@ -135,3 +135,83 @@ jobs:
           if grep -rn "TODO\|FIXME" --include="*.c" --include="*.h" . 2>/dev/null; then
             echo "::notice::Found TODO/FIXME comments - consider resolving"
           fi
+
+  # Collect metrics and update dashboard
+  collect-metrics:
+    runs-on: ubuntu-latest
+    needs: [build-posix, validate-isr-safety, quality-gates]
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+    permissions:
+      contents: write  # Needed to push to gh-pages
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for gh-pages
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y python3 jq bc gcc make lcov
+
+      - name: Build and run tests
+        id: tests
+        run: |
+          START_TIME=$(date +%s)
+          make test 2>&1 | tee /tmp/test_output.txt
+          TEST_END=$(date +%s)
+          echo "test_duration=$((TEST_END - START_TIME))" >> $GITHUB_OUTPUT
+
+      - name: Generate coverage
+        id: coverage
+        run: |
+          START_TIME=$(date +%s)
+          make coverage
+          COV_END=$(date +%s)
+          echo "coverage_duration=$((COV_END - START_TIME))" >> $GITHUB_OUTPUT
+
+      - name: Extract metrics
+        run: |
+          mkdir -p /tmp/metrics
+
+          # Extract test results
+          ./tools/metrics/extract_test_results.sh /tmp/test_output.txt > /tmp/metrics/test_results.json
+
+          # Extract coverage metrics
+          ./tools/metrics/extract_coverage.sh > /tmp/metrics/coverage.json
+
+          # Extract ISR safety metrics
+          ./tools/metrics/extract_isr_violations.sh > /tmp/metrics/isr_safety.json
+
+          # Extract quality metrics
+          ./tools/metrics/extract_quality_metrics.sh > /tmp/metrics/quality.json
+
+          # Extract CI metrics (with timing from previous steps)
+          export BUILD_DURATION_SEC="${{ steps.tests.outputs.test_duration }}"
+          export TEST_DURATION_SEC="${{ steps.tests.outputs.test_duration }}"
+          export COVERAGE_DURATION_SEC="${{ steps.coverage.outputs.coverage_duration }}"
+          ./tools/metrics/extract_ci_metrics.sh > /tmp/metrics/ci_metrics.json
+
+      - name: Aggregate metrics
+        run: |
+          python3 tools/metrics/aggregate_metrics.py \
+            /tmp/metrics/test_results.json \
+            /tmp/metrics/coverage.json \
+            /tmp/metrics/isr_safety.json \
+            /tmp/metrics/quality.json \
+            /tmp/metrics/ci_metrics.json \
+            /tmp/metrics/aggregated.json
+
+          echo "Aggregated metrics:"
+          cat /tmp/metrics/aggregated.json | python3 -m json.tool
+
+      - name: Generate HTML reports
+        run: |
+          # Generate ISR safety HTML report
+          python3 tools/metrics/generate_isr_report.py \
+            /tmp/metrics/isr_safety.json \
+            /tmp/metrics/isr_report.html
+
+      - name: Upload to gh-pages
+        run: |
+          ./tools/metrics/upload_to_pages.sh /tmp/metrics/aggregated.json build/coverage/html /tmp/metrics/isr_report.html
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
