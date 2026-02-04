@@ -139,10 +139,12 @@ test-backpressure: $(BIN_DIR)/test_backpressure
 	@$(BIN_DIR)/test_backpressure
 
 test-discovery: $(BIN_DIR)/test_discovery_posix
-	@echo "Running Phase 4.1 discovery test..."
-	@echo "NOTE: This is an interactive test. Run manually:"
-	@echo "  Terminal 1: $(BIN_DIR)/test_discovery_posix Alice"
-	@echo "  Terminal 2: $(BIN_DIR)/test_discovery_posix Bob"
+	@echo "Running Phase 4.1 discovery test (automated, 30s)..."
+	@$(BIN_DIR)/test_discovery_posix AutoTest
+
+test-integration-posix: $(BIN_DIR)/test_integration_posix
+	@echo "Running Phase 4.6 poll loop integration test..."
+	@$(BIN_DIR)/test_integration_posix
 
 test-messaging: $(BIN_DIR)/test_messaging_posix
 	@echo "Running Phase 4.3 message I/O test..."
@@ -193,21 +195,25 @@ valgrind: $(BIN_DIR)/test_log $(BIN_DIR)/test_log_perf $(BIN_DIR)/test_log_threa
 	@echo "=== All valgrind checks PASSED ==="
 
 # Test target (runs all tests)
-test: test-log test-compat test-foundation test-protocol test-peer test-queue test-queue-advanced test-backpressure test-messaging test-udp test-stats test-sendex
+test: test-log test-compat test-foundation test-protocol test-peer test-queue test-queue-advanced test-backpressure test-discovery test-messaging test-udp test-stats test-integration-posix test-sendex
 	@echo ""
 	@echo "All tests passed!"
 
 # Coverage target
-coverage: | $(COV_DIR)
+coverage:
 	$(MAKE) clean
+	@mkdir -p $(COV_DIR)
 	$(MAKE) CFLAGS="$(CFLAGS) -O0 -g --coverage" LDFLAGS="$(LDFLAGS) --coverage" all \
 	        $(BIN_DIR)/test_log $(BIN_DIR)/test_log_perf $(BIN_DIR)/test_log_threads \
 	        $(BIN_DIR)/test_compat $(BIN_DIR)/test_foundation $(BIN_DIR)/test_protocol \
 	        $(BIN_DIR)/test_peer $(BIN_DIR)/test_queue $(BIN_DIR)/test_queue_advanced \
-	        $(BIN_DIR)/test_backpressure
+	        $(BIN_DIR)/test_backpressure $(BIN_DIR)/test_discovery_posix \
+	        $(BIN_DIR)/test_messaging_posix $(BIN_DIR)/test_udp_posix \
+	        $(BIN_DIR)/test_stats_posix $(BIN_DIR)/test_integration_posix \
+	        $(BIN_DIR)/test_sendex
 	$(MAKE) test
 	lcov --capture --directory $(OBJ_DIR) --output-file $(COV_DIR)/coverage.info
-	lcov --remove $(COV_DIR)/coverage.info '/usr/*' --output-file $(COV_DIR)/coverage.info
+	lcov --remove $(COV_DIR)/coverage.info '/usr/*' --ignore-errors unused --output-file $(COV_DIR)/coverage.info
 	genhtml $(COV_DIR)/coverage.info --output-directory $(COV_DIR)/html
 	@echo "Coverage report: $(COV_DIR)/html/index.html"
 
