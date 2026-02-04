@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-02-04 22:31:27</td>
+            <td class="headerValue">2026-02-04 22:31:49</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">95.5&nbsp;%</td>
@@ -312,7 +312,7 @@
 <span id="L250"><span class="lineNum">     250</span>              :  * Logging</span>
 <span id="L251"><span class="lineNum">     251</span>              :  *============================================================================*/</span>
 <span id="L252"><span class="lineNum">     252</span>              : </span>
-<span id="L253"><span class="lineNum">     253</span> <span class="tlaGNC">       17114 : void PT_LogWrite(</span></span>
+<span id="L253"><span class="lineNum">     253</span> <span class="tlaGNC">       17112 : void PT_LogWrite(</span></span>
 <span id="L254"><span class="lineNum">     254</span>              :     PT_Log         *log,</span>
 <span id="L255"><span class="lineNum">     255</span>              :     PT_LogLevel     level,</span>
 <span id="L256"><span class="lineNum">     256</span>              :     PT_LogCategory  category,</span>
@@ -320,25 +320,25 @@
 <span id="L258"><span class="lineNum">     258</span>              :     ...</span>
 <span id="L259"><span class="lineNum">     259</span>              : ) {</span>
 <span id="L260"><span class="lineNum">     260</span>              :     va_list args;</span>
-<span id="L261"><span class="lineNum">     261</span> <span class="tlaGNC">       17114 :     va_start(args, fmt);</span></span>
-<span id="L262"><span class="lineNum">     262</span> <span class="tlaGNC">       17114 :     PT_LogWriteV(log, level, category, fmt, args);</span></span>
-<span id="L263"><span class="lineNum">     263</span> <span class="tlaGNC">       17135 :     va_end(args);</span></span>
-<span id="L264"><span class="lineNum">     264</span> <span class="tlaGNC">       17135 : }</span></span>
+<span id="L261"><span class="lineNum">     261</span> <span class="tlaGNC">       17112 :     va_start(args, fmt);</span></span>
+<span id="L262"><span class="lineNum">     262</span> <span class="tlaGNC">       17112 :     PT_LogWriteV(log, level, category, fmt, args);</span></span>
+<span id="L263"><span class="lineNum">     263</span> <span class="tlaGNC">       17140 :     va_end(args);</span></span>
+<span id="L264"><span class="lineNum">     264</span> <span class="tlaGNC">       17140 : }</span></span>
 <span id="L265"><span class="lineNum">     265</span>              : </span>
-<span id="L266"><span class="lineNum">     266</span> <span class="tlaGNC">       17098 : void PT_LogWriteV(</span></span>
+<span id="L266"><span class="lineNum">     266</span> <span class="tlaGNC">       17087 : void PT_LogWriteV(</span></span>
 <span id="L267"><span class="lineNum">     267</span>              :     PT_Log         *log,</span>
 <span id="L268"><span class="lineNum">     268</span>              :     PT_LogLevel     level,</span>
 <span id="L269"><span class="lineNum">     269</span>              :     PT_LogCategory  category,</span>
 <span id="L270"><span class="lineNum">     270</span>              :     const char     *fmt,</span>
 <span id="L271"><span class="lineNum">     271</span>              :     va_list         args</span>
 <span id="L272"><span class="lineNum">     272</span>              : ) {</span>
-<span id="L273"><span class="lineNum">     273</span> <span class="tlaGNC">       17117 :     if (!log) return;</span></span>
+<span id="L273"><span class="lineNum">     273</span> <span class="tlaGNC">       17106 :     if (!log) return;</span></span>
 <span id="L274"><span class="lineNum">     274</span>              : </span>
 <span id="L275"><span class="lineNum">     275</span>              :     /* Filter by level (early exit before allocation) */</span>
-<span id="L276"><span class="lineNum">     276</span> <span class="tlaGNC">       17041 :     if (level &gt; log-&gt;level) return;</span></span>
+<span id="L276"><span class="lineNum">     276</span> <span class="tlaGNC">       17030 :     if (level &gt; log-&gt;level) return;</span></span>
 <span id="L277"><span class="lineNum">     277</span>              : </span>
 <span id="L278"><span class="lineNum">     278</span>              :     /* Filter by category (early exit before allocation) */</span>
-<span id="L279"><span class="lineNum">     279</span> <span class="tlaGNC">       17026 :     if (!(category &amp; log-&gt;categories)) return;</span></span>
+<span id="L279"><span class="lineNum">     279</span> <span class="tlaGNC">       17015 :     if (!(category &amp; log-&gt;categories)) return;</span></span>
 <span id="L280"><span class="lineNum">     280</span>              : </span>
 <span id="L281"><span class="lineNum">     281</span>              :     /* Now allocate stack buffer (only if passing filters) */</span>
 <span id="L282"><span class="lineNum">     282</span>              :     char line[PT_LOG_LINE_MAX];</span>
@@ -346,7 +346,7 @@
 <span id="L284"><span class="lineNum">     284</span>              :     const char *level_name;</span>
 <span id="L285"><span class="lineNum">     285</span>              :     int prefix_len, total_len;</span>
 <span id="L286"><span class="lineNum">     286</span>              : </span>
-<span id="L287"><span class="lineNum">     287</span> <span class="tlaGNC">       17022 :     pthread_mutex_lock(&amp;log-&gt;mutex);</span></span>
+<span id="L287"><span class="lineNum">     287</span> <span class="tlaGNC">       17011 :     pthread_mutex_lock(&amp;log-&gt;mutex);</span></span>
 <span id="L288"><span class="lineNum">     288</span>              : </span>
 <span id="L289"><span class="lineNum">     289</span>              :     /* Get timestamp */</span>
 <span id="L290"><span class="lineNum">     290</span>              :     struct timeval now;</span>
@@ -456,15 +456,15 @@
 <span id="L394"><span class="lineNum">     394</span>              :     );</span>
 <span id="L395"><span class="lineNum">     395</span>              : }</span>
 <span id="L396"><span class="lineNum">     396</span>              : </span>
-<span id="L397"><span class="lineNum">     397</span> <span class="tlaGNC">        7904 : uint32_t PT_LogNextSeq(PT_Log *log) {</span></span>
-<span id="L398"><span class="lineNum">     398</span> <span class="tlaGNC">        7904 :     if (!log) return 0;</span></span>
+<span id="L397"><span class="lineNum">     397</span> <span class="tlaGNC">        7939 : uint32_t PT_LogNextSeq(PT_Log *log) {</span></span>
+<span id="L398"><span class="lineNum">     398</span> <span class="tlaGNC">        7939 :     if (!log) return 0;</span></span>
 <span id="L399"><span class="lineNum">     399</span>              : </span>
 <span id="L400"><span class="lineNum">     400</span>              :     uint32_t seq;</span>
-<span id="L401"><span class="lineNum">     401</span> <span class="tlaGNC">        7904 :     pthread_mutex_lock(&amp;log-&gt;mutex);</span></span>
+<span id="L401"><span class="lineNum">     401</span> <span class="tlaGNC">        7939 :     pthread_mutex_lock(&amp;log-&gt;mutex);</span></span>
 <span id="L402"><span class="lineNum">     402</span> <span class="tlaGNC">        8015 :     seq = log-&gt;next_seq++;</span></span>
 <span id="L403"><span class="lineNum">     403</span> <span class="tlaGNC">        8015 :     pthread_mutex_unlock(&amp;log-&gt;mutex);</span></span>
 <span id="L404"><span class="lineNum">     404</span>              : </span>
-<span id="L405"><span class="lineNum">     405</span> <span class="tlaGNC">        7956 :     return seq;</span></span>
+<span id="L405"><span class="lineNum">     405</span> <span class="tlaGNC">        7975 :     return seq;</span></span>
 <span id="L406"><span class="lineNum">     406</span>              : }</span>
 <span id="L407"><span class="lineNum">     407</span>              : </span>
 <span id="L408"><span class="lineNum">     408</span> <span class="tlaGNC">       17104 : const char *PT_LogLevelName(PT_LogLevel level) {</span></span>
