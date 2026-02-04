@@ -32,7 +32,7 @@ TEST_BINS = $(BIN_DIR)/test_log $(BIN_DIR)/test_log_perf $(BIN_DIR)/test_log_thr
             $(BIN_DIR)/test_compat $(BIN_DIR)/test_foundation $(BIN_DIR)/test_protocol \
             $(BIN_DIR)/test_peer $(BIN_DIR)/test_queue $(BIN_DIR)/test_queue_advanced \
             $(BIN_DIR)/test_backpressure $(BIN_DIR)/test_discovery_posix \
-            $(BIN_DIR)/test_messaging_posix $(BIN_DIR)/test_udp_posix
+            $(BIN_DIR)/test_messaging_posix $(BIN_DIR)/test_udp_posix $(BIN_DIR)/test_stats_posix
 
 all: $(LIBPTLOG) $(LIBPEERTALK)
 
@@ -93,6 +93,9 @@ $(BIN_DIR)/test_messaging_posix: tests/test_messaging_posix.c $(LIBPEERTALK) $(L
 $(BIN_DIR)/test_udp_posix: tests/test_udp_posix.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
 
+$(BIN_DIR)/test_stats_posix: tests/test_stats_posix.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
 # Test runners
 test-log: $(BIN_DIR)/test_log $(BIN_DIR)/test_log_perf $(BIN_DIR)/test_log_threads
 	@echo "Running PT_Log tests..."
@@ -142,6 +145,10 @@ test-udp: $(BIN_DIR)/test_udp_posix
 	@echo "Running Phase 4.4 UDP messaging test..."
 	@$(BIN_DIR)/test_udp_posix
 
+test-stats: $(BIN_DIR)/test_stats_posix
+	@echo "Running Phase 4.5 network statistics test..."
+	@$(BIN_DIR)/test_stats_posix
+
 # Valgrind memory check
 valgrind: $(BIN_DIR)/test_log $(BIN_DIR)/test_log_perf $(BIN_DIR)/test_log_threads \
           $(BIN_DIR)/test_compat $(BIN_DIR)/test_foundation $(BIN_DIR)/test_protocol \
@@ -175,7 +182,7 @@ valgrind: $(BIN_DIR)/test_log $(BIN_DIR)/test_log_perf $(BIN_DIR)/test_log_threa
 	@echo "=== All valgrind checks PASSED ==="
 
 # Test target (runs all tests)
-test: test-log test-compat test-foundation test-protocol test-peer test-queue test-queue-advanced test-backpressure test-messaging test-udp
+test: test-log test-compat test-foundation test-protocol test-peer test-queue test-queue-advanced test-backpressure test-messaging test-udp test-stats
 	@echo ""
 	@echo "All tests passed!"
 
@@ -202,4 +209,4 @@ clean:
 
 .PHONY: all test test-log test-compat test-foundation test-protocol test-peer \
         test-queue test-queue-advanced test-backpressure test-discovery \
-        test-messaging test-udp valgrind coverage clean
+        test-messaging test-udp test-stats valgrind coverage clean

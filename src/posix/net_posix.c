@@ -450,6 +450,9 @@ int pt_posix_discovery_send(struct pt_context *ctx, uint8_t type) {
         return -1;
     }
 
+    /* Update statistics */
+    ctx->global_stats.discovery_packets_sent++;
+
     PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY,
                 "Discovery %s sent to %u.%u.%u.%u:%u (%zd bytes)",
                 type == PT_DISC_TYPE_ANNOUNCE ? "ANNOUNCE" :
@@ -517,6 +520,9 @@ int pt_posix_discovery_poll(struct pt_context *ctx) {
                    (sender_ip >> 8) & 0xFF, sender_ip & 0xFF);
         return 0;  /* Ignore invalid packets */
     }
+
+    /* Update statistics */
+    ctx->global_stats.discovery_packets_received++;
 
     PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY,
                 "Discovery %s received from %u.%u.%u.%u:%u (%s)",
@@ -1119,6 +1125,69 @@ int pt_posix_send_control(struct pt_context *ctx, struct pt_peer *peer,
 }
 
 /* ========================================================================== */
+/* Statistics Helpers (Session 4.5)                                          */
+/* ========================================================================== */
+
+/**
+ * Calculate connection quality score from latency
+ *
+ * Quality score (0-100) based on latency thresholds:
+ * - < 50ms: 100 (excellent)
+ * - < 100ms: 90 (very good)
+ * - < 200ms: 75 (good)
+ * - < 500ms: 50 (fair)
+ * - >= 500ms: 25 (poor)
+ *
+ * Returns: Quality score (0-100)
+ */
+static uint8_t calculate_quality(uint16_t latency_ms) {
+    if (latency_ms < 50) {
+        return 100;
+    } else if (latency_ms < 100) {
+        return 90;
+    } else if (latency_ms < 200) {
+        return 75;
+    } else if (latency_ms < 500) {
+        return 50;
+    } else {
+        return 25;
+    }
+}
+
+/**
+ * Update peer latency from PONG response
+ *
+ * Called when PONG message is received. Calculates RTT, updates rolling average,
+ * and calculates connection quality score.
+ */
+static void update_peer_latency(struct pt_context *ctx, struct pt_peer *peer) {
+    pt_tick_t now;
+    uint16_t rtt;
+
+    if (peer->cold.ping_sent_time == 0) {
+        return;  /* No pending ping */
+    }
+
+    now = ctx->plat->get_ticks();
+    rtt = (uint16_t)(now - peer->cold.ping_sent_time);
+    peer->cold.ping_sent_time = 0;
+
+    /* Rolling average: new = (old * 3 + sample) / 4 */
+    if (peer->cold.stats.latency_ms == 0) {
+        peer->cold.stats.latency_ms = rtt;
+    } else {
+        peer->cold.stats.latency_ms = (peer->cold.stats.latency_ms * 3 + rtt) / 4;
+    }
+
+    /* Calculate quality */
+    peer->cold.stats.quality = calculate_quality(peer->cold.stats.latency_ms);
+
+    PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+                 "Peer %u latency: %u ms (quality: %u%%)",
+                 peer->hot.id, peer->cold.stats.latency_ms, peer->cold.stats.quality);
+}
+
+/* ========================================================================== */
 /* TCP Receive State Machine (Session 4.3)                                   */
 /* ========================================================================== */
 
@@ -1345,15 +1414,8 @@ static int pt_recv_process_message(struct pt_context *ctx, struct pt_peer *peer,
             break;
 
         case PT_MSG_TYPE_PONG:
-            /* Update latency if we sent PING */
-            if (peer->cold.ping_sent_time > 0) {
-                pt_tick_t now = ctx->plat->get_ticks();
-                peer->cold.stats.latency_ms = now - peer->cold.ping_sent_time;
-                peer->cold.ping_sent_time = 0;
-                PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
-                    "Received PONG from peer %u, latency=%u ms",
-                    peer->hot.id, peer->cold.stats.latency_ms);
-            }
+            /* Update latency with rolling average and quality calculation */
+            update_peer_latency(ctx, peer);
             break;
 
         case PT_MSG_TYPE_DISCONNECT:
@@ -1901,3 +1963,91 @@ PeerTalk_Error PeerTalk_SendUDP(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
     /* Call internal send function */
     return pt_posix_send_udp(ictx, peer, data, length);
 }
+
+/* ========================================================================== */
+/* Statistics API (Session 4.5)                                              */
+/* ========================================================================== */
+
+/**
+ * Get global network statistics
+ *
+ * Returns aggregate statistics for all network activity including bytes sent/received,
+ * message counts, peer counts, and connection statistics.
+ *
+ * Returns: PT_OK on success, PT_ERR_* on failure
+ */
+PeerTalk_Error PeerTalk_GetGlobalStats(PeerTalk_Context *ctx, PeerTalk_GlobalStats *stats) {
+    struct pt_context *ictx = (struct pt_context *)ctx;
+    uint16_t connected_count = 0;
+
+    /* Validate parameters */
+    if (!ictx || ictx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_STATE;
+    }
+    if (!stats) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Copy global statistics */
+    stats->total_bytes_sent = ictx->global_stats.total_bytes_sent;
+    stats->total_bytes_received = ictx->global_stats.total_bytes_received;
+    stats->total_messages_sent = ictx->global_stats.total_messages_sent;
+    stats->total_messages_received = ictx->global_stats.total_messages_received;
+    stats->discovery_packets_sent = ictx->global_stats.discovery_packets_sent;
+    stats->discovery_packets_received = ictx->global_stats.discovery_packets_received;
+    stats->connections_accepted = ictx->global_stats.connections_accepted;
+    stats->connections_rejected = ictx->global_stats.connections_rejected;
+
+    /* Count peers by state */
+    stats->peers_discovered = 0;
+    for (uint8_t i = 0; i < ictx->max_peers; i++) {
+        if (ictx->peers[i].hot.state != PT_PEER_UNUSED) {
+            stats->peers_discovered++;
+            if (ictx->peers[i].hot.state == PT_PEER_CONNECTED) {
+                connected_count++;
+            }
+        }
+    }
+    stats->peers_connected = connected_count;
+
+    /* Memory and streams (not yet tracked - set to 0) */
+    stats->memory_used = 0;
+    stats->streams_active = connected_count;
+    stats->reserved = 0;
+
+    return PT_OK;
+}
+
+/**
+ * Get per-peer statistics
+ *
+ * Returns statistics for a specific peer including bytes sent/received,
+ * message counts, latency, and connection quality.
+ *
+ * Returns: PT_OK on success, PT_ERR_* on failure
+ */
+PeerTalk_Error PeerTalk_GetPeerStats(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
+                                     PeerTalk_PeerStats *stats) {
+    struct pt_context *ictx = (struct pt_context *)ctx;
+    struct pt_peer *peer;
+
+    /* Validate parameters */
+    if (!ictx || ictx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_STATE;
+    }
+    if (!stats) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Find peer by ID */
+    peer = pt_peer_find_by_id(ictx, peer_id);
+    if (!peer) {
+        return PT_ERR_PEER_NOT_FOUND;
+    }
+
+    /* Copy peer statistics */
+    *stats = peer->cold.stats;
+
+    return PT_OK;
+}
+
