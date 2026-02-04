@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-02-04T21:34:42.975795Z",
-  "commit": "441aceb",
+  "timestamp": "2026-02-04T21:38:08.024771Z",
+  "commit": "25e7e4d",
   "branch": "develop",
   "test_results": {
     "total_tests": 25,
@@ -163,14 +163,14 @@
   },
   "ci_metrics": {
     "workflow_name": "PeerTalk CI",
-    "build_duration_sec": 64,
-    "test_duration_sec": 64,
+    "build_duration_sec": 65,
+    "test_duration_sec": 65,
     "coverage_duration_sec": 54,
-    "total_duration_sec": 182,
+    "total_duration_sec": 184,
     "jobs": {
       "build-posix": {
         "status": "success",
-        "duration_sec": 64
+        "duration_sec": 65
       },
       "validate-isr-safety": {
         "status": "success",
