@@ -1,0 +1,105 @@
+version: '3.8'
+
+# 3-Peer Integration Test Configuration
+#
+# Runs three PeerTalk peers in separate containers on a shared network.
+# Each peer has unique TCP/UDP ports but shares the same discovery port
+# for UDP broadcast discovery.
+#
+# Usage:
+#   docker compose -f docker/docker-compose.test.yml up --build
+#   docker compose -f docker/docker-compose.test.yml down
+#
+# Network topology:
+#   All peers on same bridge network (peertalk-test-net)
+#   UDP broadcast discovery works within this network
+#   Each peer can connect to others via container hostnames
+
+services:
+  peer1:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: peertalk-peer1
+    hostname: peer1
+    networks:
+      - peertalk-test-net
+    environment:
+      - PEER_ID=1
+      - PEER_NAME=Peer1
+      - TCP_PORT=7354
+      - DISCOVERY_PORT=7353
+      - UDP_PORT=7355
+    volumes:
+      - ..:/workspace
+    working_dir: /workspace
+    command: >
+      bash -c "
+        echo 'Building PeerTalk library and tests...' &&
+        make clean && make &&
+        cd tests && make test_integration_posix &&
+        echo 'Starting Peer1...' &&
+        ./test_integration_posix
+      "
+    depends_on:
+      - peer2
+      - peer3
+
+  peer2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: peertalk-peer2
+    hostname: peer2
+    networks:
+      - peertalk-test-net
+    environment:
+      - PEER_ID=2
+      - PEER_NAME=Peer2
+      - TCP_PORT=7364
+      - DISCOVERY_PORT=7353
+      - UDP_PORT=7365
+    volumes:
+      - ..:/workspace
+    working_dir: /workspace
+    command: >
+      bash -c "
+        echo 'Building PeerTalk library and tests...' &&
+        make clean && make &&
+        cd tests && make test_integration_posix &&
+        echo 'Starting Peer2...' &&
+        ./test_integration_posix
+      "
+
+  peer3:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: peertalk-peer3
+    hostname: peer3
+    networks:
+      - peertalk-test-net
+    environment:
+      - PEER_ID=3
+      - PEER_NAME=Peer3
+      - TCP_PORT=7374
+      - DISCOVERY_PORT=7353
+      - UDP_PORT=7375
+    volumes:
+      - ..:/workspace
+    working_dir: /workspace
+    command: >
+      bash -c "
+        echo 'Building PeerTalk library and tests...' &&
+        make clean && make &&
+        cd tests && make test_integration_posix &&
+        echo 'Starting Peer3...' &&
+        ./test_integration_posix
+      "
+
+networks:
+  peertalk-test-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

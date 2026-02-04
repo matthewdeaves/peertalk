@@ -659,6 +659,66 @@ static void pt_posix_remove_active_peer(pt_posix_data *pd, uint8_t peer_idx) {
     pd->fd_dirty = 1;
 }
 
+/**
+ * Rebuild cached fd_sets when connections change (Session 4.6)
+ *
+ * Only called when pd->fd_dirty is set. Rebuilds read and write fd_sets
+ * from scratch by adding server sockets and iterating active peers.
+ *
+ * For connecting peers, also adds socket to write_fds to detect completion.
+ */
+static void pt_posix_rebuild_fd_sets(struct pt_context *ctx) {
+    pt_posix_data *pd = pt_posix_get(ctx);
+
+    /* Clear both fd_sets */
+    FD_ZERO(&pd->cached_read_fds);
+    FD_ZERO(&pd->cached_write_fds);
+    pd->max_fd = -1;
+
+    /* Add server sockets to read set */
+    if (pd->discovery_sock >= 0) {
+        FD_SET(pd->discovery_sock, &pd->cached_read_fds);
+        if (pd->discovery_sock > pd->max_fd)
+            pd->max_fd = pd->discovery_sock;
+    }
+
+    if (pd->listen_sock >= 0) {
+        FD_SET(pd->listen_sock, &pd->cached_read_fds);
+        if (pd->listen_sock > pd->max_fd)
+            pd->max_fd = pd->listen_sock;
+    }
+
+    if (pd->udp_msg_sock >= 0) {
+        FD_SET(pd->udp_msg_sock, &pd->cached_read_fds);
+        if (pd->udp_msg_sock > pd->max_fd)
+            pd->max_fd = pd->udp_msg_sock;
+    }
+
+    /* Iterate active peers only (not all PT_MAX_PEERS slots) */
+    for (uint8_t i = 0; i < pd->active_count; i++) {
+        uint8_t peer_idx = pd->active_peers[i];
+        int sock = pd->tcp_socks[peer_idx];
+
+        if (sock >= 0) {
+            struct pt_peer *peer = &ctx->peers[peer_idx];
+
+            /* All active sockets go in read set */
+            FD_SET(sock, &pd->cached_read_fds);
+
+            /* Connecting sockets also go in write set */
+            if (peer->hot.state == PT_PEER_CONNECTING) {
+                FD_SET(sock, &pd->cached_write_fds);
+            }
+
+            if (sock > pd->max_fd)
+                pd->max_fd = sock;
+        }
+    }
+
+    /* Clear dirty flag */
+    pd->fd_dirty = 0;
+}
+
 /* ========================================================================== */
 /* TCP Server                                                                 */
 /* ========================================================================== */
@@ -1754,11 +1814,16 @@ int pt_posix_recv_udp(struct pt_context *ctx) {
 /**
  * Check for async connection completion
  *
+ * NOTE: This function is no longer used - connection checking is now
+ * integrated into pt_posix_poll() main loop (Session 4.6).
+ * Kept for reference only.
+ *
  * Polls sockets in CONNECTING state for writability (indicates connection complete).
  * Uses select() with zero timeout for non-blocking check.
  *
  * Returns: Number of connections completed
  */
+#if 0  /* Integrated into pt_posix_poll() in Session 4.6 */
 static int pt_posix_connect_poll(struct pt_context *ctx) {
     pt_posix_data *pd = pt_posix_get(ctx);
     struct pt_peer *peer;
@@ -1853,74 +1918,193 @@ static int pt_posix_connect_poll(struct pt_context *ctx) {
 
     return completed;
 }
+#endif  /* End of unused pt_posix_connect_poll() */
 
 /* ========================================================================== */
-/* Main Poll (Session 4.1 - Discovery only)                                  */
+/* Main Poll (Session 4.6 - Integration)                                     */
 /* ========================================================================== */
 
 int pt_posix_poll(struct pt_context *ctx) {
     pt_posix_data *pd;
-    pt_tick_t now;
+    pt_tick_t poll_time;
+    fd_set read_fds, write_fds;
+    struct timeval tv;
+    int select_result;
 
     if (!ctx) {
         return -1;
     }
 
     pd = pt_posix_get(ctx);
-    now = ctx->plat->get_ticks();
 
-    /* Poll discovery socket */
-    if (pd->discovery_sock >= 0) {
+    /* Cache poll time at start (avoids repeated trap calls on Classic Mac) */
+    poll_time = ctx->plat->get_ticks();
+
+    /* Reset batch count for this poll cycle */
+    pd->batch_count = 0;
+
+    /* Rebuild fd_sets only if dirty flag set (connections changed) */
+    if (pd->fd_dirty) {
+        pt_posix_rebuild_fd_sets(ctx);
+    }
+
+    /* Copy cached fd_sets (select modifies them) */
+    read_fds = pd->cached_read_fds;
+    write_fds = pd->cached_write_fds;
+
+    /* Set timeout to 10ms for responsive polling */
+    tv.tv_sec = 0;
+    tv.tv_usec = 10000;
+
+    /* Call select() with all sockets */
+    select_result = select(pd->max_fd + 1, &read_fds, &write_fds, NULL, &tv);
+
+    if (select_result < 0) {
+        if (errno != EINTR) {
+            PT_CTX_WARN(ctx, PT_LOG_CAT_NETWORK,
+                "Select failed in main poll: %s", strerror(errno));
+        }
+        return 0;
+    }
+
+    if (select_result == 0) {
+        /* Hot path: no events - just periodic work */
+        goto periodic_work;
+    }
+
+    /* Process discovery packets if discovery_sock readable */
+    if (pd->discovery_sock >= 0 && FD_ISSET(pd->discovery_sock, &read_fds)) {
         while (pt_posix_discovery_poll(ctx) > 0) {
             /* Process all pending discovery packets */
         }
+    }
 
-        /* Send periodic announcements (every 5 seconds) */
-        if (now - pd->last_announce >= 5000) {
-            pt_posix_discovery_send(ctx, PT_DISC_TYPE_ANNOUNCE);
-            pd->last_announce = now;
+    /* Process UDP messages if udp_msg_sock readable */
+    if (pd->udp_msg_sock >= 0 && FD_ISSET(pd->udp_msg_sock, &read_fds)) {
+        while (pt_posix_recv_udp(ctx) > 0) {
+            /* Process all pending UDP messages */
         }
     }
 
-    /* Poll TCP listen socket */
-    if (pd->listen_sock >= 0) {
+    /* Process incoming connections if listen_sock readable */
+    if (pd->listen_sock >= 0 && FD_ISSET(pd->listen_sock, &read_fds)) {
         while (pt_posix_listen_poll(ctx) > 0) {
             /* Process all pending incoming connections */
         }
     }
 
-    /* Check for connection completion (CONNECTING -> CONNECTED) */
-    pt_posix_connect_poll(ctx);
-
-    /* Poll TCP peer sockets for received data (Session 4.3) */
+    /* For each active peer socket, check for events */
     for (uint8_t i = 0; i < pd->active_count; i++) {
         uint8_t peer_idx = pd->active_peers[i];
         struct pt_peer *peer = &ctx->peers[peer_idx];
         int sock = pd->tcp_socks[peer_idx];
 
-        if (peer->hot.state == PT_PEER_CONNECTED && sock >= 0) {
-            /* Check if data available using select() */
-            fd_set read_fds;
-            struct timeval tv = {0, 0};  /* Zero timeout = non-blocking */
+        if (sock < 0)
+            continue;
 
-            FD_ZERO(&read_fds);
-            FD_SET(sock, &read_fds);
+        /* Check connect completion (if state is CONNECTING and socket is writable) */
+        if (peer->hot.state == PT_PEER_CONNECTING && FD_ISSET(sock, &write_fds)) {
+            int error = 0;
+            socklen_t len = sizeof(error);
 
-            if (select(sock + 1, &read_fds, NULL, NULL, &tv) > 0) {
-                if (pt_posix_recv(ctx, peer) < 0) {
-                    /* Error or disconnect - close connection */
-                    PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT,
-                        "Closing connection to peer %u", peer->hot.id);
-                    pt_posix_disconnect(ctx, peer);
+            if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
+                PT_CTX_ERR(ctx, PT_LOG_CAT_CONNECT,
+                    "getsockopt failed for peer %u: %s",
+                    peer->hot.id, strerror(errno));
+                pt_peer_set_state(ctx, peer, PT_PEER_FAILED);
+                close(sock);
+                pd->tcp_socks[peer_idx] = -1;
+                pt_posix_remove_active_peer(pd, peer_idx);
+                continue;
+            }
+
+            if (error != 0) {
+                /* Connection failed */
+                PT_CTX_WARN(ctx, PT_LOG_CAT_CONNECT,
+                    "Connection failed for peer %u (%s): %s",
+                    peer->hot.id, peer->cold.name, strerror(error));
+                pt_peer_set_state(ctx, peer, PT_PEER_FAILED);
+                close(sock);
+                pd->tcp_socks[peer_idx] = -1;
+                pt_posix_remove_active_peer(pd, peer_idx);
+                continue;
+            }
+
+            /* Connection successful - transition to CONNECTED */
+            pt_peer_set_state(ctx, peer, PT_PEER_CONNECTED);
+            peer->hot.last_seen = poll_time;
+
+            PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT,
+                "Connection established to peer %u (%s)",
+                peer->hot.id, peer->cold.name);
+
+            /* Fire on_peer_connected callback */
+            if (ctx->callbacks.on_peer_connected) {
+                ctx->callbacks.on_peer_connected((PeerTalk_Context *)ctx,
+                                                 peer->hot.id,
+                                                 ctx->callbacks.user_data);
+            }
+
+            /* Mark fd_sets dirty to move socket from write set to read-only */
+            pd->fd_dirty = 1;
+        }
+
+        /* Check for incoming data (if socket readable) */
+        if (FD_ISSET(sock, &read_fds)) {
+            /* Process messages via pt_posix_recv() loop */
+            while (pt_posix_recv(ctx, peer) > 0) {
+                /* Keep receiving until no more complete messages */
+            }
+
+            /* On connection error, close socket and remove from active */
+            if (peer->hot.state == PT_PEER_DISCONNECTING ||
+                peer->hot.state == PT_PEER_FAILED) {
+                PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT,
+                    "Closing connection to peer %u", peer->hot.id);
+
+                close(sock);
+                pd->tcp_socks[peer_idx] = -1;
+                pt_posix_remove_active_peer(pd, peer_idx);
+
+                /* Fire on_peer_disconnected callback */
+                if (ctx->callbacks.on_peer_disconnected) {
+                    ctx->callbacks.on_peer_disconnected((PeerTalk_Context *)ctx,
+                                                        peer->hot.id,
+                                                        PT_OK,
+                                                        ctx->callbacks.user_data);
                 }
+
+                /* Destroy peer */
+                pt_peer_destroy(ctx, peer);
             }
         }
     }
 
-    /* Poll UDP messaging socket (Session 4.4) */
-    if (pd->udp_msg_sock >= 0) {
-        while (pt_posix_recv_udp(ctx) > 0) {
-            /* Process all pending UDP messages */
+periodic_work:
+    /* Periodic discovery announce every 10 seconds */
+    if (pd->discovery_sock >= 0 && (poll_time - pd->last_announce >= 10000)) {
+        pt_posix_discovery_send(ctx, PT_DISC_TYPE_ANNOUNCE);
+        pd->last_announce = poll_time;
+    }
+
+    /* Check for peer timeouts (30 second discovery timeout) */
+    for (uint8_t i = 0; i < ctx->max_peers; i++) {
+        struct pt_peer *peer = &ctx->peers[i];
+
+        if (peer->hot.state == PT_PEER_DISCOVERED &&
+            (poll_time - peer->hot.last_seen >= 30000)) {
+            PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY,
+                "Peer %u (%s) timed out after 30 seconds",
+                peer->hot.id, peer->cold.name);
+
+            /* Fire on_peer_lost callback before destroying */
+            if (ctx->callbacks.on_peer_lost) {
+                ctx->callbacks.on_peer_lost((PeerTalk_Context *)ctx,
+                                           peer->hot.id,
+                                           ctx->callbacks.user_data);
+            }
+
+            pt_peer_destroy(ctx, peer);
         }
     }
 

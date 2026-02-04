@@ -32,7 +32,8 @@ TEST_BINS = $(BIN_DIR)/test_log $(BIN_DIR)/test_log_perf $(BIN_DIR)/test_log_thr
             $(BIN_DIR)/test_compat $(BIN_DIR)/test_foundation $(BIN_DIR)/test_protocol \
             $(BIN_DIR)/test_peer $(BIN_DIR)/test_queue $(BIN_DIR)/test_queue_advanced \
             $(BIN_DIR)/test_backpressure $(BIN_DIR)/test_discovery_posix \
-            $(BIN_DIR)/test_messaging_posix $(BIN_DIR)/test_udp_posix $(BIN_DIR)/test_stats_posix
+            $(BIN_DIR)/test_messaging_posix $(BIN_DIR)/test_udp_posix $(BIN_DIR)/test_stats_posix \
+            $(BIN_DIR)/test_integration_posix
 
 all: $(LIBPTLOG) $(LIBPEERTALK)
 
@@ -94,6 +95,9 @@ $(BIN_DIR)/test_udp_posix: tests/test_udp_posix.c $(LIBPEERTALK) $(LIBPTLOG) | $
 	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
 
 $(BIN_DIR)/test_stats_posix: tests/test_stats_posix.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
+$(BIN_DIR)/test_integration_posix: tests/test_integration_posix.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
 
 # Test runners
@@ -200,6 +204,23 @@ coverage: | $(COV_DIR)
 	genhtml $(COV_DIR)/coverage.info --output-directory $(COV_DIR)/html
 	@echo "Coverage report: $(COV_DIR)/html/index.html"
 
+# Docker Integration Test (Session 4.6)
+test-integration-docker:
+	@echo "=== Running 3-Peer Docker Integration Test ==="
+	@echo "Building and starting 3 peer containers..."
+	@docker compose -f docker/docker-compose.test.yml up --build --abort-on-container-exit
+	@echo ""
+	@echo "Cleaning up containers..."
+	@docker compose -f docker/docker-compose.test.yml down
+
+test-integration-docker-logs:
+	@echo "=== Viewing Integration Test Logs ==="
+	@docker compose -f docker/docker-compose.test.yml logs
+
+test-integration-docker-clean:
+	@echo "=== Cleaning up Docker Integration Test ==="
+	@docker compose -f docker/docker-compose.test.yml down -v
+
 # Clean
 clean:
 	rm -rf $(BUILD_DIR)
@@ -209,4 +230,6 @@ clean:
 
 .PHONY: all test test-log test-compat test-foundation test-protocol test-peer \
         test-queue test-queue-advanced test-backpressure test-discovery \
-        test-messaging test-udp test-stats valgrind coverage clean
+        test-messaging test-udp test-stats test-integration-docker \
+        test-integration-docker-logs test-integration-docker-clean \
+        valgrind coverage clean
