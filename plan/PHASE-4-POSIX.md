@@ -202,6 +202,7 @@ your own IP address. Use Docker Compose with bridge networking for multi-peer te
 1. **Missing `name_len` initialization** - Must set `pkt.name_len = pt_strlen(pkt.name)` before encoding
 2. **Missing `pt_peer_list_init()` call** - Required in `PeerTalk_Init()` before any peer operations
 3. **Socket helpers need context** - Pass `struct pt_context *ctx` for proper error logging
+4. **Missing `address_count` initialization** (2026-02-04) - `pt_peer_create()` never set `peer->hot.address_count`, causing `PeerTalk_Connect()` to fail with PT_ERR_INVALID_STATE. Must initialize addresses array when creating peers from discovery. Found by 3-peer Docker integration test.
 
 **Protocol Constant Naming:**
 - Use `PT_DISC_TYPE_ANNOUNCE` (not `PT_DISC_TYPE_ANNOUNCE`)
