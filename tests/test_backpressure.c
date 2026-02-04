@@ -15,33 +15,34 @@ void test_backpressure_levels(void) {
     pt_queue q;
     int i;
 
-    /* Use power-of-two capacity (Phase 2 requirement) */
-    pt_queue_init(NULL, &q, 128);
+    /* Use 32-slot capacity (PT_QUEUE_MAX_SLOTS limit from Phase 3)
+     * Capacity must be power-of-2 AND <= PT_QUEUE_MAX_SLOTS */
+    pt_queue_init(NULL, &q, 32);
     pt_queue_ext_init(&q);  /* Initialize O(1) data structures */
 
     /* Empty - no pressure */
     assert(pt_queue_backpressure(&q) == PT_BACKPRESSURE_NONE);
 
-    /* Fill to 25% (32/128) */
-    for (i = 0; i < 32; i++) {
+    /* Fill to 25% (8/32) */
+    for (i = 0; i < 8; i++) {
         pt_queue_push_coalesce(&q, "x", 1, PT_PRIO_NORMAL, PT_COALESCE_NONE);
     }
     assert(pt_queue_backpressure(&q) == PT_BACKPRESSURE_NONE);
 
-    /* Fill to 50% (64/128) */
-    for (i = 0; i < 32; i++) {
+    /* Fill to 50% (16/32) */
+    for (i = 0; i < 8; i++) {
         pt_queue_push_coalesce(&q, "x", 1, PT_PRIO_NORMAL, PT_COALESCE_NONE);
     }
     assert(pt_queue_backpressure(&q) == PT_BACKPRESSURE_LIGHT);
 
-    /* Fill to 75% (96/128) */
-    for (i = 0; i < 32; i++) {
+    /* Fill to 75% (24/32) */
+    for (i = 0; i < 8; i++) {
         pt_queue_push_coalesce(&q, "x", 1, PT_PRIO_NORMAL, PT_COALESCE_NONE);
     }
     assert(pt_queue_backpressure(&q) == PT_BACKPRESSURE_HEAVY);
 
-    /* Fill to >90% (116/128 = 90.6%) to trigger BLOCKING */
-    for (i = 0; i < 20; i++) {
+    /* Fill to >90% (29/32 = 90.6%) to trigger BLOCKING */
+    for (i = 0; i < 5; i++) {
         pt_queue_push_coalesce(&q, "x", 1, PT_PRIO_NORMAL, PT_COALESCE_NONE);
     }
     assert(pt_queue_backpressure(&q) == PT_BACKPRESSURE_BLOCKING);
@@ -55,12 +56,12 @@ void test_try_push_policy(void) {
     int i;
     pt_backpressure bp;
 
-    /* Use power-of-two capacity (Phase 2 requirement) */
-    pt_queue_init(NULL, &q, 128);
+    /* Use 32-slot capacity (PT_QUEUE_MAX_SLOTS limit from Phase 3) */
+    pt_queue_init(NULL, &q, 32);
     pt_queue_ext_init(&q);  /* Initialize O(1) data structures */
 
-    /* Fill to blocking (>90% = 116/128) */
-    for (i = 0; i < 116; i++) {
+    /* Fill to blocking (>90% = 29/32) */
+    for (i = 0; i < 29; i++) {
         pt_queue_push_coalesce(&q, "x", 1, PT_PRIO_NORMAL, PT_COALESCE_NONE);
     }
 
