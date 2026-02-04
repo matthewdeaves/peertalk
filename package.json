@@ -1,0 +1,12 @@
+{
+  "name": "peertalk-dashboard",
+  "version": "1.0.0",
+  "description": "PeerTalk Software Metrics Dashboard",
+  "scripts": {
+    "build": "eleventy",
+    "serve": "eleventy --serve"
+  },
+  "devDependencies": {
+    "@11ty/eleventy": "^2.0.0"
+  }
+}
