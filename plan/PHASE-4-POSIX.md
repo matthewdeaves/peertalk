@@ -168,12 +168,16 @@ This automated test suite serves as the protocol reference:
 | 4.6 | Integration | [DONE] | `src/posix/net_posix.c` | `tests/test_integration_posix.c` | Poll loop with cached fd_sets works |
 | 4.7 | CI Setup | [OPEN] | `.github/workflows/ci.yml` | CI passes | `make test` runs on push/PR |
 
-> **Session 4.6 Note (2026-02-04):** The integration test was simplified from the original 3-peer Docker scenario to a basic poll loop test. The full messaging integration test requires `PeerTalk_Send()`, `PeerTalk_GetPeers()`, and `PeerTalk_Broadcast()` which are not yet implemented:
-> - `PeerTalk_Send()` / `PeerTalk_SendEx()` - **Phase 3.5** (SendEx API)
-> - `PeerTalk_GetPeers()` - **Phase 1** API (declaration exists, implementation deferred)
-> - `PeerTalk_Broadcast()` - **Phase 1** API (declaration exists, implementation deferred)
+> **Session 4.6 Status:**
 >
-> The current test verifies: initialization, discovery start, listening start, optimized poll loop with cached fd_sets, statistics tracking, and shutdown. Full 3-peer messaging test should be completed after Phase 3.5 implementation.
+> **Initial Implementation (2026-02-04):** The integration test was simplified from the original 3-peer Docker scenario to a basic poll loop test due to missing dependencies. The test verified: initialization, discovery start, listening start, optimized poll loop with cached fd_sets, statistics tracking, and shutdown.
+>
+> **Updated (2026-02-04):** Phase 3.5 dependencies are now complete! The following APIs have been implemented:
+> - ✅ `PeerTalk_Send()` / `PeerTalk_SendEx()` - Phase 3.5 (full implementation with priority, coalescing, unreliable routing)
+> - ✅ `PeerTalk_GetPeers()` - Phase 1 helper (implemented in `src/core/pt_init.c`)
+> - ✅ `PeerTalk_Broadcast()` - Phase 1 helper (implemented in `src/core/pt_init.c`)
+>
+> **Next Step:** The full 3-peer Docker integration test can now be implemented using `docker-compose.test.yml` to verify end-to-end messaging between multiple peers. This would provide comprehensive validation of discovery, connection, and messaging across the complete stack.
 
 ### Status Key
 - **[OPEN]** - Not started

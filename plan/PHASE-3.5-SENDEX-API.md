@@ -132,7 +132,15 @@ PeerTalk_Error PeerTalk_GetQueuePressureEx(
 
 | Session | Focus | Status | Files Created/Modified | Tests | Verify |
 |---------|-------|--------|------------------------|-------|--------|
-| 3.5.1 | SendEx API Implementation | [OPEN] | `src/core/send.c` | `tests/test_sendex.c` | PeerTalk_SendEx works with all options |
+| 3.5.1 | SendEx API Implementation | [DONE] | `src/core/send.c`, `src/core/pt_init.c` | `tests/test_sendex.c` | PeerTalk_SendEx works with all options |
+
+> **Implementation Note (2026-02-04):** Session 3.5.1 completed successfully. Implemented:
+> - `PeerTalk_SendEx()` in `src/core/send.c` with full priority, coalescing, and unreliable routing
+> - `PeerTalk_Send()` as simple wrapper with default parameters
+> - `PeerTalk_GetPeers()` in `src/core/pt_init.c` (Phase 1 helper, deferred until needed)
+> - `PeerTalk_Broadcast()` in `src/core/pt_init.c` (Phase 1 helper, deferred until needed)
+> - Comprehensive test suite `tests/test_sendex.c` with 21 passing assertions
+> - All tests pass with 0 memory leaks (valgrind clean)
 
 ### Status Key
 - **[OPEN]** - Not started
