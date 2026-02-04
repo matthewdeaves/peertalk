@@ -1,10 +1,10 @@
 # PHASE 4: POSIX Networking
 
-> **Status:** DONE
-> **Depends on:** Phase 1 (Foundation), Phase 2 (Protocol), optionally Phase 3 (Advanced Queues)
-> **Produces:** Fully functional PeerTalk on Linux/macOS
+> **Status:** IN PROGRESS (7/8 sessions complete, Session 4.3.5 remains)
+> **Depends on:** Phase 1 (Foundation), Phase 2 (Protocol), Phase 3 (Advanced Queues), Phase 3.5 (SendEx API)
+> **Produces:** Fully functional PeerTalk on Linux/macOS with complete message queuing
 > **Risk Level:** Low (POSIX sockets are well-understood)
-> **Estimated Sessions:** 7
+> **Estimated Sessions:** 8 (originally 7, added Session 4.3.5 for queue integration)
 > **Review Applied:** 2026-01-29 (second pass: 68k alignment fixes, DOD reorganization, new common pitfalls)
 
 > **Build Order:** Complete Phase 1 → Phase 2 → Phase 4. This phase cannot compile without Phase 1 and Phase 2.
@@ -163,11 +163,18 @@ This automated test suite serves as the protocol reference:
 | 4.1 | UDP Discovery | [DONE] | `src/posix/net_posix.c`, `src/posix/net_posix.h` | `tests/test_discovery_posix.c` | Peers discover each other via broadcast |
 | 4.2 | TCP Connections | [DONE] | `src/posix/net_posix.c`, `src/core/pt_init.c` | `tests/test_connect_posix.c` | Connect/disconnect lifecycle works |
 | 4.3 | Message I/O | [DONE] | `src/posix/net_posix.c` | `tests/test_messaging_posix.c` | Send/receive messages correctly |
+| 4.3.5 | Queue Integration | [OPEN] | `src/posix/net_posix.c` | `tests/test_integration_full.c` (enhanced) | Queues init on connect, messages flow end-to-end |
 | 4.4 | UDP Messaging | [DONE] | `src/posix/udp_posix.c` | `tests/test_udp_posix.c` | PeerTalk_SendUDP works for unreliable messages |
 | 4.5 | Network Statistics | [DONE] | `src/posix/stats_posix.c` | `tests/test_stats_posix.c` | Latency, bytes, quality tracking |
 | 4.6 | Integration | [DONE] | `src/posix/net_posix.c` | `tests/test_integration_posix.c` | Poll loop with cached fd_sets works |
 | 4.7 | CI Setup | [DONE] | `.github/workflows/ci.yml` | CI passes | `make test` runs on push/PR |
 
+> **Session 4.3.5 Added (2026-02-04):** Queue integration session added to complete POSIX reference implementation. Integration test discovered queues are never initialized when peers connect, causing `PeerTalk_SendEx()` to fail with "Peer has no send queue" even though connections work. This session completes the integration by:
+> - Allocating send/recv queues on connection establishment
+> - Draining send queue in poll loop
+> - Freeing queues on disconnection
+> - Full 3-peer Docker validation with end-to-end messaging
+>
 > **Session 4.6 Status:**
 >
 > **Initial Implementation (2026-02-04):** The integration test was simplified from the original 3-peer Docker scenario to a basic poll loop test due to missing dependencies. The test verified: initialization, discovery start, listening start, optimized poll loop with cached fd_sets, statistics tracking, and shutdown.
@@ -177,7 +184,7 @@ This automated test suite serves as the protocol reference:
 > - ✅ `PeerTalk_GetPeers()` - Phase 1 helper (implemented in `src/core/pt_init.c`)
 > - ✅ `PeerTalk_Broadcast()` - Phase 1 helper (implemented in `src/core/pt_init.c`)
 >
-> **Next Step:** The full 3-peer Docker integration test can now be implemented using `docker-compose.test.yml` to verify end-to-end messaging between multiple peers. This would provide comprehensive validation of discovery, connection, and messaging across the complete stack.
+> **Superseded by Session 4.3.5:** The full 3-peer Docker integration test is now part of Session 4.3.5 (Queue Integration), which provides comprehensive validation of discovery, connection, AND end-to-end messaging between multiple peers.
 
 ### Status Key
 - **[OPEN]** - Not started
@@ -2246,6 +2253,641 @@ int main(int argc, char **argv) {
 
 ---
 
+## Session 4.3.5: Queue Integration with Connection Lifecycle
+
+### Objective
+Integrate Phase 3 queue infrastructure with POSIX connection lifecycle to enable reliable message queuing and delivery. This completes the POSIX reference implementation by connecting the low-level I/O (Session 4.3) with the queue-based SendEx API (Phase 3.5).
+
+### Problem Statement
+
+**Current State:**
+- ✅ `PeerTalk_SendEx()` API implemented (Phase 3.5)
+- ✅ `pt_posix_send()` low-level send function implemented (Session 4.3)
+- ✅ `pt_posix_recv()` low-level receive function implemented (Session 4.3)
+- ✅ `pt_drain_send_queue()` batch send helper implemented (Phase 3)
+- ❌ **Queues are NEVER initialized when peers connect**
+- ❌ **`pt_drain_send_queue()` is NEVER called in poll loop**
+
+**Result:** `PeerTalk_SendEx()` fails with `PT_ERR_INVALID_STATE` ("Peer has no send queue") even though peers are connected.
+
+**Integration Test Evidence:**
+```
+[00002085][ERR] SendEx failed: Peer 1 has no send queue
+Messages sent: 0
+Messages received: 0
+```
+
+### Architecture Overview
+
+**Queue Lifecycle:**
+```
+Connection Established (accept or connect)
+    ↓
+Initialize send_queue and recv_queue
+    ↓
+Poll Loop: drain send_queue → pt_posix_send()
+    ↓
+Poll Loop: pt_posix_recv() → fire callback (or enqueue to recv_queue)
+    ↓
+Disconnection/Failure
+    ↓
+Free send_queue and recv_queue
+```
+
+**Memory Management:**
+- Queues are dynamically allocated pointers in `struct pt_peer`
+- Capacity: 16 slots per queue (good balance for POSIX, adequate for MacTCP)
+- Each slot: 268 bytes (12-byte metadata + 256-byte payload)
+- Total per peer: ~8.6 KB for both queues
+
+**DOD Consideration:**
+16-slot queues were chosen to balance:
+- POSIX: Can handle bursts without backpressure
+- MacTCP: Fits comfortably in 68k memory constraints
+- Cache efficiency: 16 * 268 = 4.3 KB per queue (reasonable for 68030's 256-byte cache)
+
+### Tasks
+
+#### Task 4.3.5.1: Add queue allocation helper
+
+Create a helper function to allocate and initialize a queue for a peer. This centralizes error handling and ensures consistent capacity across the codebase.
+
+**Add to `src/posix/net_posix.c`:**
+
+```c
+/*
+ * Allocate and initialize a queue for a peer
+ *
+ * Capacity is fixed at 16 slots per queue (adequate for POSIX burst handling,
+ * conservative for MacTCP memory constraints).
+ *
+ * MEMORY: 16 slots * 268 bytes/slot = 4,288 bytes per queue
+ *         Both send + recv = ~8.6 KB per peer
+ *
+ * Returns: Initialized queue pointer, or NULL on allocation failure
+ */
+static pt_queue *pt_alloc_peer_queue(struct pt_context *ctx) {
+    pt_queue *q;
+    int result;
+
+    /* Allocate queue structure */
+    q = (pt_queue *)pt_alloc(sizeof(pt_queue));
+    if (!q) {
+        PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,
+            "Failed to allocate queue structure (%zu bytes)", sizeof(pt_queue));
+        return NULL;
+    }
+
+    /* Initialize queue with 16-slot capacity (power of 2 for fast wrap) */
+    result = pt_queue_init(ctx, q, 16);
+    if (result != 0) {
+        PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,
+            "Failed to initialize queue: error %d", result);
+        pt_free(q);
+        return NULL;
+    }
+
+    /* Initialize Phase 3 extensions (priority free-lists, coalesce hash) */
+    pt_queue_ext_init(q);
+
+    return q;
+}
+
+/*
+ * Free a peer's queue
+ *
+ * Handles NULL pointers gracefully (idempotent cleanup).
+ */
+static void pt_free_peer_queue(pt_queue *q) {
+    if (!q)
+        return;
+
+    pt_queue_free(q);
+    pt_free(q);
+}
+```
+
+#### Task 4.3.5.2: Initialize queues on connection establishment
+
+Modify both connection paths (accept and connect) to allocate queues when peers transition to CONNECTED state.
+
+**Location 1: `pt_posix_listen_poll()` (accept path)**
+
+Find this code block (around line 818):
+```c
+    /* Update state with logging */
+    pt_peer_set_state(ctx, peer, PT_PEER_CONNECTED);
+    peer->hot.last_seen = ctx->plat->get_ticks();
+
+    PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT,
+        "Accepted connection from peer %u at 0x%08X (assigned to slot %u)",
+        peer->hot.id, client_ip, peer_idx);
+```
+
+**Replace with:**
+```c
+    /* Allocate send and receive queues */
+    peer->send_queue = pt_alloc_peer_queue(ctx);
+    peer->recv_queue = pt_alloc_peer_queue(ctx);
+
+    if (!peer->send_queue || !peer->recv_queue) {
+        /* Allocation failed - clean up and reject connection */
+        PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,
+            "Failed to allocate queues for peer %u, rejecting connection",
+            peer->hot.id);
+
+        /* Free any partially allocated queues */
+        pt_free_peer_queue(peer->send_queue);
+        pt_free_peer_queue(peer->recv_queue);
+        peer->send_queue = NULL;
+        peer->recv_queue = NULL;
+
+        /* Close socket and clean up peer */
+        close(client_sock);
+        pt_peer_destroy(ctx, peer);
+
+        /* Update global stats */
+        ctx->global_stats.connections_rejected++;
+
+        return -1;
+    }
+
+    /* Update state with logging */
+    pt_peer_set_state(ctx, peer, PT_PEER_CONNECTED);
+    peer->hot.last_seen = ctx->plat->get_ticks();
+
+    PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT,
+        "Accepted connection from peer %u at 0x%08X (assigned to slot %u)",
+        peer->hot.id, client_ip, peer_idx);
+
+    PT_CTX_DEBUG(ctx, PT_LOG_CAT_MEMORY,
+        "Allocated queues for peer %u (send: %p, recv: %p)",
+        peer->hot.id, (void*)peer->send_queue, (void*)peer->recv_queue);
+```
+
+**Location 2: `pt_posix_poll()` (async connect completion)**
+
+Find this code block (around line 2033):
+```c
+            /* Connection successful - transition to CONNECTED */
+            pt_peer_set_state(ctx, peer, PT_PEER_CONNECTED);
+            peer->hot.last_seen = poll_time;
+
+            PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT,
+                "Connection established to peer %u (%s)",
+                peer->hot.id, peer->cold.name);
+```
+
+**Replace with:**
+```c
+            /* Allocate send and receive queues */
+            peer->send_queue = pt_alloc_peer_queue(ctx);
+            peer->recv_queue = pt_alloc_peer_queue(ctx);
+
+            if (!peer->send_queue || !peer->recv_queue) {
+                /* Allocation failed - close connection */
+                PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,
+                    "Failed to allocate queues for peer %u, closing connection",
+                    peer->hot.id);
+
+                /* Free any partially allocated queues */
+                pt_free_peer_queue(peer->send_queue);
+                pt_free_peer_queue(peer->recv_queue);
+                peer->send_queue = NULL;
+                peer->recv_queue = NULL;
+
+                /* Close socket and mark failed */
+                close(sock);
+                pd->tcp_socks[peer_idx] = -1;
+                pt_posix_remove_active_peer(pd, peer_idx);
+                pt_peer_set_state(ctx, peer, PT_PEER_FAILED);
+
+                continue;
+            }
+
+            /* Connection successful - transition to CONNECTED */
+            pt_peer_set_state(ctx, peer, PT_PEER_CONNECTED);
+            peer->hot.last_seen = poll_time;
+
+            PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT,
+                "Connection established to peer %u (%s)",
+                peer->hot.id, peer->cold.name);
+
+            PT_CTX_DEBUG(ctx, PT_LOG_CAT_MEMORY,
+                "Allocated queues for peer %u (send: %p, recv: %p)",
+                peer->hot.id, (void*)peer->send_queue, (void*)peer->recv_queue);
+```
+
+#### Task 4.3.5.3: Free queues on disconnection
+
+Ensure queues are properly deallocated when peers disconnect to prevent memory leaks.
+
+**Location 1: `pt_posix_poll()` (disconnect handling)**
+
+Find this code block (around line 2078):
+```c
+                /* Destroy peer */
+                pt_peer_destroy(ctx, peer);
+```
+
+**Insert BEFORE `pt_peer_destroy`:**
+```c
+                /* Free queues before destroying peer */
+                PT_CTX_DEBUG(ctx, PT_LOG_CAT_MEMORY,
+                    "Freeing queues for peer %u", peer->hot.id);
+                pt_free_peer_queue(peer->send_queue);
+                pt_free_peer_queue(peer->recv_queue);
+                peer->send_queue = NULL;
+                peer->recv_queue = NULL;
+
+                /* Destroy peer */
+                pt_peer_destroy(ctx, peer);
+```
+
+**Location 2: `pt_posix_disconnect()` (explicit disconnect)**
+
+Add queue cleanup at the end of the function (after close() but before return):
+
+```c
+    /* Free queues */
+    PT_CTX_DEBUG(ctx, PT_LOG_CAT_MEMORY,
+        "Freeing queues for peer %u during explicit disconnect", peer->hot.id);
+    pt_free_peer_queue(peer->send_queue);
+    pt_free_peer_queue(peer->recv_queue);
+    peer->send_queue = NULL;
+    peer->recv_queue = NULL;
+
+    return PT_OK;
+```
+
+#### Task 4.3.5.4: Integrate send queue draining in poll loop
+
+Call `pt_drain_send_queue()` for connected peers in the main poll loop to flush queued messages.
+
+**Location: `pt_posix_poll()` after receive processing**
+
+Find the code block (around line 2080) that ends with:
+```c
+            }
+        }
+    }
+
+periodic_work:
+```
+
+**Insert BEFORE `periodic_work:`:**
+
+```c
+        }
+
+        /* Drain send queue if peer is connected and queue is not empty */
+        if (peer->hot.state == PT_PEER_CONNECTED &&
+            peer->send_queue &&
+            !pt_queue_is_empty(peer->send_queue)) {
+
+            /* Drain send queue using batching */
+            int batches_sent = pt_drain_send_queue(ctx, peer, pt_posix_send_batch);
+
+            if (batches_sent < 0) {
+                /* Send error - log and continue (peer may disconnect later) */
+                PT_CTX_WARN(ctx, PT_LOG_CAT_SEND,
+                    "Send queue drain failed for peer %u", peer->hot.id);
+            } else if (batches_sent > 0) {
+                /* Track batch count for diagnostics */
+                pd->batch_count += batches_sent;
+            }
+        }
+    }
+
+periodic_work:
+```
+
+#### Task 4.3.5.5: Implement batch send adapter
+
+`pt_drain_send_queue()` expects a callback with signature `int (*)(ctx, peer, pt_batch*)`. Create an adapter that sends batches using `pt_posix_send()`.
+
+**Add to `src/posix/net_posix.c`:**
+
+```c
+/*
+ * Batch send adapter for pt_drain_send_queue()
+ *
+ * Converts a pt_batch structure into a framed message and sends it via
+ * pt_posix_send(). This allows the platform-independent queue draining
+ * code to work with the POSIX-specific send function.
+ *
+ * NOTE: The batch buffer contains multiple messages with length prefixes.
+ * We send the entire batch as a single framed message with PT_MSG_FLAG_BATCH.
+ *
+ * Returns: 0 on success, negative error code on failure
+ */
+static int pt_posix_send_batch(struct pt_context *ctx, struct pt_peer *peer,
+                                pt_batch *batch) {
+    if (!batch || batch->count == 0 || batch->used == 0)
+        return 0;
+
+    /* Send batch buffer as payload */
+    return pt_posix_send(ctx, peer, batch->buffer, batch->used);
+}
+```
+
+**IMPORTANT:** Check if `pt_posix_send()` already handles batched messages. Looking at the Session 4.3 plan, `pt_posix_send()` sends raw payloads with framing. The batch structure pre-pends length headers to each message, so we need to ensure the protocol layer understands batched vs non-batched messages.
+
+**Alternative approach:** If batching is not yet supported in the protocol layer, use a simpler non-batching approach:
+
+```c
+/*
+ * Send individual messages from queue without batching
+ *
+ * Temporary implementation until batch protocol support is added.
+ * Pops one message from queue and sends it directly.
+ *
+ * Returns: 0 on success, negative error code on failure
+ */
+static int pt_posix_send_from_queue(struct pt_context *ctx, struct pt_peer *peer) {
+    uint8_t buffer[PT_QUEUE_SLOT_SIZE];
+    uint16_t length;
+    int result;
+
+    if (!peer->send_queue || pt_queue_is_empty(peer->send_queue))
+        return 0;
+
+    /* Pop message from queue (priority order) */
+    result = pt_queue_pop_priority(peer->send_queue, buffer, &length);
+    if (result != 0) {
+        /* Queue empty or error */
+        return 0;
+    }
+
+    /* Send message */
+    result = pt_posix_send(ctx, peer, buffer, length);
+    if (result != PT_OK) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_SEND,
+            "Failed to send queued message to peer %u: error %d",
+            peer->hot.id, result);
+        return result;
+    }
+
+    PT_CTX_DEBUG(ctx, PT_LOG_CAT_SEND,
+        "Sent queued message to peer %u (%u bytes)", peer->hot.id, length);
+
+    return 0;
+}
+```
+
+**And update the poll loop to call the simpler version:**
+
+```c
+        /* Drain send queue if peer is connected and queue is not empty */
+        if (peer->hot.state == PT_PEER_CONNECTED &&
+            peer->send_queue &&
+            !pt_queue_is_empty(peer->send_queue)) {
+
+            /* Send one message per poll cycle (simple, non-batching approach) */
+            pt_posix_send_from_queue(ctx, peer);
+        }
+```
+
+**DECISION:** Use the simpler non-batching approach initially. Batch protocol support can be added in a future session if needed for performance optimization.
+
+#### Task 4.3.5.6: Update integration test
+
+Enhance `tests/test_integration_full.c` to verify end-to-end messaging works.
+
+**Modify the test to add validation:**
+
+```c
+/* After test completion, validate results */
+printf("\n[VALIDATION] Checking test criteria:\n");
+
+int validation_passed = 1;
+
+/* Check discovery */
+if (g_state.peers_discovered >= 2) {
+    printf("  ✓ Discovery: %d peers found\n", g_state.peers_discovered);
+} else {
+    printf("  ✗ Discovery: Only %d peers found (expected 2+)\n",
+           g_state.peers_discovered);
+    validation_passed = 0;
+}
+
+/* Check connection */
+PeerTalk_GlobalStats final_stats;
+PeerTalk_GetGlobalStats(g_state.ctx, &final_stats);
+
+if (final_stats.peers_connected >= 2) {
+    printf("  ✓ Connection: %d peers connected\n", final_stats.peers_connected);
+} else {
+    printf("  ✗ Connection: Only %d peers connected (expected 2+)\n",
+           final_stats.peers_connected);
+    validation_passed = 0;
+}
+
+/* Check messaging */
+if (g_state.mode == MODE_SENDER || g_state.mode == MODE_BOTH) {
+    if (g_state.messages_sent > 0) {
+        printf("  ✓ Sending: %d messages sent\n", g_state.messages_sent);
+    } else {
+        printf("  ✗ FAIL: Expected messages to be sent in sender mode\n");
+        validation_passed = 0;
+    }
+}
+
+if (g_state.mode == MODE_RECEIVER || g_state.mode == MODE_BOTH) {
+    if (g_state.messages_received > 0) {
+        printf("  ✓ Receiving: %d messages received\n", g_state.messages_received);
+    } else {
+        printf("  ✗ FAIL: Expected messages to be received in receiver mode\n");
+        validation_passed = 0;
+    }
+}
+
+/* Performance metrics validation */
+printf("\n[PERFORMANCE] Validating metrics:\n");
+
+if (final_stats.total_messages_sent == g_state.messages_sent) {
+    printf("  ✓ Global stats match: sent counters consistent\n");
+} else {
+    printf("  ✗ Stats mismatch: global=%u, test=%d\n",
+           final_stats.total_messages_sent, g_state.messages_sent);
+}
+
+if (final_stats.total_messages_received == g_state.messages_received) {
+    printf("  ✓ Global stats match: recv counters consistent\n");
+} else {
+    printf("  ✗ Stats mismatch: global=%u, test=%d\n",
+           final_stats.total_messages_received, g_state.messages_received);
+}
+
+printf("\n%s\n", validation_passed ? "✓ TEST PASSED" : "✗ TEST FAILED");
+return validation_passed ? 0 : 1;
+```
+
+**Update Dockerfile.test.build and docker-compose.test.yml if needed** to ensure proper cleanup and error reporting.
+
+#### Task 4.3.5.7: Add queue status logging
+
+Add diagnostic logging to help debug queue-related issues.
+
+**Add helper function to `src/posix/net_posix.c`:**
+
+```c
+/*
+ * Log queue status for a peer (diagnostic helper)
+ *
+ * Used during connection establishment and periodic diagnostics.
+ */
+static void pt_log_peer_queue_status(struct pt_context *ctx, struct pt_peer *peer) {
+    if (!peer->send_queue || !peer->recv_queue)
+        return;
+
+    float send_pressure = pt_queue_pressure(peer->send_queue);
+    float recv_pressure = pt_queue_pressure(peer->recv_queue);
+
+    PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+        "Peer %u queues: send=%.0f%% (%u/%u), recv=%.0f%% (%u/%u)",
+        peer->hot.id,
+        send_pressure * 100.0f,
+        peer->send_queue->count,
+        peer->send_queue->capacity,
+        recv_pressure * 100.0f,
+        peer->recv_queue->count,
+        peer->recv_queue->capacity);
+}
+```
+
+**Call after queue allocation:**
+```c
+    PT_CTX_DEBUG(ctx, PT_LOG_CAT_MEMORY,
+        "Allocated queues for peer %u (send: %p, recv: %p)",
+        peer->hot.id, (void*)peer->send_queue, (void*)peer->recv_queue);
+
+    /* Log initial queue status */
+    pt_log_peer_queue_status(ctx, peer);
+```
+
+### Acceptance Criteria
+
+1. **Queue Lifecycle:**
+   - ✓ Queues allocated when peers connect (both accept and connect paths)
+   - ✓ Queues freed when peers disconnect (all disconnect paths)
+   - ✓ No memory leaks (verified with valgrind)
+
+2. **Message Flow:**
+   - ✓ `PeerTalk_SendEx()` succeeds when peer is connected
+   - ✓ Messages are queued and eventually sent
+   - ✓ Send queue drains in poll loop
+   - ✓ Messages arrive at destination peer
+   - ✓ Callbacks fire with correct data
+
+3. **Error Handling:**
+   - ✓ Queue allocation failure rejects connection gracefully
+   - ✓ Send errors don't crash (logged and peer can recover)
+   - ✓ Queue overflow triggers backpressure (messages rejected, not queued)
+
+4. **Integration Test:**
+   - ✓ 3-peer Docker scenario discovers all peers
+   - ✓ All peers successfully connect
+   - ✓ Messages sent: >0
+   - ✓ Messages received: >0
+   - ✓ Global stats match test counters
+   - ✓ No errors in logs except expected backpressure
+
+5. **Memory Validation:**
+   - ✓ Valgrind reports no leaks
+   - ✓ Valgrind reports no invalid reads/writes
+   - ✓ Queue memory is properly freed on disconnect
+
+6. **Logging Quality:**
+   - ✓ Connection: INFO level (operational visibility)
+   - ✓ Queue allocation: DEBUG level (diagnostic)
+   - ✓ Queue drain: DEBUG level (diagnostic)
+   - ✓ Queue failures: ERR level (problems)
+
+### Verification Steps
+
+```bash
+# 1. Build with clean slate
+make clean && make
+
+# 2. Run unit tests
+make test
+
+# 3. Run integration test
+docker build -f Dockerfile.test.build -t peertalk-test .
+docker-compose -f docker-compose.test.yml up --abort-on-container-exit
+
+# 4. Check for expected output
+# Should see:
+#   - "Allocated queues for peer X"
+#   - "DISCOVERED → CONNECTED" state transitions
+#   - "Messages sent: X" where X > 0
+#   - "Messages received: X" where X > 0
+#   - "✓ TEST PASSED"
+
+# 5. Memory leak check (run integration test under valgrind)
+valgrind --leak-check=full --show-leak-kinds=all \
+    ./build/test_integration_full Alice sender 10
+
+# Should report:
+#   - "All heap blocks were freed -- no leaks are possible"
+#   - No invalid reads/writes
+```
+
+### Common Issues and Solutions
+
+**Issue:** `SendEx failed: Peer X has no send queue`
+- **Cause:** Queue initialization not called after connection
+- **Fix:** Verify `pt_alloc_peer_queue()` is called in both connection paths
+
+**Issue:** Messages queued but never sent
+- **Cause:** `pt_drain_send_queue()` not called in poll loop
+- **Fix:** Verify poll loop drains send queues for connected peers
+
+**Issue:** Memory leak on disconnect
+- **Cause:** Queues not freed when peer disconnects
+- **Fix:** Ensure all disconnect paths call `pt_free_peer_queue()`
+
+**Issue:** Valgrind reports "Invalid read" in queue operations
+- **Cause:** Accessing queue after it's been freed
+- **Fix:** Set queue pointers to NULL after freeing
+
+**Issue:** Test fails with "No messages received"
+- **Cause:** Receive callback not firing, or messages not being sent
+- **Fix:** Check send queue is being drained, verify socket is writable
+
+### Notes for MacTCP/OT/AppleTalk Ports
+
+This session establishes the queue lifecycle pattern that will be replicated in MacTCP (Phase 5), Open Transport (Phase 6), and AppleTalk (Phase 7):
+
+**Pattern to replicate:**
+1. Allocate queues immediately after connection state transition
+2. Check for allocation failure and reject connection if queues can't be allocated
+3. Drain send queue in poll/notifier callback
+4. Free queues before destroying peer
+
+**MacTCP-specific considerations:**
+- Queue allocation happens in ASR context (CANNOT allocate there - must pre-allocate)
+- Solution: Allocate queues in main thread before calling MacTCPPassiveOpen/ActiveOpen
+- ASR just sets a flag, main loop completes connection and assigns pre-allocated queues
+
+**Open Transport-specific considerations:**
+- Similar to MacTCP, but notifier runs at deferred task time
+- May be able to allocate with OTAllocMem (check if safe in notifier context)
+- Conservative approach: pre-allocate like MacTCP
+
+**AppleTalk-specific considerations:**
+- ADSP completion routines run at interrupt time
+- MUST pre-allocate queues before initiating connection
+- Use same pattern as MacTCP
+
+---
+
+## Related Sessions
+
+- **Depends on:** Phase 3 (Queue infrastructure), Phase 3.5 (SendEx API), Session 4.3 (Message I/O)
+- **Enables:** Complete POSIX reference implementation for validating protocol before MacTCP/OT/AppleTalk
+- **Future work:** Batch protocol optimization (optional performance enhancement)
 ## Session 4.4: UDP Messaging
 
 ### Objective
