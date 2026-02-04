@@ -45,7 +45,11 @@ title: PeerTalk Metrics Dashboard
   <div class="metric-card {% if allMetrics[0].isr_safety.total_violations == 0 %}success{% else %}error{% endif %}">
     <h3>ISR Safety</h3>
     <div class="metric-value">{{ allMetrics[0].isr_safety.total_violations }}</div>
-    <p class="metric-subtitle">violations detected</p>
+    <p class="metric-subtitle">
+      violations detected
+      <br>
+      <a href="/peertalk/isr-report.html" class="coverage-link">View ISR safety report →</a>
+    </p>
   </div>
 
   <!-- CI Timing Card -->
