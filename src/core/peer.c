@@ -262,6 +262,12 @@ struct pt_peer *pt_peer_create(struct pt_context *ctx,
     peer->cold.info.address = ip;
     peer->cold.info.port = port;
 
+    /* Initialize addresses array for PeerTalk_Connect() */
+    peer->hot.address_count = 1;
+    peer->cold.addresses[0].address = ip;
+    peer->cold.addresses[0].port = port;
+    peer->cold.addresses[0].transport = 0;  /* TCPIP transport */
+
     /* Clear connection state */
     peer->cold.info.connected = 0;
     peer->hot.latency_ms = 0;
