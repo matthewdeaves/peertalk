@@ -976,6 +976,7 @@ int pt_posix_disconnect(struct pt_context *ctx, struct pt_peer *peer) {
             pt_message_header hdr;
             uint8_t buf[PT_MESSAGE_HEADER_SIZE + 2];
 
+            hdr.version = PT_PROTOCOL_VERSION;
             hdr.type = PT_MSG_TYPE_DISCONNECT;
             hdr.flags = 0;
             hdr.sequence = peer->hot.send_seq++;
@@ -1069,6 +1070,7 @@ int pt_posix_send(struct pt_context *ctx, struct pt_peer *peer,
     }
 
     /* Encode header */
+    hdr.version = PT_PROTOCOL_VERSION;
     hdr.type = PT_MSG_TYPE_DATA;
     hdr.flags = 0;
     hdr.sequence = peer->hot.send_seq++;
@@ -1158,6 +1160,7 @@ int pt_posix_send_control(struct pt_context *ctx, struct pt_peer *peer,
         return PT_ERR_INVALID_STATE;
 
     /* Encode header (sequence=0 for control messages) */
+    hdr.version = PT_PROTOCOL_VERSION;
     hdr.type = msg_type;
     hdr.flags = 0;
     hdr.sequence = 0;  /* Control messages use seq=0 intentionally */

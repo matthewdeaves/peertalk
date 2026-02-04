@@ -53,6 +53,9 @@ int pt_queue_init(struct pt_context *ctx, pt_queue *q, uint16_t capacity)
     q->has_data = 0;
     q->reserved = 0;
 
+    /* Initialize Phase 3 extensions (priority freelists, coalesce hash) */
+    pt_queue_ext_init(q);
+
     if (ctx) {
         PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,
                    "Queue initialized: %u slots, %zu bytes",
@@ -130,7 +133,25 @@ int pt_queue_push(struct pt_context *ctx, pt_queue *q,
     slot->length = len;
     slot->priority = priority;
     slot->flags = PT_SLOT_USED | flags;
+    slot->coalesce_key = PT_COALESCE_NONE;  /* No coalescing for plain push */
+    slot->next_slot = PT_SLOT_NONE;
     pt_memcpy(slot->data, data, len);
+
+    /* Add to priority freelist (Phase 3 enhancement) */
+    {
+        pt_queue_ext *ext = &q->ext;
+        uint16_t slot_idx = q->write_idx;
+
+        if (ext->prio_tail[priority] != PT_SLOT_NONE) {
+            /* List has items - append to tail */
+            q->slots[ext->prio_tail[priority]].next_slot = slot_idx;
+        } else {
+            /* List empty - set head */
+            ext->prio_head[priority] = slot_idx;
+        }
+        ext->prio_tail[priority] = slot_idx;
+        ext->prio_count[priority]++;
+    }
 
     /* Advance write index (power-of-two wrap-around) */
     q->write_idx = (q->write_idx + 1) & q->capacity_mask;

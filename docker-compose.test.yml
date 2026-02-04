@@ -1,4 +1,4 @@
-# docker-compose.yml for PeerTalk POSIX discovery testing
+# docker-compose.yml for PeerTalk POSIX discovery testing (10 peers)
 
 services:
   alice:
@@ -30,6 +30,76 @@ services:
     networks:
       peertalk_test_net:
         ipv4_address: 192.168.200.4
+
+  diana:
+    image: peertalk-test
+    container_name: peertalk-diana
+    command: ["/app/test_integration_full", "Diana", "both"]
+    tty: true
+    stdin_open: true
+    networks:
+      peertalk_test_net:
+        ipv4_address: 192.168.200.5
+
+  eve:
+    image: peertalk-test
+    container_name: peertalk-eve
+    command: ["/app/test_integration_full", "Eve", "sender"]
+    tty: true
+    stdin_open: true
+    networks:
+      peertalk_test_net:
+        ipv4_address: 192.168.200.6
+
+  frank:
+    image: peertalk-test
+    container_name: peertalk-frank
+    command: ["/app/test_integration_full", "Frank", "both"]
+    tty: true
+    stdin_open: true
+    networks:
+      peertalk_test_net:
+        ipv4_address: 192.168.200.7
+
+  grace:
+    image: peertalk-test
+    container_name: peertalk-grace
+    command: ["/app/test_integration_full", "Grace", "receiver"]
+    tty: true
+    stdin_open: true
+    networks:
+      peertalk_test_net:
+        ipv4_address: 192.168.200.8
+
+  henry:
+    image: peertalk-test
+    container_name: peertalk-henry
+    command: ["/app/test_integration_full", "Henry", "both"]
+    tty: true
+    stdin_open: true
+    networks:
+      peertalk_test_net:
+        ipv4_address: 192.168.200.9
+
+  iris:
+    image: peertalk-test
+    container_name: peertalk-iris
+    command: ["/app/test_integration_full", "Iris", "sender"]
+    tty: true
+    stdin_open: true
+    networks:
+      peertalk_test_net:
+        ipv4_address: 192.168.200.10
+
+  jack:
+    image: peertalk-test
+    container_name: peertalk-jack
+    command: ["/app/test_integration_full", "Jack", "both"]
+    tty: true
+    stdin_open: true
+    networks:
+      peertalk_test_net:
+        ipv4_address: 192.168.200.11
 
 networks:
   peertalk_test_net:

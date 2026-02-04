@@ -429,6 +429,12 @@ int main(int argc, char *argv[]) {
     printf("  Broadcasts sent:  %d\n", g_state.broadcasts_sent);
     printf("===========================================\n");
 
+    /* Capture final stats BEFORE shutdown */
+    PeerTalk_GlobalStats final_stats;
+    if (PeerTalk_GetGlobalStats(g_state.ctx, &final_stats) != PT_OK) {
+        memset(&final_stats, 0, sizeof(final_stats));
+    }
+
     /* Shutdown */
     PeerTalk_Shutdown(g_state.ctx);
 
@@ -438,31 +444,28 @@ int main(int argc, char *argv[]) {
 
     printf("\n[VALIDATION] Checking test criteria:\n");
 
-    /* Check discovery */
-    if (g_state.peers_discovered < 2) {
-        printf("  ✗ FAIL: Expected at least 2 peers discovered, got %d\n",
+    /* Check discovery - expect at least 5 peers in a 10-peer network */
+    if (g_state.peers_discovered < 5) {
+        printf("  ✗ FAIL: Expected at least 5 peers discovered, got %d\n",
                g_state.peers_discovered);
         success = 0;
     } else {
         printf("  ✓ Discovery: %d peers found\n", g_state.peers_discovered);
     }
 
-    /* Check connections */
-    PeerTalk_GlobalStats final_stats;
-    if (PeerTalk_GetGlobalStats(g_state.ctx, &final_stats) == PT_OK) {
-        if (final_stats.peers_connected == 0) {
-            printf("  ✗ FAIL: Expected peer connections, got 0\n");
-            success = 0;
-        } else {
-            printf("  ✓ Connections: %u peers connected\n", final_stats.peers_connected);
-        }
+    /* Check connections (using stats captured before shutdown) */
+    if (final_stats.peers_connected == 0) {
+        printf("  ✗ FAIL: Expected peer connections, got 0\n");
+        success = 0;
+    } else {
+        printf("  ✓ Connections: %u peers connected\n", final_stats.peers_connected);
+    }
 
-        if (final_stats.connections_accepted == 0) {
-            printf("  ⚠ WARNING: No connections accepted\n");
-            warnings++;
-        } else {
-            printf("  ✓ Accepted: %u connections\n", final_stats.connections_accepted);
-        }
+    if (final_stats.connections_accepted == 0) {
+        printf("  ⚠ WARNING: No connections accepted\n");
+        warnings++;
+    } else {
+        printf("  ✓ Accepted: %u connections\n", final_stats.connections_accepted);
     }
 
     /* Check messaging (mode-dependent) */
@@ -484,6 +487,23 @@ int main(int argc, char *argv[]) {
     /* Check broadcasts */
     if (g_state.broadcasts_sent > 0) {
         printf("  ✓ Broadcasts: %d sent\n", g_state.broadcasts_sent);
+    }
+
+    /* Validate queue operations (Task 4.3.5.6) */
+    if (final_stats.peers_connected > 0) {
+        if (final_stats.total_messages_sent == 0 &&
+            (g_state.mode == MODE_SENDER || g_state.mode == MODE_BOTH)) {
+            printf("  ✗ FAIL: Queue integration broken - messages queued but not sent\n");
+            success = 0;
+        } else if (final_stats.total_messages_sent > 0) {
+            printf("  ✓ Queue: Messages successfully sent (%u total)\n",
+                   final_stats.total_messages_sent);
+        }
+
+        if (final_stats.total_messages_received > 0) {
+            printf("  ✓ Queue: Messages successfully received (%u total)\n",
+                   final_stats.total_messages_received);
+        }
     }
 
     /* Performance validation */
