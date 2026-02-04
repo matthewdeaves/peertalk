@@ -1131,23 +1131,23 @@ int pt_posix_send_control(struct pt_context *ctx, struct pt_peer *peer,
 /**
  * Calculate connection quality score from latency
  *
- * Quality score (0-100) based on latency thresholds:
- * - < 50ms: 100 (excellent)
- * - < 100ms: 90 (very good)
- * - < 200ms: 75 (good)
- * - < 500ms: 50 (fair)
- * - >= 500ms: 25 (poor)
+ * Quality score (0-100) based on LAN latency thresholds:
+ * - < 5ms: 100 (excellent - typical wired LAN)
+ * - < 10ms: 90 (very good - good WiFi or loaded LAN)
+ * - < 20ms: 75 (good - congested WiFi or slower network)
+ * - < 50ms: 50 (fair - problematic connection for LAN)
+ * - >= 50ms: 25 (poor - very bad for LAN, investigate)
  *
  * Returns: Quality score (0-100)
  */
 static uint8_t calculate_quality(uint16_t latency_ms) {
-    if (latency_ms < 50) {
+    if (latency_ms < 5) {
         return 100;
-    } else if (latency_ms < 100) {
+    } else if (latency_ms < 10) {
         return 90;
-    } else if (latency_ms < 200) {
+    } else if (latency_ms < 20) {
         return 75;
-    } else if (latency_ms < 500) {
+    } else if (latency_ms < 50) {
         return 50;
     } else {
         return 25;

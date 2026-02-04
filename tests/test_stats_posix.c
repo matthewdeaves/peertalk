@@ -140,12 +140,12 @@ int main(void) {
     printf("  - update_peer_latency()      [rolling average + quality]\n");
     printf("  - Statistics structures      [already in pt_internal.h]\n");
     printf("  - Counter updates            [already in send/recv paths]\n");
-    printf("\nQuality Thresholds:\n");
-    printf("  < 50ms:  100%% (excellent)\n");
-    printf("  < 100ms:  90%% (very good)\n");
-    printf("  < 200ms:  75%% (good)\n");
-    printf("  < 500ms:  50%% (fair)\n");
-    printf("  >= 500ms: 25%% (poor)\n");
+    printf("\nQuality Thresholds (optimized for LAN):\n");
+    printf("  < 5ms:   100%% (excellent - typical wired LAN)\n");
+    printf("  < 10ms:   90%% (very good - good WiFi or loaded LAN)\n");
+    printf("  < 20ms:   75%% (good - congested WiFi)\n");
+    printf("  < 50ms:   50%% (fair - problematic for LAN)\n");
+    printf("  >= 50ms:  25%% (poor - investigate network issues)\n");
     printf("==============================================\n");
 
     return 0;
