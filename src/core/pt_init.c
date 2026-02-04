@@ -396,3 +396,133 @@ PeerTalk_Error PeerTalk_Disconnect(PeerTalk_Context *ctx_public,
     return PT_ERR_NOT_SUPPORTED;
 #endif
 }
+
+/* ========================================================================== */
+/* Peer List Functions (Phase 1)                                             */
+/* ========================================================================== */
+
+/**
+ * Get list of discovered peers
+ *
+ * Copies peer information for all discovered peers into the provided buffer.
+ * Returns the actual count of peers copied.
+ *
+ * @param ctx Valid PeerTalk context
+ * @param peers Buffer to receive peer info (caller-allocated)
+ * @param max_peers Size of the peers buffer
+ * @param out_count Receives actual number of peers copied
+ *
+ * @return PT_OK on success, PT_ERR_* on failure
+ */
+PeerTalk_Error PeerTalk_GetPeers(PeerTalk_Context *ctx_pub,
+                                  PeerTalk_PeerInfo *peers,
+                                  uint16_t max_peers,
+                                  uint16_t *out_count) {
+    struct pt_context *ctx = (struct pt_context *)ctx_pub;
+    uint16_t count = 0;
+    uint16_t i;
+
+    /* Validate parameters */
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_STATE;
+    }
+    if (!peers || !out_count) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Iterate through all peer slots */
+    for (i = 0; i < ctx->max_peers && count < max_peers; i++) {
+        struct pt_peer *peer = &ctx->peers[i];
+
+        /* Skip unused slots */
+        if (peer->hot.state == PT_PEER_UNUSED) {
+            continue;
+        }
+
+        /* Validate peer magic */
+        if (peer->hot.magic != PT_PEER_MAGIC) {
+            continue;
+        }
+
+        /* Copy peer info using existing helper */
+        pt_peer_get_info(peer, &peers[count]);
+        count++;
+    }
+
+    *out_count = count;
+    return PT_OK;
+}
+
+/* ========================================================================== */
+/* Broadcast Message (Phase 1)                                               */
+/* ========================================================================== */
+
+/**
+ * Broadcast message to all connected peers
+ *
+ * Sends a message to all peers in PT_PEER_CONNECTED state.
+ * Returns error if no peers are connected.
+ *
+ * @param ctx Valid PeerTalk context
+ * @param data Message data (not null)
+ * @param length Message length (1-PT_MAX_MESSAGE bytes)
+ *
+ * @return PT_OK if sent to at least one peer, PT_ERR_* on failure
+ */
+PeerTalk_Error PeerTalk_Broadcast(PeerTalk_Context *ctx_pub,
+                                   const void *data, uint16_t length) {
+    struct pt_context *ctx = (struct pt_context *)ctx_pub;
+    uint16_t i;
+    uint16_t sent_count = 0;
+    PeerTalk_Error last_err = PT_OK;
+
+    /* Validate parameters */
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_STATE;
+    }
+    if (!data || length == 0 || length > PT_MAX_MESSAGE_SIZE) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Iterate through all peer slots */
+    for (i = 0; i < ctx->max_peers; i++) {
+        struct pt_peer *peer = &ctx->peers[i];
+
+        /* Skip non-connected peers */
+        if (peer->hot.state != PT_PEER_CONNECTED) {
+            continue;
+        }
+
+        /* Validate peer magic */
+        if (peer->hot.magic != PT_PEER_MAGIC) {
+            continue;
+        }
+
+        /* Send to this peer */
+        PeerTalk_Error err = PeerTalk_Send(ctx_pub, peer->hot.id, data, length);
+        if (err == PT_OK) {
+            sent_count++;
+        } else {
+            /* Track last error but continue sending to other peers */
+            last_err = err;
+            PT_CTX_WARN(ctx, PT_LOG_CAT_SEND,
+                       "Broadcast failed to peer %u: error %d",
+                       peer->hot.id, err);
+        }
+    }
+
+    /* If no peers were connected, return error */
+    if (sent_count == 0) {
+        if (last_err != PT_OK) {
+            /* Had peers but all sends failed */
+            return last_err;
+        }
+        /* No connected peers at all */
+        return PT_ERR_PEER_NOT_FOUND;
+    }
+
+    PT_CTX_DEBUG(ctx, PT_LOG_CAT_SEND,
+                "Broadcast sent to %u peer(s)", sent_count);
+
+    return PT_OK;
+}

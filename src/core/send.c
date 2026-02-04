@@ -9,6 +9,7 @@
 #include "send.h"
 #include "queue.h"
 #include "protocol.h"
+#include "peer.h"
 #include "pt_compat.h"
 
 /* ========================================================================
@@ -187,4 +188,157 @@ int pt_drain_send_queue(struct pt_context *ctx, struct pt_peer *peer,
     }
 
     return sent;
+}
+
+/* ========================================================================
+ * Phase 3.5: SendEx API - Priority-based Sending with Coalescing
+ * ======================================================================== */
+
+/**
+ * Send message to peer with extended options
+ *
+ * Routes message to appropriate transport and queue based on flags:
+ * - PT_SEND_UNRELIABLE: Uses UDP if available, else TCP
+ * - PT_SEND_COALESCABLE: Allows message coalescing with matching key
+ * - PT_SEND_NO_DELAY: Disables Nagle algorithm for this message
+ *
+ * Priority determines queue placement (CRITICAL > HIGH > NORMAL > LOW).
+ * Coalesce key enables deduplication of repeated messages (e.g., position updates).
+ *
+ * @param ctx Valid PeerTalk context
+ * @param peer_id Destination peer ID
+ * @param data Message data (not null)
+ * @param length Message length (1-PT_MAX_MESSAGE bytes)
+ * @param priority PT_PRIORITY_* constant
+ * @param flags Bitmask of PT_SEND_* flags
+ * @param coalesce_key Key for message coalescing (0 = no coalescing)
+ *
+ * @return PT_OK on success, PT_ERR_* on failure
+ */
+PeerTalk_Error PeerTalk_SendEx(PeerTalk_Context *ctx_pub,
+                                PeerTalk_PeerID peer_id,
+                                const void *data,
+                                uint16_t length,
+                                uint8_t priority,
+                                uint8_t flags,
+                                uint16_t coalesce_key) {
+    struct pt_context *ctx = (struct pt_context *)ctx_pub;
+    struct pt_peer *peer;
+    pt_queue *q;
+    int result;
+
+    /* Validate parameters */
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_STATE;
+    }
+    if (!data || length == 0 || length > PT_MAX_MESSAGE_SIZE) {
+        return PT_ERR_INVALID_PARAM;
+    }
+    if (priority > PT_PRIORITY_CRITICAL) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Find peer by ID */
+    peer = pt_peer_find_by_id(ctx, peer_id);
+    if (!peer) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_SEND,
+                   "SendEx failed: Peer %u not found", peer_id);
+        return PT_ERR_PEER_NOT_FOUND;
+    }
+
+    /* Route unreliable sends to UDP if available */
+    if (flags & PT_SEND_UNRELIABLE) {
+        /* Check if UDP is available on this platform */
+        if (ctx->plat && ctx->plat->send_udp) {
+            int udp_result = ctx->plat->send_udp(ctx, peer, data, length);
+            if (udp_result == 0) {
+                PT_CTX_DEBUG(ctx, PT_LOG_CAT_SEND,
+                           "Sent %u bytes to peer %u via UDP",
+                           length, peer_id);
+                return PT_OK;
+            }
+            /* UDP failed, fall back to TCP */
+            PT_CTX_WARN(ctx, PT_LOG_CAT_SEND,
+                       "UDP send failed, falling back to TCP");
+        }
+        /* No UDP available, fall through to TCP */
+    }
+
+    /* Reliable send via TCP - enqueue message */
+    q = peer->send_queue;
+    if (!q) {
+        PT_CTX_ERR(ctx, PT_LOG_CAT_SEND,
+                  "SendEx failed: Peer %u has no send queue", peer_id);
+        return PT_ERR_INVALID_STATE;
+    }
+
+    /* Check backpressure before queuing */
+    float pressure = pt_queue_pressure(q);
+    if (pressure >= 0.90f) {
+        /* Queue >90% full - reject LOW priority messages */
+        if (priority == PT_PRIORITY_LOW) {
+            PT_CTX_WARN(ctx, PT_LOG_CAT_SEND,
+                       "Queue pressure %.0f%% - rejecting LOW priority message",
+                       pressure * 100.0f);
+            return PT_ERR_BUFFER_FULL;
+        }
+    }
+    if (pressure >= 0.75f) {
+        /* Queue >75% full - reject NORMAL priority messages */
+        if (priority == PT_PRIORITY_NORMAL) {
+            PT_CTX_WARN(ctx, PT_LOG_CAT_SEND,
+                       "Queue pressure %.0f%% - rejecting NORMAL priority message",
+                       pressure * 100.0f);
+            return PT_ERR_BUFFER_FULL;
+        }
+    }
+
+    /* Enqueue message with priority and optional coalescing */
+    if (flags & PT_SEND_COALESCABLE && coalesce_key != 0) {
+        /* Coalescing enabled - replace existing message with same key */
+        result = pt_queue_push_coalesce(q, data, length, priority, coalesce_key);
+    } else {
+        /* Normal enqueue */
+        result = pt_queue_push(ctx, q, data, length, priority, 0);
+    }
+
+    if (result != 0) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_SEND,
+                   "Queue full - message dropped (peer=%u, len=%u, pri=%u)",
+                   peer_id, length, priority);
+        return PT_ERR_BUFFER_FULL;
+    }
+
+    /* TODO: Handle PT_SEND_NO_DELAY flag (Phase 4+ platform layer) */
+    (void)flags;  /* Suppress unused warning for now */
+
+    PT_CTX_DEBUG(ctx, PT_LOG_CAT_SEND,
+                "Queued %u bytes to peer %u (pri=%u, flags=0x%02X, key=%u)",
+                length, peer_id, priority, flags, coalesce_key);
+
+    return PT_OK;
+}
+
+/**
+ * Send message to peer (simple wrapper)
+ *
+ * Sends with default priority (NORMAL), no special flags, and no coalescing.
+ * Most applications should use this for typical reliable messaging.
+ *
+ * @param ctx Valid PeerTalk context
+ * @param peer_id Destination peer ID
+ * @param data Message data (not null)
+ * @param length Message length (1-PT_MAX_MESSAGE bytes)
+ *
+ * @return PT_OK on success, PT_ERR_* on failure
+ */
+PeerTalk_Error PeerTalk_Send(PeerTalk_Context *ctx_pub,
+                              PeerTalk_PeerID peer_id,
+                              const void *data,
+                              uint16_t length) {
+    /* Delegate to SendEx with default parameters */
+    return PeerTalk_SendEx(ctx_pub, peer_id, data, length,
+                          PT_PRIORITY_NORMAL,
+                          PT_SEND_DEFAULT,
+                          0);  /* No coalescing */
 }

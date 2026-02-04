@@ -100,6 +100,9 @@ $(BIN_DIR)/test_stats_posix: tests/test_stats_posix.c $(LIBPEERTALK) $(LIBPTLOG)
 $(BIN_DIR)/test_integration_posix: tests/test_integration_posix.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
 
+$(BIN_DIR)/test_sendex: tests/test_sendex.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
 # Test runners
 test-log: $(BIN_DIR)/test_log $(BIN_DIR)/test_log_perf $(BIN_DIR)/test_log_threads
 	@echo "Running PT_Log tests..."
@@ -153,6 +156,10 @@ test-stats: $(BIN_DIR)/test_stats_posix
 	@echo "Running Phase 4.5 network statistics test..."
 	@$(BIN_DIR)/test_stats_posix
 
+test-sendex: $(BIN_DIR)/test_sendex
+	@echo "Running Phase 3.5 SendEx API tests..."
+	@$(BIN_DIR)/test_sendex
+
 # Valgrind memory check
 valgrind: $(BIN_DIR)/test_log $(BIN_DIR)/test_log_perf $(BIN_DIR)/test_log_threads \
           $(BIN_DIR)/test_compat $(BIN_DIR)/test_foundation $(BIN_DIR)/test_protocol \
@@ -186,7 +193,7 @@ valgrind: $(BIN_DIR)/test_log $(BIN_DIR)/test_log_perf $(BIN_DIR)/test_log_threa
 	@echo "=== All valgrind checks PASSED ==="
 
 # Test target (runs all tests)
-test: test-log test-compat test-foundation test-protocol test-peer test-queue test-queue-advanced test-backpressure test-messaging test-udp test-stats
+test: test-log test-compat test-foundation test-protocol test-peer test-queue test-queue-advanced test-backpressure test-messaging test-udp test-stats test-sendex
 	@echo ""
 	@echo "All tests passed!"
 
