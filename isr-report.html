@@ -28,24 +28,41 @@
             padding: 1.5rem;
             border-radius: 8px;
             margin-bottom: 2rem;
-            border-left: 4px solid var(--color-error);
+            border-left: 4px solid var(--color-success);
         }
         .summary h2 { margin-bottom: 1rem; }
         .summary-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
         .stat { text-align: center; padding: 1rem; background: white; border-radius: 4px; }
-        .stat-value { font-size: 2rem; font-weight: bold; color: var(--color-error); }
+        .stat-value { font-size: 2rem; font-weight: bold; color: var(--color-success); }
         .stat-label { color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem; }
         .violations { margin-top: 2rem; }
-        .violation {
-            background: var(--bg-card);
-            padding: 1.5rem;
-            margin-bottom: 1rem;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
             border-radius: 8px;
-            border-left: 4px solid var(--color-error);
+            overflow: hidden;
         }
-        .violation-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-        .violation-file { font-weight: bold; color: var(--text-primary); }
-        .violation-category {
+        thead {
+            background: var(--bg-card);
+        }
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 2px solid #dee2e6;
+        }
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+        tbody tr:hover {
+            background: var(--bg-card);
+        }
+        .category-badge {
+            display: inline-block;
             background: var(--color-error);
             color: white;
             padding: 0.25rem 0.75rem;
@@ -53,8 +70,23 @@
             font-size: 0.85rem;
             text-transform: uppercase;
         }
-        .violation-details { color: var(--text-secondary); }
-        .violation-line { font-family: 'Courier New', monospace; background: white; padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem; }
+        .code-context {
+            font-family: 'Courier New', monospace;
+            background: var(--bg-card);
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-top: 0.25rem;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+        .file-link {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .file-link:hover {
+            text-decoration: underline;
+        }
         .success-message {
             text-align: center;
             padding: 3rem;
@@ -73,38 +105,28 @@
 <body>
     <div class="container">
         <h1>ISR Safety Report</h1>
-        <p class="subtitle">Generated 2026-02-04 22:15 UTC | <a href="/peertalk/">← Back to Dashboard</a></p>
+        <p class="subtitle">Generated 2026-02-04 22:31 UTC | <a href="/peertalk/">← Back to Dashboard</a></p>
 
         <div class="summary">
             <h2>Summary</h2>
             <div class="summary-stats">
                 <div class="stat">
-                    <div class="stat-value">1</div>
+                    <div class="stat-value">0</div>
                     <div class="stat-label">Total Violations</div>
                 </div>
-                <div class="stat">
-                    <div class="stat-value">0</div>
-                    <div class="stat-label">Memory</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value">0</div>
-                    <div class="stat-label">Timing</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value">0</div>
-                    <div class="stat-label">I/O</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value">0</div>
-                    <div class="stat-label">Toolbox</div>
-                </div>
+                
             </div>
         </div>
 
         
-        <div class="violations">
-            <h2>Violations</h2>
-            <p>No detailed violation data available.</p>
+        <div class="success-message">
+            <svg fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            <div>No ISR Safety Violations Detected</div>
+            <p style="font-size: 1rem; margin-top: 1rem; color: var(--text-secondary);">
+                All interrupt-time code follows safe practices.
+            </p>
         </div>
         
     </div>

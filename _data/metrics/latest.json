@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-02-04T22:15:29.881987Z",
-  "commit": "1df9888",
+  "timestamp": "2026-02-04T22:31:28.751103Z",
+  "commit": "87b8862",
   "branch": "develop",
   "test_results": {
     "total_tests": 25,
@@ -144,15 +144,8 @@
     "functions_total": 0
   },
   "isr_safety": {
-    "total_violations": 1,
-    "by_category": {
-      "memory": 0,
-      "timing": 0,
-      "memory_ops": 0,
-      "io": 0,
-      "sync_network": 0,
-      "toolbox": 0
-    },
+    "total_violations": 0,
+    "by_category": {},
     "violations": []
   },
   "quality": {
@@ -165,8 +158,8 @@
     "workflow_name": "PeerTalk CI",
     "build_duration_sec": 63,
     "test_duration_sec": 63,
-    "coverage_duration_sec": 54,
-    "total_duration_sec": 180,
+    "coverage_duration_sec": 55,
+    "total_duration_sec": 181,
     "jobs": {
       "build-posix": {
         "status": "success",
