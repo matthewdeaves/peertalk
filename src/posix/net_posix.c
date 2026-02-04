@@ -1439,31 +1439,250 @@ int pt_posix_recv(struct pt_context *ctx, struct pt_peer *peer) {
 /* UDP Messaging (Session 4.4 - Stub for now)                                */
 /* ========================================================================== */
 
+/**
+ * Initialize UDP messaging socket
+ *
+ * Creates dedicated UDP socket for unreliable messaging (separate from discovery).
+ * Binds to DEFAULT_UDP_PORT (7355) or user-configured port.
+ *
+ * Returns: 0 on success, -1 on failure
+ */
 int pt_posix_udp_init(struct pt_context *ctx) {
-    /* TODO: Session 4.4 will implement UDP messaging socket */
-    (void)ctx;
+    pt_posix_data *pd = pt_posix_get(ctx);
+    struct sockaddr_in addr;
+    int sock;
+    uint16_t port = UDP_PORT(ctx);
+
+    /* Create UDP socket */
+    sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock < 0) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_NETWORK,
+                    "Failed to create UDP messaging socket: %s", strerror(errno));
+        return -1;
+    }
+
+    /* Set non-blocking */
+    if (set_nonblocking(ctx, sock) < 0) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_NETWORK,
+                    "Failed to set UDP messaging socket non-blocking");
+        close(sock);
+        return -1;
+    }
+
+    /* Set SO_REUSEADDR */
+    if (set_reuseaddr(ctx, sock) < 0) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_NETWORK,
+                    "Failed to set SO_REUSEADDR on UDP messaging socket");
+        close(sock);
+        return -1;
+    }
+
+    /* Bind to port */
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = INADDR_ANY;
+    addr.sin_port = htons(port);
+
+    if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_NETWORK,
+                    "Failed to bind UDP messaging socket to port %u: %s",
+                    port, strerror(errno));
+        close(sock);
+        return -1;
+    }
+
+    pd->udp_msg_sock = sock;
+    pd->udp_msg_port = port;
+
+    /* Update max_fd for select() */
+    if (sock > pd->max_fd) {
+        pd->max_fd = sock;
+    }
+    pd->fd_dirty = 1;  /* Rebuild fd_sets */
+
+    PT_CTX_INFO(ctx, PT_LOG_CAT_NETWORK,
+                "UDP messaging socket initialized on port %u", port);
     return 0;
 }
 
+/**
+ * Shutdown UDP messaging socket
+ *
+ * Closes dedicated UDP messaging socket and cleans up resources.
+ */
 void pt_posix_udp_shutdown(struct pt_context *ctx) {
-    /* TODO: Session 4.4 */
-    (void)ctx;
+    pt_posix_data *pd = pt_posix_get(ctx);
+
+    if (pd->udp_msg_sock >= 0) {
+        close(pd->udp_msg_sock);
+        pd->udp_msg_sock = -1;
+        pd->fd_dirty = 1;
+        PT_CTX_DEBUG(ctx, PT_LOG_CAT_NETWORK, "UDP messaging socket closed");
+    }
 }
 
+/**
+ * Send UDP message to peer
+ *
+ * Sends unreliable UDP datagram with 8-byte header (magic, sender_port, payload_len).
+ * No CRC - UDP has its own checksum at transport layer.
+ *
+ * Returns: PT_OK on success, PT_ERR_* on failure
+ */
 int pt_posix_send_udp(struct pt_context *ctx, struct pt_peer *peer,
                       const void *data, uint16_t len) {
-    /* TODO: Session 4.4 */
-    (void)ctx;
-    (void)peer;
-    (void)data;
-    (void)len;
-    return -1;
+    pt_posix_data *pd = pt_posix_get(ctx);
+    uint8_t packet_buf[PT_MAX_UDP_MESSAGE_SIZE];
+    struct sockaddr_in dest_addr;
+    int packet_len;
+    ssize_t sent;
+
+    /* Validate socket */
+    if (pd->udp_msg_sock < 0) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_NETWORK, "UDP messaging socket not initialized");
+        return PT_ERR_NOT_INITIALIZED;
+    }
+
+    /* Validate peer state */
+    if (peer->hot.state == PT_PEER_UNUSED) {
+        PT_CTX_DEBUG(ctx, PT_LOG_CAT_NETWORK,
+                     "Attempted to send UDP to peer %u (not connected)", peer->hot.id);
+        return PT_ERR_PEER_NOT_FOUND;
+    }
+
+    /* Validate message size (enforce 512-byte limit) */
+    if (len > PT_MAX_UDP_MESSAGE_SIZE - 8) {  /* 8-byte header */
+        PT_CTX_WARN(ctx, PT_LOG_CAT_NETWORK,
+                    "UDP message too large: %u bytes (max 504)", len);
+        return PT_ERR_MESSAGE_TOO_LARGE;
+    }
+
+    /* Encode UDP packet */
+    packet_len = pt_udp_encode(data, len, pd->udp_msg_port,
+                               packet_buf, sizeof(packet_buf));
+    if (packet_len < 0) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_NETWORK,
+                    "Failed to encode UDP packet: %d", packet_len);
+        return packet_len;
+    }
+
+    /* Build destination address */
+    memset(&dest_addr, 0, sizeof(dest_addr));
+    dest_addr.sin_family = AF_INET;
+    dest_addr.sin_addr.s_addr = htonl(peer->cold.addresses[0].address);
+    dest_addr.sin_port = htons(pd->udp_msg_port);  /* Use same UDP port */
+
+    /* Send datagram */
+    sent = sendto(pd->udp_msg_sock, packet_buf, packet_len, 0,
+                  (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+
+    if (sent < 0) {
+        if (errno == EWOULDBLOCK || errno == EAGAIN) {
+            PT_CTX_DEBUG(ctx, PT_LOG_CAT_NETWORK, "UDP send would block");
+            return PT_ERR_WOULD_BLOCK;
+        }
+        PT_CTX_WARN(ctx, PT_LOG_CAT_NETWORK,
+                    "UDP sendto failed: %s", strerror(errno));
+        return PT_ERR_NETWORK;
+    }
+
+    /* Update statistics */
+    peer->cold.stats.bytes_sent += sent;
+    peer->cold.stats.messages_sent++;
+    ctx->global_stats.total_bytes_sent += sent;
+    ctx->global_stats.total_messages_sent++;
+
+    PT_CTX_DEBUG(ctx, PT_LOG_CAT_NETWORK,
+                 "Sent UDP message to peer %u (%u bytes payload, %zd bytes total)",
+                 peer->hot.id, len, sent);
+
+    return PT_OK;
 }
 
+/**
+ * Receive UDP messages from any peer
+ *
+ * Non-blocking recvfrom() on UDP messaging socket. Validates magic "PTUD",
+ * finds peer by source IP, and fires on_message_received callback.
+ *
+ * Returns: 1 if message received, 0 if no data, -1 on error
+ */
 int pt_posix_recv_udp(struct pt_context *ctx) {
-    /* TODO: Session 4.4 */
-    (void)ctx;
-    return 0;
+    pt_posix_data *pd = pt_posix_get(ctx);
+    uint8_t packet_buf[PT_MAX_UDP_MESSAGE_SIZE];
+    struct sockaddr_in from_addr;
+    socklen_t from_len = sizeof(from_addr);
+    ssize_t received;
+    uint16_t sender_port;
+    const void *payload;
+    uint16_t payload_len;
+    uint32_t sender_ip;
+    struct pt_peer *peer;
+    int ret;
+
+    /* Check socket */
+    if (pd->udp_msg_sock < 0) {
+        return 0;  /* Not initialized yet */
+    }
+
+    /* Non-blocking receive */
+    received = recvfrom(pd->udp_msg_sock, packet_buf, sizeof(packet_buf), 0,
+                        (struct sockaddr *)&from_addr, &from_len);
+
+    if (received < 0) {
+        if (errno == EWOULDBLOCK || errno == EAGAIN) {
+            return 0;  /* No data available */
+        }
+        PT_CTX_WARN(ctx, PT_LOG_CAT_NETWORK,
+                    "UDP recvfrom failed: %s", strerror(errno));
+        return -1;
+    }
+
+    /* Decode packet */
+    ret = pt_udp_decode(ctx, packet_buf, received, &sender_port, &payload, &payload_len);
+    if (ret < 0) {
+        PT_CTX_DEBUG(ctx, PT_LOG_CAT_NETWORK,
+                     "Failed to decode UDP packet: %d", ret);
+        return 0;  /* Ignore malformed packets */
+    }
+
+    /* Find peer by source IP */
+    sender_ip = ntohl(from_addr.sin_addr.s_addr);
+    peer = pt_peer_find_by_addr(ctx, sender_ip, 0);  /* Match any port */
+
+    if (!peer) {
+        PT_CTX_DEBUG(ctx, PT_LOG_CAT_NETWORK,
+                     "Received UDP from unknown peer %u.%u.%u.%u",
+                     (sender_ip >> 24) & 0xFF,
+                     (sender_ip >> 16) & 0xFF,
+                     (sender_ip >> 8) & 0xFF,
+                     sender_ip & 0xFF);
+        return 0;  /* Ignore unknown peers */
+    }
+
+    /* Update peer statistics and timestamp */
+    peer->cold.stats.bytes_received += received;
+    peer->cold.stats.messages_received++;
+    peer->hot.last_seen = ctx->plat->get_ticks();
+
+    /* Update global statistics */
+    ctx->global_stats.total_bytes_received += received;
+    ctx->global_stats.total_messages_received++;
+
+    PT_CTX_DEBUG(ctx, PT_LOG_CAT_NETWORK,
+                 "Received UDP from peer %u (%u bytes payload, %zd bytes total)",
+                 peer->hot.id, payload_len, received);
+
+    /* Fire callback */
+    if (ctx->callbacks.on_message_received) {
+        ctx->callbacks.on_message_received((PeerTalk_Context *)ctx,
+                                          peer->hot.id,
+                                          payload,
+                                          payload_len,
+                                          ctx->callbacks.user_data);
+    }
+
+    return 1;  /* Message processed */
 }
 
 /* ========================================================================== */
@@ -1636,7 +1855,49 @@ int pt_posix_poll(struct pt_context *ctx) {
         }
     }
 
-    /* TODO: Session 4.4 - UDP messaging socket polling */
+    /* Poll UDP messaging socket (Session 4.4) */
+    if (pd->udp_msg_sock >= 0) {
+        while (pt_posix_recv_udp(ctx) > 0) {
+            /* Process all pending UDP messages */
+        }
+    }
 
     return 0;
+}
+
+/* ========================================================================== */
+/* Public API (Session 4.4)                                                  */
+/* ========================================================================== */
+
+/**
+ * Send unreliable UDP message to peer
+ *
+ * Public API wrapper for pt_posix_send_udp(). Validates context and peer ID,
+ * then sends UDP datagram with 8-byte header (no CRC).
+ *
+ * Returns: PT_OK on success, PT_ERR_* on failure
+ */
+PeerTalk_Error PeerTalk_SendUDP(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
+                                const void *data, uint16_t length) {
+    struct pt_context *ictx = (struct pt_context *)ctx;
+    struct pt_peer *peer;
+
+    /* Validate context */
+    if (!ictx || ictx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_STATE;
+    }
+
+    /* Validate data and length */
+    if (!data && length > 0) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Find peer by ID */
+    peer = pt_peer_find_by_id(ictx, peer_id);
+    if (!peer) {
+        return PT_ERR_PEER_NOT_FOUND;
+    }
+
+    /* Call internal send function */
+    return pt_posix_send_udp(ictx, peer, data, length);
 }

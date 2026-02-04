@@ -163,7 +163,7 @@ This automated test suite serves as the protocol reference:
 | 4.1 | UDP Discovery | [DONE] | `src/posix/net_posix.c`, `src/posix/net_posix.h` | `tests/test_discovery_posix.c` | Peers discover each other via broadcast |
 | 4.2 | TCP Connections | [DONE] | `src/posix/net_posix.c`, `src/core/pt_init.c` | `tests/test_connect_posix.c` | Connect/disconnect lifecycle works |
 | 4.3 | Message I/O | [DONE] | `src/posix/net_posix.c` | `tests/test_messaging_posix.c` | Send/receive messages correctly |
-| 4.4 | UDP Messaging | [OPEN] | `src/posix/udp_posix.c` | `tests/test_udp_posix.c` | PeerTalk_SendUDP works for unreliable messages |
+| 4.4 | UDP Messaging | [DONE] | `src/posix/udp_posix.c` | `tests/test_udp_posix.c` | PeerTalk_SendUDP works for unreliable messages |
 | 4.5 | Network Statistics | [OPEN] | `src/posix/stats_posix.c` | `tests/test_stats_posix.c` | Latency, bytes, quality tracking |
 | 4.6 | Integration | [OPEN] | All POSIX files | `tests/test_integration_posix.c` | Full two-peer scenario works |
 | 4.7 | CI Setup | [OPEN] | `.github/workflows/ci.yml` | CI passes | `make test` runs on push/PR |
