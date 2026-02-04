@@ -2,6 +2,10 @@ module.exports = function(eleventyConfig) {
   // Copy static assets
   eleventyConfig.addPassthroughCopy("assets");
 
+  // Copy coverage and ISR reports
+  eleventyConfig.addPassthroughCopy("coverage");
+  eleventyConfig.addPassthroughCopy("isr-report.html");
+
   // Date formatting filter
   eleventyConfig.addFilter("dateFormat", (date) => {
     return new Date(date).toLocaleDateString('en-US', {
