@@ -945,6 +945,497 @@ int pt_posix_disconnect(struct pt_context *ctx, struct pt_peer *peer) {
 }
 
 /* ========================================================================== */
+/* TCP Message I/O (Session 4.3)                                             */
+/* ========================================================================== */
+
+/**
+ * Send framed message to a connected peer
+ *
+ * Uses writev() for atomic transmission of header + payload + CRC in a single
+ * syscall. This is more efficient than multiple send() calls and avoids TCP
+ * Nagle algorithm issues.
+ *
+ * @param ctx PeerTalk context
+ * @param peer Target peer (must be in CONNECTED state)
+ * @param data Message payload
+ * @param len Payload length (max PT_MAX_MESSAGE_SIZE)
+ * @return PT_OK on success, error code on failure
+ */
+int pt_posix_send(struct pt_context *ctx, struct pt_peer *peer,
+                  const void *data, size_t len) {
+    pt_posix_data *pd = pt_posix_get(ctx);
+    pt_message_header hdr;
+    uint8_t header_buf[PT_MESSAGE_HEADER_SIZE];
+    uint8_t crc_buf[2];
+    struct iovec iov[3];
+    ssize_t total_len;
+    ssize_t sent;
+    int peer_idx;
+    int sock;
+    uint16_t crc;
+
+    /* Validation */
+    if (!peer || peer->hot.magic != PT_PEER_MAGIC) {
+        PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL, "Invalid peer");
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    if (peer->hot.state != PT_PEER_CONNECTED) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+            "Cannot send to peer %u: not connected (state=%d)",
+            peer->hot.id, peer->hot.state);
+        return PT_ERR_INVALID_STATE;
+    }
+
+    if (len > PT_MAX_MESSAGE_SIZE) {
+        PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,
+            "Message too large: %zu bytes (max %d)",
+            len, PT_MAX_MESSAGE_SIZE);
+        return PT_ERR_MESSAGE_TOO_LARGE;
+    }
+
+    peer_idx = peer->hot.id - 1;
+    sock = pd->tcp_socks[peer_idx];
+
+    if (sock < 0) {
+        PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL, "Invalid socket for peer %u", peer->hot.id);
+        return PT_ERR_INVALID_STATE;
+    }
+
+    /* Encode header */
+    hdr.type = PT_MSG_TYPE_DATA;
+    hdr.flags = 0;
+    hdr.sequence = peer->hot.send_seq++;
+    hdr.payload_len = (uint16_t)len;
+    pt_message_encode_header(&hdr, header_buf);
+
+    /* Calculate CRC over header + payload */
+    crc = pt_crc16(header_buf, PT_MESSAGE_HEADER_SIZE);
+    crc = pt_crc16_update(crc, data, len);
+    crc_buf[0] = (crc >> 8) & 0xFF;
+    crc_buf[1] = crc & 0xFF;
+
+    /* Prepare iovec for atomic send */
+    iov[0].iov_base = header_buf;
+    iov[0].iov_len = PT_MESSAGE_HEADER_SIZE;
+    iov[1].iov_base = (void *)data;
+    iov[1].iov_len = len;
+    iov[2].iov_base = crc_buf;
+    iov[2].iov_len = 2;
+
+    total_len = PT_MESSAGE_HEADER_SIZE + len + 2;
+
+    /* Send with writev - handles partial writes */
+    sent = writev(sock, iov, 3);
+
+    if (sent < 0) {
+        if (errno == EWOULDBLOCK || errno == EAGAIN) {
+            PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+                "Send would block for peer %u", peer->hot.id);
+            return PT_ERR_WOULD_BLOCK;
+        }
+        PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,
+            "Send failed for peer %u: %s", peer->hot.id, strerror(errno));
+        return PT_ERR_NETWORK;
+    }
+
+    if (sent < total_len) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+            "Partial send to peer %u: %zd/%zd bytes", peer->hot.id, sent, total_len);
+        /* TODO: Handle partial sends with send queue */
+        return PT_ERR_WOULD_BLOCK;
+    }
+
+    /* Update statistics */
+    peer->cold.stats.bytes_sent += sent;
+    peer->cold.stats.messages_sent++;
+    ctx->global_stats.total_bytes_sent += sent;
+    ctx->global_stats.total_messages_sent++;
+
+    PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+        "Sent %zd bytes to peer %u (seq=%u)", sent, peer->hot.id, hdr.sequence);
+
+    return PT_OK;
+}
+
+/**
+ * Send control message (PING, PONG, DISCONNECT)
+ *
+ * Control messages have zero-length payload and use sequence=0 to distinguish
+ * from user data messages.
+ *
+ * @param ctx PeerTalk context
+ * @param peer Target peer
+ * @param msg_type PT_MSG_TYPE_PING, PT_MSG_TYPE_PONG, or PT_MSG_TYPE_DISCONNECT
+ * @return PT_OK on success, error code on failure
+ */
+int pt_posix_send_control(struct pt_context *ctx, struct pt_peer *peer,
+                           uint8_t msg_type) {
+    pt_posix_data *pd = pt_posix_get(ctx);
+    pt_message_header hdr;
+    uint8_t buf[PT_MESSAGE_HEADER_SIZE + 2];
+    uint16_t crc;
+    ssize_t sent;
+    int peer_idx;
+    int sock;
+
+    if (!peer || peer->hot.magic != PT_PEER_MAGIC)
+        return PT_ERR_INVALID_PARAM;
+
+    if (peer->hot.state != PT_PEER_CONNECTED)
+        return PT_ERR_INVALID_STATE;
+
+    peer_idx = peer->hot.id - 1;
+    sock = pd->tcp_socks[peer_idx];
+
+    if (sock < 0)
+        return PT_ERR_INVALID_STATE;
+
+    /* Encode header (sequence=0 for control messages) */
+    hdr.type = msg_type;
+    hdr.flags = 0;
+    hdr.sequence = 0;  /* Control messages use seq=0 intentionally */
+    hdr.payload_len = 0;
+    pt_message_encode_header(&hdr, buf);
+
+    /* Calculate CRC */
+    crc = pt_crc16(buf, PT_MESSAGE_HEADER_SIZE);
+    buf[PT_MESSAGE_HEADER_SIZE] = (crc >> 8) & 0xFF;
+    buf[PT_MESSAGE_HEADER_SIZE + 1] = crc & 0xFF;
+
+    /* Send */
+    sent = send(sock, buf, sizeof(buf), 0);
+
+    if (sent < 0) {
+        if (errno == EWOULDBLOCK || errno == EAGAIN)
+            return PT_ERR_WOULD_BLOCK;
+        return PT_ERR_NETWORK;
+    }
+
+    PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+        "Sent control message type=%u to peer %u", msg_type, peer->hot.id);
+
+    return PT_OK;
+}
+
+/* ========================================================================== */
+/* TCP Receive State Machine (Session 4.3)                                   */
+/* ========================================================================== */
+
+/**
+ * Reset receive buffer to initial state
+ *
+ * @param buf Receive buffer to reset
+ */
+static void pt_recv_reset(pt_recv_buffer *buf) {
+    buf->hot.state = PT_RECV_HEADER;
+    buf->hot.bytes_needed = PT_MESSAGE_HEADER_SIZE;
+    buf->hot.bytes_received = 0;
+}
+
+/**
+ * Receive header bytes
+ *
+ * Accumulates header bytes until complete, then transitions to payload or CRC state.
+ *
+ * @param ctx PeerTalk context
+ * @param peer Target peer
+ * @param buf Receive buffer
+ * @param sock TCP socket
+ * @return 1 = header complete, 0 = waiting for more data, -1 = error
+ */
+static int pt_recv_header(struct pt_context *ctx, struct pt_peer *peer,
+                           pt_recv_buffer *buf, int sock) {
+    ssize_t ret;
+    size_t remaining;
+
+    remaining = buf->hot.bytes_needed - buf->hot.bytes_received;
+
+    ret = recv(sock, buf->cold.header_buf + buf->hot.bytes_received,
+               remaining, 0);
+
+    if (ret < 0) {
+        if (errno == EWOULDBLOCK || errno == EAGAIN)
+            return 0;  /* No data yet */
+        PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,
+            "Header recv error for peer %u: %s", peer->hot.id, strerror(errno));
+        return -1;
+    }
+
+    if (ret == 0) {
+        PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,
+            "Peer %u closed connection during header", peer->hot.id);
+        return -1;
+    }
+
+    buf->hot.bytes_received += ret;
+
+    if (buf->hot.bytes_received >= buf->hot.bytes_needed) {
+        /* Header complete - decode it */
+        if (pt_message_decode_header(ctx, buf->cold.header_buf,
+                                      PT_MESSAGE_HEADER_SIZE,
+                                      &buf->cold.hdr) != PT_OK) {
+            PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,
+                "Invalid message header from peer %u", peer->hot.id);
+            return -1;
+        }
+
+        /* Validate payload size */
+        if (buf->cold.hdr.payload_len > PT_MAX_MESSAGE_SIZE) {
+            PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,
+                "Payload too large from peer %u: %u bytes (max %d)",
+                peer->hot.id, buf->cold.hdr.payload_len, PT_MAX_MESSAGE_SIZE);
+            return -1;
+        }
+
+        /* Transition to next state */
+        if (buf->cold.hdr.payload_len > 0) {
+            buf->hot.state = PT_RECV_PAYLOAD;
+            buf->hot.bytes_needed = buf->cold.hdr.payload_len;
+            buf->hot.bytes_received = 0;
+        } else {
+            /* No payload - go straight to CRC */
+            buf->hot.state = PT_RECV_CRC;
+            buf->hot.bytes_needed = 2;
+            buf->hot.bytes_received = 0;
+        }
+
+        return 1;  /* Header complete */
+    }
+
+    return 0;  /* Waiting for more header bytes */
+}
+
+/**
+ * Receive payload bytes
+ *
+ * @return 1 = payload complete, 0 = waiting for more data, -1 = error
+ */
+static int pt_recv_payload(struct pt_context *ctx, struct pt_peer *peer,
+                             pt_recv_buffer *buf, int sock) {
+    ssize_t ret;
+    size_t remaining;
+
+    remaining = buf->hot.bytes_needed - buf->hot.bytes_received;
+
+    ret = recv(sock, buf->cold.payload_buf + buf->hot.bytes_received,
+               remaining, 0);
+
+    if (ret < 0) {
+        if (errno == EWOULDBLOCK || errno == EAGAIN)
+            return 0;
+        PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,
+            "Payload recv error for peer %u: %s", peer->hot.id, strerror(errno));
+        return -1;
+    }
+
+    if (ret == 0) {
+        PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,
+            "Peer %u closed connection during payload", peer->hot.id);
+        return -1;
+    }
+
+    buf->hot.bytes_received += ret;
+
+    if (buf->hot.bytes_received >= buf->hot.bytes_needed) {
+        /* Payload complete - move to CRC */
+        buf->hot.state = PT_RECV_CRC;
+        buf->hot.bytes_needed = 2;
+        buf->hot.bytes_received = 0;
+        return 1;
+    }
+
+    return 0;  /* Waiting for more payload bytes */
+}
+
+/**
+ * Receive CRC bytes
+ *
+ * @return 1 = CRC complete, 0 = waiting for more data, -1 = error
+ */
+static int pt_recv_crc(struct pt_context *ctx, struct pt_peer *peer,
+                        pt_recv_buffer *buf, int sock) {
+    ssize_t ret;
+    size_t remaining;
+
+    remaining = buf->hot.bytes_needed - buf->hot.bytes_received;
+
+    ret = recv(sock, buf->cold.crc_buf + buf->hot.bytes_received,
+               remaining, 0);
+
+    if (ret < 0) {
+        if (errno == EWOULDBLOCK || errno == EAGAIN)
+            return 0;
+        PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,
+            "CRC recv error for peer %u: %s", peer->hot.id, strerror(errno));
+        return -1;
+    }
+
+    if (ret == 0) {
+        PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,
+            "Peer %u closed connection during CRC", peer->hot.id);
+        return -1;
+    }
+
+    buf->hot.bytes_received += ret;
+
+    if (buf->hot.bytes_received >= buf->hot.bytes_needed) {
+        /* CRC complete - message fully received */
+        return 1;
+    }
+
+    return 0;  /* Waiting for more CRC bytes */
+}
+
+/**
+ * Process complete message after CRC validation
+ *
+ * Verifies CRC, updates statistics, and dispatches by message type.
+ *
+ * @return 0 on success, -1 on error or disconnect
+ */
+static int pt_recv_process_message(struct pt_context *ctx, struct pt_peer *peer,
+                                     pt_recv_buffer *buf) {
+    uint16_t expected_crc;
+    uint16_t received_crc;
+
+    /* Calculate expected CRC */
+    expected_crc = pt_crc16(buf->cold.header_buf, PT_MESSAGE_HEADER_SIZE);
+    if (buf->cold.hdr.payload_len > 0) {
+        expected_crc = pt_crc16_update(expected_crc, buf->cold.payload_buf,
+                                        buf->cold.hdr.payload_len);
+    }
+
+    /* Extract received CRC */
+    received_crc = ((uint16_t)buf->cold.crc_buf[0] << 8) | buf->cold.crc_buf[1];
+
+    if (expected_crc != received_crc) {
+        PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,
+            "CRC mismatch from peer %u: expected 0x%04X, got 0x%04X",
+            peer->hot.id, expected_crc, received_crc);
+        return -1;
+    }
+
+    /* Update statistics */
+    peer->cold.stats.bytes_received += PT_MESSAGE_HEADER_SIZE +
+                                        buf->cold.hdr.payload_len + 2;
+    peer->cold.stats.messages_received++;
+    ctx->global_stats.total_bytes_received += PT_MESSAGE_HEADER_SIZE +
+                                               buf->cold.hdr.payload_len + 2;
+    ctx->global_stats.total_messages_received++;
+
+    /* Dispatch by message type */
+    switch (buf->cold.hdr.type) {
+        case PT_MSG_TYPE_DATA:
+            /* Fire callback */
+            if (ctx->callbacks.on_message_received) {
+                ctx->callbacks.on_message_received((PeerTalk_Context *)ctx,
+                    peer->hot.id,
+                    buf->cold.payload_buf,
+                    buf->cold.hdr.payload_len,
+                    ctx->callbacks.user_data);
+            }
+            break;
+
+        case PT_MSG_TYPE_PING:
+            /* Send PONG response */
+            pt_posix_send_control(ctx, peer, PT_MSG_TYPE_PONG);
+            PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+                "Received PING from peer %u, sent PONG", peer->hot.id);
+            break;
+
+        case PT_MSG_TYPE_PONG:
+            /* Update latency if we sent PING */
+            if (peer->cold.ping_sent_time > 0) {
+                pt_tick_t now = ctx->plat->get_ticks();
+                peer->cold.stats.latency_ms = now - peer->cold.ping_sent_time;
+                peer->cold.ping_sent_time = 0;
+                PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+                    "Received PONG from peer %u, latency=%u ms",
+                    peer->hot.id, peer->cold.stats.latency_ms);
+            }
+            break;
+
+        case PT_MSG_TYPE_DISCONNECT:
+            PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,
+                "Received DISCONNECT from peer %u", peer->hot.id);
+            return -1;  /* Trigger disconnect */
+
+        case PT_MSG_TYPE_ACK:
+            /* Handle reliable message ACK - TODO in future session */
+            PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+                "Received ACK from peer %u", peer->hot.id);
+            break;
+
+        default:
+            PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+                "Unknown message type %u from peer %u",
+                buf->cold.hdr.type, peer->hot.id);
+            break;
+    }
+
+    return 0;
+}
+
+/**
+ * Main receive function - drives state machine
+ *
+ * Non-blocking receive with state machine for partial reads.
+ *
+ * @param ctx PeerTalk context
+ * @param peer Target peer
+ * @return 0 on success, -1 on error or disconnect
+ */
+int pt_posix_recv(struct pt_context *ctx, struct pt_peer *peer) {
+    pt_posix_data *pd = pt_posix_get(ctx);
+    pt_recv_buffer *buf;
+    int peer_idx;
+    int sock;
+    int ret;
+
+    if (!peer || peer->hot.magic != PT_PEER_MAGIC)
+        return -1;
+
+    peer_idx = peer->hot.id - 1;
+    sock = pd->tcp_socks[peer_idx];
+    buf = &pd->recv_bufs[peer_idx];
+
+    if (sock < 0)
+        return -1;
+
+    /* Drive state machine */
+    while (1) {
+        switch (buf->hot.state) {
+            case PT_RECV_HEADER:
+                ret = pt_recv_header(ctx, peer, buf, sock);
+                if (ret <= 0) return ret;
+                break;
+
+            case PT_RECV_PAYLOAD:
+                ret = pt_recv_payload(ctx, peer, buf, sock);
+                if (ret <= 0) return ret;
+                break;
+
+            case PT_RECV_CRC:
+                ret = pt_recv_crc(ctx, peer, buf, sock);
+                if (ret <= 0) return ret;
+
+                /* Message complete - process it */
+                ret = pt_recv_process_message(ctx, peer, buf);
+                pt_recv_reset(buf);  /* Reset for next message */
+                return ret;
+
+            default:
+                PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,
+                    "Invalid recv state %u for peer %u",
+                    buf->hot.state, peer->hot.id);
+                pt_recv_reset(buf);
+                return -1;
+        }
+    }
+}
+
+/* ========================================================================== */
 /* UDP Messaging (Session 4.4 - Stub for now)                                */
 /* ========================================================================== */
 
@@ -1120,7 +1611,31 @@ int pt_posix_poll(struct pt_context *ctx) {
     /* Check for connection completion (CONNECTING -> CONNECTED) */
     pt_posix_connect_poll(ctx);
 
-    /* TODO: Session 4.3 - TCP peer socket I/O */
+    /* Poll TCP peer sockets for received data (Session 4.3) */
+    for (uint8_t i = 0; i < pd->active_count; i++) {
+        uint8_t peer_idx = pd->active_peers[i];
+        struct pt_peer *peer = &ctx->peers[peer_idx];
+        int sock = pd->tcp_socks[peer_idx];
+
+        if (peer->hot.state == PT_PEER_CONNECTED && sock >= 0) {
+            /* Check if data available using select() */
+            fd_set read_fds;
+            struct timeval tv = {0, 0};  /* Zero timeout = non-blocking */
+
+            FD_ZERO(&read_fds);
+            FD_SET(sock, &read_fds);
+
+            if (select(sock + 1, &read_fds, NULL, NULL, &tv) > 0) {
+                if (pt_posix_recv(ctx, peer) < 0) {
+                    /* Error or disconnect - close connection */
+                    PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT,
+                        "Closing connection to peer %u", peer->hot.id);
+                    pt_posix_disconnect(ctx, peer);
+                }
+            }
+        }
+    }
+
     /* TODO: Session 4.4 - UDP messaging socket polling */
 
     return 0;
