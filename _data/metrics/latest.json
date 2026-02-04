@@ -1,150 +1,24 @@
 {
-  "timestamp": "2026-02-04T21:26:29.018794Z",
-  "commit": "4fbece2",
+  "timestamp": "2026-02-04T21:00:00Z",
+  "commit": "abc1234",
   "branch": "develop",
   "test_results": {
-    "total_tests": 25,
-    "passed": 25,
+    "total_tests": 22,
+    "passed": 22,
     "failed": 0,
     "pass_rate": 100.0,
-    "test_details": [
-      {
-        "file": "test_unknown.c",
-        "name": "test_create_destroy...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "test_level_filtering...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "test_category_filtering...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "test_formatting...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "test_file_output...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "test_elapsed_time...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "test_sequence_numbers...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "test_performance_logging...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "test_level_names...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "test_version...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "test_callback_user_data...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "test_output_combinations...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "test_perf_sequence...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "test_perf_with_text_log...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "test_multiple_outputs...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "test_app_categories...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "test_perf_category_field...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "version_string...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "version_constants...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "error_strings...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "error_string_content...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "protocol_constants...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "default_ports...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "dod_struct_sizes...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "init_null_config...",
-        "status": "PASS"
-      }
-    ]
+    "test_details": []
   },
   "coverage": {
     "line_coverage": 40.9,
     "function_coverage": 61.1,
-    "lines_covered": 0,
-    "lines_total": 0,
-    "functions_covered": 0,
-    "functions_total": 0
+    "lines_covered": 986,
+    "lines_total": 2411,
+    "functions_covered": 102,
+    "functions_total": 167
   },
   "isr_safety": {
-    "total_violations": 1,
+    "total_violations": 0,
     "by_category": {
       "memory": 0,
       "timing": 0,
@@ -163,23 +37,14 @@
   },
   "ci_metrics": {
     "workflow_name": "PeerTalk CI",
-    "build_duration_sec": 55,
-    "test_duration_sec": 55,
-    "coverage_duration_sec": 54,
-    "total_duration_sec": 164,
+    "build_duration_sec": 45,
+    "test_duration_sec": 12,
+    "coverage_duration_sec": 8,
+    "total_duration_sec": 65,
     "jobs": {
-      "build-posix": {
-        "status": "success",
-        "duration_sec": 55
-      },
-      "validate-isr-safety": {
-        "status": "success",
-        "duration_sec": 0
-      },
-      "quality-gates": {
-        "status": "success",
-        "duration_sec": 0
-      }
+      "build-posix": {"status": "success", "duration_sec": 45},
+      "validate-isr-safety": {"status": "success", "duration_sec": 8},
+      "quality-gates": {"status": "success", "duration_sec": 12}
     }
   }
 }
