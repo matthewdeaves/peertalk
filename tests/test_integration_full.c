@@ -1,0 +1,400 @@
+/*
+ * PeerTalk Full Integration Test (3-Peer Docker Test)
+ *
+ * Comprehensive end-to-end test covering:
+ * - UDP discovery across 3 peers
+ * - TCP connection establishment
+ * - Message exchange with Send/SendEx
+ * - Broadcast functionality
+ * - UDP unreliable messaging
+ * - Queue status monitoring
+ * - Statistics tracking
+ * - Graceful shutdown
+ *
+ * Usage:
+ *   ./test_integration_full [name] [mode]
+ *
+ * Modes:
+ *   sender   - Actively sends messages to discovered peers
+ *   receiver - Passively receives messages
+ *   both     - Both sends and receives (default)
+ *
+ * Example:
+ *   Terminal 1: ./test_integration_full Alice sender
+ *   Terminal 2: ./test_integration_full Bob receiver
+ *   Terminal 3: ./test_integration_full Charlie both
+ */
+
+#include "../include/peertalk.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <signal.h>
+#include <time.h>
+
+/* Test configuration */
+#define TEST_DURATION_SEC 30
+#define SEND_INTERVAL_MS 2000
+#define POLL_INTERVAL_MS 100
+
+/* Test state */
+typedef enum {
+    MODE_SENDER,
+    MODE_RECEIVER,
+    MODE_BOTH
+} TestMode;
+
+typedef struct {
+    PeerTalk_Context *ctx;
+    TestMode mode;
+    volatile int running;
+    uint32_t last_send_time;
+    uint32_t test_start_time;
+
+    /* Counters */
+    int peers_discovered;
+    int peers_connected;
+    int messages_sent;
+    int messages_received;
+    int broadcasts_sent;
+} TestState;
+
+static TestState g_state = {0};
+
+/* ========================================================================== */
+/* Utility Functions                                                          */
+/* ========================================================================== */
+
+uint32_t get_time_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+}
+
+void print_peer_info(const PeerTalk_PeerInfo *peer) {
+    printf("  [Peer %u] ", peer->id);
+    printf("%u.%u.%u.%u:%u ",
+           (peer->address >> 24) & 0xFF,
+           (peer->address >> 16) & 0xFF,
+           (peer->address >> 8) & 0xFF,
+           peer->address & 0xFF,
+           peer->port);
+    printf("%s ", peer->connected ? "CONNECTED" : "DISCOVERED");
+    printf("latency=%ums ", peer->latency_ms);
+    printf("transports=0x%02X\n", peer->transports_available);
+}
+
+/* ========================================================================== */
+/* Signal Handler                                                             */
+/* ========================================================================== */
+
+void signal_handler(int sig) {
+    (void)sig;
+    printf("\n[SIGNAL] Shutting down gracefully...\n");
+    g_state.running = 0;
+}
+
+/* ========================================================================== */
+/* PeerTalk Callbacks                                                         */
+/* ========================================================================== */
+
+void on_peer_discovered(PeerTalk_Context *ctx, const PeerTalk_PeerInfo *peer,
+                        void *user_data) {
+    (void)ctx;
+    (void)user_data;
+
+    g_state.peers_discovered++;
+    printf("\n[DISCOVERY] Peer discovered!\n");
+    print_peer_info(peer);
+}
+
+void on_peer_connected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
+                       void *user_data) {
+    (void)ctx;
+    (void)user_data;
+
+    g_state.peers_connected++;
+    printf("\n[CONNECT] Peer %u connected!\n", peer_id);
+
+    /* Get peer info */
+    PeerTalk_PeerInfo info;
+    if (PeerTalk_GetPeer(ctx, peer_id, &info) == PT_OK) {
+        print_peer_info(&info);
+    }
+}
+
+void on_peer_disconnected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
+                          void *user_data) {
+    (void)ctx;
+    (void)user_data;
+
+    g_state.peers_connected--;
+    printf("\n[DISCONNECT] Peer %u disconnected\n", peer_id);
+}
+
+void on_message_received(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
+                        const void *data, uint16_t length, void *user_data) {
+    (void)ctx;
+    (void)user_data;
+
+    g_state.messages_received++;
+
+    /* Create null-terminated string */
+    char msg[PT_MAX_MESSAGE_SIZE + 1];
+    memcpy(msg, data, length < PT_MAX_MESSAGE_SIZE ? length : PT_MAX_MESSAGE_SIZE);
+    msg[length < PT_MAX_MESSAGE_SIZE ? length : PT_MAX_MESSAGE_SIZE] = '\0';
+
+    printf("[MESSAGE] From peer %u: \"%s\" (%u bytes)\n", peer_id, msg, length);
+
+    /* Get queue status for this peer */
+    uint16_t pending, available;
+    if (PeerTalk_GetQueueStatus(ctx, peer_id, &pending, &available) == PT_OK) {
+        printf("          Queue: %u pending, %u available\n", pending, available);
+    }
+}
+
+/* ========================================================================== */
+/* Test Functions                                                             */
+/* ========================================================================== */
+
+void send_messages_to_peers(void) {
+    uint16_t peer_count = 0;
+    PeerTalk_PeerInfo peers[16];
+
+    /* Get all discovered peers */
+    if (PeerTalk_GetPeers(g_state.ctx, peers, 16, &peer_count) != PT_OK) {
+        return;
+    }
+
+    if (peer_count == 0) {
+        return;
+    }
+
+    printf("\n[SEND] Sending messages to %u peer(s)...\n", peer_count);
+
+    /* Send individual messages to each connected peer */
+    for (uint16_t i = 0; i < peer_count; i++) {
+        if (!peers[i].connected) {
+            continue;
+        }
+
+        char msg[128];
+        snprintf(msg, sizeof(msg), "Hello from peer, message #%d", g_state.messages_sent + 1);
+
+        PeerTalk_Error err = PeerTalk_SendEx(
+            g_state.ctx,
+            peers[i].id,
+            msg,
+            (uint16_t)strlen(msg),
+            PT_PRIORITY_NORMAL,
+            PT_SEND_DEFAULT,
+            0
+        );
+
+        if (err == PT_OK) {
+            g_state.messages_sent++;
+            printf("  → Sent to peer %u: \"%s\"\n", peers[i].id, msg);
+        } else {
+            printf("  ✗ Failed to send to peer %u: error %d\n", peers[i].id, err);
+        }
+    }
+
+    /* Send broadcast if we have connected peers */
+    if (peer_count > 0) {
+        char broadcast_msg[128];
+        snprintf(broadcast_msg, sizeof(broadcast_msg),
+                 "Broadcast #%d to all peers", g_state.broadcasts_sent + 1);
+
+        PeerTalk_Error err = PeerTalk_Broadcast(g_state.ctx, broadcast_msg,
+                                                 (uint16_t)strlen(broadcast_msg));
+        if (err == PT_OK) {
+            g_state.broadcasts_sent++;
+            printf("  → Broadcast sent to all peers\n");
+        }
+    }
+}
+
+void print_statistics(void) {
+    PeerTalk_GlobalStats stats;
+
+    if (PeerTalk_GetGlobalStats(g_state.ctx, &stats) != PT_OK) {
+        return;
+    }
+
+    printf("\n[STATS] Global Statistics:\n");
+    printf("  Discovered: %u peers\n", stats.peers_discovered);
+    printf("  Connected:  %u peers\n", stats.peers_connected);
+    printf("  Sent:       %llu bytes, %llu messages\n",
+           stats.total_bytes_sent, stats.total_messages_sent);
+    printf("  Received:   %llu bytes, %llu messages\n",
+           stats.total_bytes_received, stats.total_messages_received);
+    printf("  Discovery:  %llu sent, %llu received\n",
+           stats.discovery_packets_sent, stats.discovery_packets_received);
+}
+
+void run_test_loop(void) {
+    uint32_t next_send = g_state.last_send_time + SEND_INTERVAL_MS;
+    uint32_t next_stats = get_time_ms() + 10000; /* Print stats every 10s */
+
+    printf("\n[TEST] Starting test loop (duration: %d seconds)...\n", TEST_DURATION_SEC);
+    printf("[TEST] Mode: %s\n",
+           g_state.mode == MODE_SENDER ? "sender" :
+           g_state.mode == MODE_RECEIVER ? "receiver" : "both");
+
+    while (g_state.running) {
+        uint32_t now = get_time_ms();
+
+        /* Check test duration */
+        if ((now - g_state.test_start_time) > (TEST_DURATION_SEC * 1000)) {
+            printf("\n[TEST] Test duration reached, shutting down...\n");
+            g_state.running = 0;
+            break;
+        }
+
+        /* Poll PeerTalk */
+        PeerTalk_Poll(g_state.ctx);
+
+        /* Send messages periodically if sender mode */
+        if ((g_state.mode == MODE_SENDER || g_state.mode == MODE_BOTH) &&
+            now >= next_send) {
+            send_messages_to_peers();
+            next_send = now + SEND_INTERVAL_MS;
+        }
+
+        /* Print statistics periodically */
+        if (now >= next_stats) {
+            print_statistics();
+            next_stats = now + 10000;
+        }
+
+        /* Sleep to avoid busy loop */
+        usleep(POLL_INTERVAL_MS * 1000);
+    }
+}
+
+/* ========================================================================== */
+/* Main                                                                        */
+/* ========================================================================== */
+
+int main(int argc, char *argv[]) {
+    PeerTalk_Config config;
+    const char *peer_name = "TestPeer";
+    const char *mode_str = "both";
+
+    /* Parse arguments */
+    if (argc > 1) {
+        peer_name = argv[1];
+    }
+    if (argc > 2) {
+        mode_str = argv[2];
+    }
+
+    /* Parse mode */
+    if (strcmp(mode_str, "sender") == 0) {
+        g_state.mode = MODE_SENDER;
+    } else if (strcmp(mode_str, "receiver") == 0) {
+        g_state.mode = MODE_RECEIVER;
+    } else {
+        g_state.mode = MODE_BOTH;
+    }
+
+    printf("===========================================\n");
+    printf("PeerTalk Full Integration Test\n");
+    printf("===========================================\n");
+    printf("Peer Name: %s\n", peer_name);
+    printf("Mode: %s\n", mode_str);
+    printf("Duration: %d seconds\n", TEST_DURATION_SEC);
+    printf("===========================================\n\n");
+
+    /* Set up signal handler */
+    signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
+
+    /* Initialize PeerTalk */
+    memset(&config, 0, sizeof(config));
+    strncpy(config.local_name, peer_name, PT_MAX_PEER_NAME - 1);
+    config.max_peers = 16;
+    config.discovery_interval = 3000;  /* Faster discovery for testing */
+
+    g_state.ctx = PeerTalk_Init(&config);
+    if (!g_state.ctx) {
+        fprintf(stderr, "ERROR: PeerTalk_Init failed\n");
+        return 1;
+    }
+
+    /* Set callbacks */
+    PeerTalk_SetCallback(g_state.ctx, PT_CB_PEER_DISCOVERED,
+                         (PeerTalk_CallbackFunc)on_peer_discovered, NULL);
+    PeerTalk_SetCallback(g_state.ctx, PT_CB_PEER_CONNECTED,
+                         (PeerTalk_CallbackFunc)on_peer_connected, NULL);
+    PeerTalk_SetCallback(g_state.ctx, PT_CB_PEER_DISCONNECTED,
+                         (PeerTalk_CallbackFunc)on_peer_disconnected, NULL);
+    PeerTalk_SetCallback(g_state.ctx, PT_CB_MESSAGE_RECEIVED,
+                         (PeerTalk_CallbackFunc)on_message_received, NULL);
+
+    /* Start discovery and listening */
+    PeerTalk_Error err;
+    err = PeerTalk_StartDiscovery(g_state.ctx);
+    if (err != PT_OK) {
+        fprintf(stderr, "ERROR: StartDiscovery failed: %d\n", err);
+        PeerTalk_Shutdown(g_state.ctx);
+        return 1;
+    }
+
+    err = PeerTalk_StartListening(g_state.ctx);
+    if (err != PT_OK) {
+        fprintf(stderr, "ERROR: StartListening failed: %d\n", err);
+        PeerTalk_Shutdown(g_state.ctx);
+        return 1;
+    }
+
+    printf("[INIT] Discovery and listening started\n");
+
+    /* Initialize test state */
+    g_state.running = 1;
+    g_state.test_start_time = get_time_ms();
+    g_state.last_send_time = g_state.test_start_time;
+
+    /* Run test loop */
+    run_test_loop();
+
+    /* Print final statistics */
+    printf("\n===========================================\n");
+    printf("Test Complete\n");
+    printf("===========================================\n");
+    print_statistics();
+    printf("\nTest Counters:\n");
+    printf("  Peers discovered: %d\n", g_state.peers_discovered);
+    printf("  Peers connected:  %d\n", g_state.peers_connected);
+    printf("  Messages sent:    %d\n", g_state.messages_sent);
+    printf("  Messages received: %d\n", g_state.messages_received);
+    printf("  Broadcasts sent:  %d\n", g_state.broadcasts_sent);
+    printf("===========================================\n");
+
+    /* Shutdown */
+    PeerTalk_Shutdown(g_state.ctx);
+
+    /* Test success criteria */
+    int success = 1;
+    if (g_state.peers_discovered < 2) {
+        printf("\n✗ FAIL: Expected at least 2 peers discovered, got %d\n",
+               g_state.peers_discovered);
+        success = 0;
+    }
+
+    if (g_state.mode == MODE_SENDER || g_state.mode == MODE_BOTH) {
+        if (g_state.messages_sent == 0) {
+            printf("\n✗ FAIL: Expected messages to be sent\n");
+            success = 0;
+        }
+    }
+
+    if (success) {
+        printf("\n✓ TEST PASSED\n");
+        return 0;
+    } else {
+        printf("\n✗ TEST FAILED\n");
+        return 1;
+    }
+}

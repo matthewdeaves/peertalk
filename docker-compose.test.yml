@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile.test.build
     container_name: peertalk-alice
-    command: ["/app/test_discovery_posix", "Alice"]
+    command: ["/app/test_integration_full", "Alice", "sender"]
     tty: true
     stdin_open: true
     networks:
@@ -18,7 +18,7 @@ services:
       context: .
       dockerfile: Dockerfile.test.build
     container_name: peertalk-bob
-    command: ["/app/test_discovery_posix", "Bob"]
+    command: ["/app/test_integration_full", "Bob", "both"]
     tty: true
     stdin_open: true
     networks:
@@ -30,7 +30,7 @@ services:
       context: .
       dockerfile: Dockerfile.test.build
     container_name: peertalk-charlie
-    command: ["/app/test_discovery_posix", "Charlie"]
+    command: ["/app/test_integration_full", "Charlie", "receiver"]
     tty: true
     stdin_open: true
     networks:

@@ -16,8 +16,14 @@ COPY include ./include/
 COPY src ./src/
 COPY tests ./tests/
 
-# Build the test
-RUN make test_discovery_posix
+# Build all tests
+RUN make
+
+# Build the integration test
+RUN gcc -Wall -Werror -std=c99 -g -O2 -I./include -I./src/core \
+    -DPT_LOG_ENABLED -DPT_PLATFORM_POSIX -D_POSIX_C_SOURCE=199309L \
+    tests/test_integration_full.c -o test_integration_full \
+    -L./build/lib -lpeertalk -lptlog -lpthread
 
 # Run the test
-CMD ["/app/test_discovery_posix", "default"]
+CMD ["/app/test_integration_full", "default", "both"]
