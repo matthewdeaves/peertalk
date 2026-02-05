@@ -194,13 +194,29 @@ valgrind: $(BIN_DIR)/test_log $(BIN_DIR)/test_log_perf $(BIN_DIR)/test_log_threa
 	@echo ""
 	@echo "=== All valgrind checks PASSED ==="
 
-# Test target (runs all tests)
-test: test-log test-compat test-foundation test-protocol test-peer test-queue test-queue-advanced test-backpressure test-discovery test-messaging test-udp test-stats test-integration-posix test-sendex
+# Docker targets (run in container)
+docker-build:
+	@echo "Building in Docker container..."
+	@docker run --rm -v $(PWD):/workspace -w /workspace peertalk-dev make all
+
+docker-test:
+	@echo "Running tests in Docker container..."
+	@docker run --rm -v $(PWD):/workspace -w /workspace peertalk-dev bash -c "make clean && make all && make test-local"
+
+docker-coverage:
+	@echo "Running coverage in Docker container..."
+	@docker run --rm -v $(PWD):/workspace -w /workspace peertalk-dev bash -c "make coverage-local"
+
+# Local targets (run inside container or on host with dependencies)
+test-local: test-log test-compat test-foundation test-protocol test-peer test-queue test-queue-advanced test-backpressure test-discovery test-messaging test-udp test-stats test-integration-posix test-sendex
 	@echo ""
 	@echo "All tests passed!"
 
-# Coverage target
-coverage:
+# Default test target uses Docker
+test: docker-test
+
+# Coverage target (local - runs inside container)
+coverage-local:
 	$(MAKE) clean
 	@mkdir -p $(COV_DIR)
 	$(MAKE) CFLAGS="$(CFLAGS) -O0 -g --coverage" LDFLAGS="$(LDFLAGS) --coverage" all \
@@ -211,11 +227,14 @@ coverage:
 	        $(BIN_DIR)/test_messaging_posix $(BIN_DIR)/test_udp_posix \
 	        $(BIN_DIR)/test_stats_posix $(BIN_DIR)/test_integration_posix \
 	        $(BIN_DIR)/test_sendex
-	$(MAKE) test
+	$(MAKE) test-local
 	lcov --capture --directory $(OBJ_DIR) --output-file $(COV_DIR)/coverage.info
 	lcov --remove $(COV_DIR)/coverage.info '/usr/*' --ignore-errors unused --output-file $(COV_DIR)/coverage.info
 	genhtml $(COV_DIR)/coverage.info --output-directory $(COV_DIR)/html
 	@echo "Coverage report: $(COV_DIR)/html/index.html"
+
+# Default coverage target uses Docker
+coverage: docker-coverage
 
 # Docker Integration Test (Session 4.6)
 test-integration-docker:
@@ -241,8 +260,9 @@ clean:
 	find src -name "*.gcda" -delete
 	find src -name "*.gcno" -delete
 
-.PHONY: all test test-log test-compat test-foundation test-protocol test-peer \
+.PHONY: all test test-local test-log test-compat test-foundation test-protocol test-peer \
         test-queue test-queue-advanced test-backpressure test-discovery \
         test-messaging test-udp test-stats test-integration-docker \
         test-integration-docker-logs test-integration-docker-clean \
-        valgrind coverage clean
+        docker-build docker-test docker-coverage \
+        valgrind coverage coverage-local clean
