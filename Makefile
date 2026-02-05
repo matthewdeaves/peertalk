@@ -100,6 +100,9 @@ $(BIN_DIR)/test_stats_posix: tests/test_stats_posix.c $(LIBPEERTALK) $(LIBPTLOG)
 $(BIN_DIR)/test_integration_posix: tests/test_integration_posix.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
 
+$(BIN_DIR)/test_integration_full: tests/test_integration_full.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
 $(BIN_DIR)/test_sendex: tests/test_sendex.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
 
