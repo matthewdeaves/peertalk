@@ -60,6 +60,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     make \
     cmake \
+    # Boost runtime libs (Retro68 linker depends on boost_filesystem)
+    libboost-filesystem1.74.0 \
     # HFS disk utilities for Mac
     hfsutils \
     # Coverage
