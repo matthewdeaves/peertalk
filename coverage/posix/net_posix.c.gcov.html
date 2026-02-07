@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2026-02-07 15:33:19</td>
+            <td class="headerValue">2026-02-07 15:59:45</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">36</td>
@@ -2462,52 +2462,53 @@
 <a name="2400"><span class="lineNum">    2400 </span><span class="lineCov">          3 : PeerTalk_Error PeerTalk_ResetStats(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id) {</span></a>
 <a name="2401"><span class="lineNum">    2401 </span><span class="lineCov">          3 :     struct pt_context *ictx = (struct pt_context *)ctx;</span></a>
 <a name="2402"><span class="lineNum">    2402 </span>            :     struct pt_peer *peer;</a>
-<a name="2403"><span class="lineNum">    2403 </span>            :     uint16_t i;</a>
-<a name="2404"><span class="lineNum">    2404 </span>            : </a>
-<a name="2405"><span class="lineNum">    2405 </span>            :     /* Validate parameters */</a>
-<a name="2406"><span class="lineNum">    2406 </span><span class="lineCov">          3 :     if (!ictx || ictx-&gt;magic != PT_CONTEXT_MAGIC) {</span></a>
-<a name="2407"><span class="lineNum">    2407 </span><span class="lineCov">          1 :         return PT_ERR_INVALID_STATE;</span></a>
-<a name="2408"><span class="lineNum">    2408 </span>            :     }</a>
-<a name="2409"><span class="lineNum">    2409 </span>            : </a>
-<a name="2410"><span class="lineNum">    2410 </span><span class="lineCov">          2 :     if (peer_id == 0) {</span></a>
-<a name="2411"><span class="lineNum">    2411 </span>            :         /* Reset global statistics */</a>
-<a name="2412"><span class="lineNum">    2412 </span><span class="lineNoCov">          0 :         pt_memset(&amp;ictx-&gt;global_stats, 0, sizeof(PeerTalk_GlobalStats));</span></a>
-<a name="2413"><span class="lineNum">    2413 </span>            : </a>
-<a name="2414"><span class="lineNum">    2414 </span>            :         /* Reset all peer statistics */</a>
-<a name="2415"><span class="lineNum">    2415 </span><span class="lineNoCov">          0 :         for (i = 0; i &lt; ictx-&gt;max_peers; i++) {</span></a>
-<a name="2416"><span class="lineNum">    2416 </span><span class="lineNoCov">          0 :             peer = &amp;ictx-&gt;peers[i];</span></a>
-<a name="2417"><span class="lineNum">    2417 </span><span class="lineNoCov">          0 :             if (peer-&gt;hot.state != PT_PEER_UNUSED) {</span></a>
-<a name="2418"><span class="lineNum">    2418 </span><span class="lineNoCov">          0 :                 pt_memset(&amp;peer-&gt;cold.stats, 0, sizeof(PeerTalk_PeerStats));</span></a>
-<a name="2419"><span class="lineNum">    2419 </span>            :                 /* Reset latency tracking */</a>
-<a name="2420"><span class="lineNum">    2420 </span><span class="lineNoCov">          0 :                 peer-&gt;hot.latency_ms = 0;</span></a>
-<a name="2421"><span class="lineNum">    2421 </span><span class="lineNoCov">          0 :                 peer-&gt;cold.rtt_index = 0;</span></a>
-<a name="2422"><span class="lineNum">    2422 </span><span class="lineNoCov">          0 :                 peer-&gt;cold.rtt_count = 0;</span></a>
-<a name="2423"><span class="lineNum">    2423 </span><span class="lineNoCov">          0 :                 pt_memset(peer-&gt;cold.rtt_samples, 0, sizeof(peer-&gt;cold.rtt_samples));</span></a>
-<a name="2424"><span class="lineNum">    2424 </span>            :             }</a>
-<a name="2425"><span class="lineNum">    2425 </span>            :         }</a>
-<a name="2426"><span class="lineNum">    2426 </span>            : </a>
-<a name="2427"><span class="lineNum">    2427 </span><span class="lineNoCov">          0 :         PT_CTX_INFO(ictx, PT_LOG_CAT_PERF, &quot;Reset all statistics&quot;);</span></a>
-<a name="2428"><span class="lineNum">    2428 </span>            :     } else {</a>
-<a name="2429"><span class="lineNum">    2429 </span>            :         /* Reset single peer statistics */</a>
-<a name="2430"><span class="lineNum">    2430 </span><span class="lineCov">          2 :         peer = pt_peer_find_by_id(ictx, peer_id);</span></a>
-<a name="2431"><span class="lineNum">    2431 </span><span class="lineCov">          2 :         if (!peer) {</span></a>
-<a name="2432"><span class="lineNum">    2432 </span><span class="lineCov">          1 :             return PT_ERR_PEER_NOT_FOUND;</span></a>
-<a name="2433"><span class="lineNum">    2433 </span>            :         }</a>
-<a name="2434"><span class="lineNum">    2434 </span>            : </a>
-<a name="2435"><span class="lineNum">    2435 </span><span class="lineCov">          1 :         pt_memset(&amp;peer-&gt;cold.stats, 0, sizeof(PeerTalk_PeerStats));</span></a>
-<a name="2436"><span class="lineNum">    2436 </span>            :         /* Reset latency tracking */</a>
-<a name="2437"><span class="lineNum">    2437 </span><span class="lineCov">          1 :         peer-&gt;hot.latency_ms = 0;</span></a>
-<a name="2438"><span class="lineNum">    2438 </span><span class="lineCov">          1 :         peer-&gt;cold.rtt_index = 0;</span></a>
-<a name="2439"><span class="lineNum">    2439 </span><span class="lineCov">          1 :         peer-&gt;cold.rtt_count = 0;</span></a>
-<a name="2440"><span class="lineNum">    2440 </span><span class="lineCov">          1 :         pt_memset(peer-&gt;cold.rtt_samples, 0, sizeof(peer-&gt;cold.rtt_samples));</span></a>
-<a name="2441"><span class="lineNum">    2441 </span>            : </a>
-<a name="2442"><span class="lineNum">    2442 </span><span class="lineCov">          1 :         PT_CTX_INFO(ictx, PT_LOG_CAT_PERF,</span></a>
-<a name="2443"><span class="lineNum">    2443 </span>            :                    &quot;Reset statistics for peer %u&quot;, peer_id);</a>
-<a name="2444"><span class="lineNum">    2444 </span>            :     }</a>
-<a name="2445"><span class="lineNum">    2445 </span>            : </a>
-<a name="2446"><span class="lineNum">    2446 </span><span class="lineCov">          1 :     return PT_OK;</span></a>
-<a name="2447"><span class="lineNum">    2447 </span>            : }</a>
-<a name="2448"><span class="lineNum">    2448 </span>            : </a>
+<a name="2403"><span class="lineNum">    2403 </span>            :     /* cppcheck-suppress variableScope ; C89 style for cross-platform consistency */</a>
+<a name="2404"><span class="lineNum">    2404 </span>            :     uint16_t i;</a>
+<a name="2405"><span class="lineNum">    2405 </span>            : </a>
+<a name="2406"><span class="lineNum">    2406 </span>            :     /* Validate parameters */</a>
+<a name="2407"><span class="lineNum">    2407 </span><span class="lineCov">          3 :     if (!ictx || ictx-&gt;magic != PT_CONTEXT_MAGIC) {</span></a>
+<a name="2408"><span class="lineNum">    2408 </span><span class="lineCov">          1 :         return PT_ERR_INVALID_STATE;</span></a>
+<a name="2409"><span class="lineNum">    2409 </span>            :     }</a>
+<a name="2410"><span class="lineNum">    2410 </span>            : </a>
+<a name="2411"><span class="lineNum">    2411 </span><span class="lineCov">          2 :     if (peer_id == 0) {</span></a>
+<a name="2412"><span class="lineNum">    2412 </span>            :         /* Reset global statistics */</a>
+<a name="2413"><span class="lineNum">    2413 </span><span class="lineNoCov">          0 :         pt_memset(&amp;ictx-&gt;global_stats, 0, sizeof(PeerTalk_GlobalStats));</span></a>
+<a name="2414"><span class="lineNum">    2414 </span>            : </a>
+<a name="2415"><span class="lineNum">    2415 </span>            :         /* Reset all peer statistics */</a>
+<a name="2416"><span class="lineNum">    2416 </span><span class="lineNoCov">          0 :         for (i = 0; i &lt; ictx-&gt;max_peers; i++) {</span></a>
+<a name="2417"><span class="lineNum">    2417 </span><span class="lineNoCov">          0 :             peer = &amp;ictx-&gt;peers[i];</span></a>
+<a name="2418"><span class="lineNum">    2418 </span><span class="lineNoCov">          0 :             if (peer-&gt;hot.state != PT_PEER_UNUSED) {</span></a>
+<a name="2419"><span class="lineNum">    2419 </span><span class="lineNoCov">          0 :                 pt_memset(&amp;peer-&gt;cold.stats, 0, sizeof(PeerTalk_PeerStats));</span></a>
+<a name="2420"><span class="lineNum">    2420 </span>            :                 /* Reset latency tracking */</a>
+<a name="2421"><span class="lineNum">    2421 </span><span class="lineNoCov">          0 :                 peer-&gt;hot.latency_ms = 0;</span></a>
+<a name="2422"><span class="lineNum">    2422 </span><span class="lineNoCov">          0 :                 peer-&gt;cold.rtt_index = 0;</span></a>
+<a name="2423"><span class="lineNum">    2423 </span><span class="lineNoCov">          0 :                 peer-&gt;cold.rtt_count = 0;</span></a>
+<a name="2424"><span class="lineNum">    2424 </span><span class="lineNoCov">          0 :                 pt_memset(peer-&gt;cold.rtt_samples, 0, sizeof(peer-&gt;cold.rtt_samples));</span></a>
+<a name="2425"><span class="lineNum">    2425 </span>            :             }</a>
+<a name="2426"><span class="lineNum">    2426 </span>            :         }</a>
+<a name="2427"><span class="lineNum">    2427 </span>            : </a>
+<a name="2428"><span class="lineNum">    2428 </span><span class="lineNoCov">          0 :         PT_CTX_INFO(ictx, PT_LOG_CAT_PERF, &quot;Reset all statistics&quot;);</span></a>
+<a name="2429"><span class="lineNum">    2429 </span>            :     } else {</a>
+<a name="2430"><span class="lineNum">    2430 </span>            :         /* Reset single peer statistics */</a>
+<a name="2431"><span class="lineNum">    2431 </span><span class="lineCov">          2 :         peer = pt_peer_find_by_id(ictx, peer_id);</span></a>
+<a name="2432"><span class="lineNum">    2432 </span><span class="lineCov">          2 :         if (!peer) {</span></a>
+<a name="2433"><span class="lineNum">    2433 </span><span class="lineCov">          1 :             return PT_ERR_PEER_NOT_FOUND;</span></a>
+<a name="2434"><span class="lineNum">    2434 </span>            :         }</a>
+<a name="2435"><span class="lineNum">    2435 </span>            : </a>
+<a name="2436"><span class="lineNum">    2436 </span><span class="lineCov">          1 :         pt_memset(&amp;peer-&gt;cold.stats, 0, sizeof(PeerTalk_PeerStats));</span></a>
+<a name="2437"><span class="lineNum">    2437 </span>            :         /* Reset latency tracking */</a>
+<a name="2438"><span class="lineNum">    2438 </span><span class="lineCov">          1 :         peer-&gt;hot.latency_ms = 0;</span></a>
+<a name="2439"><span class="lineNum">    2439 </span><span class="lineCov">          1 :         peer-&gt;cold.rtt_index = 0;</span></a>
+<a name="2440"><span class="lineNum">    2440 </span><span class="lineCov">          1 :         peer-&gt;cold.rtt_count = 0;</span></a>
+<a name="2441"><span class="lineNum">    2441 </span><span class="lineCov">          1 :         pt_memset(peer-&gt;cold.rtt_samples, 0, sizeof(peer-&gt;cold.rtt_samples));</span></a>
+<a name="2442"><span class="lineNum">    2442 </span>            : </a>
+<a name="2443"><span class="lineNum">    2443 </span><span class="lineCov">          1 :         PT_CTX_INFO(ictx, PT_LOG_CAT_PERF,</span></a>
+<a name="2444"><span class="lineNum">    2444 </span>            :                    &quot;Reset statistics for peer %u&quot;, peer_id);</a>
+<a name="2445"><span class="lineNum">    2445 </span>            :     }</a>
+<a name="2446"><span class="lineNum">    2446 </span>            : </a>
+<a name="2447"><span class="lineNum">    2447 </span><span class="lineCov">          1 :     return PT_OK;</span></a>
+<a name="2448"><span class="lineNum">    2448 </span>            : }</a>
+<a name="2449"><span class="lineNum">    2449 </span>            : </a>
 </pre>
       </td>
     </tr>

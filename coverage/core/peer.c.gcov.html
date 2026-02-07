@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2026-02-07 15:33:19</td>
+            <td class="headerValue">2026-02-07 15:59:45</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">13</td>
@@ -511,61 +511,62 @@
 <a name="449"><span class="lineNum">     449 </span><span class="lineCov">          9 :     return (elapsed &gt; timeout_ticks) ? 1 : 0;</span></a>
 <a name="450"><span class="lineNum">     450 </span>            : }</a>
 <a name="451"><span class="lineNum">     451 </span>            : </a>
-<a name="452"><span class="lineNum">     452 </span><span class="lineCov">          1 : int pt_peer_check_canaries(struct pt_context *ctx, struct pt_peer *peer)</span></a>
-<a name="453"><span class="lineNum">     453 </span>            : {</a>
-<a name="454"><span class="lineNum">     454 </span><span class="lineCov">          1 :     int corrupted = 0;</span></a>
-<a name="455"><span class="lineNum">     455 </span>            : </a>
-<a name="456"><span class="lineNum">     456 </span><span class="lineCov">          1 :     if (!peer) {</span></a>
-<a name="457"><span class="lineNum">     457 </span><span class="lineNoCov">          0 :         return -1;</span></a>
-<a name="458"><span class="lineNum">     458 </span>            :     }</a>
-<a name="459"><span class="lineNum">     459 </span>            : </a>
-<a name="460"><span class="lineNum">     460 </span>            : #ifdef PT_DEBUG</a>
-<a name="461"><span class="lineNum">     461 </span>            :     /* Check output buffer canary */</a>
-<a name="462"><span class="lineNum">     462 </span>            :     if (peer-&gt;cold.obuf_canary != PT_CANARY_OBUF) {</a>
-<a name="463"><span class="lineNum">     463 </span>            :         if (ctx) {</a>
-<a name="464"><span class="lineNum">     464 </span>            :             PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,</a>
-<a name="465"><span class="lineNum">     465 </span>            :                       &quot;Output buffer overflow detected (peer id=%u): &quot;</a>
-<a name="466"><span class="lineNum">     466 </span>            :                       &quot;expected 0x%08X, got 0x%08X&quot;,</a>
-<a name="467"><span class="lineNum">     467 </span>            :                       peer-&gt;hot.id, PT_CANARY_OBUF, peer-&gt;cold.obuf_canary);</a>
-<a name="468"><span class="lineNum">     468 </span>            :         }</a>
-<a name="469"><span class="lineNum">     469 </span>            :         corrupted = 1;</a>
-<a name="470"><span class="lineNum">     470 </span>            :     }</a>
-<a name="471"><span class="lineNum">     471 </span>            : </a>
-<a name="472"><span class="lineNum">     472 </span>            :     /* Check input buffer canary */</a>
-<a name="473"><span class="lineNum">     473 </span>            :     if (peer-&gt;cold.ibuf_canary != PT_CANARY_IBUF) {</a>
-<a name="474"><span class="lineNum">     474 </span>            :         if (ctx) {</a>
-<a name="475"><span class="lineNum">     475 </span>            :             PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,</a>
-<a name="476"><span class="lineNum">     476 </span>            :                       &quot;Input buffer overflow detected (peer id=%u): &quot;</a>
-<a name="477"><span class="lineNum">     477 </span>            :                       &quot;expected 0x%08X, got 0x%08X&quot;,</a>
-<a name="478"><span class="lineNum">     478 </span>            :                       peer-&gt;hot.id, PT_CANARY_IBUF, peer-&gt;cold.ibuf_canary);</a>
-<a name="479"><span class="lineNum">     479 </span>            :         }</a>
-<a name="480"><span class="lineNum">     480 </span>            :         corrupted = 1;</a>
-<a name="481"><span class="lineNum">     481 </span>            :     }</a>
-<a name="482"><span class="lineNum">     482 </span>            : #else</a>
-<a name="483"><span class="lineNum">     483 </span>            :     /* In release builds, canaries are not present - always return valid */</a>
-<a name="484"><span class="lineNum">     484 </span>            :     (void)ctx;  /* Suppress unused warning */</a>
-<a name="485"><span class="lineNum">     485 </span>            : #endif</a>
-<a name="486"><span class="lineNum">     486 </span>            : </a>
-<a name="487"><span class="lineNum">     487 </span><span class="lineCov">          1 :     return corrupted ? -1 : 0;</span></a>
-<a name="488"><span class="lineNum">     488 </span>            : }</a>
-<a name="489"><span class="lineNum">     489 </span>            : </a>
-<a name="490"><span class="lineNum">     490 </span><span class="lineCov">          3 : void pt_peer_get_info(struct pt_peer *peer, PeerTalk_PeerInfo *info)</span></a>
-<a name="491"><span class="lineNum">     491 </span>            : {</a>
-<a name="492"><span class="lineNum">     492 </span><span class="lineCov">          3 :     if (!peer || !info) {</span></a>
-<a name="493"><span class="lineNum">     493 </span><span class="lineNoCov">          0 :         return;</span></a>
-<a name="494"><span class="lineNum">     494 </span>            :     }</a>
-<a name="495"><span class="lineNum">     495 </span>            : </a>
-<a name="496"><span class="lineNum">     496 </span>            :     /* Copy peer info */</a>
-<a name="497"><span class="lineNum">     497 </span><span class="lineCov">          3 :     pt_memcpy(info, &amp;peer-&gt;cold.info, sizeof(PeerTalk_PeerInfo));</span></a>
-<a name="498"><span class="lineNum">     498 </span>            : </a>
-<a name="499"><span class="lineNum">     499 </span>            :     /* Update fields from hot data */</a>
-<a name="500"><span class="lineNum">     500 </span><span class="lineCov">          3 :     info-&gt;id = peer-&gt;hot.id;</span></a>
-<a name="501"><span class="lineNum">     501 </span><span class="lineCov">          3 :     info-&gt;latency_ms = peer-&gt;hot.latency_ms;</span></a>
-<a name="502"><span class="lineNum">     502 </span><span class="lineCov">          3 :     info-&gt;name_idx = peer-&gt;hot.name_idx;</span></a>
-<a name="503"><span class="lineNum">     503 </span>            : </a>
-<a name="504"><span class="lineNum">     504 </span>            :     /* Update connected field based on current state */</a>
-<a name="505"><span class="lineNum">     505 </span><span class="lineCov">          3 :     info-&gt;connected = (peer-&gt;hot.state == PT_PEER_STATE_CONNECTED) ? 1 : 0;</span></a>
-<a name="506"><span class="lineNum">     506 </span>            : }</a>
+<a name="452"><span class="lineNum">     452 </span>            : /* cppcheck-suppress constParameter ; peer could be const but keeping non-const for API consistency */</a>
+<a name="453"><span class="lineNum">     453 </span><span class="lineCov">          1 : int pt_peer_check_canaries(struct pt_context *ctx, struct pt_peer *peer)</span></a>
+<a name="454"><span class="lineNum">     454 </span>            : {</a>
+<a name="455"><span class="lineNum">     455 </span><span class="lineCov">          1 :     int corrupted = 0;</span></a>
+<a name="456"><span class="lineNum">     456 </span>            : </a>
+<a name="457"><span class="lineNum">     457 </span><span class="lineCov">          1 :     if (!peer) {</span></a>
+<a name="458"><span class="lineNum">     458 </span><span class="lineNoCov">          0 :         return -1;</span></a>
+<a name="459"><span class="lineNum">     459 </span>            :     }</a>
+<a name="460"><span class="lineNum">     460 </span>            : </a>
+<a name="461"><span class="lineNum">     461 </span>            : #ifdef PT_DEBUG</a>
+<a name="462"><span class="lineNum">     462 </span>            :     /* Check output buffer canary */</a>
+<a name="463"><span class="lineNum">     463 </span>            :     if (peer-&gt;cold.obuf_canary != PT_CANARY_OBUF) {</a>
+<a name="464"><span class="lineNum">     464 </span>            :         if (ctx) {</a>
+<a name="465"><span class="lineNum">     465 </span>            :             PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,</a>
+<a name="466"><span class="lineNum">     466 </span>            :                       &quot;Output buffer overflow detected (peer id=%u): &quot;</a>
+<a name="467"><span class="lineNum">     467 </span>            :                       &quot;expected 0x%08X, got 0x%08X&quot;,</a>
+<a name="468"><span class="lineNum">     468 </span>            :                       peer-&gt;hot.id, PT_CANARY_OBUF, peer-&gt;cold.obuf_canary);</a>
+<a name="469"><span class="lineNum">     469 </span>            :         }</a>
+<a name="470"><span class="lineNum">     470 </span>            :         corrupted = 1;</a>
+<a name="471"><span class="lineNum">     471 </span>            :     }</a>
+<a name="472"><span class="lineNum">     472 </span>            : </a>
+<a name="473"><span class="lineNum">     473 </span>            :     /* Check input buffer canary */</a>
+<a name="474"><span class="lineNum">     474 </span>            :     if (peer-&gt;cold.ibuf_canary != PT_CANARY_IBUF) {</a>
+<a name="475"><span class="lineNum">     475 </span>            :         if (ctx) {</a>
+<a name="476"><span class="lineNum">     476 </span>            :             PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,</a>
+<a name="477"><span class="lineNum">     477 </span>            :                       &quot;Input buffer overflow detected (peer id=%u): &quot;</a>
+<a name="478"><span class="lineNum">     478 </span>            :                       &quot;expected 0x%08X, got 0x%08X&quot;,</a>
+<a name="479"><span class="lineNum">     479 </span>            :                       peer-&gt;hot.id, PT_CANARY_IBUF, peer-&gt;cold.ibuf_canary);</a>
+<a name="480"><span class="lineNum">     480 </span>            :         }</a>
+<a name="481"><span class="lineNum">     481 </span>            :         corrupted = 1;</a>
+<a name="482"><span class="lineNum">     482 </span>            :     }</a>
+<a name="483"><span class="lineNum">     483 </span>            : #else</a>
+<a name="484"><span class="lineNum">     484 </span>            :     /* In release builds, canaries are not present - always return valid */</a>
+<a name="485"><span class="lineNum">     485 </span>            :     (void)ctx;  /* Suppress unused warning */</a>
+<a name="486"><span class="lineNum">     486 </span>            : #endif</a>
+<a name="487"><span class="lineNum">     487 </span>            : </a>
+<a name="488"><span class="lineNum">     488 </span><span class="lineCov">          1 :     return corrupted ? -1 : 0;</span></a>
+<a name="489"><span class="lineNum">     489 </span>            : }</a>
+<a name="490"><span class="lineNum">     490 </span>            : </a>
+<a name="491"><span class="lineNum">     491 </span><span class="lineCov">          3 : void pt_peer_get_info(struct pt_peer *peer, PeerTalk_PeerInfo *info)</span></a>
+<a name="492"><span class="lineNum">     492 </span>            : {</a>
+<a name="493"><span class="lineNum">     493 </span><span class="lineCov">          3 :     if (!peer || !info) {</span></a>
+<a name="494"><span class="lineNum">     494 </span><span class="lineNoCov">          0 :         return;</span></a>
+<a name="495"><span class="lineNum">     495 </span>            :     }</a>
+<a name="496"><span class="lineNum">     496 </span>            : </a>
+<a name="497"><span class="lineNum">     497 </span>            :     /* Copy peer info */</a>
+<a name="498"><span class="lineNum">     498 </span><span class="lineCov">          3 :     pt_memcpy(info, &amp;peer-&gt;cold.info, sizeof(PeerTalk_PeerInfo));</span></a>
+<a name="499"><span class="lineNum">     499 </span>            : </a>
+<a name="500"><span class="lineNum">     500 </span>            :     /* Update fields from hot data */</a>
+<a name="501"><span class="lineNum">     501 </span><span class="lineCov">          3 :     info-&gt;id = peer-&gt;hot.id;</span></a>
+<a name="502"><span class="lineNum">     502 </span><span class="lineCov">          3 :     info-&gt;latency_ms = peer-&gt;hot.latency_ms;</span></a>
+<a name="503"><span class="lineNum">     503 </span><span class="lineCov">          3 :     info-&gt;name_idx = peer-&gt;hot.name_idx;</span></a>
+<a name="504"><span class="lineNum">     504 </span>            : </a>
+<a name="505"><span class="lineNum">     505 </span>            :     /* Update connected field based on current state */</a>
+<a name="506"><span class="lineNum">     506 </span><span class="lineCov">          3 :     info-&gt;connected = (peer-&gt;hot.state == PT_PEER_STATE_CONNECTED) ? 1 : 0;</span></a>
+<a name="507"><span class="lineNum">     507 </span>            : }</a>
 </pre>
       </td>
     </tr>

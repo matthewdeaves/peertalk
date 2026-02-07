@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-02-07T15:33:24.805098Z",
-  "commit": "5515ba4",
+  "timestamp": "2026-02-07T15:59:50.808482Z",
+  "commit": "2c5d2dc",
   "branch": "develop",
   "test_results": {
-    "total_tests": 29,
-    "passed": 29,
+    "total_tests": 30,
+    "passed": 30,
     "failed": 0,
     "pass_rate": 100.0,
     "test_details": [
@@ -150,6 +150,11 @@
       },
       {
         "file": "test_unknown.c",
+        "name": "shutdown_double_call...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
         "name": "ptlog_integration...",
         "status": "PASS"
       }
@@ -177,9 +182,9 @@
   "ci_metrics": {
     "workflow_name": "PeerTalk CI",
     "build_duration_sec": 1,
-    "test_duration_sec": 69,
+    "test_duration_sec": 68,
     "coverage_duration_sec": 68,
-    "total_duration_sec": 138,
+    "total_duration_sec": 137,
     "jobs": {
       "build-posix": {
         "status": "success",
@@ -196,18 +201,18 @@
     }
   },
   "binary_size": {
-    "libpeertalk_bytes": 440462,
+    "libpeertalk_bytes": 440478,
     "libptlog_bytes": 38882,
-    "total_lib_bytes": 479344,
-    "core_obj_bytes": 267256,
+    "total_lib_bytes": 479360,
+    "core_obj_bytes": 267272,
     "posix_obj_bytes": 169800,
     "log_obj_bytes": 38360,
-    "total_obj_bytes": 475416,
+    "total_obj_bytes": 475432,
     "source_files": 13,
-    "source_lines": 7579,
+    "source_lines": 7592,
     "header_files": 2,
     "header_lines": 1282,
-    "total_lines": 8861
+    "total_lines": 8874
   },
   "complexity": {
     "tool": "pmccabe",
@@ -238,7 +243,7 @@
       {
         "function": "pt_vsnprintf",
         "file": "src/core/pt_compat.c",
-        "line": 436,
+        "line": 437,
         "complexity": 24
       },
       {
@@ -274,7 +279,7 @@
     ]
   },
   "test_count": {
-    "timestamp": "2026-02-07T15:33:19Z",
+    "timestamp": "2026-02-07T15:59:46Z",
     "summary": {
       "total_tests": 226,
       "test_files": 36,
@@ -329,126 +334,11 @@
   "static_analysis": {
     "tool": "cppcheck",
     "version": "Cppcheck 2.7",
-    "total_issues": 27,
+    "total_issues": 11,
     "by_severity": {
-      "information": 11,
-      "style": 9,
-      "warning": 6,
-      "error": 1
+      "information": 11
     },
     "issues": [
-      {
-        "id": "uninitvar",
-        "severity": "error",
-        "message": "Uninitialized variable: pname",
-        "file": "src/log/pt_log_mac.c",
-        "line": 244
-      },
-      {
-        "id": "zerodivcond",
-        "severity": "warning",
-        "message": "Either the condition 'uvalue>0' is redundant or there is division by zero at line 388.",
-        "file": "src/core/pt_compat.c",
-        "line": 388
-      },
-      {
-        "id": "invalidPrintfArgType_uint",
-        "severity": "warning",
-        "message": "%u in format string (no. 1) requires 'unsigned int' but the argument type is 'unsigned long'.",
-        "file": "src/log/pt_log_posix.c",
-        "line": 299
-      },
-      {
-        "id": "invalidPrintfArgType_uint",
-        "severity": "warning",
-        "message": "%u in format string (no. 1) requires 'unsigned int' but the argument type is 'unsigned long'.",
-        "file": "src/log/pt_log_posix.c",
-        "line": 342
-      },
-      {
-        "id": "invalidPrintfArgType_uint",
-        "severity": "warning",
-        "message": "%u in format string (no. 3) requires 'unsigned int' but the argument type is 'unsigned long'.",
-        "file": "src/log/pt_log_posix.c",
-        "line": 342
-      },
-      {
-        "id": "invalidPrintfArgType_uint",
-        "severity": "warning",
-        "message": "%u in format string (no. 1) requires 'unsigned int' but the argument type is 'unsigned long'.",
-        "file": "src/log/pt_log_posix.c",
-        "line": 353
-      },
-      {
-        "id": "invalidPrintfArgType_uint",
-        "severity": "warning",
-        "message": "%u in format string (no. 2) requires 'unsigned int' but the argument type is 'unsigned long'.",
-        "file": "src/log/pt_log_posix.c",
-        "line": 353
-      },
-      {
-        "id": "constParameter",
-        "severity": "style",
-        "message": "Parameter 'peer' can be declared with const",
-        "file": "src/core/peer.c",
-        "line": 452
-      },
-      {
-        "id": "constParameter",
-        "severity": "style",
-        "message": "Parameter 'flags' can be declared with const",
-        "file": "src/core/pt_compat.c",
-        "line": 106
-      },
-      {
-        "id": "constParameter",
-        "severity": "style",
-        "message": "Parameter 'flags' can be declared with const",
-        "file": "src/core/pt_compat.c",
-        "line": 149
-      },
-      {
-        "id": "variableScope",
-        "severity": "style",
-        "message": "The scope of the variable 'last_pressure_level' can be reduced.",
-        "file": "src/core/queue.c",
-        "line": 107
-      },
-      {
-        "id": "variableScope",
-        "severity": "style",
-        "message": "The scope of the variable 'slot' can be reduced.",
-        "file": "src/core/queue.c",
-        "line": 449
-      },
-      {
-        "id": "arrayIndexThenCheck",
-        "severity": "style",
-        "message": "Array index 'len' is used before limits check.",
-        "file": "src/log/pt_log_mac.c",
-        "line": 103
-      },
-      {
-        "id": "variableScope",
-        "severity": "style",
-        "message": "The scope of the variable 'i' can be reduced.",
-        "file": "src/log/pt_log_mac.c",
-        "line": 344
-      },
-      {
-        "id": "variableScope",
-        "severity": "style",
-        "message": "The scope of the variable 'dst' can be reduced.",
-        "file": "src/log/pt_log_mac.c",
-        "line": 345
-      },
-      {
-        "id": "variableScope",
-        "severity": "style",
-        "message": "The scope of the variable 'i' can be reduced.",
-        "file": "src/posix/net_posix.c",
-        "line": 2403
-      },
       {
         "id": "toomanyconfigs",
         "severity": "information",
@@ -532,9 +422,9 @@
     "tool": "jscpd",
     "version": "3.5.10",
     "total_duplicates": 13,
-    "total_lines": 5118,
+    "total_lines": 5130,
     "duplicate_lines": 222,
-    "percentage": 4.34,
+    "percentage": 4.33,
     "clones": [
       {
         "lines": 20,
@@ -551,19 +441,19 @@
         "lines": 9,
         "tokens": 0,
         "first_file": "src/log/pt_log_mac.c",
-        "first_start": 134,
-        "first_end": 142,
+        "first_start": 135,
+        "first_end": 143,
         "second_file": "src/log/pt_log_mac.c",
-        "second_start": 117,
-        "second_end": 125,
+        "second_start": 118,
+        "second_end": 126,
         "fragment": "ype creator, OSType fileType) {\n    HParamBlockRec pb;\n    OSErr err;\n\n    memset(&pb, 0, sizeof(pb));\n    pb.fileParam.ioNamePtr = (StringPtr)name;\n    pb.fileParam.ioVRefNum = vRefNum;\n    pb.filePa"
       },
       {
         "lines": 33,
         "tokens": 0,
         "first_file": "src/log/pt_log_mac.c",
-        "first_start": 198,
-        "first_end": 230,
+        "first_start": 199,
+        "first_end": 231,
         "second_file": "src/log/pt_log_posix.c",
         "second_start": 130,
         "second_end": 162,
@@ -573,8 +463,8 @@
         "lines": 26,
         "tokens": 0,
         "first_file": "src/log/pt_log_mac.c",
-        "first_start": 267,
-        "first_end": 292,
+        "first_start": 269,
+        "first_end": 294,
         "second_file": "src/log/pt_log_posix.c",
         "second_start": 181,
         "second_end": 205,
@@ -584,8 +474,8 @@
         "lines": 27,
         "tokens": 0,
         "first_file": "src/log/pt_log_mac.c",
-        "first_start": 374,
-        "first_end": 400,
+        "first_start": 379,
+        "first_end": 405,
         "second_file": "src/log/pt_log_posix.c",
         "second_start": 247,
         "second_end": 273,
@@ -595,44 +485,44 @@
         "lines": 18,
         "tokens": 0,
         "first_file": "src/core/queue.c",
-        "first_start": 322,
-        "first_end": 339,
+        "first_start": 323,
+        "first_end": 340,
         "second_file": "src/core/queue.c",
-        "second_start": 273,
-        "second_end": 291,
+        "second_start": 274,
+        "second_end": 292,
         "fragment": " q->count--;\n\n    /* Update has_data flag */\n    if (q->count == 0) {\n        q->has_data = 0;\n    }\n\n    return 0;\n}\n\nint pt_queue_peek(pt_queue *q, void **data, uint16_t *len)\n{\n    pt_queue_slot *s"
       },
       {
         "lines": 12,
         "tokens": 0,
         "first_file": "src/core/queue.c",
-        "first_start": 367,
-        "first_end": 378,
+        "first_start": 368,
+        "first_end": 379,
         "second_file": "src/core/queue.c",
-        "second_start": 307,
-        "second_end": 319,
+        "second_start": 308,
+        "second_end": 320,
         "fragment": "me(pt_queue *q)\n{\n    pt_queue_slot *slot;\n\n    if (!q || q->magic != PT_QUEUE_MAGIC || q->count == 0) {\n        return;\n    }\n\n    /* Clear front slot */\n    slot = &q->slots[q->read_idx];\n    slot->"
       },
       {
         "lines": 20,
         "tokens": 0,
         "first_file": "src/core/queue.c",
-        "first_start": 787,
-        "first_end": 806,
+        "first_start": 789,
+        "first_end": 808,
         "second_file": "src/core/queue.c",
-        "second_start": 708,
-        "second_end": 727,
+        "second_start": 710,
+        "second_end": 729,
         "fragment": "ot_idx;\n    }\n\n    q->write_idx = (q->write_idx + 1) & q->capacity_mask;\n    q->count++;\n    q->has_data = 1;\n\n    return 0;\n}\n\n/*\n * ISR-safe push with coalescing (for MacTCP ASR) - O(1) hash lookup\n"
       },
       {
         "lines": 21,
         "tokens": 0,
         "first_file": "src/core/queue.c",
-        "first_start": 841,
-        "first_end": 861,
+        "first_start": 843,
+        "first_end": 863,
         "second_file": "src/core/queue.c",
-        "second_start": 766,
-        "second_end": 786,
+        "second_start": 768,
+        "second_end": 788,
         "fragment": "   /* Add to priority list (next_slot is IN the slot for traversal locality) */\n    slot->next_slot = PT_SLOT_NONE;\n    if (ext->prio_tail[priority] == PT_SLOT_NONE) {\n        ext->prio_head[priority]"
       },
       {
