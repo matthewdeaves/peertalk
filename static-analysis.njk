@@ -1,0 +1,176 @@
+---
+layout: layouts/base.njk
+title: Static Analysis Report
+permalink: static-analysis.html
+---
+
+<div class="dashboard-header">
+  <h1>Static Analysis Report</h1>
+  <p class="last-update">Cppcheck findings with links to source code</p>
+  <p><a href="./">&larr; Back to Dashboard</a></p>
+</div>
+
+<div id="static-analysis-content">
+  <div class="report-summary" id="report-summary">
+    <p>Loading...</p>
+  </div>
+
+  <div class="issues-list" id="issues-list">
+  </div>
+</div>
+
+<script>
+const metricsByBranch = {{ metricsByBranch | dump | safe }};
+const defaultBranch = "{{ defaultBranch }}";
+const ghRepo = "https://github.com/matthewdeaves/peertalk";
+
+function getSeverityClass(severity) {
+  switch (severity) {
+    case 'error': return 'severity-error';
+    case 'warning': return 'severity-warning';
+    case 'style': return 'severity-style';
+    case 'performance': return 'severity-performance';
+    default: return 'severity-info';
+  }
+}
+
+function renderReport() {
+  const metrics = metricsByBranch[defaultBranch] || [];
+  if (metrics.length === 0 || !metrics[0].static_analysis) {
+    document.getElementById('report-summary').innerHTML = '<p>No static analysis data available.</p>';
+    return;
+  }
+
+  const latest = metrics[0];
+  const sa = latest.static_analysis;
+  const commit = latest.commit || 'develop';
+
+  // Summary
+  let summaryHtml = '<div class="summary-grid">';
+  summaryHtml += '<div class="summary-card"><h3>Total Issues</h3><div class="summary-value">' + sa.total_issues + '</div></div>';
+
+  if (sa.by_severity) {
+    for (const [severity, count] of Object.entries(sa.by_severity)) {
+      summaryHtml += '<div class="summary-card ' + getSeverityClass(severity) + '">';
+      summaryHtml += '<h3>' + severity.charAt(0).toUpperCase() + severity.slice(1) + '</h3>';
+      summaryHtml += '<div class="summary-value">' + count + '</div></div>';
+    }
+  }
+  summaryHtml += '</div>';
+  document.getElementById('report-summary').innerHTML = summaryHtml;
+
+  // Issues list
+  if (!sa.issues || sa.issues.length === 0) {
+    document.getElementById('issues-list').innerHTML = '<p class="no-issues">No issues to display.</p>';
+    return;
+  }
+
+  let issuesHtml = '<table class="issues-table"><thead><tr>';
+  issuesHtml += '<th>Severity</th><th>ID</th><th>File</th><th>Line</th><th>Message</th>';
+  issuesHtml += '</tr></thead><tbody>';
+
+  for (const issue of sa.issues) {
+    const fileLink = issue.file && issue.line
+      ? ghRepo + '/blob/' + commit + '/' + issue.file + '#L' + issue.line
+      : '#';
+    const fileName = issue.file ? issue.file.split('/').pop() : 'unknown';
+
+    issuesHtml += '<tr class="' + getSeverityClass(issue.severity) + '">';
+    issuesHtml += '<td><span class="severity-badge">' + issue.severity + '</span></td>';
+    issuesHtml += '<td><code>' + (issue.id || '') + '</code></td>';
+    issuesHtml += '<td><a href="' + fileLink + '" target="_blank">' + fileName + '</a></td>';
+    issuesHtml += '<td>' + (issue.line || '') + '</td>';
+    issuesHtml += '<td>' + (issue.message || '') + '</td>';
+    issuesHtml += '</tr>';
+  }
+
+  issuesHtml += '</tbody></table>';
+  document.getElementById('issues-list').innerHTML = issuesHtml;
+}
+
+document.addEventListener('DOMContentLoaded', renderReport);
+</script>
+
+<style>
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.summary-card {
+  background: var(--bg-card);
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+  border-left: 4px solid var(--color-primary);
+}
+
+.summary-card h3 {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.summary-value {
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+.severity-error { border-left-color: #dc3545; }
+.severity-warning { border-left-color: #ffc107; }
+.severity-style { border-left-color: #17a2b8; }
+.severity-performance { border-left-color: #6f42c1; }
+.severity-info { border-left-color: #6c757d; }
+
+.issues-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-card);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.issues-table th,
+.issues-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.issues-table th {
+  background: #e9ecef;
+  font-weight: 600;
+}
+
+.issues-table tr:hover {
+  background: #f8f9fa;
+}
+
+.issues-table a {
+  color: var(--color-primary);
+}
+
+.severity-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+tr.severity-error .severity-badge { background: #f8d7da; color: #721c24; }
+tr.severity-warning .severity-badge { background: #fff3cd; color: #856404; }
+tr.severity-style .severity-badge { background: #d1ecf1; color: #0c5460; }
+tr.severity-performance .severity-badge { background: #e2d5f1; color: #4a2578; }
+tr.severity-info .severity-badge { background: #e2e3e5; color: #383d41; }
+
+.no-issues {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+}
+</style>
