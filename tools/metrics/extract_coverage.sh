@@ -12,20 +12,22 @@ if [ ! -f "$COVERAGE_FILE" ]; then
     exit 1
 fi
 
+# lcov summary format: "  lines......: 74.6% (1795 of 2406 lines)"
 lcov --summary "$COVERAGE_FILE" 2>&1 | awk '
   /lines......:/ {
     line_pct=$2;
     gsub(/%/, "", line_pct);
-    split($4, a, "/");
-    line_covered=a[1];
-    line_total=a[2];
+    # Format: (COVERED of TOTAL lines)
+    gsub(/[()]/, "", $3);  # Remove parentheses from $3
+    line_covered=$3;
+    line_total=$5;
   }
   /functions..:/ {
     func_pct=$2;
     gsub(/%/, "", func_pct);
-    split($4, a, "/");
-    func_covered=a[1];
-    func_total=a[2];
+    gsub(/[()]/, "", $3);
+    func_covered=$3;
+    func_total=$5;
   }
   END {
     printf "{\n";

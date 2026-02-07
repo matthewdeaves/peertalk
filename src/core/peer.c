@@ -21,11 +21,9 @@ int pt_peer_list_init(struct pt_context *ctx, uint16_t max_peers)
     alloc_size = sizeof(struct pt_peer) * max_peers;
     ctx->peers = (struct pt_peer *)pt_alloc_clear(alloc_size);
     if (!ctx->peers) {
-        if (ctx) {
-            PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,
-                      "Failed to allocate %zu bytes for %u peers",
-                      alloc_size, max_peers);
-        }
+        PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,
+                  "Failed to allocate %zu bytes for %u peers",
+                  alloc_size, max_peers);
         return PT_ERR_NO_MEMORY;
     }
 
@@ -41,11 +39,9 @@ int pt_peer_list_init(struct pt_context *ctx, uint16_t max_peers)
     ctx->max_peers = max_peers;
     ctx->peer_count = 0;
 
-    if (ctx) {
-        PT_CTX_INFO(ctx, PT_LOG_CAT_INIT,
-                   "Peer list initialized: %u slots, %zu bytes",
-                   max_peers, alloc_size);
-    }
+    PT_CTX_INFO(ctx, PT_LOG_CAT_INIT,
+               "Peer list initialized: %u slots, %zu bytes",
+               max_peers, alloc_size);
 
     return 0;
 }
@@ -235,10 +231,8 @@ struct pt_peer *pt_peer_create(struct pt_context *ctx,
     /* Find unused slot */
     peer = pt_peer_find_unused(ctx);
     if (!peer) {
-        if (ctx) {
-            PT_CTX_WARN(ctx, PT_LOG_CAT_CONNECT,
-                       "No available peer slots (max %u)", ctx->max_peers);
-        }
+        PT_CTX_WARN(ctx, PT_LOG_CAT_CONNECT,
+                   "No available peer slots (max %u)", ctx->max_peers);
         return NULL;
     }
 
@@ -302,26 +296,22 @@ struct pt_peer *pt_peer_create(struct pt_context *ctx,
     /* Increment peer count */
     ctx->peer_count++;
 
-    if (ctx) {
-        PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT,
-                   "Peer created: id=%u name='%s' addr=0x%08X port=%u",
-                   peer->hot.id, ctx->peer_names[peer->hot.name_idx], ip, port);
-    }
+    PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT,
+               "Peer created: id=%u name='%s' addr=0x%08X port=%u",
+               peer->hot.id, ctx->peer_names[peer->hot.name_idx], ip, port);
 
     return peer;
 }
 
 void pt_peer_destroy(struct pt_context *ctx, struct pt_peer *peer)
 {
-    if (!peer || peer->hot.magic != PT_PEER_MAGIC) {
+    if (!ctx || !peer || peer->hot.magic != PT_PEER_MAGIC) {
         return;
     }
 
-    if (ctx) {
-        PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT,
-                   "Peer destroyed: id=%u name='%s'",
-                   peer->hot.id, ctx->peer_names[peer->hot.name_idx]);
-    }
+    PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT,
+               "Peer destroyed: id=%u name='%s'",
+               peer->hot.id, ctx->peer_names[peer->hot.name_idx]);
 
     /* Clear sensitive data */
     peer->hot.magic = 0;
@@ -333,7 +323,7 @@ void pt_peer_destroy(struct pt_context *ctx, struct pt_peer *peer)
     peer->hot.connection = NULL;
 
     /* Decrement peer count */
-    if (ctx && ctx->peer_count > 0) {
+    if (ctx->peer_count > 0) {
         ctx->peer_count--;
     }
 }
