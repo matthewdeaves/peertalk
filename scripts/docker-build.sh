@@ -8,7 +8,7 @@
 # - All required build tools
 #
 # Usage:
-#   ./scripts/docker-build.sh         # Pull from Docker Hub (fast)
+#   ./scripts/docker-build.sh         # Pull from GHCR (fast)
 #   ./scripts/docker-build.sh --build # Build locally (30-60 min)
 
 set -e
@@ -55,7 +55,7 @@ if [[ "$1" == "--build" ]]; then
         exit 1
     fi
 else
-    echo "Pulling PeerTalk development container from Docker Hub..."
+    echo "Pulling PeerTalk development container from GitHub Container Registry..."
     echo ""
 
     if ! docker pull "$IMAGE_NAME"; then
