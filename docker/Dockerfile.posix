@@ -3,47 +3,45 @@
 #
 # Build: docker build -t peertalk-posix -f docker/Dockerfile.posix .
 # Run:   docker run -it -v $(pwd):/workspace peertalk-posix
+#
+# Size target: <500MB
 
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install build tools and static analysis
-RUN apt-get update && apt-get install -y \
+# Install only what's needed for building and testing
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Core build tools
     build-essential \
     make \
-    git \
+    # Coverage
+    lcov \
+    # Python for scripts
     python3 \
     python3-pip \
     python3-venv \
-    curl \
-    jq \
-    lcov \
-    bc \
-    universal-ctags \
-    clang-format \
-    # Static analysis tools
+    # Static analysis
     cppcheck \
     pmccabe \
-    valgrind \
-    # Node.js for jscpd
+    # Shell math
+    bc \
+    # Node.js for jscpd (code duplication)
     nodejs \
     npm \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
-# Install Python-based analysis tools
+# Install Python analysis tools in venv
 RUN python3 -m venv /opt/venv && \
-    /opt/venv/bin/pip install --upgrade pip && \
-    /opt/venv/bin/pip install lizard flawfinder click rich
+    /opt/venv/bin/pip install --no-cache-dir --upgrade pip && \
+    /opt/venv/bin/pip install --no-cache-dir lizard flawfinder click rich
 
-# Add venv to PATH
 ENV PATH="/opt/venv/bin:${PATH}"
 
-# Install Node-based analysis tools
-RUN npm install -g jscpd@3
+# Install jscpd for code duplication detection
+RUN npm install -g jscpd@3 && npm cache clean --force
 
-# Create workspace
 WORKDIR /workspace
 
-# Default command
 CMD ["/bin/bash"]
