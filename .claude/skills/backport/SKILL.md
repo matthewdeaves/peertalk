@@ -1,12 +1,12 @@
 ---
 name: backport
-description: Sync tooling improvements to starter-template branch. Copies latest .claude/, docker/, tools/, scripts/, and CI workflows from the current branch to starter-template. Use periodically to keep the template current.
+description: Sync tooling and plans to starter-template branch. Copies latest .claude/, docker/, tools/, scripts/, plan/, and CI workflows from the current branch to starter-template, resetting plan statuses to OPEN. Use periodically to keep the template current.
 argument-hint: "[--dry-run]"
 ---
 
 # Sync Tooling to Starter Template
 
-Syncs the latest tooling files from the development branch to `starter-template`, keeping it current with improvements to Claude Code setup, Docker environment, and build scripts.
+Syncs the latest tooling files and phase plans from the development branch to `starter-template`, keeping it current with improvements to Claude Code setup, Docker environment, build scripts, and implementation plans.
 
 ## Usage
 
@@ -25,6 +25,7 @@ Syncs the latest tooling files from the development branch to `starter-template`
 | `scripts/` | Automation scripts |
 | `.github/workflows/` | CI/CD pipelines |
 | `dashboard/` | Metrics dashboard |
+| `plan/` | Phase plans (statuses reset to OPEN) |
 | `.clang-format` | Code formatting |
 | `.gitignore` | Ignore patterns |
 | `.mcp.json.example` | MCP configuration template |
@@ -38,7 +39,6 @@ Syncs the latest tooling files from the development branch to `starter-template`
 | `tests/` | Test code (SDK-specific) |
 | `build/` | Build artifacts |
 | `packages/` | Built packages |
-| `plan/` | Phase plans (review manually) |
 | `CLAUDE.md` | Has SDK-specific sections (review manually) |
 | `README.md` | Has SDK status info (review manually) |
 
@@ -76,18 +76,34 @@ git checkout $CURRENT -- \
     scripts/ \
     .github/workflows/ \
     dashboard/ \
+    plan/ \
     .clang-format \
     .gitignore \
     .mcp.json.example
 ```
 
-**Step 5:** Show what changed
+**Step 5:** Reset plan statuses to OPEN
+```bash
+# Reset phase-level statuses (DONE, [DONE], [DONE] ✓) to OPEN
+for f in plan/PHASE-*.md; do
+    sed -i 's/> \*\*Status:\*\* \[DONE\] ✓/> **Status:** OPEN/' "$f"
+    sed -i 's/> \*\*Status:\*\* \[DONE\]/> **Status:** OPEN/' "$f"
+    sed -i 's/> \*\*Status:\*\* DONE/> **Status:** OPEN/' "$f"
+done
+
+# Remove "ALL SESSIONS COMPLETE" lines
+sed -i '/\*\*Status:\*\* ✅ ALL SESSIONS COMPLETE/d' plan/PHASE-*.md
+
+git add plan/
+```
+
+**Step 6:** Show what changed
 ```bash
 git status
 git diff --cached --stat
 ```
 
-**Step 6:** If `--dry-run`, revert and exit
+**Step 7:** If `--dry-run`, revert and exit
 ```bash
 git checkout .
 git checkout $CURRENT
@@ -95,13 +111,13 @@ echo "Dry run complete - no changes made"
 exit 0
 ```
 
-**Step 7:** Commit and push
+**Step 8:** Commit and push
 ```bash
 git commit -m "Sync tooling from $CURRENT ($(date +%Y-%m-%d))"
 git push origin starter-template
 ```
 
-**Step 8:** Return to development branch
+**Step 9:** Return to development branch
 ```bash
 git checkout $CURRENT
 echo "✓ Synced to starter-template"
@@ -176,9 +192,6 @@ git diff develop:CLAUDE.md starter-template:CLAUDE.md
 
 ### README.md
 Has project status that differs between branches. Usually keep separate.
-
-### plan/*.md
-Phase plans are SDK-specific but contain valuable patterns. Consider syncing structure but resetting session statuses to OPEN.
 
 ## Troubleshooting
 
