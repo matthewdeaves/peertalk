@@ -100,7 +100,8 @@ static const char *g_version = "1.0.0";
 
 static void c_to_pstr(const char *c_str, Str255 p_str) {
     int len = 0;
-    while (c_str[len] && len < 255) {
+    /* Check bounds before array access to avoid reading past buffer */
+    while (len < 255 && c_str[len]) {
         p_str[len + 1] = c_str[len];
         len++;
     }
@@ -241,6 +242,7 @@ int PT_LogSetFile(PT_Log *log, const char *filename) {
 
     if (!filename) return 0;
 
+    /* cppcheck-suppress uninitvar ; pname is output buffer for c_to_pstr */
     c_to_pstr(filename, pname);
 
     /* Create file if it doesn't exist (ignore dupFNErr if it does) */
@@ -341,7 +343,10 @@ static void flush_buffer(PT_Log *log) {
 }
 
 static void write_to_buffer(PT_Log *log, const char *str, int len) {
+    /* C89 style: declare at function start for Classic Mac compiler compatibility */
+    /* cppcheck-suppress variableScope ; C89 requires declarations at block start */
     int i;
+    /* cppcheck-suppress variableScope ; C89 requires declarations at block start */
     char *dst;
     const char *src;
 

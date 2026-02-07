@@ -2400,6 +2400,7 @@ PeerTalk_Error PeerTalk_GetPeerStats(PeerTalk_Context *ctx, PeerTalk_PeerID peer
 PeerTalk_Error PeerTalk_ResetStats(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id) {
     struct pt_context *ictx = (struct pt_context *)ctx;
     struct pt_peer *peer;
+    /* cppcheck-suppress variableScope ; C89 style for cross-platform consistency */
     uint16_t i;
 
     /* Validate parameters */

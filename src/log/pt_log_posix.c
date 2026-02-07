@@ -296,6 +296,7 @@ void PT_LogWriteV(
 
     /* Format: [timestamp][LEVEL] message\n */
     level_name = PT_LogLevelName(level);
+    /* cppcheck-suppress invalidPrintfArgType_uint ; uint32_t is unsigned int on unix64 */
     prefix_len = snprintf(line, PT_LOG_LINE_MAX, "[%08u][%s] ",
                           timestamp_ms, level_name);
 
@@ -339,6 +340,7 @@ void PT_LogPerf(PT_Log *log, const PT_LogPerfEntry *entry, const char *label) {
         int len;
 
         if (label && *label) {
+            /* cppcheck-suppress invalidPrintfArgType_uint ; uint32_t/uint16_t are unsigned int compatible */
             len = snprintf(line, PT_LOG_LINE_MAX,
                 "[%08u][INF] PERF %s: seq=%u type=%u v1=%u v2=%u flags=0x%02X cat=0x%04X\n",
                 entry->timestamp_ms,
@@ -350,6 +352,7 @@ void PT_LogPerf(PT_Log *log, const PT_LogPerfEntry *entry, const char *label) {
                 entry->flags,
                 entry->category);
         } else {
+            /* cppcheck-suppress invalidPrintfArgType_uint ; uint32_t/uint16_t are unsigned int compatible */
             len = snprintf(line, PT_LOG_LINE_MAX,
                 "[%08u][INF] PERF seq=%u type=%u v1=%u v2=%u flags=0x%02X cat=0x%04X\n",
                 entry->timestamp_ms,

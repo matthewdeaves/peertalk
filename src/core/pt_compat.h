@@ -118,11 +118,11 @@ void pt_atomic_clear_bit(pt_atomic_t *flags, int bit);
 
 /**
  * Test if a bit is set.
- * @param flags Pointer to flags word
+ * @param flags Pointer to flags word (const - read only)
  * @param bit Bit number (0-31)
  * @return Non-zero if bit is set, zero otherwise
  */
-int pt_atomic_test_bit(pt_atomic_t *flags, int bit);
+int pt_atomic_test_bit(const pt_atomic_t *flags, int bit);
 
 /**
  * Test and clear a bit atomically (main loop only).

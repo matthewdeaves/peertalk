@@ -103,7 +103,7 @@ void pt_atomic_clear_bit(pt_atomic_t *flags, int bit) {
     *flags &= ~(1U << bit);
 }
 
-int pt_atomic_test_bit(pt_atomic_t *flags, int bit) {
+int pt_atomic_test_bit(const pt_atomic_t *flags, int bit) {
     return (*flags & (1U << bit)) != 0;
 }
 
@@ -146,7 +146,7 @@ void pt_atomic_clear_bit(pt_atomic_t *flags, int bit) {
     *flags &= ~(1U << bit);
 }
 
-int pt_atomic_test_bit(pt_atomic_t *flags, int bit) {
+int pt_atomic_test_bit(const pt_atomic_t *flags, int bit) {
     return (*flags & (1U << bit)) != 0;
 }
 
@@ -385,6 +385,7 @@ static int pt_format_int(long value, int base, int width, int zero_pad,
         temp[len++] = '0';
     } else {
         while (uvalue > 0 && len < (int)sizeof(temp)) {
+            /* cppcheck-suppress zerodivcond ; base is always 10 or 16 from callers */
             temp[len++] = digits[uvalue % base];
             uvalue /= base;
         }

@@ -104,6 +104,7 @@ int pt_queue_push(struct pt_context *ctx, pt_queue *q,
 {
     pt_queue_slot *slot;
     uint8_t pressure;
+    /* cppcheck-suppress variableScope ; static var must persist across calls for threshold tracking */
     static uint8_t last_pressure_level = 0;  /* Track for logging thresholds */
 
     if (!q || q->magic != PT_QUEUE_MAGIC || !data) {
@@ -446,6 +447,7 @@ int pt_queue_coalesce(pt_queue *q, const void *data, uint16_t len)
     uint16_t i;
     uint16_t search_start;
     uint16_t search_count;
+    /* cppcheck-suppress variableScope ; C89 style for Classic Mac compiler compatibility */
     pt_queue_slot *slot;
 
     if (!q || q->magic != PT_QUEUE_MAGIC || !data) {

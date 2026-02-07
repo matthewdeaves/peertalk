@@ -449,6 +449,7 @@ int pt_peer_is_timed_out(struct pt_peer *peer, pt_tick_t now,
     return (elapsed > timeout_ticks) ? 1 : 0;
 }
 
+/* cppcheck-suppress constParameter ; peer could be const but keeping non-const for API consistency */
 int pt_peer_check_canaries(struct pt_context *ctx, struct pt_peer *peer)
 {
     int corrupted = 0;
