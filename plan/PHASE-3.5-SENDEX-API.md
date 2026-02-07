@@ -6,6 +6,7 @@
 > **Produces:** `PeerTalk_SendEx()` API with priority, coalescing, and unreliable send support
 > **Risk Level:** LOW
 > **Estimated Sessions:** 1
+> **Implementation Complete:** 2026-02-04 - PeerTalk_SendEx() implemented in src/core/send.c with full priority/coalescing/unreliable support. Tests passing in test_sendex.c.
 > **Review Applied:** 2026-01-29 - All claims verified against MPW headers, MacTCP/OT/AppleTalk docs, and Inside Macintosh; priority lookup table optimization added; logging categories corrected
 
 ## Fact-Check Summary

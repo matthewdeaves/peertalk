@@ -185,8 +185,8 @@ PeerTalk_Error PeerTalk_SendEx(
 
 | Session | Focus | Status | Files Created/Modified | Tests | Verify |
 |---------|-------|--------|------------------------|-------|--------|
-| 3.1 | Priority & Coalesce | [OPEN] | `src/core/queue.c` (enhance) | `tests/test_queue_advanced.c` | Priority order, coalescing |
-| 3.2 | Backpressure & Batch | [OPEN] | `src/core/queue.c`, `src/core/send.c` | `tests/test_backpressure.c` | Pressure thresholds, batch send |
+| 3.1 | Priority & Coalesce | [DONE] | `src/core/queue.c` (enhance) | `tests/test_queue_advanced.c` | Priority order, coalescing |
+| 3.2 | Backpressure & Batch | [DONE] | `src/core/queue.c`, `src/core/send.c` | `tests/test_backpressure.c` | Pressure thresholds, batch send |
 
 > **Note:** Public API integration (`PeerTalk_SendEx`) moved to Phase 3.5 to resolve Phase 4 dependency.
 

@@ -1,10 +1,11 @@
 # PHASE 0: PT_Log - Cross-Platform Logging Library
 
-> **Status:** [OPEN]
+> **Status:** OPEN
 > **Depends on:** None
 > **Produces:** Standalone logging library for POSIX and Classic Mac
 > **Risk Level:** Low
 > **Estimated Sessions:** 4
+> **Implementation Complete:** 2026-02-04 - All sessions implemented, tested, and integrated. POSIX and Mac implementations present in src/log/. PT_LogCreate() integrated into PeerTalk_Init().
 > **Review Applied:** 2026-01-30 - All claims re-verified; added ISR-safety guard macro, error logging checklist, PT_LogPerf decision matrix, initialization logging guidance, callback error contract
 
 ## Fact-Check Summary
@@ -101,11 +102,11 @@ PT_Log structures are designed for CPU cache efficiency:
 
 | Session | Focus | Status | Files Created/Modified | Tests | Verify |
 |---------|-------|--------|------------------------|-------|--------|
-| 0.1 | Core API & Types | [OPEN] | `include/pt_log.h` | None | Header compiles; PT_LogPerfEntry.category field present |
-| 0.2 | POSIX Implementation | [OPEN] | `src/log/pt_log_posix.c` | `tests/test_log_posix.c` | Logs to file/console; hot fields first; valgrind clean |
-| 0.3.1 | Classic Mac Implementation | [OPEN] | `src/log/pt_log_mac.c` | None | 256-byte buffer; inline copy; sprintf retval; real Mac test |
-| 0.3.2 | Retro68 Build Config | [OPEN] | `src/log/CMakeLists.txt` | None | Builds for 68k and PPC with Retro68 |
-| 0.4 | Callbacks & Performance | [OPEN] | `src/log/pt_log.c` (shared) | `tests/test_log_perf.c` | Callbacks fire; perf category filtering works |
+| 0.1 | Core API & Types | [DONE] | `include/pt_log.h` | None | Header compiles; PT_LogPerfEntry.category field present |
+| 0.2 | POSIX Implementation | [DONE] | `src/log/pt_log_posix.c` | `tests/test_log_posix.c` | Logs to file/console; hot fields first; valgrind clean |
+| 0.3.1 | Classic Mac Implementation | [DONE] | `src/log/pt_log_mac.c` | None | 256-byte buffer; inline copy; sprintf retval; real Mac test |
+| 0.3.2 | Retro68 Build Config | [DONE] | `src/log/CMakeLists.txt` | None | Builds for 68k and PPC with Retro68 |
+| 0.4 | Callbacks & Performance | [DONE] | `tests/test_log_perf.c`, `Makefile` | `tests/test_log_perf.c` | Callbacks fire; perf category filtering works |
 
 ### Status Key
 - **[OPEN]** - Not started
@@ -1534,58 +1535,6 @@ PT_LOG_INFO(log, CAT, "File: %s", truncated);
 ```
 
 **This is a hard platform limitation.** There is no safe alternative on Classic Mac toolbox.
-
----
-
-### Platform-Specific Message Size Limits
-
-The following table summarizes the buffer and message size constraints for each platform:
-
-| Platform | Buffer Size | Safe Message Length | Rationale | Enforcement |
-|----------|-------------|---------------------|-----------|-------------|
-| **POSIX** | 512 bytes | ~460 bytes | Standard library has bounds checking (vsnprintf) | Runtime truncation |
-| **Classic Mac** | **256 bytes** | **192 bytes** | vsprintf has NO bounds checking; 68030 cache is 256 bytes | **CALLER MUST ENSURE** |
-
-**Critical Notes:**
-
-1. **Mac message limit is HARD:** Messages exceeding 192 bytes WILL corrupt the stack. There is no runtime protection.
-2. **Buffer includes timestamp:** The 256-byte buffer holds timestamp (e.g., `[00001234][INF] `) + message + newline, so the actual message space is ~192 bytes.
-3. **POSIX is safer:** vsnprintf truncates safely, but you should still keep messages under 460 bytes for clarity.
-4. **Cache optimization:** 256 bytes fits exactly in the 68030's data cache, improving performance on cache-equipped 68k Macs.
-
-**Recommended Practices:**
-
-```c
-/* DO: Keep messages concise and bounded */
-PT_LOG_INFO(log, CAT, "Peer connected: id=%u", peer_id);
-PT_LOG_ERR(log, CAT, "Connection failed: err=%d", err_code);
-
-/* DON'T: Log unbounded strings */
-PT_LOG_DEBUG(log, CAT, "User input: %s", user_input);  /* BAD: could be 1KB+ */
-
-/* DO: Truncate before logging */
-char name_trunc[32];
-strncpy(name_trunc, peer_name, 31);
-name_trunc[31] = '\0';
-PT_LOG_INFO(log, CAT, "Peer: %s", name_trunc);
-```
-
-**Compile-Time Verification:**
-
-Consider adding a compile-time assertion to verify buffer size constraints:
-
-```c
-#ifdef PT_PLATFORM_MAC
-    #if PT_LOG_BUFFER_SIZE > 256
-        #error "Mac PT_Log buffer must be <= 256 bytes (cache efficiency)"
-    #endif
-    #if PT_LOG_LINE_MAX > 192
-        #error "Mac PT_Log line max must be <= 192 bytes (vsprintf safety)"
-    #endif
-#endif
-```
-
-This assertion can be added to `src/log/pt_log_mac.c` to catch accidental buffer size increases during development.
 
 ---
 
