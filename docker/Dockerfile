@@ -60,11 +60,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     make \
     cmake \
-    # Boost runtime libs for Retro68 tools (linker, Rez, etc.)
-    # wave depends on: filesystem, thread, regex
+    # Boost runtime libs for Retro68 tools (linker, Rez, MakePEF, etc.)
+    # These are runtime-only libs (~10MB), not the huge -dev packages
     libboost-filesystem1.74.0 \
     libboost-wave1.74.0 \
     libboost-regex1.74.0 \
+    libboost-program-options1.74.0 \
+    libboost-iostreams1.74.0 \
     # HFS disk utilities for Mac
     hfsutils \
     # Coverage
