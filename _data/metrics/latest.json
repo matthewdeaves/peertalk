@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-02-07T15:03:11.318415Z",
-  "commit": "7272f73",
+  "timestamp": "2026-02-07T15:33:24.805098Z",
+  "commit": "5515ba4",
   "branch": "develop",
   "test_results": {
-    "total_tests": 26,
-    "passed": 26,
+    "total_tests": 29,
+    "passed": 29,
     "failed": 0,
     "pass_rate": 100.0,
     "test_details": [
@@ -130,12 +130,27 @@
       },
       {
         "file": "test_unknown.c",
+        "name": "platform_memory...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
         "name": "dod_struct_sizes...",
         "status": "PASS"
       },
       {
         "file": "test_unknown.c",
+        "name": "dod_lookup_table...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
         "name": "init_null_config...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "ptlog_integration...",
         "status": "PASS"
       }
     ]
@@ -143,10 +158,10 @@
   "coverage": {
     "line_coverage": 74.6,
     "function_coverage": 95.2,
-    "lines_covered": 0,
-    "lines_total": 0,
-    "functions_covered": 0,
-    "functions_total": 0
+    "lines_covered": 1795,
+    "lines_total": 2406,
+    "functions_covered": 159,
+    "functions_total": 167
   },
   "isr_safety": {
     "total_violations": 0,
@@ -181,18 +196,18 @@
     }
   },
   "binary_size": {
-    "libpeertalk_bytes": 440854,
+    "libpeertalk_bytes": 440462,
     "libptlog_bytes": 38882,
-    "total_lib_bytes": 479736,
-    "core_obj_bytes": 267648,
+    "total_lib_bytes": 479344,
+    "core_obj_bytes": 267256,
     "posix_obj_bytes": 169800,
     "log_obj_bytes": 38360,
-    "total_obj_bytes": 475808,
+    "total_obj_bytes": 475416,
     "source_files": 13,
-    "source_lines": 7589,
+    "source_lines": 7579,
     "header_files": 2,
     "header_lines": 1282,
-    "total_lines": 8871
+    "total_lines": 8861
   },
   "complexity": {
     "tool": "pmccabe",
@@ -205,7 +220,7 @@
       {
         "function": "pt_peer_set_state",
         "file": "src/core/peer.c",
-        "line": 345,
+        "line": 335,
         "complexity": 16
       },
       {
@@ -259,7 +274,7 @@
     ]
   },
   "test_count": {
-    "timestamp": "2026-02-07T15:03:06Z",
+    "timestamp": "2026-02-07T15:33:19Z",
     "summary": {
       "total_tests": 226,
       "test_files": 36,
@@ -314,11 +329,11 @@
   "static_analysis": {
     "tool": "cppcheck",
     "version": "Cppcheck 2.7",
-    "total_issues": 32,
+    "total_issues": 27,
     "by_severity": {
       "information": 11,
-      "style": 12,
-      "warning": 8,
+      "style": 9,
+      "warning": 6,
       "error": 1
     },
     "issues": [
@@ -328,20 +343,6 @@
         "message": "Uninitialized variable: pname",
         "file": "src/log/pt_log_mac.c",
         "line": 244
-      },
-      {
-        "id": "nullPointerRedundantCheck",
-        "severity": "warning",
-        "message": "Either the condition 'ctx' is redundant or there is possible null pointer dereference: ctx.",
-        "file": "src/core/peer.c",
-        "line": 303
-      },
-      {
-        "id": "nullPointerRedundantCheck",
-        "severity": "warning",
-        "message": "Either the condition 'ctx' is redundant or there is possible null pointer dereference: ctx.",
-        "file": "src/core/peer.c",
-        "line": 329
       },
       {
         "id": "zerodivcond",
@@ -386,32 +387,11 @@
         "line": 353
       },
       {
-        "id": "knownConditionTrueFalse",
-        "severity": "style",
-        "message": "Condition 'ctx' is always true",
-        "file": "src/core/peer.c",
-        "line": 24
-      },
-      {
-        "id": "knownConditionTrueFalse",
-        "severity": "style",
-        "message": "Condition 'ctx' is always true",
-        "file": "src/core/peer.c",
-        "line": 44
-      },
-      {
-        "id": "knownConditionTrueFalse",
-        "severity": "style",
-        "message": "Condition 'ctx' is always true",
-        "file": "src/core/peer.c",
-        "line": 238
-      },
-      {
         "id": "constParameter",
         "severity": "style",
         "message": "Parameter 'peer' can be declared with const",
         "file": "src/core/peer.c",
-        "line": 462
+        "line": 452
       },
       {
         "id": "constParameter",
@@ -552,9 +532,9 @@
     "tool": "jscpd",
     "version": "3.5.10",
     "total_duplicates": 13,
-    "total_lines": 5128,
+    "total_lines": 5118,
     "duplicate_lines": 222,
-    "percentage": 4.33,
+    "percentage": 4.34,
     "clones": [
       {
         "lines": 20,
@@ -681,22 +661,22 @@
         "lines": 7,
         "tokens": 0,
         "first_file": "src/core/peer.c",
-        "first_start": 189,
-        "first_end": 195,
+        "first_start": 185,
+        "first_end": 191,
         "second_file": "src/core/peer.c",
-        "second_start": 119,
-        "second_end": 126,
+        "second_start": 115,
+        "second_end": 122,
         "fragment": "_peer *pt_peer_find_unused(struct pt_context *ctx)\n{\n    uint16_t i;\n\n    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {\n        return NULL;\n    }\n\n    for (i = 0; i < ctx->max_peers; i++) {\n   "
       },
       {
         "lines": 8,
         "tokens": 0,
         "first_file": "src/core/peer.c",
-        "first_start": 291,
-        "first_end": 298,
+        "first_start": 285,
+        "first_end": 292,
         "second_file": "src/core/peer.c",
-        "second_start": 223,
-        "second_end": 232,
+        "second_start": 219,
+        "second_end": 228,
         "fragment": ";\n\n    /* Clear connection handle */\n    peer->hot.connection = NULL;\n\n    /* Copy name */\n    if (name && name[0] != '\\0') {\n        size_t name_len = pt_strlen(name);\n        if (name_len > PT_MAX_P"
       }
     ]
