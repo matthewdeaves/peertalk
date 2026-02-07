@@ -39,7 +39,11 @@ TEST_BINS = $(BIN_DIR)/test_log $(BIN_DIR)/test_log_perf $(BIN_DIR)/test_log_thr
             $(BIN_DIR)/test_loopback_messaging $(BIN_DIR)/test_protocol_messaging \
             $(BIN_DIR)/test_bidirectional $(BIN_DIR)/test_tcp_send_recv \
             $(BIN_DIR)/test_discovery_recv $(BIN_DIR)/test_error_strings \
-            $(BIN_DIR)/test_perf_benchmarks $(BIN_DIR)/test_protocol_fuzz
+            $(BIN_DIR)/test_perf_benchmarks $(BIN_DIR)/test_protocol_fuzz \
+            $(BIN_DIR)/test_queue_threads
+
+# Unity-based tests (optional - requires Unity framework)
+TEST_UNITY_BINS = $(BIN_DIR)/test_queue_unity
 
 # Integration test (requires docker-compose with multiple peers)
 INTEGRATION_TEST_BIN = $(BIN_DIR)/test_integration_full
@@ -151,6 +155,13 @@ $(BIN_DIR)/test_perf_benchmarks: tests/test_perf_benchmarks.c $(LIBPEERTALK) $(L
 $(BIN_DIR)/test_protocol_fuzz: tests/test_protocol_fuzz.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
 
+$(BIN_DIR)/test_queue_threads: tests/test_queue_threads.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -D_DEFAULT_SOURCE -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
+# Unity-based tests
+$(BIN_DIR)/test_queue_unity: tests/test_queue_unity.c tests/unity/unity.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ tests/test_queue_unity.c tests/unity/unity.c -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
 # Test runners
 test-log: $(BIN_DIR)/test_log $(BIN_DIR)/test_log_perf $(BIN_DIR)/test_log_threads
 	@echo "Running PT_Log tests..."
@@ -210,6 +221,14 @@ test-sendex: $(BIN_DIR)/test_sendex
 	@echo "Running Phase 3.5 SendEx API tests..."
 	@$(BIN_DIR)/test_sendex
 
+test-queue-threads: $(BIN_DIR)/test_queue_threads
+	@echo "Running queue thread safety tests..."
+	@$(BIN_DIR)/test_queue_threads
+
+test-unity: $(BIN_DIR)/test_queue_unity
+	@echo "Running Unity-based queue tests..."
+	@$(BIN_DIR)/test_queue_unity
+
 # Valgrind memory check
 valgrind: $(BIN_DIR)/test_log $(BIN_DIR)/test_log_perf $(BIN_DIR)/test_log_threads \
           $(BIN_DIR)/test_compat $(BIN_DIR)/test_foundation $(BIN_DIR)/test_protocol \
@@ -256,7 +275,7 @@ docker-coverage:
 	@docker run --rm -v $(PWD):/workspace -w /workspace peertalk-dev bash -c "make coverage-local"
 
 # Local targets (run inside container or on host with dependencies)
-test-local: test-log test-compat test-foundation test-protocol test-peer test-queue test-queue-advanced test-backpressure test-discovery test-messaging test-udp test-stats test-integration-posix test-sendex test-api-errors test-queue-extended test-batch-send test-connection test-loopback-messaging test-protocol-messaging test-bidirectional test-tcp-send-recv test-discovery-recv test-error-strings test-fuzz
+test-local: test-log test-compat test-foundation test-protocol test-peer test-queue test-queue-advanced test-backpressure test-discovery test-messaging test-udp test-stats test-integration-posix test-sendex test-api-errors test-queue-extended test-batch-send test-connection test-loopback-messaging test-protocol-messaging test-bidirectional test-tcp-send-recv test-discovery-recv test-error-strings test-fuzz test-queue-threads
 	@echo ""
 	@echo "All tests passed!"
 

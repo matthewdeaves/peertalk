@@ -437,6 +437,115 @@ static void test_peer_timeout(void)
     PASS();
 }
 
+/* Test timeout edge cases (time wraparound, zero timeout, boundary conditions) */
+static void test_peer_timeout_edge_cases(void)
+{
+    TEST("test_peer_timeout_edge_cases");
+
+    struct pt_context *ctx = create_test_context();
+    struct pt_peer *peer;
+    int timed_out;
+
+    if (!ctx) {
+        FAIL("Failed to create context");
+        return;
+    }
+
+    pt_peer_list_init(ctx, 8);
+
+    peer = pt_peer_create(ctx, "TimeoutEdge", 0xC0A80001, 5006);
+    if (!peer) {
+        FAIL("pt_peer_create failed");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Edge Case 1: Zero timeout - should always be timed out if any time passed */
+    peer->hot.last_seen = 100;
+    timed_out = pt_peer_is_timed_out(peer, 101, 0);
+    if (timed_out != 1) {
+        FAIL("Zero timeout should always trigger timeout");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Edge Case 2: Same time as last_seen with zero timeout */
+    timed_out = pt_peer_is_timed_out(peer, 100, 0);
+    if (timed_out != 0) {
+        FAIL("Zero elapsed time should not timeout even with zero timeout");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Edge Case 3: Exact boundary (elapsed == timeout) */
+    peer->hot.last_seen = 1000;
+    timed_out = pt_peer_is_timed_out(peer, 1200, 200);
+    if (timed_out != 0) {
+        FAIL("Exact boundary (elapsed==timeout) should NOT timeout");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Edge Case 4: One tick past boundary */
+    timed_out = pt_peer_is_timed_out(peer, 1201, 200);
+    if (timed_out != 1) {
+        FAIL("One tick past boundary should timeout");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Edge Case 5: Time wraparound - current time wrapped around (smaller than last_seen) */
+    /* This simulates tick counter overflow: last_seen=0xFFFFFFF0, now=0x00000010 */
+    peer->hot.last_seen = 0xFFFFFFF0;
+    /* After wraparound: elapsed = 0x00000010 - 0xFFFFFFF0 = 0x20 = 32 */
+    timed_out = pt_peer_is_timed_out(peer, 0x00000010, 100);
+    if (timed_out != 0) {
+        FAIL("Time wraparound with elapsed=32, timeout=100 should not timeout");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Edge Case 6: Time wraparound with timeout exceeded */
+    /* elapsed = 0x00000100 - 0xFFFFFFF0 = 0x110 = 272 (after wrap) */
+    timed_out = pt_peer_is_timed_out(peer, 0x00000100, 200);
+    if (timed_out != 1) {
+        FAIL("Time wraparound with elapsed=272, timeout=200 should timeout");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Edge Case 7: Maximum timeout value (UINT32_MAX) */
+    peer->hot.last_seen = 0;
+    timed_out = pt_peer_is_timed_out(peer, 1000000, 0xFFFFFFFF);
+    if (timed_out != 0) {
+        FAIL("Max timeout should not trigger timeout for small elapsed time");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Edge Case 8: last_seen at UINT32_MAX, now at 0 (just wrapped) */
+    peer->hot.last_seen = 0xFFFFFFFF;
+    timed_out = pt_peer_is_timed_out(peer, 0, 100);
+    /* elapsed = 0 - 0xFFFFFFFF = 1 (unsigned wraparound) */
+    if (timed_out != 0) {
+        FAIL("Just-wrapped time (elapsed=1) should not timeout with timeout=100");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Edge Case 9: Very large timeout near UINT32_MAX */
+    peer->hot.last_seen = 0;
+    timed_out = pt_peer_is_timed_out(peer, 0xFFFFFFFE, 0xFFFFFFFF);
+    if (timed_out != 0) {
+        FAIL("Large elapsed near max should not timeout when timeout=UINT32_MAX");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    destroy_test_context(ctx);
+    PASS();
+}
+
 /* Test canary checks */
 static void test_peer_canaries(void)
 {
@@ -676,6 +785,7 @@ int main(void)
     test_peer_state_transitions();
     test_peer_state_edge_cases();
     test_peer_timeout();
+    test_peer_timeout_edge_cases();
     test_peer_canaries();
     test_peer_get_info();
 

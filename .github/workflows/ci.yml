@@ -183,6 +183,9 @@ jobs:
           # Extract test results
           ./tools/metrics/extract_test_results.sh /tmp/test_output.txt > /tmp/metrics/test_results.json
 
+          # Extract test count metrics
+          ./tools/metrics/extract_test_count.sh /tmp/test_output.txt > /tmp/metrics/test_count.json
+
           # Extract coverage metrics
           ./tools/metrics/extract_coverage.sh > /tmp/metrics/coverage.json
 
@@ -214,7 +217,8 @@ jobs:
             /tmp/metrics/ci_metrics.json \
             /tmp/metrics/aggregated.json \
             /tmp/metrics/binary_size.json \
-            /tmp/metrics/complexity.json
+            /tmp/metrics/complexity.json \
+            /tmp/metrics/test_count.json
 
           echo "Aggregated metrics:"
           cat /tmp/metrics/aggregated.json | python3 -m json.tool

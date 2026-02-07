@@ -8,8 +8,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 def main():
-    if len(sys.argv) < 7 or len(sys.argv) > 9:
-        print("Usage: aggregate_metrics.py <test> <coverage> <isr> <quality> <ci> <output> [binary_size] [complexity]")
+    if len(sys.argv) < 7 or len(sys.argv) > 10:
+        print("Usage: aggregate_metrics.py <test> <coverage> <isr> <quality> <ci> <output> [binary_size] [complexity] [test_count]")
         sys.exit(1)
 
     test_file = sys.argv[1]
@@ -20,6 +20,7 @@ def main():
     output_file = sys.argv[6]
     binary_size_file = sys.argv[7] if len(sys.argv) > 7 else None
     complexity_file = sys.argv[8] if len(sys.argv) > 8 else None
+    test_count_file = sys.argv[9] if len(sys.argv) > 9 else None
 
     try:
         # Load all metrics
@@ -47,6 +48,9 @@ def main():
 
         if complexity_file and Path(complexity_file).exists():
             aggregated["complexity"] = json.loads(Path(complexity_file).read_text())
+
+        if test_count_file and Path(test_count_file).exists():
+            aggregated["test_count"] = json.loads(Path(test_count_file).read_text())
 
         # Write output
         Path(output_file).write_text(json.dumps(aggregated, indent=2))
