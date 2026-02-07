@@ -53,7 +53,7 @@ FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install runtime dependencies only
+# Install runtime dependencies and static analysis tools
 RUN apt-get update && apt-get install -y \
     build-essential \
     make \
@@ -70,10 +70,23 @@ RUN apt-get update && apt-get install -y \
     clang-format \
     cmake \
     libboost-all-dev \
+    # Static analysis tools
+    cppcheck \
+    pmccabe \
+    valgrind \
+    # Node.js for jscpd
+    nodejs \
+    npm \
     && rm -rf /var/lib/apt/lists/*
 
-# Install MCP SDK for classic-mac-hardware server
-RUN pip3 install mcp>=1.0.0
+# Install Python-based analysis tools
+RUN pip3 install --break-system-packages \
+    mcp>=1.0.0 \
+    lizard \
+    flawfinder
+
+# Install Node-based analysis tools
+RUN npm install -g jscpd@3
 
 # Install GitHub CLI
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \

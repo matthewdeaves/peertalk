@@ -1,0 +1,17 @@
+{
+  "threshold": 10,
+  "reporters": ["json", "console"],
+  "output": "build/analysis",
+  "ignore": [
+    "**/tests/unity/**",
+    "**/build/**",
+    "**/node_modules/**",
+    "**/*.md"
+  ],
+  "format": ["c", "cpp"],
+  "absolute": false,
+  "gitignore": true,
+  "minLines": 5,
+  "minTokens": 50,
+  "skipLocal": false
+}

@@ -380,6 +380,27 @@ test-integration-docker-clean:
 	@echo "=== Cleaning up Docker Integration Test ==="
 	@docker compose -f docker/docker-compose.test.yml down -v
 
+# Static Analysis
+analyze:
+	@./tools/analyze.sh --all
+
+analyze-quick:
+	@./tools/analyze.sh --quick
+
+analyze-complexity:
+	@./tools/analyze.sh --complexity
+
+analyze-cppcheck:
+	@./tools/analyze.sh --cppcheck
+
+analyze-duplicates:
+	@./tools/analyze.sh --duplicates
+
+# Docker-based analysis (ensures tools are available)
+docker-analyze:
+	@echo "Running static analysis in Docker..."
+	@docker run --rm -v $(PWD):/workspace -w /workspace peertalk-dev ./tools/analyze.sh --all
+
 # Clean
 clean:
 	rm -rf $(BUILD_DIR)
@@ -394,5 +415,7 @@ clean:
         test-api-errors test-queue-extended test-batch-send test-connection \
         test-loopback-messaging test-protocol-messaging test-bidirectional \
         test-tcp-send-recv test-discovery-recv test-error-strings test-benchmarks test-fuzz \
-        docker-build docker-test docker-coverage \
+        test-queue-threads test-unity \
+        docker-build docker-test docker-coverage docker-analyze \
+        analyze analyze-quick analyze-complexity analyze-cppcheck analyze-duplicates \
         valgrind coverage coverage-local clean

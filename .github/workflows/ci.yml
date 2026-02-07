@@ -114,6 +114,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install analysis tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cppcheck pmccabe
+          pip3 install lizard
+          npm install -g jscpd@3
+
       - name: Check file sizes
         run: |
           echo "Checking file sizes (max 500 lines)..."
@@ -134,6 +141,37 @@ jobs:
           echo "Checking for unresolved TODOs..."
           if grep -rn "TODO\|FIXME" --include="*.c" --include="*.h" . 2>/dev/null; then
             echo "::notice::Found TODO/FIXME comments - consider resolving"
+          fi
+
+      - name: Run static analysis
+        run: |
+          mkdir -p build/analysis
+          ./tools/analyze.sh --quick || true
+
+      - name: Check for cppcheck errors
+        run: |
+          if [ -f build/analysis/cppcheck.json ]; then
+            ERRORS=$(python3 -c "import json; d=json.load(open('build/analysis/cppcheck.json')); print(d.get('by_severity', {}).get('error', 0))")
+            if [ "$ERRORS" -gt 0 ]; then
+              echo "::error::cppcheck found $ERRORS error(s)"
+              python3 -c "
+import json
+d = json.load(open('build/analysis/cppcheck.json'))
+for i in [x for x in d.get('issues', []) if x.get('severity') == 'error'][:10]:
+    print(f\"::error file={i.get('file', '?')},line={i.get('line', 0)}::{i.get('message', '?')}\")
+"
+            fi
+          fi
+
+      - name: Check code duplication
+        run: |
+          if [ -f build/analysis/duplicates.json ]; then
+            PCT=$(python3 -c "import json; d=json.load(open('build/analysis/duplicates.json')); print(d.get('percentage', 0))")
+            if (( $(echo "$PCT > 15" | bc -l) )); then
+              echo "::warning::Code duplication is ${PCT}% (threshold: 15%)"
+            else
+              echo "Code duplication: ${PCT}%"
+            fi
           fi
 
   # Collect metrics and update dashboard
