@@ -41,6 +41,22 @@ This repository serves two purposes:
 
 **All Mac testing happens on real hardware**, not emulators.
 
+## Build Environment
+
+**CRITICAL: All building and testing MUST happen inside Docker containers, never on the host.**
+
+```bash
+# Correct - always use Docker
+docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make test
+docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make coverage
+
+# Or use the /build skill which handles Docker automatically
+/build test
+/build coverage
+```
+
+See `.claude/rules/build-requirements.md` for complete Docker command reference.
+
 ## Code Quality Gates
 
 | Gate | Threshold |
@@ -136,16 +152,17 @@ Path: `~/peertalk/books/`
 | Inside Macintosh Volume VI | Table B-3 (interrupt-safe routines) |
 | Programming With AppleTalk | NBP discovery, ADSP connections |
 
-## Platform-Specific Rules
+## Development Rules
 
-Detailed rules for each platform are in `.claude/rules/`:
+Detailed rules are in `.claude/rules/`:
 
+- **build-requirements.md** - Docker-only builds (CRITICAL - always use Docker)
 - **isr-safety.md** - Universal interrupt-time rules
 - **mactcp.md** - MacTCP ASR, error codes, TCPPassiveOpen
 - **opentransport.md** - OT notifier, endpoint states, tilisten
 - **appletalk.md** - ADSP callbacks, NBP, userFlags clearing
 
-These rules are automatically loaded when editing files in the corresponding `src/` directories.
+Platform rules are automatically loaded when editing files in the corresponding `src/` directories.
 
 ## Custom Skills
 
@@ -234,7 +251,8 @@ Each machine entry includes:
     hw-test/                   # Hardware test plan generation
     mac-api/                   # Inside Macintosh API search
     backport/                  # Cherry-pick tooling updates
-  rules/                       # Platform-specific coding rules
+  rules/                       # Development and platform rules
+    build-requirements.md      # Docker-only builds (CRITICAL)
     isr-safety.md              # Universal interrupt-time rules
     mactcp.md                  # MacTCP ASR, TCPPassiveOpen, error codes
     opentransport.md           # OT notifier, endpoint states, tilisten
