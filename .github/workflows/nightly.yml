@@ -1,10 +1,10 @@
 name: Nightly Analysis
 
 on:
+  workflow_dispatch:  # Allow manual trigger
   schedule:
     # Run at 3 AM UTC every day
     - cron: '0 3 * * *'
-  workflow_dispatch:  # Allow manual trigger
 
 jobs:
   cppcheck-full:
