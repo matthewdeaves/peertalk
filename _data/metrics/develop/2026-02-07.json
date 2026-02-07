@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-02-07T16:14:44.070647Z",
-  "commit": "59d6b9d",
+  "timestamp": "2026-02-07T16:21:52.634997Z",
+  "commit": "04461f3",
   "branch": "develop",
   "test_results": {
     "total_tests": 27,
@@ -125,11 +125,6 @@
       },
       {
         "file": "test_unknown.c",
-        "name": "platform_memory...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
         "name": "dod_struct_sizes...",
         "status": "PASS"
       },
@@ -141,6 +136,11 @@
       {
         "file": "test_unknown.c",
         "name": "init_null_config...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "shutdown_double_call...",
         "status": "PASS"
       }
     ]
@@ -167,9 +167,9 @@
   "ci_metrics": {
     "workflow_name": "PeerTalk CI",
     "build_duration_sec": 1,
-    "test_duration_sec": 69,
+    "test_duration_sec": 68,
     "coverage_duration_sec": 68,
-    "total_duration_sec": 138,
+    "total_duration_sec": 137,
     "jobs": {
       "build-posix": {
         "status": "success",
@@ -264,7 +264,7 @@
     ]
   },
   "test_count": {
-    "timestamp": "2026-02-07T16:14:39Z",
+    "timestamp": "2026-02-07T16:21:47Z",
     "summary": {
       "total_tests": 226,
       "test_files": 36,
