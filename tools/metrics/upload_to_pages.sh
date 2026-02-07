@@ -13,9 +13,11 @@ ISR_REPORT="${3:-}"
 DATE=$(date +%Y-%m-%d)
 BRANCH="${GITHUB_REF_NAME:-develop}"
 TEMP_DIR=$(mktemp -d)
+SOURCE_DIR="$(pwd)"
 
 echo "Branch: $BRANCH"
 echo "Date: $DATE"
+echo "Source: $SOURCE_DIR"
 
 # Resolve coverage directory to absolute path before changing directories
 if [ -n "$COVERAGE_DIR" ] && [ -d "$COVERAGE_DIR" ]; then
@@ -63,6 +65,16 @@ if [ -n "$ISR_REPORT" ] && [ -f "$ISR_REPORT" ]; then
     echo "Copying ISR safety report..."
     cp "$ISR_REPORT" isr-report.html
     git add isr-report.html
+fi
+
+# Sync dashboard template files from source repo
+# This ensures dashboard UI updates are automatically deployed
+if [ -d "$SOURCE_DIR/dashboard" ]; then
+    echo "Syncing dashboard template files..."
+    cp "$SOURCE_DIR/dashboard/index.njk" . 2>/dev/null || true
+    cp "$SOURCE_DIR/dashboard/.eleventy.js" . 2>/dev/null || true
+    cp "$SOURCE_DIR/dashboard/assets/css/dashboard.css" assets/css/ 2>/dev/null || true
+    git add index.njk .eleventy.js assets/css/dashboard.css 2>/dev/null || true
 fi
 
 # Commit and push

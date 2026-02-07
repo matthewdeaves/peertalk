@@ -30,7 +30,7 @@ title: PeerTalk Metrics Dashboard
 
     <!-- Coverage Card -->
     <div class="metric-card" id="card-coverage">
-      <h3>Line Coverage</h3>
+      <h3>Test Coverage</h3>
       <div class="metric-value" id="line-coverage">--</div>
       <p class="metric-subtitle" id="coverage-subtitle">Loading...</p>
     </div>
@@ -42,11 +42,11 @@ title: PeerTalk Metrics Dashboard
       <p class="metric-subtitle">violations detected</p>
     </div>
 
-    <!-- CI Timing Card -->
-    <div class="metric-card" id="card-ci">
-      <h3>CI Build Time</h3>
-      <div class="metric-value" id="ci-duration">--</div>
-      <p class="metric-subtitle" id="ci-subtitle">Loading...</p>
+    <!-- Static Analysis Card -->
+    <div class="metric-card" id="card-static">
+      <h3>Static Analysis</h3>
+      <div class="metric-value" id="static-issues">--</div>
+      <p class="metric-subtitle" id="static-subtitle">cppcheck issues</p>
     </div>
   </div>
 
@@ -58,7 +58,7 @@ title: PeerTalk Metrics Dashboard
     </div>
 
     <div class="chart-container">
-      <h2>Coverage Trends</h2>
+      <h2>Test Coverage Trends</h2>
       <canvas id="chart-coverage" width="400" height="200"></canvas>
     </div>
 
@@ -68,8 +68,8 @@ title: PeerTalk Metrics Dashboard
     </div>
 
     <div class="chart-container">
-      <h2>CI Performance</h2>
-      <canvas id="chart-ci-timing" width="400" height="200"></canvas>
+      <h2>Static Analysis Issues</h2>
+      <canvas id="chart-static" width="400" height="200"></canvas>
     </div>
   </div>
 
@@ -79,7 +79,7 @@ title: PeerTalk Metrics Dashboard
     <div class="reports-grid">
       <a href="coverage/" class="report-card">
         <h3>Coverage Report</h3>
-        <p>Detailed line-by-line coverage analysis with source highlighting</p>
+        <p>Detailed line-by-line test coverage with source highlighting</p>
       </a>
       <a href="isr-report.html" class="report-card">
         <h3>ISR Safety Report</h3>
@@ -141,21 +141,17 @@ function updateDashboard(branch) {
   updateCardClass('card-tests', latest.test_results.pass_rate === 100, 'success', 'warning');
 
   document.getElementById('line-coverage').textContent = latest.coverage.line_coverage + '%';
-  let coverageSubtitle = latest.coverage.lines_covered + '/' + latest.coverage.lines_total + ' lines';
-  if (metrics.length > 1) {
-    const change = ((latest.coverage.line_coverage - metrics[1].coverage.line_coverage) /
-                    metrics[1].coverage.line_coverage * 100).toFixed(1);
-    coverageSubtitle += ' <span class="trend">' + change + '% change</span>';
-  }
+  let coverageSubtitle = latest.coverage.lines_covered + '/' + latest.coverage.lines_total + ' lines covered by tests';
   document.getElementById('coverage-subtitle').innerHTML = coverageSubtitle;
   updateCardClass('card-coverage', latest.coverage.line_coverage >= 40, 'success', 'warning');
 
   document.getElementById('isr-violations').textContent = latest.isr_safety.total_violations;
   updateCardClass('card-isr', latest.isr_safety.total_violations === 0, 'success', 'error');
 
-  document.getElementById('ci-duration').textContent = latest.ci_metrics.total_duration_sec + 's';
-  document.getElementById('ci-subtitle').textContent =
-    'Build: ' + latest.ci_metrics.build_duration_sec + 's | Test: ' + latest.ci_metrics.test_duration_sec + 's';
+  // Static analysis (cppcheck) - get from static_analysis if available, otherwise 0
+  const staticIssues = latest.static_analysis ? latest.static_analysis.total_issues : 0;
+  document.getElementById('static-issues').textContent = staticIssues;
+  updateCardClass('card-static', staticIssues === 0, 'success', 'warning');
 
   // Update charts
   updateCharts(metrics.slice(0, 30));
@@ -239,20 +235,23 @@ function updateCharts(metrics) {
     }
   });
 
-  // CI Timing Chart
-  charts.ciTiming = new Chart(document.getElementById('chart-ci-timing'), {
+  // Static Analysis Chart
+  charts.staticAnalysis = new Chart(document.getElementById('chart-static'), {
     type: 'line',
     data: {
       labels: labels,
       datasets: [{
-        label: 'Total Duration (s)',
-        data: metrics.map(m => m.ci_metrics.total_duration_sec).reverse(),
-        borderColor: 'rgb(255, 159, 64)',
+        label: 'Cppcheck Issues',
+        data: metrics.map(m => m.static_analysis ? m.static_analysis.total_issues : 0).reverse(),
+        borderColor: 'rgb(255, 99, 132)',
         tension: 0.1
       }]
     },
     options: {
-      responsive: true
+      responsive: true,
+      scales: {
+        y: { min: 0 }
+      }
     }
   });
 }
