@@ -110,11 +110,12 @@ if ! command -v python3 &> /dev/null; then
 fi
 
 # Create Python virtual environment
-if [ ! -d ".venv" ]; then
-    echo "Creating Python virtual environment..."
-    python3 -m venv .venv
-else
+if [ -f ".venv/bin/activate" ]; then
     echo "Virtual environment already exists"
+else
+    echo "Creating Python virtual environment..."
+    rm -rf .venv 2>/dev/null
+    python3 -m venv .venv
 fi
 
 # Activate and install dependencies
