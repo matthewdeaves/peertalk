@@ -1,12 +1,12 @@
 ---
 name: backport
-description: Suggest tool improvements to cherry-pick to starter-template branch. Use after completing several sessions to identify which commits contain tooling updates (skills, hooks, scripts) that should be backported vs SDK implementation code that should stay on main. Analyzes recent commits and provides ready-to-run cherry-pick commands.
+description: Suggest tool improvements to cherry-pick to starter-template branch. Use after completing several sessions to identify which commits contain tooling updates (skills, hooks, scripts) that should be backported vs SDK implementation code that should stay on main/develop. Analyzes recent commits and provides ready-to-run cherry-pick commands.
 argument-hint: [commit-count]
 ---
 
 # Backport Tool Improvements
 
-Analyzes recent commits on main and suggests which tool improvements should be cherry-picked back to the `starter-template` branch.
+Analyzes recent commits on the current development branch and suggests which tool improvements should be cherry-picked back to the `starter-template` branch.
 
 ## Usage
 
@@ -30,11 +30,12 @@ Use the **Bash tool** to run git commands and parse output. Process the commit l
 
 ## Process
 
-**Step 1:** Verify you're on main branch:
+**Step 1:** Get current branch and verify it's a development branch:
 ```bash
-git rev-parse --abbrev-ref HEAD
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+echo "Analyzing commits on: $CURRENT_BRANCH"
 ```
-If not on main, warn and exit.
+Accept `main` or `develop` as valid development branches. If on `starter-template` or other branch, warn that this skill should be run from the development branch.
 
 **Step 2:** Get commits to analyze:
 ```bash
@@ -82,7 +83,7 @@ For **MIXED** commits:
   SDK: <list SDK files>
   Suggest manual backport:
     git checkout starter-template
-    git checkout main -- <tooling-file1> <tooling-file2>
+    git checkout <current-branch> -- <tooling-file1> <tooling-file2>
     git commit -m "Backport: <description>"
 ```
 
@@ -100,7 +101,7 @@ Summary:
 git checkout starter-template
 git cherry-pick <hash1> <hash2> <hash3>  # Only TOOL commit hashes
 git push origin starter-template
-git checkout main
+git checkout <current-branch>  # Return to original branch (main or develop)
 ```
 
 ## Backport Criteria
@@ -150,7 +151,7 @@ MIXED (manual review):
   Tooling files: .claude/skills/review/SKILL.md
   SDK files: CLAUDE.md (mixed SDK/general content)
   Suggest: git checkout starter-template
-           git checkout main -- .claude/skills/review/SKILL.md
+           git checkout develop -- .claude/skills/review/SKILL.md
            # Review CLAUDE.md changes manually
 
 Summary:
@@ -171,7 +172,7 @@ Run `/backport` after completing a few SDK sessions to identify tool improvement
 git checkout starter-template
 git cherry-pick <hash1> <hash2>
 git push origin starter-template
-git checkout main
+git checkout develop  # or main, whichever you were on
 ```
 
 ## Important Checks
@@ -184,7 +185,7 @@ Since cherry-picked commits get new hashes on starter-template, check by commit 
 git log starter-template --oneline -n 50 --pretty=format:"%s"
 ```
 
-If a commit message from main matches one on starter-template (accounting for "Backport:" prefix), mark as [ALREADY BACKPORTED].
+If a commit message from the current branch matches one on starter-template (accounting for "Backport:" prefix), mark as [ALREADY BACKPORTED].
 
 **Note:** Don't perform destructive checks (like test cherry-picks) - keep analysis read-only.
 
@@ -219,7 +220,8 @@ Categorize files by checking if path starts with or matches:
 - Test on starter-template branch after backporting
 - Consider running `/backport` weekly or after major tool improvements
 - Commits are analyzed in reverse chronological order (newest first)
-- This skill only exists on main (backport it to starter-template if you want it there too)
+- Run from `main` or `develop` branch (whichever is your development branch)
+- This skill may not exist on starter-template (backport it if you want it there)
 
 ## Future Enhancements
 
