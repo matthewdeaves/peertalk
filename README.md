@@ -69,7 +69,7 @@ Launch Claude Code and use skills to guide implementation:
 | Location | Contents |
 |----------|----------|
 | [docs/CLAUDE-CODE-SETUP.md](docs/CLAUDE-CODE-SETUP.md) | **Complete guide** to all Claude Code customizations: skills, hooks, MCP servers, rules |
-| [.claude/skills/](.claude/skills/) | **12 custom commands** like `/build`, `/deploy`, `/execute` - each with docs, scripts, and assets |
+| [.claude/skills/](.claude/skills/) | **14 custom commands** like `/build`, `/deploy`, `/execute` - each with docs, scripts, and assets |
 | [.claude/mcp-servers/](.claude/mcp-servers/) | **MCP server** connecting Claude to real Classic Mac hardware via FTP/[LaunchAPPL](https://github.com/autc04/Retro68?tab=readme-ov-file#launchappl) (deploy, execute, fetch-logs) |
 | [.claude/hooks/](.claude/hooks/) | **Automated checks** that run on file save: ISR safety validation, compile checks, coverage reports |
 | [.claude/rules/](.claude/rules/) | **Platform-specific rules** auto-loaded when editing Mac code: ISR safety, MacTCP, Open Transport, AppleTalk |
