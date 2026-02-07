@@ -26,7 +26,7 @@ Deploy compiled binaries to Classic Mac test machines via FTP.
 
 1. **Binaries built:**
    ```bash
-   /build package    # Creates build/mactcp/ and build/ppc/ binaries
+   /build package    # Creates packages/PeerTalk-68k.bin and packages/PeerTalk-PPC.bin
    ```
 
    **If binaries don't exist yet:**
@@ -50,7 +50,7 @@ Deploy compiled binaries to Classic Mac test machines via FTP.
 
 ```bash
 # Check for binaries
-ls build/mactcp/PeerTalk.bin build/ppc/PeerTalk.bin 2>/dev/null
+ls packages/PeerTalk-68k.bin packages/PeerTalk-PPC.bin 2>/dev/null
 ```
 
 **If binaries don't exist:**
@@ -76,10 +76,9 @@ To test deployment without PeerTalk, use /execute with demo apps.
 ```
 
 **Process:**
-1. Check binary exists: `build/mactcp/PeerTalk.bin` and `PeerTalk.dsk`
+1. Check binary exists: `packages/PeerTalk-68k.bin` (or `PeerTalk-PPC.bin` for Open Transport)
 2. Connect to SE/30 via FTP
-3. Upload both files to `/Applications/PeerTalk/`:
-   - `PeerTalk-mactcp.dsk` (disk image - mount and copy app)
+3. Upload to `Applications:PeerTalk:`:
    - `PeerTalk-mactcp.bin` (binary - use with BinUnpk or LaunchAPPL)
 4. Create version file with metadata
 5. Verify upload succeeded
@@ -135,7 +134,7 @@ classic (Classic II):
 
 ✓ Deployed to 2/2 machines
 
-Binary: build/mactcp/PeerTalk (45.2 KB)
+Binary: packages/PeerTalk-68k.bin (45.2 KB)
 ```
 
 ### Deploy to All Machines (All Platforms)
@@ -149,14 +148,14 @@ Binary: build/mactcp/PeerTalk (45.2 KB)
 Deploying to all machines
 ==========================
 
-MacTCP (build/mactcp/PeerTalk):
+MacTCP (packages/PeerTalk-68k.bin):
   se30 (SE/30):      ✓ (2.1s)
   classic (Classic): ✓ (3.2s)
 
-Open Transport (build/opentransport/PeerTalk):
+Open Transport (packages/PeerTalk-PPC.bin):
   iici (IIci):       ✓ (1.8s)
 
-AppleTalk (build/appletalk/PeerTalk):
+AppleTalk (packages/PeerTalk-68k.bin):
   quadra (Quadra):   ✓ (2.5s)
 
 ✓ Deployed to 4/4 machines
@@ -194,9 +193,17 @@ $ARGUMENTS = "se30 mactcp --verify" → verify=true
 ### Step 2: Check Binary Exists
 
 ```bash
-# Check if binary was built
-if [ ! -f "build/${platform}/PeerTalk" ]; then
-    echo "Binary not found: build/${platform}/PeerTalk"
+# Check if binary was built (platform maps to package name)
+# mactcp → packages/PeerTalk-68k.bin
+# opentransport → packages/PeerTalk-PPC.bin
+BINARY_MAP_mactcp="packages/PeerTalk-68k.bin"
+BINARY_MAP_opentransport="packages/PeerTalk-PPC.bin"
+
+binary_var="BINARY_MAP_${platform}"
+binary_path="${!binary_var}"
+
+if [ ! -f "$binary_path" ]; then
+    echo "Binary not found: $binary_path"
     echo "Run /build package first"
     exit 1
 fi
@@ -229,7 +236,7 @@ import classic_mac_hardware as mac
 result = mac.deploy_binary(
     machine="se30",
     platform="mactcp",
-    binary_path="build/mactcp/PeerTalk"
+    binary_path="packages/PeerTalk-68k.bin"
 )
 ```
 
@@ -239,7 +246,7 @@ Tool: deploy_binary
 Arguments:
   machine: se30
   platform: mactcp
-  binary_path: build/mactcp/PeerTalk
+  binary_path: packages/PeerTalk-68k.bin
 ```
 
 ### Step 5: Verify Upload
@@ -266,15 +273,16 @@ Show:
 ## Binary Path Convention
 
 ```
-Local:  build/{platform}/PeerTalk
-Remote: /Applications/PeerTalk/PeerTalk-{platform}
+Local:  packages/PeerTalk-{arch}.bin
+Remote: Applications:PeerTalk:PeerTalk-{platform}
 ```
 
-**Example:**
-```
-Local:  build/mactcp/PeerTalk
-Remote: /Applications/PeerTalk/PeerTalk-mactcp
-```
+**Platform to Package Mapping:**
+| Platform | Local Package | Remote Name |
+|----------|---------------|-------------|
+| mactcp | `packages/PeerTalk-68k.bin` | `PeerTalk-mactcp` |
+| opentransport | `packages/PeerTalk-PPC.bin` | `PeerTalk-opentransport` |
+| appletalk | `packages/PeerTalk-68k.bin` | `PeerTalk-appletalk` |
 
 ## Version File
 
@@ -298,12 +306,10 @@ This allows tracking which version is deployed on each machine.
 
 ### Binary Not Built
 ```
-✗ Binary not found: build/mactcp/PeerTalk
+✗ Binary not found: packages/PeerTalk-68k.bin
 
 Build first:
   /build package
-  # or
-  /build compile mactcp
 ```
 
 ### Machine Not Configured

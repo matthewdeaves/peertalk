@@ -25,29 +25,11 @@ Without arguments, scans all Mac-specific source directories.
    # Check validator exists
    if [[ ! -f tools/validators/isr_safety.py ]]; then
        echo "❌ ISR validator not found at tools/validators/isr_safety.py"
-       echo "   This tool should be created in Phase 1 or 2"
        exit 1
    fi
 
-   # Check Python available
-   if ! which python3 >/dev/null 2>&1; then
-       echo "❌ Python 3 not found"
-       echo "   Install: sudo apt install python3"
-       exit 1
-   fi
-
-   # Setup virtual environment if needed
-   if [[ ! -d tools/.venv ]]; then
-       echo "Creating Python virtual environment..."
-       python3 -m venv tools/.venv
-       source tools/.venv/bin/activate
-       if [[ -f tools/requirements.txt ]]; then
-           pip install -r tools/requirements.txt
-       fi
-   else
-       source tools/.venv/bin/activate
-   fi
-
+   # Run validator with Python (available in Docker or host)
+   # The validator is a standalone Python script with no dependencies
    echo "✓ Prerequisites OK"
    ```
 
