@@ -172,7 +172,7 @@ jobs:
         with:
           package-name: peertalk-dev
           package-type: container
-          min-versions-to-keep: 3
+          min-versions-to-keep: 1
           delete-only-untagged-versions: true
 
   # Retro68 cross-compilation - builds PeerTalk SDK library for Classic Mac platforms
