@@ -21,33 +21,45 @@ title: PeerTalk Metrics Dashboard
 
 <div id="metrics-content">
   <div class="metrics-grid">
-    <!-- Test Results Card -->
-    <div class="metric-card" id="card-tests">
-      <h3>Test Pass Rate</h3>
-      <div class="metric-value" id="test-pass-rate">--</div>
-      <p class="metric-subtitle" id="test-subtitle">Loading...</p>
-    </div>
+    <!-- Test Results Card - links to test details -->
+    <a href="test-results.html" class="metric-card-link" id="card-tests-link">
+      <div class="metric-card" id="card-tests">
+        <h3>Test Pass Rate</h3>
+        <div class="metric-value" id="test-pass-rate">--</div>
+        <p class="metric-subtitle" id="test-subtitle">Loading...</p>
+        <p class="card-action">View test details &rarr;</p>
+      </div>
+    </a>
 
-    <!-- Coverage Card -->
-    <div class="metric-card" id="card-coverage">
-      <h3>Line Coverage</h3>
-      <div class="metric-value" id="line-coverage">--</div>
-      <p class="metric-subtitle" id="coverage-subtitle">Loading...</p>
-    </div>
+    <!-- Coverage Card - links to coverage report -->
+    <a href="coverage/" class="metric-card-link" id="card-coverage-link">
+      <div class="metric-card" id="card-coverage">
+        <h3>Test Coverage</h3>
+        <div class="metric-value" id="line-coverage">--</div>
+        <p class="metric-subtitle" id="coverage-subtitle">Loading...</p>
+        <p class="card-action">View coverage report &rarr;</p>
+      </div>
+    </a>
 
-    <!-- ISR Safety Card -->
-    <div class="metric-card" id="card-isr">
-      <h3>ISR Safety</h3>
-      <div class="metric-value" id="isr-violations">--</div>
-      <p class="metric-subtitle">violations detected</p>
-    </div>
+    <!-- ISR Safety Card - links to ISR report -->
+    <a href="isr-report.html" class="metric-card-link" id="card-isr-link">
+      <div class="metric-card" id="card-isr">
+        <h3>ISR Safety</h3>
+        <div class="metric-value" id="isr-violations">--</div>
+        <p class="metric-subtitle">violations detected</p>
+        <p class="card-action">View ISR report &rarr;</p>
+      </div>
+    </a>
 
-    <!-- CI Timing Card -->
-    <div class="metric-card" id="card-ci">
-      <h3>CI Build Time</h3>
-      <div class="metric-value" id="ci-duration">--</div>
-      <p class="metric-subtitle" id="ci-subtitle">Loading...</p>
-    </div>
+    <!-- Static Analysis Card - links to static analysis report -->
+    <a href="static-analysis.html" class="metric-card-link" id="card-static-link">
+      <div class="metric-card" id="card-static">
+        <h3>Static Analysis</h3>
+        <div class="metric-value" id="static-issues">--</div>
+        <p class="metric-subtitle" id="static-subtitle">cppcheck issues</p>
+        <p class="card-action">View issues &rarr;</p>
+      </div>
+    </a>
   </div>
 
   <!-- Charts Section -->
@@ -58,7 +70,7 @@ title: PeerTalk Metrics Dashboard
     </div>
 
     <div class="chart-container">
-      <h2>Coverage Trends</h2>
+      <h2>Test Coverage Trends</h2>
       <canvas id="chart-coverage" width="400" height="200"></canvas>
     </div>
 
@@ -68,8 +80,16 @@ title: PeerTalk Metrics Dashboard
     </div>
 
     <div class="chart-container">
-      <h2>CI Performance</h2>
-      <canvas id="chart-ci-timing" width="400" height="200"></canvas>
+      <h2>Static Analysis Issues</h2>
+      <canvas id="chart-static" width="400" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- Commit History Section -->
+  <div class="history-section">
+    <h2>Recent Commits</h2>
+    <div id="commit-history" class="commit-list">
+      <p>Loading commit history...</p>
     </div>
   </div>
 </div>
@@ -78,11 +98,10 @@ title: PeerTalk Metrics Dashboard
 
 <script src="assets/js/chart.min.js"></script>
 <script>
-// All metrics data organized by branch
 const metricsByBranch = {{ metricsByBranch | dump | safe }};
 const defaultBranch = "{{ defaultBranch }}";
+const ghRepo = "https://github.com/matthewdeaves/peertalk";
 
-// Chart instances (so we can destroy and recreate them)
 let charts = {};
 
 function formatDate(dateStr) {
@@ -115,9 +134,12 @@ function updateDashboard(branch) {
   // Update header info
   document.getElementById('last-update').textContent =
     'Last updated: ' + formatDate(latest.timestamp || latest.date);
+
+  const commitLink = latest.commit
+    ? '<a href="' + ghRepo + '/commit/' + latest.commit + '">' + latest.commit.substring(0, 7) + '</a>'
+    : 'unknown';
   document.getElementById('commit-info').innerHTML =
-    'Branch: <code>' + (latest.branch || branch) + '</code> | Commit: <code>' +
-    (latest.commit ? latest.commit.substring(0, 7) : 'unknown') + '</code>';
+    'Branch: <code>' + (latest.branch || branch) + '</code> | Commit: ' + commitLink;
 
   // Update cards
   document.getElementById('test-pass-rate').textContent = latest.test_results.pass_rate + '%';
@@ -126,34 +148,65 @@ function updateDashboard(branch) {
   updateCardClass('card-tests', latest.test_results.pass_rate === 100, 'success', 'warning');
 
   document.getElementById('line-coverage').textContent = latest.coverage.line_coverage + '%';
-  let coverageSubtitle = latest.coverage.lines_covered + '/' + latest.coverage.lines_total + ' lines';
-  if (metrics.length > 1) {
-    const change = ((latest.coverage.line_coverage - metrics[1].coverage.line_coverage) /
-                    metrics[1].coverage.line_coverage * 100).toFixed(1);
-    coverageSubtitle += ' <span class="trend">' + change + '% change</span>';
-  }
-  document.getElementById('coverage-subtitle').innerHTML = coverageSubtitle;
+  document.getElementById('coverage-subtitle').textContent =
+    latest.coverage.lines_covered + '/' + latest.coverage.lines_total + ' lines covered by tests';
   updateCardClass('card-coverage', latest.coverage.line_coverage >= 40, 'success', 'warning');
 
   document.getElementById('isr-violations').textContent = latest.isr_safety.total_violations;
   updateCardClass('card-isr', latest.isr_safety.total_violations === 0, 'success', 'error');
 
-  document.getElementById('ci-duration').textContent = latest.ci_metrics.total_duration_sec + 's';
-  document.getElementById('ci-subtitle').textContent =
-    'Build: ' + latest.ci_metrics.build_duration_sec + 's | Test: ' + latest.ci_metrics.test_duration_sec + 's';
+  const staticIssues = latest.static_analysis ? latest.static_analysis.total_issues : 0;
+  document.getElementById('static-issues').textContent = staticIssues;
+  updateCardClass('card-static', staticIssues === 0, 'success', 'warning');
+
+  // Update commit history
+  updateCommitHistory(metrics.slice(0, 10), branch);
 
   // Update charts
   updateCharts(metrics.slice(0, 30));
 }
 
+function updateCommitHistory(metrics, branch) {
+  const container = document.getElementById('commit-history');
+  if (metrics.length === 0) {
+    container.innerHTML = '<p>No commit history available.</p>';
+    return;
+  }
+
+  let html = '<table class="history-table"><thead><tr>';
+  html += '<th>Date</th><th>Commit</th><th>Tests</th><th>Coverage</th><th>ISR</th><th>Static</th>';
+  html += '</tr></thead><tbody>';
+
+  for (const m of metrics) {
+    const commitLink = m.commit
+      ? '<a href="' + ghRepo + '/commit/' + m.commit + '">' + m.commit.substring(0, 7) + '</a>'
+      : '-';
+    const testClass = m.test_results.pass_rate === 100 ? 'good' : 'bad';
+    const coverageClass = m.coverage.line_coverage >= 40 ? 'good' : 'bad';
+    const isrClass = m.isr_safety.total_violations === 0 ? 'good' : 'bad';
+    const staticIssues = m.static_analysis ? m.static_analysis.total_issues : 0;
+    const staticClass = staticIssues === 0 ? 'good' : 'neutral';
+
+    html += '<tr>';
+    html += '<td>' + m.date + '</td>';
+    html += '<td>' + commitLink + '</td>';
+    html += '<td class="' + testClass + '">' + m.test_results.pass_rate + '%</td>';
+    html += '<td class="' + coverageClass + '">' + m.coverage.line_coverage + '%</td>';
+    html += '<td class="' + isrClass + '">' + m.isr_safety.total_violations + '</td>';
+    html += '<td class="' + staticClass + '">' + staticIssues + '</td>';
+    html += '</tr>';
+  }
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
 function updateCharts(metrics) {
   const labels = metrics.map(m => m.date).reverse();
 
-  // Destroy existing charts
   Object.values(charts).forEach(chart => chart.destroy());
   charts = {};
 
-  // Test Results Chart
   charts.testResults = new Chart(document.getElementById('chart-test-results'), {
     type: 'line',
     data: {
@@ -165,15 +218,9 @@ function updateCharts(metrics) {
         tension: 0.1
       }]
     },
-    options: {
-      responsive: true,
-      scales: {
-        y: { min: 0, max: 100 }
-      }
-    }
+    options: { responsive: true, scales: { y: { min: 0, max: 100 } } }
   });
 
-  // Coverage Chart
   charts.coverage = new Chart(document.getElementById('chart-coverage'), {
     type: 'line',
     data: {
@@ -193,15 +240,9 @@ function updateCharts(metrics) {
         }
       ]
     },
-    options: {
-      responsive: true,
-      scales: {
-        y: { min: 0, max: 100 }
-      }
-    }
+    options: { responsive: true, scales: { y: { min: 0, max: 100 } } }
   });
 
-  // Quality Chart
   charts.quality = new Chart(document.getElementById('chart-quality'), {
     type: 'bar',
     data: {
@@ -219,34 +260,26 @@ function updateCharts(metrics) {
         }
       ]
     },
-    options: {
-      responsive: true
-    }
+    options: { responsive: true }
   });
 
-  // CI Timing Chart
-  charts.ciTiming = new Chart(document.getElementById('chart-ci-timing'), {
+  charts.staticAnalysis = new Chart(document.getElementById('chart-static'), {
     type: 'line',
     data: {
       labels: labels,
       datasets: [{
-        label: 'Total Duration (s)',
-        data: metrics.map(m => m.ci_metrics.total_duration_sec).reverse(),
-        borderColor: 'rgb(255, 159, 64)',
+        label: 'Cppcheck Issues',
+        data: metrics.map(m => m.static_analysis ? m.static_analysis.total_issues : 0).reverse(),
+        borderColor: 'rgb(255, 99, 132)',
         tension: 0.1
       }]
     },
-    options: {
-      responsive: true
-    }
+    options: { responsive: true, scales: { y: { min: 0 } } }
   });
 }
 
-// Initialize with default branch
 document.addEventListener('DOMContentLoaded', function() {
   updateDashboard(defaultBranch);
-
-  // Handle branch selection change
   document.getElementById('branch-select').addEventListener('change', function(e) {
     updateDashboard(e.target.value);
   });
