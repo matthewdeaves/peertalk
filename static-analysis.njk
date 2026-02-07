@@ -70,31 +70,16 @@ function renderReport() {
   issuesHtml += '</tr></thead><tbody>';
 
   for (const issue of sa.issues) {
-    // Clean up file path (remove ./ prefix, handle absolute paths)
-    let filePath = issue.file || '';
-    if (filePath.startsWith('./')) filePath = filePath.substring(2);
-    if (filePath.startsWith('/workspace/')) filePath = filePath.substring(11);
-
-    const fileName = filePath ? filePath.split('/').pop() : 'unknown';
-    const hasValidPath = filePath && issue.line;
-
-    // Use develop branch for link if commit not available
-    const ref = latest.commit || latest.branch || 'develop';
-    const fileLink = hasValidPath
-      ? ghRepo + '/blob/' + ref + '/' + filePath + '#L' + issue.line
-      : null;
+    const fileLink = issue.file && issue.line
+      ? ghRepo + '/blob/' + commit + '/' + issue.file + '#L' + issue.line
+      : '#';
+    const fileName = issue.file ? issue.file.split('/').pop() : 'unknown';
 
     issuesHtml += '<tr class="' + getSeverityClass(issue.severity) + '">';
     issuesHtml += '<td><span class="severity-badge">' + issue.severity + '</span></td>';
     issuesHtml += '<td><code>' + (issue.id || '') + '</code></td>';
-
-    if (fileLink) {
-      issuesHtml += '<td><a href="' + fileLink + '" target="_blank" rel="noopener">' + filePath + '</a></td>';
-    } else {
-      issuesHtml += '<td>' + (filePath || 'unknown') + '</td>';
-    }
-
-    issuesHtml += '<td>' + (issue.line || '-') + '</td>';
+    issuesHtml += '<td><a href="' + fileLink + '" target="_blank">' + fileName + '</a></td>';
+    issuesHtml += '<td>' + (issue.line || '') + '</td>';
     issuesHtml += '<td>' + (issue.message || '') + '</td>';
     issuesHtml += '</tr>';
   }
