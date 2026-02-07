@@ -1,11 +1,15 @@
-/* test_queue.c - Tests for message queue */
+/* test_queue.c - Tests for message queue
+ *
+ * Note: This test links against libpeertalk to ensure coverage is tracked
+ * properly. Do NOT include .c files directly.
+ */
 
 #include "../src/core/queue.h"
+#include "../src/core/pt_internal.h"
+#include "../src/core/pt_compat.h"
 #include <stdio.h>
+#include <string.h>
 #include <assert.h>
-
-/* Include implementation files for testing */
-#include "../src/core/queue.c"
 
 /* Test counter */
 static int tests_passed = 0;

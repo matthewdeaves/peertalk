@@ -27,13 +27,22 @@ LOG_OBJS = $(LOG_SRCS:%.c=$(OBJ_DIR)/%.o)
 LIBPTLOG = $(LIB_DIR)/libptlog.a
 LIBPEERTALK = $(LIB_DIR)/libpeertalk.a
 
-# Test executables
+# Test executables (unit tests that run in single container)
 TEST_BINS = $(BIN_DIR)/test_log $(BIN_DIR)/test_log_perf $(BIN_DIR)/test_log_threads \
             $(BIN_DIR)/test_compat $(BIN_DIR)/test_foundation $(BIN_DIR)/test_protocol \
             $(BIN_DIR)/test_peer $(BIN_DIR)/test_queue $(BIN_DIR)/test_queue_advanced \
             $(BIN_DIR)/test_backpressure $(BIN_DIR)/test_discovery_posix \
             $(BIN_DIR)/test_messaging_posix $(BIN_DIR)/test_udp_posix $(BIN_DIR)/test_stats_posix \
-            $(BIN_DIR)/test_integration_posix
+            $(BIN_DIR)/test_integration_posix $(BIN_DIR)/test_sendex \
+            $(BIN_DIR)/test_api_errors $(BIN_DIR)/test_queue_extended \
+            $(BIN_DIR)/test_batch_send $(BIN_DIR)/test_connection \
+            $(BIN_DIR)/test_loopback_messaging $(BIN_DIR)/test_protocol_messaging \
+            $(BIN_DIR)/test_bidirectional $(BIN_DIR)/test_tcp_send_recv \
+            $(BIN_DIR)/test_discovery_recv $(BIN_DIR)/test_error_strings \
+            $(BIN_DIR)/test_perf_benchmarks $(BIN_DIR)/test_protocol_fuzz
+
+# Integration test (requires docker-compose with multiple peers)
+INTEGRATION_TEST_BIN = $(BIN_DIR)/test_integration_full
 
 all: $(LIBPTLOG) $(LIBPEERTALK)
 
@@ -104,6 +113,42 @@ $(BIN_DIR)/test_integration_full: tests/test_integration_full.c $(LIBPEERTALK) $
 	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
 
 $(BIN_DIR)/test_sendex: tests/test_sendex.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
+$(BIN_DIR)/test_api_errors: tests/test_api_errors.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
+$(BIN_DIR)/test_queue_extended: tests/test_queue_extended.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
+$(BIN_DIR)/test_batch_send: tests/test_batch_send.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
+$(BIN_DIR)/test_connection: tests/test_connection.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
+$(BIN_DIR)/test_loopback_messaging: tests/test_loopback_messaging.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -I./src/posix -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
+$(BIN_DIR)/test_protocol_messaging: tests/test_protocol_messaging.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -I./src/posix -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
+$(BIN_DIR)/test_bidirectional: tests/test_bidirectional.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -I./src/posix -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
+$(BIN_DIR)/test_tcp_send_recv: tests/test_tcp_send_recv.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -I./src/posix -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
+$(BIN_DIR)/test_discovery_recv: tests/test_discovery_recv.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -I./src/posix -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
+$(BIN_DIR)/test_error_strings: tests/test_error_strings.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
+$(BIN_DIR)/test_perf_benchmarks: tests/test_perf_benchmarks.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
+$(BIN_DIR)/test_protocol_fuzz: tests/test_protocol_fuzz.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
 
 # Test runners
@@ -211,9 +256,57 @@ docker-coverage:
 	@docker run --rm -v $(PWD):/workspace -w /workspace peertalk-dev bash -c "make coverage-local"
 
 # Local targets (run inside container or on host with dependencies)
-test-local: test-log test-compat test-foundation test-protocol test-peer test-queue test-queue-advanced test-backpressure test-discovery test-messaging test-udp test-stats test-integration-posix test-sendex
+test-local: test-log test-compat test-foundation test-protocol test-peer test-queue test-queue-advanced test-backpressure test-discovery test-messaging test-udp test-stats test-integration-posix test-sendex test-api-errors test-queue-extended test-batch-send test-connection test-loopback-messaging test-protocol-messaging test-bidirectional test-tcp-send-recv test-discovery-recv test-error-strings test-fuzz
 	@echo ""
 	@echo "All tests passed!"
+
+test-api-errors: $(BIN_DIR)/test_api_errors
+	@echo "Running API error tests..."
+	@$(BIN_DIR)/test_api_errors
+
+test-queue-extended: $(BIN_DIR)/test_queue_extended
+	@echo "Running extended queue tests..."
+	@$(BIN_DIR)/test_queue_extended
+
+test-batch-send: $(BIN_DIR)/test_batch_send
+	@echo "Running batch send tests..."
+	@$(BIN_DIR)/test_batch_send
+
+test-connection: $(BIN_DIR)/test_connection
+	@echo "Running connection lifecycle tests..."
+	@$(BIN_DIR)/test_connection
+
+test-loopback-messaging: $(BIN_DIR)/test_loopback_messaging
+	@echo "Running loopback messaging tests..."
+	@$(BIN_DIR)/test_loopback_messaging
+
+test-protocol-messaging: $(BIN_DIR)/test_protocol_messaging
+	@echo "Running protocol messaging tests..."
+	@$(BIN_DIR)/test_protocol_messaging
+
+test-bidirectional: $(BIN_DIR)/test_bidirectional
+	@echo "Running bidirectional messaging tests..."
+	@$(BIN_DIR)/test_bidirectional
+
+test-tcp-send-recv: $(BIN_DIR)/test_tcp_send_recv
+	@echo "Running TCP send/receive tests..."
+	@$(BIN_DIR)/test_tcp_send_recv
+
+test-discovery-recv: $(BIN_DIR)/test_discovery_recv
+	@echo "Running discovery receive tests..."
+	@$(BIN_DIR)/test_discovery_recv
+
+test-error-strings: $(BIN_DIR)/test_error_strings
+	@echo "Running error string tests..."
+	@$(BIN_DIR)/test_error_strings
+
+test-benchmarks: $(BIN_DIR)/test_perf_benchmarks
+	@echo "Running performance benchmarks..."
+	@$(BIN_DIR)/test_perf_benchmarks
+
+test-fuzz: $(BIN_DIR)/test_protocol_fuzz
+	@echo "Running protocol fuzz tests..."
+	@$(BIN_DIR)/test_protocol_fuzz
 
 # Default test target uses Docker
 test: docker-test
@@ -229,7 +322,13 @@ coverage-local:
 	        $(BIN_DIR)/test_backpressure $(BIN_DIR)/test_discovery_posix \
 	        $(BIN_DIR)/test_messaging_posix $(BIN_DIR)/test_udp_posix \
 	        $(BIN_DIR)/test_stats_posix $(BIN_DIR)/test_integration_posix \
-	        $(BIN_DIR)/test_sendex
+	        $(BIN_DIR)/test_sendex $(BIN_DIR)/test_api_errors \
+	        $(BIN_DIR)/test_queue_extended $(BIN_DIR)/test_batch_send \
+	        $(BIN_DIR)/test_connection $(BIN_DIR)/test_loopback_messaging \
+	        $(BIN_DIR)/test_protocol_messaging $(BIN_DIR)/test_bidirectional \
+	        $(BIN_DIR)/test_tcp_send_recv $(BIN_DIR)/test_discovery_recv \
+	        $(BIN_DIR)/test_error_strings $(BIN_DIR)/test_perf_benchmarks \
+	        $(BIN_DIR)/test_protocol_fuzz
 	$(MAKE) test-local
 	lcov --capture --directory $(OBJ_DIR) --output-file $(COV_DIR)/coverage.info
 	lcov --remove $(COV_DIR)/coverage.info '/usr/*' --ignore-errors unused --output-file $(COV_DIR)/coverage.info
@@ -239,9 +338,15 @@ coverage-local:
 # Default coverage target uses Docker
 coverage: docker-coverage
 
-# Docker Integration Test (Session 4.6)
-test-integration-docker:
+# Multi-Peer Docker Integration Test
+# Runs test_integration_full across 3 containers to test real network communication
+test-integration-docker: $(BIN_DIR)/test_integration_full
 	@echo "=== Running 3-Peer Docker Integration Test ==="
+	@echo "This test runs test_integration_full across 3 containers:"
+	@echo "  - Peer1 (Alice): sender mode"
+	@echo "  - Peer2 (Bob): receiver mode"
+	@echo "  - Peer3 (Charlie): both mode"
+	@echo ""
 	@echo "Building and starting 3 peer containers..."
 	@docker compose -f docker/docker-compose.test.yml up --build --abort-on-container-exit
 	@echo ""
@@ -267,5 +372,8 @@ clean:
         test-queue test-queue-advanced test-backpressure test-discovery \
         test-messaging test-udp test-stats test-integration-docker \
         test-integration-docker-logs test-integration-docker-clean \
+        test-api-errors test-queue-extended test-batch-send test-connection \
+        test-loopback-messaging test-protocol-messaging test-bidirectional \
+        test-tcp-send-recv test-discovery-recv test-error-strings test-benchmarks test-fuzz \
         docker-build docker-test docker-coverage \
         valgrind coverage coverage-local clean

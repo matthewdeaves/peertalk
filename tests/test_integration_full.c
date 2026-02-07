@@ -33,10 +33,15 @@
 #include <signal.h>
 #include <time.h>
 
-/* Test configuration */
-#define TEST_DURATION_SEC 30
-#define SEND_INTERVAL_MS 2000
+/* Test configuration - can be overridden via environment variables */
+#define DEFAULT_TEST_DURATION_SEC 30
+#define DEFAULT_SEND_INTERVAL_MS 2000
+#define DEFAULT_MIN_PEERS 2  /* Minimum peers to discover for pass (default for 3-peer test) */
 #define POLL_INTERVAL_MS 100
+
+/* Runtime configuration (set from env vars or defaults) */
+static int g_test_duration_sec = DEFAULT_TEST_DURATION_SEC;
+static int g_min_peers_expected = DEFAULT_MIN_PEERS;
 
 /* Test state */
 typedef enum {
@@ -284,10 +289,10 @@ void print_statistics(void) {
 }
 
 void run_test_loop(void) {
-    uint32_t next_send = g_state.last_send_time + SEND_INTERVAL_MS;
+    uint32_t next_send = g_state.last_send_time + DEFAULT_SEND_INTERVAL_MS;
     uint32_t next_stats = get_time_ms() + 10000; /* Print stats every 10s */
 
-    printf("\n[TEST] Starting test loop (duration: %d seconds)...\n", TEST_DURATION_SEC);
+    printf("\n[TEST] Starting test loop (duration: %d seconds)...\n", g_test_duration_sec);
     printf("[TEST] Mode: %s\n",
            g_state.mode == MODE_SENDER ? "sender" :
            g_state.mode == MODE_RECEIVER ? "receiver" : "both");
@@ -296,7 +301,7 @@ void run_test_loop(void) {
         uint32_t now = get_time_ms();
 
         /* Check test duration */
-        if ((now - g_state.test_start_time) > (TEST_DURATION_SEC * 1000)) {
+        if ((now - g_state.test_start_time) > (uint32_t)(g_test_duration_sec * 1000)) {
             printf("\n[TEST] Test duration reached, shutting down...\n");
             g_state.running = 0;
             break;
@@ -309,7 +314,7 @@ void run_test_loop(void) {
         if ((g_state.mode == MODE_SENDER || g_state.mode == MODE_BOTH) &&
             now >= next_send) {
             send_messages_to_peers();
-            next_send = now + SEND_INTERVAL_MS;
+            next_send = now + DEFAULT_SEND_INTERVAL_MS;
         }
 
         /* Print statistics periodically */
@@ -337,6 +342,19 @@ int main(int argc, char *argv[]) {
     const char *peer_name = "TestPeer";
     const char *mode_str = "both";
 
+    /* Parse environment variables for test configuration */
+    const char *env_duration = getenv("TEST_DURATION_SEC");
+    const char *env_min_peers = getenv("MIN_PEERS_EXPECTED");
+
+    if (env_duration) {
+        g_test_duration_sec = atoi(env_duration);
+        if (g_test_duration_sec <= 0) g_test_duration_sec = DEFAULT_TEST_DURATION_SEC;
+    }
+    if (env_min_peers) {
+        g_min_peers_expected = atoi(env_min_peers);
+        if (g_min_peers_expected <= 0) g_min_peers_expected = DEFAULT_MIN_PEERS;
+    }
+
     /* Parse arguments */
     if (argc > 1) {
         peer_name = argv[1];
@@ -359,7 +377,8 @@ int main(int argc, char *argv[]) {
     printf("===========================================\n");
     printf("Peer Name: %s\n", peer_name);
     printf("Mode: %s\n", mode_str);
-    printf("Duration: %d seconds\n", TEST_DURATION_SEC);
+    printf("Duration: %d seconds\n", g_test_duration_sec);
+    printf("Min Peers Expected: %d\n", g_min_peers_expected);
     printf("===========================================\n\n");
 
     /* Set up signal handler */
@@ -444,13 +463,14 @@ int main(int argc, char *argv[]) {
 
     printf("\n[VALIDATION] Checking test criteria:\n");
 
-    /* Check discovery - expect at least 5 peers in a 10-peer network */
-    if (g_state.peers_discovered < 5) {
-        printf("  ✗ FAIL: Expected at least 5 peers discovered, got %d\n",
-               g_state.peers_discovered);
+    /* Check discovery - configurable via MIN_PEERS_EXPECTED env var */
+    if (g_state.peers_discovered < g_min_peers_expected) {
+        printf("  FAIL: Expected at least %d peers discovered, got %d\n",
+               g_min_peers_expected, g_state.peers_discovered);
         success = 0;
     } else {
-        printf("  ✓ Discovery: %d peers found\n", g_state.peers_discovered);
+        printf("  OK Discovery: %d peers found (required: %d)\n",
+               g_state.peers_discovered, g_min_peers_expected);
     }
 
     /* Check connections (using stats captured before shutdown) */

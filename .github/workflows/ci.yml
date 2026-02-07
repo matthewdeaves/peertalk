@@ -150,9 +150,17 @@ jobs:
           fetch-depth: 0  # Full history for gh-pages
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y python3 jq bc gcc make lcov
+        run: sudo apt-get update && sudo apt-get install -y python3 jq bc gcc make lcov pmccabe
 
-      - name: Build and run tests
+      - name: Build library
+        id: build
+        run: |
+          START_TIME=$(date +%s)
+          make all 2>&1 | tee /tmp/build_output.txt
+          BUILD_END=$(date +%s)
+          echo "build_duration=$((BUILD_END - START_TIME))" >> $GITHUB_OUTPUT
+
+      - name: Run tests
         id: tests
         run: |
           START_TIME=$(date +%s)
@@ -184,8 +192,14 @@ jobs:
           # Extract quality metrics
           ./tools/metrics/extract_quality_metrics.sh > /tmp/metrics/quality.json
 
+          # Extract binary size metrics
+          ./tools/metrics/extract_binary_size.sh > /tmp/metrics/binary_size.json
+
+          # Extract complexity metrics
+          ./tools/metrics/extract_complexity.sh > /tmp/metrics/complexity.json
+
           # Extract CI metrics (with timing from previous steps)
-          export BUILD_DURATION_SEC="${{ steps.tests.outputs.test_duration }}"
+          export BUILD_DURATION_SEC="${{ steps.build.outputs.build_duration }}"
           export TEST_DURATION_SEC="${{ steps.tests.outputs.test_duration }}"
           export COVERAGE_DURATION_SEC="${{ steps.coverage.outputs.coverage_duration }}"
           ./tools/metrics/extract_ci_metrics.sh > /tmp/metrics/ci_metrics.json
@@ -198,7 +212,9 @@ jobs:
             /tmp/metrics/isr_safety.json \
             /tmp/metrics/quality.json \
             /tmp/metrics/ci_metrics.json \
-            /tmp/metrics/aggregated.json
+            /tmp/metrics/aggregated.json \
+            /tmp/metrics/binary_size.json \
+            /tmp/metrics/complexity.json
 
           echo "Aggregated metrics:"
           cat /tmp/metrics/aggregated.json | python3 -m json.tool

@@ -1,10 +1,10 @@
 version: '3.8'
 
-# 3-Peer Integration Test Configuration
+# 3-Peer Full Integration Test Configuration
 #
 # Runs three PeerTalk peers in separate containers on a shared network.
-# Each peer has unique TCP/UDP ports but shares the same discovery port
-# for UDP broadcast discovery.
+# Each peer runs test_integration_full with different modes to exercise
+# the full send/receive/discovery/connect flow.
 #
 # Usage:
 #   docker compose -f docker/docker-compose.test.yml up --build
@@ -14,8 +14,34 @@ version: '3.8'
 #   All peers on same bridge network (peertalk-test-net)
 #   UDP broadcast discovery works within this network
 #   Each peer can connect to others via container hostnames
+#
+# Test configuration:
+#   - Peer1 (Alice): sender mode - sends messages to discovered peers
+#   - Peer2 (Bob): receiver mode - receives messages from other peers
+#   - Peer3 (Charlie): both mode - sends and receives messages
+#
+# Environment variables:
+#   TEST_DURATION_SEC - How long to run the test (default: 30)
+#   MIN_PEERS_EXPECTED - Minimum peers to discover for pass (default: 2)
 
 services:
+  # Build container - builds once, then exits
+  builder:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: peertalk-builder
+    volumes:
+      - ..:/workspace
+    working_dir: /workspace
+    command: >
+      bash -c "
+        echo '=== Building PeerTalk ===' &&
+        make clean && make all &&
+        make build/bin/test_integration_full &&
+        echo '=== Build complete ==='
+      "
+
   peer1:
     build:
       context: ..
@@ -23,27 +49,29 @@ services:
     container_name: peertalk-peer1
     hostname: peer1
     networks:
-      - peertalk-test-net
+      peertalk-test-net:
+        ipv4_address: 172.28.0.10
     environment:
-      - PEER_ID=1
-      - PEER_NAME=Peer1
-      - TCP_PORT=7354
-      - DISCOVERY_PORT=7353
-      - UDP_PORT=7355
+      - PEER_NAME=Alice
+      - PEER_MODE=sender
+      - TEST_DURATION_SEC=45
+      - MIN_PEERS_EXPECTED=2
     volumes:
       - ..:/workspace
     working_dir: /workspace
     command: >
       bash -c "
-        echo 'Building PeerTalk library and tests...' &&
-        make clean && make &&
-        cd tests && make test_integration_posix &&
-        echo 'Starting Peer1...' &&
-        ./test_integration_posix
+        echo '=== Starting Peer1 (Alice) - SENDER mode ===' &&
+        sleep 5 &&
+        ./build/bin/test_integration_full Alice sender
       "
     depends_on:
-      - peer2
-      - peer3
+      builder:
+        condition: service_completed_successfully
+      peer2:
+        condition: service_started
+      peer3:
+        condition: service_started
 
   peer2:
     build:
@@ -52,24 +80,24 @@ services:
     container_name: peertalk-peer2
     hostname: peer2
     networks:
-      - peertalk-test-net
+      peertalk-test-net:
+        ipv4_address: 172.28.0.11
     environment:
-      - PEER_ID=2
-      - PEER_NAME=Peer2
-      - TCP_PORT=7364
-      - DISCOVERY_PORT=7353
-      - UDP_PORT=7365
+      - PEER_NAME=Bob
+      - PEER_MODE=receiver
+      - TEST_DURATION_SEC=45
+      - MIN_PEERS_EXPECTED=2
     volumes:
       - ..:/workspace
     working_dir: /workspace
     command: >
       bash -c "
-        echo 'Building PeerTalk library and tests...' &&
-        make clean && make &&
-        cd tests && make test_integration_posix &&
-        echo 'Starting Peer2...' &&
-        ./test_integration_posix
+        echo '=== Starting Peer2 (Bob) - RECEIVER mode ===' &&
+        ./build/bin/test_integration_full Bob receiver
       "
+    depends_on:
+      builder:
+        condition: service_completed_successfully
 
   peer3:
     build:
@@ -78,24 +106,24 @@ services:
     container_name: peertalk-peer3
     hostname: peer3
     networks:
-      - peertalk-test-net
+      peertalk-test-net:
+        ipv4_address: 172.28.0.12
     environment:
-      - PEER_ID=3
-      - PEER_NAME=Peer3
-      - TCP_PORT=7374
-      - DISCOVERY_PORT=7353
-      - UDP_PORT=7375
+      - PEER_NAME=Charlie
+      - PEER_MODE=both
+      - TEST_DURATION_SEC=45
+      - MIN_PEERS_EXPECTED=2
     volumes:
       - ..:/workspace
     working_dir: /workspace
     command: >
       bash -c "
-        echo 'Building PeerTalk library and tests...' &&
-        make clean && make &&
-        cd tests && make test_integration_posix &&
-        echo 'Starting Peer3...' &&
-        ./test_integration_posix
+        echo '=== Starting Peer3 (Charlie) - BOTH mode ===' &&
+        ./build/bin/test_integration_full Charlie both
       "
+    depends_on:
+      builder:
+        condition: service_completed_successfully
 
 networks:
   peertalk-test-net:
