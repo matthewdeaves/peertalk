@@ -71,4 +71,11 @@ git commit -m "Update metrics and coverage for ${DATE} [skip ci]" || {
 }
 git push origin gh-pages
 
+# Trigger the deploy-dashboard workflow to rebuild the static site
+# The [skip ci] in commit message prevents auto-trigger, so we need to dispatch manually
+echo "Triggering dashboard deploy workflow..."
+gh workflow run deploy-dashboard.yml --ref gh-pages || {
+    echo "Warning: Could not trigger deploy workflow (gh CLI may not be available)"
+}
+
 echo "✓ Metrics uploaded successfully"
