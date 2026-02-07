@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-02-07T14:52:48.010667Z",
-  "commit": "8859ba0",
+  "timestamp": "2026-02-07T14:56:01.407551Z",
+  "commit": "0cb922e",
   "branch": "develop",
   "test_results": {
-    "total_tests": 30,
-    "passed": 30,
+    "total_tests": 27,
+    "passed": 27,
     "failed": 0,
     "pass_rate": 100.0,
     "test_details": [
@@ -125,11 +125,6 @@
       },
       {
         "file": "test_unknown.c",
-        "name": "platform_ticks...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
         "name": "platform_memory...",
         "status": "PASS"
       },
@@ -140,22 +135,12 @@
       },
       {
         "file": "test_unknown.c",
-        "name": "dod_lookup_table...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
         "name": "init_null_config...",
         "status": "PASS"
       },
       {
         "file": "test_unknown.c",
         "name": "shutdown_double_call...",
-        "status": "PASS"
-      },
-      {
-        "file": "test_unknown.c",
-        "name": "ptlog_integration...",
         "status": "PASS"
       }
     ]
@@ -181,14 +166,14 @@
   },
   "ci_metrics": {
     "workflow_name": "PeerTalk CI",
-    "build_duration_sec": 1,
-    "test_duration_sec": 69,
+    "build_duration_sec": 2,
+    "test_duration_sec": 68,
     "coverage_duration_sec": 68,
     "total_duration_sec": 138,
     "jobs": {
       "build-posix": {
         "status": "success",
-        "duration_sec": 1
+        "duration_sec": 2
       },
       "validate-isr-safety": {
         "status": "success",
@@ -279,7 +264,7 @@
     ]
   },
   "test_count": {
-    "timestamp": "2026-02-07T14:52:43Z",
+    "timestamp": "2026-02-07T14:55:56Z",
     "summary": {
       "total_tests": 226,
       "test_files": 36,
