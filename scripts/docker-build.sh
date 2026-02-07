@@ -15,7 +15,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-IMAGE_NAME="mndeaves/peertalk:latest"
+IMAGE_NAME="ghcr.io/matthewdeaves/peertalk-dev:develop"
 
 cd "$PROJECT_DIR"
 

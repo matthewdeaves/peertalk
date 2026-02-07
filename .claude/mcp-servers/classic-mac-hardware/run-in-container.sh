@@ -7,7 +7,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 CONTAINER_NAME="peertalk-dev"
-IMAGE_NAME="mndeaves/peertalk:latest"
+IMAGE_NAME="ghcr.io/matthewdeaves/peertalk-dev:develop"
 
 # Check if Docker is installed
 if ! command -v docker &> /dev/null; then

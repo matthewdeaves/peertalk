@@ -1,8 +1,8 @@
 services:
   peertalk-dev:
-    # Use pre-built image from Docker Hub (faster)
+    # Use pre-built image from GitHub Container Registry
     # To build locally instead: docker compose build
-    image: mndeaves/peertalk:latest
+    image: ghcr.io/matthewdeaves/peertalk-dev:develop
     build:
       context: ..
       dockerfile: docker/Dockerfile
