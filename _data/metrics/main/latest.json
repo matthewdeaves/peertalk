@@ -1,0 +1,574 @@
+{
+  "timestamp": "2026-02-07T18:05:36.252750Z",
+  "commit": "5e49559",
+  "branch": "main",
+  "test_results": {
+    "total_tests": 30,
+    "passed": 30,
+    "failed": 0,
+    "pass_rate": 100.0,
+    "test_details": [
+      {
+        "file": "test_unknown.c",
+        "name": "test_create_destroy...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "test_level_filtering...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "test_category_filtering...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "test_formatting...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "test_file_output...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "test_elapsed_time...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "test_sequence_numbers...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "test_performance_logging...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "test_level_names...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "test_version...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "test_callback_user_data...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "test_output_combinations...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "test_perf_sequence...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "test_perf_with_text_log...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "test_multiple_outputs...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "test_app_categories...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "test_perf_category_field...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "version_string...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "version_constants...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "error_strings...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "error_string_content...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "protocol_constants...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "default_ports...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "platform_ticks...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "platform_memory...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "dod_struct_sizes...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "dod_lookup_table...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "init_null_config...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "shutdown_double_call...",
+        "status": "PASS"
+      },
+      {
+        "file": "test_unknown.c",
+        "name": "ptlog_integration...",
+        "status": "PASS"
+      }
+    ]
+  },
+  "coverage": {
+    "line_coverage": 74.6,
+    "function_coverage": 95.2,
+    "lines_covered": 1795,
+    "lines_total": 2406,
+    "functions_covered": 159,
+    "functions_total": 167
+  },
+  "isr_safety": {
+    "total_violations": 0,
+    "by_category": {},
+    "violations": []
+  },
+  "quality": {
+    "files_over_500_lines": 8,
+    "todo_count": 9,
+    "fixme_count": 0,
+    "compiler_warnings": 0
+  },
+  "ci_metrics": {
+    "workflow_name": "PeerTalk CI",
+    "build_duration_sec": 1,
+    "test_duration_sec": 69,
+    "coverage_duration_sec": 68,
+    "total_duration_sec": 138,
+    "jobs": {
+      "build-posix": {
+        "status": "success",
+        "duration_sec": 1
+      },
+      "validate-isr-safety": {
+        "status": "success",
+        "duration_sec": 0
+      },
+      "quality-gates": {
+        "status": "success",
+        "duration_sec": 0
+      }
+    }
+  },
+  "binary_size": {
+    "libpeertalk_bytes": 440478,
+    "libptlog_bytes": 38882,
+    "total_lib_bytes": 479360,
+    "core_obj_bytes": 267272,
+    "posix_obj_bytes": 169800,
+    "log_obj_bytes": 38360,
+    "total_obj_bytes": 475432,
+    "source_files": 13,
+    "source_lines": 7592,
+    "header_files": 2,
+    "header_lines": 1282,
+    "total_lines": 8874
+  },
+  "complexity": {
+    "tool": "pmccabe",
+    "max_complexity": 15,
+    "total_functions": 239,
+    "functions_over_threshold": 9,
+    "highest_complexity": 41,
+    "average_complexity": 4.4,
+    "violations": [
+      {
+        "function": "pt_peer_set_state",
+        "file": "src/core/peer.c",
+        "line": 335,
+        "complexity": 16
+      },
+      {
+        "function": "pt_discovery_decode",
+        "file": "src/core/protocol.c",
+        "line": 138,
+        "complexity": 20
+      },
+      {
+        "function": "pt_format_int",
+        "file": "src/core/pt_compat.c",
+        "line": 364,
+        "complexity": 24
+      },
+      {
+        "function": "pt_vsnprintf",
+        "file": "src/core/pt_compat.c",
+        "line": 437,
+        "complexity": 24
+      },
+      {
+        "function": "PeerTalk_Init",
+        "file": "src/core/pt_init.c",
+        "line": 18,
+        "complexity": 18
+      },
+      {
+        "function": "pt_queue_push",
+        "file": "src/core/queue.c",
+        "line": 101,
+        "complexity": 18
+      },
+      {
+        "function": "PeerTalk_SendEx",
+        "file": "src/core/send.c",
+        "line": 218,
+        "complexity": 20
+      },
+      {
+        "function": "pt_posix_discovery_poll",
+        "file": "src/posix/net_posix.c",
+        "line": 517,
+        "complexity": 16
+      },
+      {
+        "function": "pt_posix_poll",
+        "file": "src/posix/net_posix.c",
+        "line": 2028,
+        "complexity": 41
+      }
+    ]
+  },
+  "test_count": {
+    "timestamp": "2026-02-07T18:05:31Z",
+    "summary": {
+      "total_tests": 226,
+      "test_files": 36,
+      "passed": 20,
+      "failed": 0
+    },
+    "by_file": {
+      "test_api_errors.c": 37,
+      "test_backpressure.c": 0,
+      "test_batch_send.c": 10,
+      "test_bidirectional.c": 7,
+      "test_compat.c": 15,
+      "test_connect_posix.c": 0,
+      "test_connection.c": 16,
+      "test_discovery_posix.c": 0,
+      "test_discovery_recv.c": 8,
+      "test_error_strings.c": 3,
+      "test_foundation.c": 16,
+      "test_helpers.c": 0,
+      "test_integration_full.c": 0,
+      "test_integration_posix.c": 0,
+      "test_isr_safety_compile.c": 0,
+      "test_isr_safety_mactcp.c": 0,
+      "test_isr_safety_ot.c": 0,
+      "test_log_perf.c": 0,
+      "test_log_posix.c": 0,
+      "test_log_threads.c": 0,
+      "test_loopback_messaging.c": 12,
+      "test_messaging_posix.c": 0,
+      "test_peer.c": 9,
+      "test_perf_benchmarks.c": 10,
+      "test_protocol.c": 14,
+      "test_protocol_fuzz.c": 20,
+      "test_protocol_messaging.c": 6,
+      "test_queue.c": 12,
+      "test_queue_advanced.c": 0,
+      "test_queue_extended.c": 9,
+      "test_queue_threads.c": 4,
+      "test_queue_unity.c": 11,
+      "test_sendex.c": 0,
+      "test_stats_posix.c": 0,
+      "test_tcp_send_recv.c": 7,
+      "test_udp_posix.c": 0
+    },
+    "categories": {
+      "unit_tests": 31,
+      "integration_tests": 2,
+      "performance_tests": 2,
+      "fuzz_tests": 1
+    }
+  },
+  "static_analysis": {
+    "tool": "cppcheck",
+    "version": "Cppcheck 2.7",
+    "total_issues": 11,
+    "by_severity": {
+      "information": 11
+    },
+    "issues": [
+      {
+        "id": "toomanyconfigs",
+        "severity": "information",
+        "message": "Too many #ifdef configurations - cppcheck only checks 12 of 19 configurations. Use --force to check all configurations.",
+        "file": "src/core/peer.c",
+        "line": 0
+      },
+      {
+        "id": "toomanyconfigs",
+        "severity": "information",
+        "message": "Too many #ifdef configurations - cppcheck only checks 12 of 19 configurations. Use --force to check all configurations.",
+        "file": "src/core/protocol.c",
+        "line": 0
+      },
+      {
+        "id": "toomanyconfigs",
+        "severity": "information",
+        "message": "Too many #ifdef configurations - cppcheck only checks 12 of 13 configurations. Use --force to check all configurations.",
+        "file": "src/core/pt_compat.c",
+        "line": 0
+      },
+      {
+        "id": "toomanyconfigs",
+        "severity": "information",
+        "message": "Too many #ifdef configurations - cppcheck only checks 12 of 19 configurations. Use --force to check all configurations.",
+        "file": "src/core/pt_init.c",
+        "line": 0
+      },
+      {
+        "id": "toomanyconfigs",
+        "severity": "information",
+        "message": "Too many #ifdef configurations - cppcheck only checks 12 of 20 configurations. Use --force to check all configurations.",
+        "file": "src/core/pt_version.c",
+        "line": 0
+      },
+      {
+        "id": "toomanyconfigs",
+        "severity": "information",
+        "message": "Too many #ifdef configurations - cppcheck only checks 12 of 21 configurations. Use --force to check all configurations.",
+        "file": "src/core/queue.c",
+        "line": 0
+      },
+      {
+        "id": "toomanyconfigs",
+        "severity": "information",
+        "message": "Too many #ifdef configurations - cppcheck only checks 12 of 19 configurations. Use --force to check all configurations.",
+        "file": "src/core/send.c",
+        "line": 0
+      },
+      {
+        "id": "toomanyconfigs",
+        "severity": "information",
+        "message": "Too many #ifdef configurations - cppcheck only checks 12 of 19 configurations. Use --force to check all configurations.",
+        "file": "src/mactcp/platform_mactcp.c",
+        "line": 0
+      },
+      {
+        "id": "toomanyconfigs",
+        "severity": "information",
+        "message": "Too many #ifdef configurations - cppcheck only checks 12 of 19 configurations. Use --force to check all configurations.",
+        "file": "src/opentransport/platform_ot.c",
+        "line": 0
+      },
+      {
+        "id": "toomanyconfigs",
+        "severity": "information",
+        "message": "Too many #ifdef configurations - cppcheck only checks 12 of 19 configurations. Use --force to check all configurations.",
+        "file": "src/posix/net_posix.c",
+        "line": 0
+      },
+      {
+        "id": "toomanyconfigs",
+        "severity": "information",
+        "message": "Too many #ifdef configurations - cppcheck only checks 12 of 19 configurations. Use --force to check all configurations.",
+        "file": "src/posix/platform_posix.c",
+        "line": 0
+      }
+    ]
+  },
+  "duplicates": {
+    "tool": "jscpd",
+    "version": "3.5.10",
+    "total_duplicates": 13,
+    "total_lines": 5130,
+    "duplicate_lines": 222,
+    "percentage": 4.33,
+    "clones": [
+      {
+        "lines": 20,
+        "tokens": 0,
+        "first_file": "src/mactcp/platform_mactcp.c",
+        "first_start": 273,
+        "first_end": 292,
+        "second_file": "src/opentransport/platform_ot.c",
+        "second_start": 134,
+        "second_end": 153,
+        "fragment": "(void) {\n    return g_tcp_notify_upp;\n}\n\n/**\n * Get UDP notify UPP.\n * Used when creating UDP streams in Phase 5.\n */\nUDPNotifyUPP pt_mactcp_get_udp_upp(void) {\n    return g_udp_notify_upp;\n}\n\n/* ===="
+      },
+      {
+        "lines": 9,
+        "tokens": 0,
+        "first_file": "src/log/pt_log_mac.c",
+        "first_start": 135,
+        "first_end": 143,
+        "second_file": "src/log/pt_log_mac.c",
+        "second_start": 118,
+        "second_end": 126,
+        "fragment": "ype creator, OSType fileType) {\n    HParamBlockRec pb;\n    OSErr err;\n\n    memset(&pb, 0, sizeof(pb));\n    pb.fileParam.ioNamePtr = (StringPtr)name;\n    pb.fileParam.ioVRefNum = vRefNum;\n    pb.filePa"
+      },
+      {
+        "lines": 33,
+        "tokens": 0,
+        "first_file": "src/log/pt_log_mac.c",
+        "first_start": 199,
+        "first_end": 231,
+        "second_file": "src/log/pt_log_posix.c",
+        "second_start": 130,
+        "second_end": 162,
+        "fragment": "0;\n    log->next_seq = 1;\n    log->file_refnum = 0;\n\n    /* Record start time in ticks (60ths of a second) */\n    log->start_ticks = TickCount();\n\n    return log;\n}\n\nvoid PT_LogDestroy(PT_Log *log) {\n"
+      },
+      {
+        "lines": 26,
+        "tokens": 0,
+        "first_file": "src/log/pt_log_mac.c",
+        "first_start": 269,
+        "first_end": 294,
+        "second_file": "src/log/pt_log_posix.c",
+        "second_start": 181,
+        "second_end": 205,
+        "fragment": "set_file_info(pname, 0, PT_LOG_CREATOR, PT_LOG_TYPE);\n    }\n\n    /* Open for writing */\n    err = FSOpen(pname, 0, &refnum);\n    if (err != noErr) {\n        return -1;\n    }\n\n    /* Seek to end for ap"
+      },
+      {
+        "lines": 27,
+        "tokens": 0,
+        "first_file": "src/log/pt_log_mac.c",
+        "first_start": 379,
+        "first_end": 405,
+        "second_file": "src/log/pt_log_posix.c",
+        "second_start": 247,
+        "second_end": 273,
+        "fragment": "       return;\n    }\n\n    /* Inline copy for small strings (faster than BlockMoveData on 68k) */\n    if (len <= PT_LOG_INLINE_COPY_THRESHOLD) {\n        dst = log->buffer + log->buffer_pos;\n        src"
+      },
+      {
+        "lines": 18,
+        "tokens": 0,
+        "first_file": "src/core/queue.c",
+        "first_start": 323,
+        "first_end": 340,
+        "second_file": "src/core/queue.c",
+        "second_start": 274,
+        "second_end": 292,
+        "fragment": " q->count--;\n\n    /* Update has_data flag */\n    if (q->count == 0) {\n        q->has_data = 0;\n    }\n\n    return 0;\n}\n\nint pt_queue_peek(pt_queue *q, void **data, uint16_t *len)\n{\n    pt_queue_slot *s"
+      },
+      {
+        "lines": 12,
+        "tokens": 0,
+        "first_file": "src/core/queue.c",
+        "first_start": 368,
+        "first_end": 379,
+        "second_file": "src/core/queue.c",
+        "second_start": 308,
+        "second_end": 320,
+        "fragment": "me(pt_queue *q)\n{\n    pt_queue_slot *slot;\n\n    if (!q || q->magic != PT_QUEUE_MAGIC || q->count == 0) {\n        return;\n    }\n\n    /* Clear front slot */\n    slot = &q->slots[q->read_idx];\n    slot->"
+      },
+      {
+        "lines": 20,
+        "tokens": 0,
+        "first_file": "src/core/queue.c",
+        "first_start": 789,
+        "first_end": 808,
+        "second_file": "src/core/queue.c",
+        "second_start": 710,
+        "second_end": 729,
+        "fragment": "ot_idx;\n    }\n\n    q->write_idx = (q->write_idx + 1) & q->capacity_mask;\n    q->count++;\n    q->has_data = 1;\n\n    return 0;\n}\n\n/*\n * ISR-safe push with coalescing (for MacTCP ASR) - O(1) hash lookup\n"
+      },
+      {
+        "lines": 21,
+        "tokens": 0,
+        "first_file": "src/core/queue.c",
+        "first_start": 843,
+        "first_end": 863,
+        "second_file": "src/core/queue.c",
+        "second_start": 768,
+        "second_end": 788,
+        "fragment": "   /* Add to priority list (next_slot is IN the slot for traversal locality) */\n    slot->next_slot = PT_SLOT_NONE;\n    if (ext->prio_tail[priority] == PT_SLOT_NONE) {\n        ext->prio_head[priority]"
+      },
+      {
+        "lines": 14,
+        "tokens": 0,
+        "first_file": "src/core/pt_init.c",
+        "first_start": 375,
+        "first_end": 388,
+        "second_file": "src/core/pt_init.c",
+        "second_start": 349,
+        "second_end": 362,
+        "fragment": "C) {\n        return PT_ERR_INVALID_PARAM;\n    }\n\n    /* Find peer by ID */\n    peer = pt_peer_find_by_id(ctx, peer_id);\n    if (!peer) {\n        PT_CTX_WARN(ctx, PT_LOG_CAT_CONNECT,\n                  "
+      },
+      {
+        "lines": 20,
+        "tokens": 0,
+        "first_file": "src/core/pt_compat.c",
+        "first_start": 141,
+        "first_end": 160,
+        "second_file": "src/core/pt_compat.c",
+        "second_start": 98,
+        "second_end": 117,
+        "fragment": " OR): *flags |= mask\n * 2. Main loop only CLEARS bits (via AND): *flags &= ~mask\n * 3. No read-modify-write race (operations are one-way)\n * 4. 32-bit aligned access is atomic on 68000+ (hardware guar"
+      },
+      {
+        "lines": 7,
+        "tokens": 0,
+        "first_file": "src/core/peer.c",
+        "first_start": 185,
+        "first_end": 191,
+        "second_file": "src/core/peer.c",
+        "second_start": 115,
+        "second_end": 122,
+        "fragment": "_peer *pt_peer_find_unused(struct pt_context *ctx)\n{\n    uint16_t i;\n\n    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {\n        return NULL;\n    }\n\n    for (i = 0; i < ctx->max_peers; i++) {\n   "
+      },
+      {
+        "lines": 8,
+        "tokens": 0,
+        "first_file": "src/core/peer.c",
+        "first_start": 285,
+        "first_end": 292,
+        "second_file": "src/core/peer.c",
+        "second_start": 219,
+        "second_end": 228,
+        "fragment": ";\n\n    /* Clear connection handle */\n    peer->hot.connection = NULL;\n\n    /* Copy name */\n    if (name && name[0] != '\\0') {\n        size_t name_len = pt_strlen(name);\n        if (name_len > PT_MAX_P"
+      }
+    ]
+  }
+}
