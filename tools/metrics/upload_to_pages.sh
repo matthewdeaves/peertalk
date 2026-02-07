@@ -12,11 +12,14 @@ COVERAGE_DIR="${2:-}"
 ISR_REPORT="${3:-}"
 DATE=$(date +%Y-%m-%d)
 BRANCH="${GITHUB_REF_NAME:-develop}"
+COMMIT="${GITHUB_SHA:-$(git rev-parse HEAD)}"
+COMMIT_SHORT="${COMMIT:0:7}"
 TEMP_DIR=$(mktemp -d)
 SOURCE_DIR="$(pwd)"
 
 echo "Branch: $BRANCH"
 echo "Date: $DATE"
+echo "Commit: $COMMIT_SHORT"
 echo "Source: $SOURCE_DIR"
 
 # Resolve coverage directory to absolute path before changing directories
@@ -45,12 +48,12 @@ git pull --rebase origin gh-pages || true
 # Create metrics directory for this branch
 mkdir -p "_data/metrics/${BRANCH}"
 
-# Copy metrics with date-based filename into branch subdirectory
-cp "$METRICS_FILE" "_data/metrics/${BRANCH}/${DATE}.json"
+# Copy metrics with commit-based filename (allows multiple commits per day)
+cp "$METRICS_FILE" "_data/metrics/${BRANCH}/${DATE}-${COMMIT_SHORT}.json"
 cp "$METRICS_FILE" "_data/metrics/${BRANCH}/latest.json"
 
-# Cleanup old metrics (keep 90 days) - check all branch directories
-find _data/metrics -name "*.json" -type f -mtime +90 -not -name "latest.json" -delete || true
+# Cleanup old metrics (keep last 100 commits per branch)
+ls -t "_data/metrics/${BRANCH}"/*.json 2>/dev/null | grep -v latest.json | tail -n +101 | xargs rm -f 2>/dev/null || true
 
 # Copy coverage HTML if provided
 if [ -n "$COVERAGE_DIR" ] && [ -d "$COVERAGE_DIR" ]; then
@@ -74,7 +77,10 @@ if [ -d "$SOURCE_DIR/dashboard" ]; then
     cp "$SOURCE_DIR/dashboard/index.njk" . 2>/dev/null || true
     cp "$SOURCE_DIR/dashboard/.eleventy.js" . 2>/dev/null || true
     cp "$SOURCE_DIR/dashboard/assets/css/dashboard.css" assets/css/ 2>/dev/null || true
-    git add index.njk .eleventy.js assets/css/dashboard.css 2>/dev/null || true
+    # Copy report pages
+    cp "$SOURCE_DIR/dashboard/static-analysis.njk" . 2>/dev/null || true
+    cp "$SOURCE_DIR/dashboard/test-results.njk" . 2>/dev/null || true
+    git add index.njk .eleventy.js assets/css/dashboard.css static-analysis.njk test-results.njk 2>/dev/null || true
 fi
 
 # Commit and push
