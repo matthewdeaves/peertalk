@@ -114,7 +114,13 @@ title: PeerTalk Metrics Dashboard
   <!-- Static Analysis Issues -->
   <div class="detail-card" id="static-analysis-details">
     <h2>Static Analysis Issues (cppcheck)</h2>
-    {% if m.static_analysis.issues and m.static_analysis.issues.length > 0 %}
+    {% set actionableIssues = [] %}
+    {% for issue in m.static_analysis.issues %}
+      {% if issue.severity != "information" %}
+        {% set actionableIssues = (actionableIssues.push(issue), actionableIssues) %}
+      {% endif %}
+    {% endfor %}
+    {% if actionableIssues.length > 0 %}
     <table class="issues-table">
       <thead>
         <tr>
@@ -125,7 +131,7 @@ title: PeerTalk Metrics Dashboard
         </tr>
       </thead>
       <tbody>
-        {% for issue in m.static_analysis.issues %}
+        {% for issue in actionableIssues %}
         <tr class="severity-{{ issue.severity }}">
           <td><span class="badge badge-{{ issue.severity }}">{{ issue.severity }}</span></td>
           <td><a href="{{ ghBlob }}/{{ issue.file }}#L{{ issue.line }}">{{ issue.file }}</a></td>
@@ -135,8 +141,9 @@ title: PeerTalk Metrics Dashboard
         {% endfor %}
       </tbody>
     </table>
+    <p class="metric-note">Showing {{ actionableIssues.length }} actionable issues ({{ m.static_analysis.by_severity.information or 0 }} informational messages hidden)</p>
     {% else %}
-    <p class="no-issues">No issues detected</p>
+    <p class="no-issues">No actionable issues detected</p>
     {% endif %}
   </div>
 
