@@ -89,7 +89,7 @@ jobs:
 
   # Build and push full Docker image to GitHub Container Registry
   # This includes Retro68 toolchain for Classic Mac cross-compilation
-  # Only runs on main/develop pushes (not PRs)
+  # Only runs on main/develop pushes when Docker-related files change
   build-docker:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
@@ -98,9 +98,24 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Need history for path filtering
+
+      - name: Check if Docker files changed
+        id: filter
+        run: |
+          # Check if any Docker-related files changed in this push
+          if git diff --name-only HEAD~1 HEAD | grep -qE '^docker/Dockerfile$|^resources/retro68/'; then
+            echo "docker_changed=true" >> $GITHUB_OUTPUT
+            echo "Docker files changed - will build"
+          else
+            echo "docker_changed=false" >> $GITHUB_OUTPUT
+            echo "No Docker changes - skipping build"
+          fi
 
       # Free up disk space for large Docker build
       - name: Free disk space
+        if: steps.filter.outputs.docker_changed == 'true'
         run: |
           echo "Before cleanup:"
           df -h /
@@ -114,9 +129,11 @@ jobs:
           df -h /
 
       - name: Set up Docker Buildx
+        if: steps.filter.outputs.docker_changed == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
+        if: steps.filter.outputs.docker_changed == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -124,6 +141,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata
+        if: steps.filter.outputs.docker_changed == 'true'
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -134,6 +152,7 @@ jobs:
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and push Docker image
+        if: steps.filter.outputs.docker_changed == 'true'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -143,6 +162,10 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=retro68
           cache-to: type=gha,mode=max,scope=retro68
+
+      - name: Skip notification
+        if: steps.filter.outputs.docker_changed == 'false'
+        run: echo "Docker build skipped - no changes to docker/Dockerfile or resources/retro68/"
 
   # Retro68 cross-compilation - builds PeerTalk SDK library for Classic Mac platforms
   build-retro68:
