@@ -159,6 +159,10 @@ function updateDashboard(branch) {
   document.getElementById('static-issues').textContent = staticIssues;
   updateCardClass('card-static', staticIssues === 0, 'success', 'warning');
 
+  // Update card links to pass branch parameter
+  document.getElementById('card-tests-link').href = 'test-results.html?branch=' + branch;
+  document.getElementById('card-static-link').href = 'static-analysis.html?branch=' + branch;
+
   // Update commit history
   updateCommitHistory(metrics.slice(0, 10), branch);
 
