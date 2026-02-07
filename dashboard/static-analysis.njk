@@ -65,7 +65,19 @@ function renderReport() {
     return;
   }
 
-  let issuesHtml = '<table class="issues-table"><thead><tr>';
+  // Check for expected informational messages
+  const hasConfigInfo = sa.issues.some(i => i.id === 'toomanyconfigs');
+  let issuesHtml = '';
+
+  if (hasConfigInfo) {
+    issuesHtml += '<div class="info-note">';
+    issuesHtml += '<strong>Note:</strong> "toomanyconfigs" messages are expected for this cross-platform project. ';
+    issuesHtml += 'PeerTalk supports POSIX, MacTCP, Open Transport, and AppleTalk, resulting in many <code>#ifdef</code> combinations. ';
+    issuesHtml += 'Cppcheck checks the 12 most common configurations, which provides adequate coverage.';
+    issuesHtml += '</div>';
+  }
+
+  issuesHtml += '<table class="issues-table"><thead><tr>';
   issuesHtml += '<th>Severity</th><th>ID</th><th>File</th><th>Line</th><th>Message</th>';
   issuesHtml += '</tr></thead><tbody>';
 
@@ -187,5 +199,20 @@ tr.severity-info .severity-badge { background: #e2e3e5; color: #383d41; }
   text-align: center;
   padding: 2rem;
   color: var(--text-secondary);
+}
+
+.info-note {
+  background: #e7f3ff;
+  border-left: 4px solid #0366d6;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 4px;
+  color: #24292e;
+}
+
+.info-note code {
+  background: #f1f8ff;
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
 }
 </style>

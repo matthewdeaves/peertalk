@@ -301,6 +301,7 @@ jobs:
     if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
     permissions:
       contents: write  # Needed to push to gh-pages
+      actions: write   # Needed to trigger deploy-dashboard workflow
 
     steps:
       - uses: actions/checkout@v4
