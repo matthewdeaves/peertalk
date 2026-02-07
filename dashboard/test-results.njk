@@ -22,6 +22,7 @@ permalink: test-results.html
 <script>
 const metricsByBranch = {{ metricsByBranch | dump | safe }};
 const defaultBranch = "{{ defaultBranch }}";
+const ghRepo = "https://github.com/matthewdeaves/peertalk";
 
 function renderReport() {
   const metrics = metricsByBranch[defaultBranch] || [];
@@ -32,6 +33,7 @@ function renderReport() {
 
   const latest = metrics[0];
   const tr = latest.test_results;
+  const branch = latest.branch || 'develop';
 
   // Summary
   let summaryHtml = '<div class="summary-grid">';
@@ -49,15 +51,24 @@ function renderReport() {
   }
 
   let testsHtml = '<table class="issues-table"><thead><tr>';
-  testsHtml += '<th>Status</th><th>Test Name</th><th>Duration</th>';
+  testsHtml += '<th>Status</th><th>Test Name</th><th>Source</th>';
   testsHtml += '</tr></thead><tbody>';
 
   for (const test of tr.test_details) {
-    const statusClass = test.status === 'passed' ? 'severity-success' : 'severity-error';
-    testsHtml += '<tr class="' + statusClass + '">';
-    testsHtml += '<td><span class="status-badge ' + test.status + '">' + test.status + '</span></td>';
-    testsHtml += '<td><code>' + test.name + '</code></td>';
-    testsHtml += '<td>' + (test.duration || '-') + '</td>';
+    const status = test.status.toUpperCase();
+    const statusClass = status === 'PASS' || status === 'OK' ? 'passed' : 'failed';
+    const displayStatus = status === 'OK' ? 'PASS' : status;
+
+    // Extract test function name (remove trailing "...")
+    const testName = test.name.replace(/\.\.\.+$/, '').trim();
+
+    // Create GitHub search link for this test name
+    const searchUrl = ghRepo + '/search?q=' + encodeURIComponent(testName) + '+path%3Atests%2F&type=code';
+
+    testsHtml += '<tr class="severity-' + (statusClass === 'passed' ? 'success' : 'error') + '">';
+    testsHtml += '<td><span class="status-badge ' + statusClass + '">' + displayStatus + '</span></td>';
+    testsHtml += '<td><code>' + testName + '</code></td>';
+    testsHtml += '<td><a href="' + searchUrl + '" target="_blank" rel="noopener">Find in code</a></td>';
     testsHtml += '</tr>';
   }
 
