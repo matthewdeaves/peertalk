@@ -8,6 +8,7 @@ on:
 
 jobs:
   # POSIX build and tests (runs on every push/PR)
+  # Uses lightweight POSIX-only Docker image (no Retro68)
   build-posix:
     runs-on: ubuntu-latest
     steps:
@@ -16,21 +17,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image (with cache)
+      - name: Build POSIX Docker image (with cache)
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: docker/Dockerfile
+          file: docker/Dockerfile.posix
           push: false
           load: true
-          tags: peertalk-dev:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: peertalk-posix:latest
+          cache-from: type=gha,scope=posix
+          cache-to: type=gha,mode=max,scope=posix
 
       - name: Build POSIX
         run: |
           if [ -f "Makefile" ]; then
-            docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest make all
+            docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-posix:latest make all
           else
             echo "No Makefile yet - skipping POSIX build"
           fi
@@ -38,7 +39,7 @@ jobs:
       - name: Run tests
         run: |
           if [ -f "Makefile" ]; then
-            docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest make test-local || exit 1
+            docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-posix:latest make test-local || exit 1
             echo "✓ All tests passed"
           else
             echo "No Makefile yet - skipping tests"
@@ -47,8 +48,8 @@ jobs:
       - name: Check coverage
         run: |
           if [ -f "Makefile" ]; then
-            docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest bash -c "make coverage-local && lcov --summary build/coverage/coverage.info 2>&1"
-            COVERAGE=$(docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest lcov --summary build/coverage/coverage.info 2>&1 | grep "lines" | awk '{print $2}' | tr -d '%')
+            docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-posix:latest bash -c "make coverage-local && lcov --summary build/coverage/coverage.info 2>&1"
+            COVERAGE=$(docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-posix:latest lcov --summary build/coverage/coverage.info 2>&1 | grep "lines" | awk '{print $2}' | tr -d '%')
             echo "Coverage: ${COVERAGE}%"
             if (( $(echo "$COVERAGE < 10.0" | bc -l) )); then
               echo "::warning::Coverage ${COVERAGE}% is below 10% threshold"
@@ -66,37 +67,51 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image (with cache)
+      - name: Build POSIX Docker image (with cache)
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: docker/Dockerfile
+          file: docker/Dockerfile.posix
           push: false
           load: true
-          tags: peertalk-dev:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: peertalk-posix:latest
+          cache-from: type=gha,scope=posix
+          cache-to: type=gha,mode=max,scope=posix
 
       - name: Run ISR Safety Validator
         run: |
           if [ -d "src/" ]; then
-            docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest \
+            docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-posix:latest \
               python tools/validators/isr_safety.py src/
           else
             echo "No src/ directory yet - skipping ISR validation"
           fi
 
-  # Build and push Docker image to GitHub Container Registry
-  # This makes the image available for local development: docker pull ghcr.io/OWNER/peertalk-dev
+  # Build and push full Docker image to GitHub Container Registry
+  # This includes Retro68 toolchain for Classic Mac cross-compilation
+  # Only runs on main/develop pushes (not PRs)
   build-docker:
     runs-on: ubuntu-latest
-    # Build on main/develop pushes (not PRs to avoid duplicate builds)
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     permissions:
       contents: read
       packages: write
     steps:
       - uses: actions/checkout@v4
+
+      # Free up disk space for large Docker build
+      - name: Free disk space
+        run: |
+          echo "Before cleanup:"
+          df -h /
+          # Remove unnecessary large packages
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune -af
+          echo "After cleanup:"
+          df -h /
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -126,14 +141,14 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=retro68
+          cache-to: type=gha,mode=max,scope=retro68
 
   # Retro68 cross-compilation - builds PeerTalk SDK library for Classic Mac platforms
   build-retro68:
     runs-on: ubuntu-latest
     needs: [build-docker]
-    # Only run on main branch or when Docker/Mac code changes
+    # Only run on main branch or when explicitly requested
     if: github.ref == 'refs/heads/main' || contains(github.event.pull_request.labels.*.name, 'build-retro68')
     steps:
       - uses: actions/checkout@v4
@@ -178,21 +193,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image (with cache)
+      - name: Build POSIX Docker image (with cache)
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: docker/Dockerfile
+          file: docker/Dockerfile.posix
           push: false
           load: true
-          tags: peertalk-dev:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: peertalk-posix:latest
+          cache-from: type=gha,scope=posix
+          cache-to: type=gha,mode=max,scope=posix
 
       - name: Check file sizes
         run: |
           echo "Checking file sizes (max 500 lines)..."
-          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest bash -c '
+          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-posix:latest bash -c '
             ERRORS=0
             for f in $(find . \( -name "*.c" -o -name "*.h" \) | grep -v node_modules); do
               lines=$(wc -l < "$f")
@@ -209,7 +224,7 @@ jobs:
       - name: Check for TODO/FIXME
         run: |
           echo "Checking for unresolved TODOs..."
-          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest bash -c '
+          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-posix:latest bash -c '
             if grep -rn "TODO\|FIXME" --include="*.c" --include="*.h" . 2>/dev/null; then
               echo "::notice::Found TODO/FIXME comments - consider resolving"
             fi
@@ -217,7 +232,7 @@ jobs:
 
       - name: Run static analysis
         run: |
-          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest bash -c '
+          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-posix:latest bash -c '
             mkdir -p build/analysis
             ./tools/analyze.sh --quick || true
           '
@@ -264,22 +279,22 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image (with cache)
+      - name: Build POSIX Docker image (with cache)
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: docker/Dockerfile
+          file: docker/Dockerfile.posix
           push: false
           load: true
-          tags: peertalk-dev:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: peertalk-posix:latest
+          cache-from: type=gha,scope=posix
+          cache-to: type=gha,mode=max,scope=posix
 
       - name: Build library
         id: build
         run: |
           START_TIME=$(date +%s)
-          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest \
+          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-posix:latest \
             make all 2>&1 | tee /tmp/build_output.txt
           BUILD_END=$(date +%s)
           echo "build_duration=$((BUILD_END - START_TIME))" >> $GITHUB_OUTPUT
@@ -288,7 +303,7 @@ jobs:
         id: tests
         run: |
           START_TIME=$(date +%s)
-          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest \
+          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-posix:latest \
             make test-local 2>&1 | tee /tmp/test_output.txt
           TEST_END=$(date +%s)
           echo "test_duration=$((TEST_END - START_TIME))" >> $GITHUB_OUTPUT
@@ -297,7 +312,7 @@ jobs:
         id: coverage
         run: |
           START_TIME=$(date +%s)
-          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest \
+          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-posix:latest \
             make coverage-local
           COV_END=$(date +%s)
           echo "coverage_duration=$((COV_END - START_TIME))" >> $GITHUB_OUTPUT
@@ -316,7 +331,7 @@ jobs:
             -e BUILD_DURATION_SEC="${{ steps.build.outputs.build_duration }}" \
             -e TEST_DURATION_SEC="${{ steps.tests.outputs.test_duration }}" \
             -e COVERAGE_DURATION_SEC="${{ steps.coverage.outputs.coverage_duration }}" \
-            peertalk-dev:latest bash -c '
+            peertalk-posix:latest bash -c '
               # click and rich are pre-installed in Docker image
 
               # Extract test results
@@ -359,7 +374,7 @@ jobs:
             -w /workspace \
             -e GITHUB_SHA="${{ github.sha }}" \
             -e GITHUB_REF_NAME="${{ github.ref_name }}" \
-            peertalk-dev:latest bash -c '
+            peertalk-posix:latest bash -c '
               python3 tools/metrics/aggregate_metrics.py \
                 /metrics/test_results.json \
                 /metrics/coverage.json \
@@ -380,7 +395,7 @@ jobs:
             -v ${{ github.workspace }}:/workspace \
             -v /tmp/metrics:/metrics \
             -w /workspace \
-            peertalk-dev:latest bash -c '
+            peertalk-posix:latest bash -c '
               # click and rich are pre-installed in Docker image
               python3 tools/metrics/generate_isr_report.py \
                 /metrics/isr_safety.json \

@@ -1,0 +1,49 @@
+# PeerTalk POSIX Development Environment
+# Lightweight image for POSIX builds and testing (no Retro68)
+#
+# Build: docker build -t peertalk-posix -f docker/Dockerfile.posix .
+# Run:   docker run -it -v $(pwd):/workspace peertalk-posix
+
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install build tools and static analysis
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    make \
+    git \
+    python3 \
+    python3-pip \
+    python3-venv \
+    curl \
+    jq \
+    lcov \
+    bc \
+    universal-ctags \
+    clang-format \
+    # Static analysis tools
+    cppcheck \
+    pmccabe \
+    valgrind \
+    # Node.js for jscpd
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python-based analysis tools
+RUN python3 -m venv /opt/venv && \
+    /opt/venv/bin/pip install --upgrade pip && \
+    /opt/venv/bin/pip install lizard flawfinder click rich
+
+# Add venv to PATH
+ENV PATH="/opt/venv/bin:${PATH}"
+
+# Install Node-based analysis tools
+RUN npm install -g jscpd@3
+
+# Create workspace
+WORKDIR /workspace
+
+# Default command
+CMD ["/bin/bash"]
