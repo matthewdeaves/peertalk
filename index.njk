@@ -3,329 +3,252 @@ layout: layouts/base.njk
 title: PeerTalk Metrics Dashboard
 ---
 
-{% set ghRepo = "https://github.com/matthewdeaves/peertalk" %}
-{% set ghBlob = ghRepo + "/blob/develop" %}
-
 <div class="dashboard-header">
   <h1>PeerTalk Metrics Dashboard</h1>
-  {% if allMetrics.length > 0 %}
-  <p class="last-update">Last updated: {{ allMetrics[0].timestamp | dateFormat }}</p>
-  <p class="commit-info">
-    Branch: <code>{{ allMetrics[0].branch }}</code> |
-    Commit: <a href="{{ ghRepo }}/commit/{{ allMetrics[0].commit }}"><code>{{ allMetrics[0].commit }}</code></a>
-  </p>
-  {% else %}
-  <p class="last-update">No metrics data available yet</p>
-  {% endif %}
+
+  <div class="branch-selector">
+    <label for="branch-select">Branch:</label>
+    <select id="branch-select">
+      {% for branch in availableBranches %}
+      <option value="{{ branch }}" {% if branch == defaultBranch %}selected{% endif %}>{{ branch }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <p class="last-update" id="last-update">Loading...</p>
+  <p class="commit-info" id="commit-info"></p>
 </div>
 
-{% if allMetrics.length > 0 %}
-{% set m = allMetrics[0] %}
-
-<!-- Primary Metrics Cards -->
-<div class="metrics-grid">
-  <!-- Test Results Card -->
-  <div class="metric-card {% if m.test_results.pass_rate == 100 %}success{% else %}warning{% endif %}">
-    <h3>Test Pass Rate</h3>
-    <div class="metric-value">{{ m.test_results.pass_rate }}%</div>
-    <p class="metric-subtitle">
-      {{ m.test_results.passed }}/{{ m.test_results.total_tests }} tests passing
-    </p>
-  </div>
-
-  <!-- Coverage Card -->
-  <div class="metric-card {% if m.coverage.line_coverage >= 70 %}success{% elif m.coverage.line_coverage >= 40 %}warning{% else %}error{% endif %}">
-    <h3>Line Coverage</h3>
-    <div class="metric-value">{{ m.coverage.line_coverage }}%</div>
-    <p class="metric-subtitle">
-      Function: {{ m.coverage.function_coverage }}%
-      <br>
-      <a href="/peertalk/coverage/">View detailed coverage report →</a>
-    </p>
-  </div>
-
-  <!-- Static Analysis Card -->
-  <div class="metric-card {% if m.static_analysis.by_severity.error == 0 %}success{% else %}error{% endif %}">
-    <h3>Static Analysis</h3>
-    <div class="metric-value">{{ m.static_analysis.by_severity.error or 0 }}</div>
-    <p class="metric-subtitle">
-      errors ({{ m.static_analysis.by_severity.warning or 0 }} warnings)
-      <br>
-      <a href="#static-analysis-details">View issues →</a>
-    </p>
-  </div>
-
-  <!-- Complexity Card -->
-  <div class="metric-card {% if m.complexity.functions_over_threshold == 0 %}success{% elif m.complexity.functions_over_threshold <= 5 %}warning{% else %}error{% endif %}">
-    <h3>Complexity</h3>
-    <div class="metric-value">{{ m.complexity.functions_over_threshold }}</div>
-    <p class="metric-subtitle">
-      functions over threshold (max: {{ m.complexity.highest_complexity }})
-      <br>
-      <a href="#complexity-details">View violations →</a>
-    </p>
-  </div>
-
-  <!-- Code Duplication Card -->
-  <div class="metric-card {% if m.duplicates.percentage < 5 %}success{% elif m.duplicates.percentage < 10 %}warning{% else %}error{% endif %}">
-    <h3>Code Duplication</h3>
-    <div class="metric-value">{{ m.duplicates.percentage }}%</div>
-    <p class="metric-subtitle">
-      {{ m.duplicates.duplicate_lines }} / {{ m.duplicates.total_lines }} lines
-      <br>
-      <a href="#duplication-details">View clones →</a>
-    </p>
-  </div>
-
-  <!-- ISR Safety Card -->
-  <div class="metric-card {% if m.isr_safety.total_violations == 0 %}success{% else %}error{% endif %}">
-    <h3>ISR Safety</h3>
-    <div class="metric-value">{{ m.isr_safety.total_violations }}</div>
-    <p class="metric-subtitle">
-      violations detected
-      <br>
-      <a href="/peertalk/isr-report.html">View ISR safety report →</a>
-    </p>
-  </div>
-
-  <!-- Binary Size Card -->
-  <div class="metric-card">
-    <h3>Binary Size</h3>
-    <div class="metric-value">{{ (m.binary_size.total_lib_bytes / 1024) | round }}KB</div>
-    <p class="metric-subtitle">
-      {{ m.binary_size.source_lines }} lines of code
-    </p>
-  </div>
-
-  <!-- CI Timing Card -->
-  <div class="metric-card">
-    <h3>CI Build Time</h3>
-    <div class="metric-value">{{ m.ci_metrics.total_duration_sec }}s</div>
-    <p class="metric-subtitle">
-      Build: {{ m.ci_metrics.build_duration_sec }}s |
-      Test: {{ m.ci_metrics.test_duration_sec }}s
-    </p>
-  </div>
-</div>
-
-<!-- Detailed Issues Section -->
-<div class="details-section">
-
-  <!-- Static Analysis Issues -->
-  <div class="detail-card" id="static-analysis-details">
-    <h2>Static Analysis Issues (cppcheck)</h2>
-    {% set actionableIssues = [] %}
-    {% for issue in m.static_analysis.issues %}
-      {% if issue.severity != "information" %}
-        {% set actionableIssues = (actionableIssues.push(issue), actionableIssues) %}
-      {% endif %}
-    {% endfor %}
-    {% if actionableIssues.length > 0 %}
-    <table class="issues-table">
-      <thead>
-        <tr>
-          <th>Severity</th>
-          <th>File</th>
-          <th>Line</th>
-          <th>Message</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for issue in actionableIssues %}
-        <tr class="severity-{{ issue.severity }}">
-          <td><span class="badge badge-{{ issue.severity }}">{{ issue.severity }}</span></td>
-          <td><a href="{{ ghBlob }}/{{ issue.file }}#L{{ issue.line }}">{{ issue.file }}</a></td>
-          <td>{{ issue.line }}</td>
-          <td>{{ issue.message }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <p class="metric-note">Showing {{ actionableIssues.length }} actionable issues ({{ m.static_analysis.by_severity.information or 0 }} informational messages hidden)</p>
-    {% else %}
-    <p class="no-issues">No actionable issues detected</p>
-    {% endif %}
-  </div>
-
-  <!-- Complexity Violations -->
-  <div class="detail-card" id="complexity-details">
-    <h2>Complexity Violations (threshold: {{ m.complexity.max_complexity }})</h2>
-    {% if m.complexity.violations and m.complexity.violations.length > 0 %}
-    <table class="issues-table">
-      <thead>
-        <tr>
-          <th>Complexity</th>
-          <th>Function</th>
-          <th>File</th>
-          <th>Line</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for v in m.complexity.violations %}
-        <tr>
-          <td><strong>{{ v.complexity }}</strong></td>
-          <td><code>{{ v.function }}</code></td>
-          <td><a href="{{ ghBlob }}/{{ v.file }}#L{{ v.line }}">{{ v.file }}</a></td>
-          <td>{{ v.line }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <p class="metric-note">Average complexity: {{ m.complexity.average_complexity }} | Total functions: {{ m.complexity.total_functions }}</p>
-    {% else %}
-    <p class="no-issues">No complexity violations</p>
-    {% endif %}
-  </div>
-
-  <!-- Code Duplication -->
-  <div class="detail-card" id="duplication-details">
-    <h2>Code Duplication ({{ m.duplicates.total_duplicates }} clones)</h2>
-    {% if m.duplicates.clones and m.duplicates.clones.length > 0 %}
-    <table class="issues-table">
-      <thead>
-        <tr>
-          <th>Lines</th>
-          <th>First Location</th>
-          <th>Second Location</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for clone in m.duplicates.clones %}
-        <tr>
-          <td>{{ clone.lines }}</td>
-          <td><a href="{{ ghBlob }}/{{ clone.first_file }}#L{{ clone.first_start }}-L{{ clone.first_end }}">{{ clone.first_file }}:{{ clone.first_start }}</a></td>
-          <td><a href="{{ ghBlob }}/{{ clone.second_file }}#L{{ clone.second_start }}-L{{ clone.second_end }}">{{ clone.second_file }}:{{ clone.second_start }}</a></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <p class="no-issues">No code duplication detected</p>
-    {% endif %}
-  </div>
-
-</div>
-
-<!-- Charts Section -->
-<div class="charts-section">
-  <h2>Trends</h2>
-  <div class="charts-grid">
-    <div class="chart-container">
+<div id="metrics-content">
+  <div class="metrics-grid">
+    <!-- Test Results Card -->
+    <div class="metric-card" id="card-tests">
       <h3>Test Pass Rate</h3>
+      <div class="metric-value" id="test-pass-rate">--</div>
+      <p class="metric-subtitle" id="test-subtitle">Loading...</p>
+    </div>
+
+    <!-- Coverage Card -->
+    <div class="metric-card" id="card-coverage">
+      <h3>Line Coverage</h3>
+      <div class="metric-value" id="line-coverage">--</div>
+      <p class="metric-subtitle" id="coverage-subtitle">Loading...</p>
+    </div>
+
+    <!-- ISR Safety Card -->
+    <div class="metric-card" id="card-isr">
+      <h3>ISR Safety</h3>
+      <div class="metric-value" id="isr-violations">--</div>
+      <p class="metric-subtitle">violations detected</p>
+    </div>
+
+    <!-- CI Timing Card -->
+    <div class="metric-card" id="card-ci">
+      <h3>CI Build Time</h3>
+      <div class="metric-value" id="ci-duration">--</div>
+      <p class="metric-subtitle" id="ci-subtitle">Loading...</p>
+    </div>
+  </div>
+
+  <!-- Charts Section -->
+  <div class="charts-section">
+    <div class="chart-container">
+      <h2>Test Pass Rate Trend</h2>
       <canvas id="chart-test-results" width="400" height="200"></canvas>
     </div>
 
     <div class="chart-container">
-      <h3>Coverage</h3>
+      <h2>Coverage Trends</h2>
       <canvas id="chart-coverage" width="400" height="200"></canvas>
     </div>
 
     <div class="chart-container">
-      <h3>Code Quality</h3>
+      <h2>Code Quality</h2>
       <canvas id="chart-quality" width="400" height="200"></canvas>
     </div>
 
     <div class="chart-container">
-      <h3>CI Performance</h3>
+      <h2>CI Performance</h2>
       <canvas id="chart-ci-timing" width="400" height="200"></canvas>
     </div>
   </div>
 </div>
 
+<p class="no-data" id="no-data" style="display: none;">No metrics data available for this branch.</p>
+
 <script src="assets/js/chart.min.js"></script>
 <script>
-// Prepare data
-const metrics = {{ allMetrics | slice(0, 30) | dump | safe }};
-const labels = metrics.map(m => m.date).reverse();
+// All metrics data organized by branch
+const metricsByBranch = {{ metricsByBranch | dump | safe }};
+const defaultBranch = "{{ defaultBranch }}";
 
-// Only render charts if we have data
-if (metrics.length > 0) {
+// Chart instances (so we can destroy and recreate them)
+let charts = {};
+
+function formatDate(dateStr) {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function updateCardClass(cardId, condition, successClass, failClass) {
+  const card = document.getElementById(cardId);
+  card.classList.remove('success', 'warning', 'error');
+  card.classList.add(condition ? successClass : failClass);
+}
+
+function updateDashboard(branch) {
+  const metrics = metricsByBranch[branch] || [];
+  const content = document.getElementById('metrics-content');
+  const noData = document.getElementById('no-data');
+
+  if (metrics.length === 0) {
+    content.style.display = 'none';
+    noData.style.display = 'block';
+    return;
+  }
+
+  content.style.display = 'block';
+  noData.style.display = 'none';
+
+  const latest = metrics[0];
+
+  // Update header info
+  document.getElementById('last-update').textContent =
+    'Last updated: ' + formatDate(latest.timestamp || latest.date);
+  document.getElementById('commit-info').innerHTML =
+    'Branch: <code>' + (latest.branch || branch) + '</code> | Commit: <code>' +
+    (latest.commit ? latest.commit.substring(0, 7) : 'unknown') + '</code>';
+
+  // Update cards
+  document.getElementById('test-pass-rate').textContent = latest.test_results.pass_rate + '%';
+  document.getElementById('test-subtitle').textContent =
+    latest.test_results.passed + '/' + latest.test_results.total_tests + ' tests passing';
+  updateCardClass('card-tests', latest.test_results.pass_rate === 100, 'success', 'warning');
+
+  document.getElementById('line-coverage').textContent = latest.coverage.line_coverage + '%';
+  let coverageSubtitle = latest.coverage.lines_covered + '/' + latest.coverage.lines_total + ' lines';
+  if (metrics.length > 1) {
+    const change = ((latest.coverage.line_coverage - metrics[1].coverage.line_coverage) /
+                    metrics[1].coverage.line_coverage * 100).toFixed(1);
+    coverageSubtitle += ' <span class="trend">' + change + '% change</span>';
+  }
+  document.getElementById('coverage-subtitle').innerHTML = coverageSubtitle;
+  updateCardClass('card-coverage', latest.coverage.line_coverage >= 40, 'success', 'warning');
+
+  document.getElementById('isr-violations').textContent = latest.isr_safety.total_violations;
+  updateCardClass('card-isr', latest.isr_safety.total_violations === 0, 'success', 'error');
+
+  document.getElementById('ci-duration').textContent = latest.ci_metrics.total_duration_sec + 's';
+  document.getElementById('ci-subtitle').textContent =
+    'Build: ' + latest.ci_metrics.build_duration_sec + 's | Test: ' + latest.ci_metrics.test_duration_sec + 's';
+
+  // Update charts
+  updateCharts(metrics.slice(0, 30));
+}
+
+function updateCharts(metrics) {
+  const labels = metrics.map(m => m.date).reverse();
+
+  // Destroy existing charts
+  Object.values(charts).forEach(chart => chart.destroy());
+  charts = {};
+
   // Test Results Chart
-  new Chart(document.getElementById('chart-test-results'), {
+  charts.testResults = new Chart(document.getElementById('chart-test-results'), {
     type: 'line',
     data: {
       labels: labels,
       datasets: [{
         label: 'Pass Rate (%)',
-        data: metrics.map(m => m.test_results?.pass_rate || 0).reverse(),
+        data: metrics.map(m => m.test_results.pass_rate).reverse(),
         borderColor: 'rgb(75, 192, 192)',
-        tension: 0.1,
-        fill: false
+        tension: 0.1
       }]
     },
     options: {
       responsive: true,
-      scales: { y: { min: 0, max: 100 } }
+      scales: {
+        y: { min: 0, max: 100 }
+      }
     }
   });
 
   // Coverage Chart
-  new Chart(document.getElementById('chart-coverage'), {
+  charts.coverage = new Chart(document.getElementById('chart-coverage'), {
     type: 'line',
     data: {
       labels: labels,
       datasets: [
         {
           label: 'Line Coverage (%)',
-          data: metrics.map(m => m.coverage?.line_coverage || 0).reverse(),
+          data: metrics.map(m => m.coverage.line_coverage).reverse(),
           borderColor: 'rgb(54, 162, 235)',
-          tension: 0.1,
-          fill: false
+          tension: 0.1
         },
         {
           label: 'Function Coverage (%)',
-          data: metrics.map(m => m.coverage?.function_coverage || 0).reverse(),
+          data: metrics.map(m => m.coverage.function_coverage).reverse(),
           borderColor: 'rgb(153, 102, 255)',
-          tension: 0.1,
-          fill: false
+          tension: 0.1
         }
       ]
     },
     options: {
       responsive: true,
-      scales: { y: { min: 0, max: 100 } }
+      scales: {
+        y: { min: 0, max: 100 }
+      }
     }
   });
 
   // Quality Chart
-  new Chart(document.getElementById('chart-quality'), {
+  charts.quality = new Chart(document.getElementById('chart-quality'), {
     type: 'bar',
     data: {
       labels: labels,
       datasets: [
         {
           label: 'Files > 500 Lines',
-          data: metrics.map(m => m.quality?.files_over_500_lines || 0).reverse(),
+          data: metrics.map(m => m.quality.files_over_500_lines).reverse(),
           backgroundColor: 'rgba(255, 99, 132, 0.5)'
         },
         {
-          label: 'Complexity Violations',
-          data: metrics.map(m => m.complexity?.functions_over_threshold || 0).reverse(),
-          backgroundColor: 'rgba(255, 159, 64, 0.5)'
+          label: 'TODO Count',
+          data: metrics.map(m => m.quality.todo_count).reverse(),
+          backgroundColor: 'rgba(255, 206, 86, 0.5)'
         }
       ]
     },
-    options: { responsive: true }
+    options: {
+      responsive: true
+    }
   });
 
   // CI Timing Chart
-  new Chart(document.getElementById('chart-ci-timing'), {
+  charts.ciTiming = new Chart(document.getElementById('chart-ci-timing'), {
     type: 'line',
     data: {
       labels: labels,
       datasets: [{
         label: 'Total Duration (s)',
-        data: metrics.map(m => m.ci_metrics?.total_duration_sec || 0).reverse(),
+        data: metrics.map(m => m.ci_metrics.total_duration_sec).reverse(),
         borderColor: 'rgb(255, 159, 64)',
-        tension: 0.1,
-        fill: false
+        tension: 0.1
       }]
     },
-    options: { responsive: true }
+    options: {
+      responsive: true
+    }
   });
 }
-</script>
 
-{% else %}
-<p class="no-data">No metrics data available. Metrics will appear after first CI run.</p>
-{% endif %}
+// Initialize with default branch
+document.addEventListener('DOMContentLoaded', function() {
+  updateDashboard(defaultBranch);
+
+  // Handle branch selection change
+  document.getElementById('branch-select').addEventListener('change', function(e) {
+    updateDashboard(e.target.value);
+  });
+});
+</script>
