@@ -7,6 +7,15 @@
 #   mactcp - 68k MacTCP build (System 6.0.8 - 7.5.5)
 #   ot     - PPC Open Transport build (System 7.6.1+)
 #   both   - Build both platforms (default)
+#
+# Output:
+#   LaunchAPPL-build/LaunchAPPLServer-MacTCP.bin
+#   LaunchAPPL-build/LaunchAPPLServer-MacTCP.dsk
+#   LaunchAPPL-build/LaunchAPPLServer-OpenTransport.bin
+#   LaunchAPPL-build/LaunchAPPLServer-OpenTransport.dsk
+#
+# Note: LaunchAPPL source is inside the Docker container at /opt/Retro68/LaunchAPPL/
+#       This script builds there and copies output to workspace.
 
 set -e
 
@@ -43,7 +52,10 @@ esac
 
 cd "$PROJECT_DIR"
 
-# Use docker compose (not docker-compose for modern Docker)
+# Create output directory
+mkdir -p LaunchAPPL-build
+
+# Use docker compose
 DOCKER_CMD="docker compose"
 if ! command -v docker >/dev/null 2>&1; then
     echo "ERROR: docker not found"
@@ -58,7 +70,9 @@ if [[ $BUILD_MACTCP -eq 1 ]]; then
 
     $DOCKER_CMD -f docker/docker-compose.yml run --rm peertalk-dev bash -c "
         set -e
-        cd /workspace/LaunchAPPL
+
+        # Build in container's LaunchAPPL source directory
+        cd /opt/Retro68/LaunchAPPL
         rm -rf build-mactcp
         mkdir -p build-mactcp
         cd build-mactcp
@@ -71,16 +85,19 @@ if [[ $BUILD_MACTCP -eq 1 ]]; then
         # Build
         make -j\$(nproc)
 
-        # Show results
+        # Copy to workspace
+        cp Server/LaunchAPPLServer.bin /workspace/LaunchAPPL-build/LaunchAPPLServer-MacTCP.bin
+        cp Server/LaunchAPPLServer.dsk /workspace/LaunchAPPL-build/LaunchAPPLServer-MacTCP.dsk
+
         echo ''
-        echo 'Build complete! Artifacts:'
-        ls -lh Server/*.bin Server/*.dsk
+        echo 'Build complete!'
+        ls -lh /workspace/LaunchAPPL-build/LaunchAPPLServer-MacTCP.*
     "
 
     echo ""
     echo "MacTCP build complete:"
-    echo "  Binary: LaunchAPPL/build-mactcp/Server/LaunchAPPLServer-MacTCP.bin"
-    echo "  Disk:   LaunchAPPL/build-mactcp/Server/LaunchAPPLServer-MacTCP.dsk"
+    echo "  Binary: LaunchAPPL-build/LaunchAPPLServer-MacTCP.bin"
+    echo "  Disk:   LaunchAPPL-build/LaunchAPPLServer-MacTCP.dsk"
     echo ""
 fi
 
@@ -92,7 +109,9 @@ if [[ $BUILD_OT -eq 1 ]]; then
 
     $DOCKER_CMD -f docker/docker-compose.yml run --rm peertalk-dev bash -c "
         set -e
-        cd /workspace/LaunchAPPL
+
+        # Build in container's LaunchAPPL source directory
+        cd /opt/Retro68/LaunchAPPL
         rm -rf build-ppc
         mkdir -p build-ppc
         cd build-ppc
@@ -105,16 +124,19 @@ if [[ $BUILD_OT -eq 1 ]]; then
         # Build
         make -j\$(nproc)
 
-        # Show results
+        # Copy to workspace
+        cp Server/LaunchAPPLServer.bin /workspace/LaunchAPPL-build/LaunchAPPLServer-OpenTransport.bin
+        cp Server/LaunchAPPLServer.dsk /workspace/LaunchAPPL-build/LaunchAPPLServer-OpenTransport.dsk
+
         echo ''
-        echo 'Build complete! Artifacts:'
-        ls -lh Server/*.bin Server/*.dsk
+        echo 'Build complete!'
+        ls -lh /workspace/LaunchAPPL-build/LaunchAPPLServer-OpenTransport.*
     "
 
     echo ""
     echo "Open Transport build complete:"
-    echo "  Binary: LaunchAPPL/build-ppc/Server/LaunchAPPLServer-OpenTransport.bin"
-    echo "  Disk:   LaunchAPPL/build-ppc/Server/LaunchAPPLServer-OpenTransport.dsk"
+    echo "  Binary: LaunchAPPL-build/LaunchAPPLServer-OpenTransport.bin"
+    echo "  Disk:   LaunchAPPL-build/LaunchAPPLServer-OpenTransport.dsk"
     echo ""
 fi
 
@@ -122,8 +144,11 @@ echo "========================================="
 echo "All builds complete!"
 echo "========================================="
 echo ""
+echo "Output files:"
+ls -la LaunchAPPL-build/
+echo ""
 echo "Next steps:"
-echo "1. Deploy .bin files to your Mac via FTP"
+echo "1. Deploy .bin files to your Mac via FTP: /deploy <machine>"
 echo "2. Use BinUnpk on the Mac to extract the application"
 echo "3. Launch LaunchAPPLServer and enable TCP server on port 1984"
 echo "4. Test connectivity with: /test-machine <machine-name>"

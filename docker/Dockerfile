@@ -3,14 +3,15 @@
 #
 # Build: docker build -t peertalk-dev -f docker/Dockerfile .
 # Run:   docker run -it -v $(pwd):/workspace peertalk-dev
+#
+# Expected size: ~3-4GB (toolchain ~2GB, base + tools ~1-2GB)
 
 FROM ubuntu:22.04 AS builder
 
-# Prevent interactive prompts during build
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Retro68 build dependencies
-RUN apt-get update && apt-get install -y \
+# Install Retro68 build dependencies (only needed for building toolchain)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
     libgmp-dev \
@@ -22,29 +23,29 @@ RUN apt-get update && apt-get install -y \
     texinfo \
     ruby \
     git \
+    ca-certificates \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy MPW Interfaces for MacTCP/OT/AppleTalk headers
-# This file contains Apple's Universal Interfaces including networking headers
 COPY resources/retro68/MPW_Interfaces.zip /tmp/
 
 # Clone Retro68
 WORKDIR /opt
-RUN git clone https://github.com/autc04/Retro68.git && \
+RUN git clone --depth 1 https://github.com/autc04/Retro68.git && \
     cd Retro68 && \
     git submodule update --init --recursive
 
-# Extract MPW Interfaces (includes MacTCP.h, OpenTransport.h, ADSP.h, etc.)
+# Extract MPW Interfaces
 RUN mkdir -p /opt/Retro68/InterfacesAndLibraries && \
     unzip -o /tmp/MPW_Interfaces.zip -d /opt/Retro68/InterfacesAndLibraries && \
     rm /tmp/MPW_Interfaces.zip
 
-# Build toolchain (this takes a while - ~30-60 minutes)
+# Build toolchain
 WORKDIR /opt/Retro68-build
 RUN ../Retro68/build-toolchain.bash
 
-# Cleanup intermediate artifacts (~5-6GB savings)
+# Cleanup intermediate build artifacts
 RUN rm -rf gcc-build gcc-build-ppc binutils-build binutils-build-ppc \
     build-host build-target build-target-ppc build-target-carbon
 
@@ -53,33 +54,47 @@ FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install runtime dependencies only
-RUN apt-get update && apt-get install -y \
+# Install ONLY what's needed for using the toolchain and running builds
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Core build tools
     build-essential \
     make \
-    git \
+    cmake \
+    # Boost runtime libs for Retro68 tools (linker, Rez, MakePEF, etc.)
+    # These are runtime-only libs (~10MB), not the huge -dev packages
+    libboost-filesystem1.74.0 \
+    libboost-wave1.74.0 \
+    libboost-regex1.74.0 \
+    libboost-program-options1.74.0 \
+    libboost-iostreams1.74.0 \
+    # HFS disk utilities for Mac
+    hfsutils \
+    # Coverage
+    lcov \
+    # Python for scripts
     python3 \
     python3-pip \
     python3-venv \
-    curl \
-    jq \
-    hfsutils \
-    lcov \
+    # Static analysis
+    cppcheck \
+    pmccabe \
+    # Shell math
     bc \
-    universal-ctags \
-    clang-format \
-    cmake \
-    libboost-all-dev \
-    && rm -rf /var/lib/apt/lists/*
+    # Node.js for jscpd
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
-# Install MCP SDK for classic-mac-hardware server
-RUN pip3 install mcp>=1.0.0
+# Install Python tools
+RUN python3 -m venv /opt/venv && \
+    /opt/venv/bin/pip install --no-cache-dir --upgrade pip && \
+    /opt/venv/bin/pip install --no-cache-dir mcp>=1.0.0 lizard flawfinder click rich
 
-# Install GitHub CLI
-RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-    && apt-get update && apt-get install -y gh \
-    && rm -rf /var/lib/apt/lists/*
+ENV PATH="/opt/venv/bin:${PATH}"
+
+# Install jscpd
+RUN npm install -g jscpd@3 && npm cache clean --force
 
 # Copy only the built toolchain from builder stage
 COPY --from=builder /opt/Retro68-build/toolchain /opt/Retro68-build/toolchain
@@ -92,46 +107,38 @@ COPY --from=builder /opt/Retro68/Samples /opt/Retro68/Samples
 ENV RETRO68=/opt/Retro68-build/toolchain
 ENV PATH="${RETRO68}/bin:${PATH}"
 
-# Prebuild LaunchAPPLServer for 68k (m68k toolchain is always available)
+# Prebuild LaunchAPPLServer for 68k
 RUN cd /opt/Retro68/LaunchAPPL && \
     mkdir -p build-m68k && cd build-m68k && \
     cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/Retro68-build/toolchain/m68k-apple-macos/cmake/retro68.toolchain.cmake -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc)
 
-# Prebuild LaunchAPPLServer for PPC (if powerpc toolchain exists)
+# Prebuild LaunchAPPLServer for PPC (if toolchain exists)
 RUN cd /opt/Retro68/LaunchAPPL && \
     if [ -f /opt/Retro68-build/toolchain/powerpc-apple-macos/cmake/retro68.toolchain.cmake ]; then \
         mkdir -p build-ppc && cd build-ppc && \
         cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/Retro68-build/toolchain/powerpc-apple-macos/cmake/retro68.toolchain.cmake -DCMAKE_BUILD_TYPE=Release && \
         make -j$(nproc); \
-    else \
-        echo "PowerPC toolchain not found - skipping PPC build"; \
     fi
 
-# Prebuild sample apps for 68k (m68k toolchain is always available)
+# Prebuild sample apps for 68k
 RUN for sample in Dialog HelloWorld Launcher Raytracer; do \
-        echo "Building $sample for 68k..."; \
         cd /opt/Retro68/Samples/$sample && \
         mkdir -p build-m68k && cd build-m68k && \
         cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/Retro68-build/toolchain/m68k-apple-macos/cmake/retro68.toolchain.cmake -DCMAKE_BUILD_TYPE=Release && \
         make -j$(nproc) || true; \
     done
 
-# Prebuild sample apps for PPC (if powerpc toolchain exists)
+# Prebuild sample apps for PPC (if toolchain exists)
 RUN if [ -f /opt/Retro68-build/toolchain/powerpc-apple-macos/cmake/retro68.toolchain.cmake ]; then \
         for sample in Dialog HelloWorld Launcher Raytracer; do \
-            echo "Building $sample for PPC..."; \
             cd /opt/Retro68/Samples/$sample && \
             mkdir -p build-ppc && cd build-ppc && \
             cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/Retro68-build/toolchain/powerpc-apple-macos/cmake/retro68.toolchain.cmake -DCMAKE_BUILD_TYPE=Release && \
             make -j$(nproc) || true; \
         done; \
-    else \
-        echo "PowerPC toolchain not found - skipping PPC sample builds"; \
     fi
 
-# Create workspace
 WORKDIR /workspace
 
-# Default command
 CMD ["/bin/bash"]

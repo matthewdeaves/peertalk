@@ -1,0 +1,50 @@
+{
+  "timestamp": "2026-02-04T21:00:00Z",
+  "commit": "abc1234",
+  "branch": "develop",
+  "test_results": {
+    "total_tests": 22,
+    "passed": 22,
+    "failed": 0,
+    "pass_rate": 100.0,
+    "test_details": []
+  },
+  "coverage": {
+    "line_coverage": 40.9,
+    "function_coverage": 61.1,
+    "lines_covered": 986,
+    "lines_total": 2411,
+    "functions_covered": 102,
+    "functions_total": 167
+  },
+  "isr_safety": {
+    "total_violations": 0,
+    "by_category": {
+      "memory": 0,
+      "timing": 0,
+      "memory_ops": 0,
+      "io": 0,
+      "sync_network": 0,
+      "toolbox": 0
+    },
+    "violations": []
+  },
+  "quality": {
+    "files_over_500_lines": 8,
+    "todo_count": 9,
+    "fixme_count": 0,
+    "compiler_warnings": 0
+  },
+  "ci_metrics": {
+    "workflow_name": "PeerTalk CI",
+    "build_duration_sec": 45,
+    "test_duration_sec": 12,
+    "coverage_duration_sec": 8,
+    "total_duration_sec": 65,
+    "jobs": {
+      "build-posix": {"status": "success", "duration_sec": 45},
+      "validate-isr-safety": {"status": "success", "duration_sec": 8},
+      "quality-gates": {"status": "success", "duration_sec": 12}
+    }
+  }
+}

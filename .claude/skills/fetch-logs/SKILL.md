@@ -26,7 +26,7 @@ Retrieve PT_Log output from Classic Mac test machines via FTP.
    - Or use MCP server: `/mcp` → list resources
 
 2. **Logs exist on machine:**
-   - PT_Log writes to `/Documents/PeerTalk-Logs/`
+   - PT_Log writes to `Documents:PeerTalk-Logs`
    - Format: `session-{timestamp}.log`
 
 3. **MCP server running**
@@ -352,7 +352,7 @@ Possible causes:
 
 Try:
   - Run binary on Classic Mac first
-  - Check logs directory: /Documents/PeerTalk-Logs/
+  - Check logs directory: Documents:PeerTalk-Logs
   - Verify PT_Log initialization in code
 ```
 
@@ -369,7 +369,7 @@ Troubleshooting:
 ### Permission Denied
 
 ```
-✗ Permission denied: /Documents/PeerTalk-Logs/
+✗ Permission denied: Documents:PeerTalk-Logs
 
 Fix:
   - Check FTP user has read permissions

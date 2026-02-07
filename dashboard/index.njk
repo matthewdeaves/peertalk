@@ -1,0 +1,254 @@
+---
+layout: layouts/base.njk
+title: PeerTalk Metrics Dashboard
+---
+
+<div class="dashboard-header">
+  <h1>PeerTalk Metrics Dashboard</h1>
+
+  <div class="branch-selector">
+    <label for="branch-select">Branch:</label>
+    <select id="branch-select">
+      {% for branch in availableBranches %}
+      <option value="{{ branch }}" {% if branch == defaultBranch %}selected{% endif %}>{{ branch }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <p class="last-update" id="last-update">Loading...</p>
+  <p class="commit-info" id="commit-info"></p>
+</div>
+
+<div id="metrics-content">
+  <div class="metrics-grid">
+    <!-- Test Results Card -->
+    <div class="metric-card" id="card-tests">
+      <h3>Test Pass Rate</h3>
+      <div class="metric-value" id="test-pass-rate">--</div>
+      <p class="metric-subtitle" id="test-subtitle">Loading...</p>
+    </div>
+
+    <!-- Coverage Card -->
+    <div class="metric-card" id="card-coverage">
+      <h3>Line Coverage</h3>
+      <div class="metric-value" id="line-coverage">--</div>
+      <p class="metric-subtitle" id="coverage-subtitle">Loading...</p>
+    </div>
+
+    <!-- ISR Safety Card -->
+    <div class="metric-card" id="card-isr">
+      <h3>ISR Safety</h3>
+      <div class="metric-value" id="isr-violations">--</div>
+      <p class="metric-subtitle">violations detected</p>
+    </div>
+
+    <!-- CI Timing Card -->
+    <div class="metric-card" id="card-ci">
+      <h3>CI Build Time</h3>
+      <div class="metric-value" id="ci-duration">--</div>
+      <p class="metric-subtitle" id="ci-subtitle">Loading...</p>
+    </div>
+  </div>
+
+  <!-- Charts Section -->
+  <div class="charts-section">
+    <div class="chart-container">
+      <h2>Test Pass Rate Trend</h2>
+      <canvas id="chart-test-results" width="400" height="200"></canvas>
+    </div>
+
+    <div class="chart-container">
+      <h2>Coverage Trends</h2>
+      <canvas id="chart-coverage" width="400" height="200"></canvas>
+    </div>
+
+    <div class="chart-container">
+      <h2>Code Quality</h2>
+      <canvas id="chart-quality" width="400" height="200"></canvas>
+    </div>
+
+    <div class="chart-container">
+      <h2>CI Performance</h2>
+      <canvas id="chart-ci-timing" width="400" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+<p class="no-data" id="no-data" style="display: none;">No metrics data available for this branch.</p>
+
+<script src="assets/js/chart.min.js"></script>
+<script>
+// All metrics data organized by branch
+const metricsByBranch = {{ metricsByBranch | dump | safe }};
+const defaultBranch = "{{ defaultBranch }}";
+
+// Chart instances (so we can destroy and recreate them)
+let charts = {};
+
+function formatDate(dateStr) {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function updateCardClass(cardId, condition, successClass, failClass) {
+  const card = document.getElementById(cardId);
+  card.classList.remove('success', 'warning', 'error');
+  card.classList.add(condition ? successClass : failClass);
+}
+
+function updateDashboard(branch) {
+  const metrics = metricsByBranch[branch] || [];
+  const content = document.getElementById('metrics-content');
+  const noData = document.getElementById('no-data');
+
+  if (metrics.length === 0) {
+    content.style.display = 'none';
+    noData.style.display = 'block';
+    return;
+  }
+
+  content.style.display = 'block';
+  noData.style.display = 'none';
+
+  const latest = metrics[0];
+
+  // Update header info
+  document.getElementById('last-update').textContent =
+    'Last updated: ' + formatDate(latest.timestamp || latest.date);
+  document.getElementById('commit-info').innerHTML =
+    'Branch: <code>' + (latest.branch || branch) + '</code> | Commit: <code>' +
+    (latest.commit ? latest.commit.substring(0, 7) : 'unknown') + '</code>';
+
+  // Update cards
+  document.getElementById('test-pass-rate').textContent = latest.test_results.pass_rate + '%';
+  document.getElementById('test-subtitle').textContent =
+    latest.test_results.passed + '/' + latest.test_results.total_tests + ' tests passing';
+  updateCardClass('card-tests', latest.test_results.pass_rate === 100, 'success', 'warning');
+
+  document.getElementById('line-coverage').textContent = latest.coverage.line_coverage + '%';
+  let coverageSubtitle = latest.coverage.lines_covered + '/' + latest.coverage.lines_total + ' lines';
+  if (metrics.length > 1) {
+    const change = ((latest.coverage.line_coverage - metrics[1].coverage.line_coverage) /
+                    metrics[1].coverage.line_coverage * 100).toFixed(1);
+    coverageSubtitle += ' <span class="trend">' + change + '% change</span>';
+  }
+  document.getElementById('coverage-subtitle').innerHTML = coverageSubtitle;
+  updateCardClass('card-coverage', latest.coverage.line_coverage >= 40, 'success', 'warning');
+
+  document.getElementById('isr-violations').textContent = latest.isr_safety.total_violations;
+  updateCardClass('card-isr', latest.isr_safety.total_violations === 0, 'success', 'error');
+
+  document.getElementById('ci-duration').textContent = latest.ci_metrics.total_duration_sec + 's';
+  document.getElementById('ci-subtitle').textContent =
+    'Build: ' + latest.ci_metrics.build_duration_sec + 's | Test: ' + latest.ci_metrics.test_duration_sec + 's';
+
+  // Update charts
+  updateCharts(metrics.slice(0, 30));
+}
+
+function updateCharts(metrics) {
+  const labels = metrics.map(m => m.date).reverse();
+
+  // Destroy existing charts
+  Object.values(charts).forEach(chart => chart.destroy());
+  charts = {};
+
+  // Test Results Chart
+  charts.testResults = new Chart(document.getElementById('chart-test-results'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Pass Rate (%)',
+        data: metrics.map(m => m.test_results.pass_rate).reverse(),
+        borderColor: 'rgb(75, 192, 192)',
+        tension: 0.1
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { min: 0, max: 100 }
+      }
+    }
+  });
+
+  // Coverage Chart
+  charts.coverage = new Chart(document.getElementById('chart-coverage'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Line Coverage (%)',
+          data: metrics.map(m => m.coverage.line_coverage).reverse(),
+          borderColor: 'rgb(54, 162, 235)',
+          tension: 0.1
+        },
+        {
+          label: 'Function Coverage (%)',
+          data: metrics.map(m => m.coverage.function_coverage).reverse(),
+          borderColor: 'rgb(153, 102, 255)',
+          tension: 0.1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { min: 0, max: 100 }
+      }
+    }
+  });
+
+  // Quality Chart
+  charts.quality = new Chart(document.getElementById('chart-quality'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Files > 500 Lines',
+          data: metrics.map(m => m.quality.files_over_500_lines).reverse(),
+          backgroundColor: 'rgba(255, 99, 132, 0.5)'
+        },
+        {
+          label: 'TODO Count',
+          data: metrics.map(m => m.quality.todo_count).reverse(),
+          backgroundColor: 'rgba(255, 206, 86, 0.5)'
+        }
+      ]
+    },
+    options: {
+      responsive: true
+    }
+  });
+
+  // CI Timing Chart
+  charts.ciTiming = new Chart(document.getElementById('chart-ci-timing'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Total Duration (s)',
+        data: metrics.map(m => m.ci_metrics.total_duration_sec).reverse(),
+        borderColor: 'rgb(255, 159, 64)',
+        tension: 0.1
+      }]
+    },
+    options: {
+      responsive: true
+    }
+  });
+}
+
+// Initialize with default branch
+document.addEventListener('DOMContentLoaded', function() {
+  updateDashboard(defaultBranch);
+
+  // Handle branch selection change
+  document.getElementById('branch-select').addEventListener('change', function(e) {
+    updateDashboard(e.target.value);
+  });
+});
+</script>

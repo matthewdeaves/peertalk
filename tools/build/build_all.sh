@@ -40,12 +40,22 @@ echo ""
 
 build_posix() {
     echo "[POSIX] Building..."
-    if [[ -f "Makefile" ]]; then
-        make clean >/dev/null 2>&1 || true
-        make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
-        echo "[POSIX] ✓ Complete"
-    else
+    if [[ ! -f "Makefile" ]]; then
         echo "[POSIX] ⚠ No Makefile found - skipping"
+        return 0
+    fi
+
+    # Always use Docker for builds per build-requirements.md
+    if command -v docker >/dev/null 2>&1; then
+        docker run --rm -v "$(pwd)":/workspace -w /workspace \
+            -u "$(id -u):$(id -g)" \
+            peertalk-posix:latest \
+            make clean all
+        echo "[POSIX] ✓ Complete (Docker)"
+    else
+        echo "[POSIX] ⚠ Docker not available - skipping"
+        echo "    Install Docker to build POSIX target"
+        return 1
     fi
 }
 

@@ -32,6 +32,7 @@ a.out
 *.su
 *.idb
 *.pdb
+*.gdb
 
 # Coverage and profiling
 *.gcda
@@ -134,3 +135,8 @@ coverage.info
 .cache/
 .mcp.json
 LaunchAPPL-build/
+
+# Dashboard build artifacts (gh-pages only)
+node_modules/
+_site/
+package-lock.json
