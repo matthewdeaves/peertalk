@@ -4,6 +4,8 @@
 # All builds run inside Docker, so the main requirement is Docker itself.
 # This script checks Docker availability and image status.
 #
+# Usage: ./.claude/skills/build/scripts/check-build-prereqs.sh
+#
 # Returns 0 if all OK, 1 if missing required tools
 
 set -e
@@ -44,25 +46,28 @@ echo ""
 # Check Docker images
 echo "=== Docker Images ==="
 
-# Check for POSIX image
-if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^peertalk-posix:latest$"; then
-    SIZE=$(docker images peertalk-posix:latest --format "{{.Size}}")
-    echo "  [OK] peertalk-posix:latest ($SIZE)"
-else
-    echo "  [  ] peertalk-posix:latest not found"
-    echo "       Build: docker build -t peertalk-posix -f docker/Dockerfile.posix ."
-fi
-
-# Check for dev image (from GHCR or local)
-if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "ghcr.io/matthewdeaves/peertalk-dev:develop"; then
+# Check for peertalk-dev (used by Makefile docker-* targets)
+if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^peertalk-dev:latest$"; then
+    SIZE=$(docker images peertalk-dev:latest --format "{{.Size}}")
+    echo "  [OK] peertalk-dev:latest ($SIZE) - used by make docker-test"
+elif docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "ghcr.io/matthewdeaves/peertalk-dev:develop"; then
     SIZE=$(docker images ghcr.io/matthewdeaves/peertalk-dev:develop --format "{{.Size}}")
     echo "  [OK] ghcr.io/matthewdeaves/peertalk-dev:develop ($SIZE)"
-elif docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^peertalk-dev:latest$"; then
-    SIZE=$(docker images peertalk-dev:latest --format "{{.Size}}")
-    echo "  [OK] peertalk-dev:latest ($SIZE)"
+    echo "       Tip: Tag it for local use:"
+    echo "       docker tag ghcr.io/matthewdeaves/peertalk-dev:develop peertalk-dev"
 else
-    echo "  [  ] peertalk-dev not found (needed for Mac builds)"
+    echo "  [  ] peertalk-dev not found (needed for make docker-test)"
     echo "       Pull: docker pull ghcr.io/matthewdeaves/peertalk-dev:develop"
+    echo "       Then: docker tag ghcr.io/matthewdeaves/peertalk-dev:develop peertalk-dev"
+fi
+
+# Check for POSIX image (lighter, used by build_all.sh)
+if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^peertalk-posix:latest$"; then
+    SIZE=$(docker images peertalk-posix:latest --format "{{.Size}}")
+    echo "  [OK] peertalk-posix:latest ($SIZE) - lightweight POSIX builds"
+else
+    echo "  [  ] peertalk-posix:latest not found (optional, for quick builds)"
+    echo "       Build: docker build -t peertalk-posix -f docker/Dockerfile.posix ."
 fi
 
 echo ""
@@ -73,9 +78,22 @@ if docker compose version >/dev/null 2>&1; then
     echo "  [OK] docker compose: $(docker compose version --short 2>/dev/null || echo 'available')"
 else
     echo "  [X] docker compose not available"
-    echo "      Docker Compose is required for Mac builds"
+    echo "      Docker Compose is required for Mac builds and integration tests"
     MISSING_REQUIRED=1
 fi
+
+echo ""
+
+# Check for test integration containers
+echo "=== Integration Test Images ==="
+for img in peertalk-alice peertalk-bob peertalk-charlie peertalk-test; do
+    if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^${img}:latest$"; then
+        SIZE=$(docker images ${img}:latest --format "{{.Size}}")
+        echo "  [OK] ${img}:latest ($SIZE)"
+    else
+        echo "  [  ] ${img}:latest not built (run: make test-integration-docker)"
+    fi
+done
 
 echo ""
 
@@ -84,10 +102,11 @@ echo "=== Summary ==="
 if [[ $MISSING_REQUIRED -eq 0 ]]; then
     echo "[OK] All required prerequisites met"
     echo ""
-    echo "Quick start:"
-    echo "  make docker-test     # Run POSIX tests"
-    echo "  make docker-coverage # Run with coverage"
-    echo "  make docker-analyze  # Static analysis"
+    echo "Quick start commands:"
+    echo "  make docker-test          # Run POSIX tests"
+    echo "  make docker-coverage      # Tests with coverage report"
+    echo "  make docker-analyze       # Static analysis"
+    echo "  make test-integration-docker  # Multi-peer network test"
     exit 0
 else
     echo "[X] Missing required prerequisites - please install them first"
