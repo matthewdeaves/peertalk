@@ -8,88 +8,101 @@ argument-hint: <mode>
 
 Build PeerTalk for POSIX, 68k MacTCP, and PPC Open Transport platforms with integrated quality checks.
 
-## Modes
+**All builds run inside Docker containers** per project requirements.
 
-### PeerTalk Builds
+## Quick Reference
 
-| Mode | Description |
-|------|-------------|
-| `quick` | Syntax check only (fastest) |
-| `compile` | Full compile with warnings as errors |
-| `test` | POSIX build + tests + coverage report |
+| Mode | What It Does |
+|------|--------------|
+| `quick` | Fast syntax check (~5 sec) |
+| `compile` | Full compile with `-Werror` |
+| `test` | Build + tests + coverage |
+| `coverage` | Tests with HTML coverage report |
+| `analyze` | Static analysis (complexity, cppcheck, duplicates) |
 | `all` | All platforms (POSIX + 68k + PPC) |
-| `package` | Build + create .bin files for Mac transfer |
+| `package` | Create Mac `.bin` files for transfer |
 | `release` | Full pipeline with all quality gates |
-
-### LaunchAPPLServer Builds
-
-| Mode | Description |
-|------|-------------|
-| `launcher-mactcp` | Build LaunchAPPLServer for MacTCP (68k, System 6.0.8 - 7.5.5) |
-| `launcher-ot` | Build LaunchAPPLServer for Open Transport (PPC, System 7.6.1+) |
+| `launcher-mactcp` | Build LaunchAPPLServer for 68k |
+| `launcher-ot` | Build LaunchAPPLServer for PPC |
 | `launcher-all` | Build both LaunchAPPLServer versions |
 
-## Usage
+## Docker Images
 
-### PeerTalk Library
-```
-/build quick              # Fast syntax check
-/build test               # Build + tests + coverage
-/build all                # All platforms (POSIX + Mac)
-/build package            # Create .bin files for Macs
-/build release            # Full pipeline with quality gates
-```
+| Image | Size | Use For |
+|-------|------|---------|
+| `peertalk-posix:latest` | ~580MB | POSIX builds, tests, coverage |
+| `ghcr.io/matthewdeaves/peertalk-dev:develop` | ~2.5GB | Mac builds (Retro68 toolchain) |
 
-### LaunchAPPLServer (Remote Execution)
-```
-/build launcher-mactcp    # For MacTCP machines (68k)
-/build launcher-ot        # For Open Transport machines (PPC)
-/build launcher-all       # Build both versions
+Pull images if needed:
+```bash
+docker pull ghcr.io/matthewdeaves/peertalk-dev:develop
+# Or build locally: docker build -t peertalk-posix -f docker/Dockerfile.posix .
 ```
 
-## Process
+---
+
+## Mode Details
 
 ### quick
 Fast syntax check without full compilation:
 ```bash
-gcc -fsyntax-only -Wall -I include src/**/*.c
+docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest \
+    gcc -fsyntax-only -Wall -Wextra -I include -I src/core \
+    src/core/*.c src/posix/*.c src/log/*.c
 ```
 
 ### compile
-Full compilation with warnings as errors:
+Full compilation with warnings as errors (uses Makefile defaults):
 ```bash
-make clean && make CFLAGS="-Wall -Werror"
+docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest \
+    make clean all
 ```
 
 ### test
-POSIX build with tests and coverage:
+Build and run all POSIX tests:
 ```bash
-make clean && make test
-make coverage
-./tools/build/quality_gates.sh
+make docker-test
+# Equivalent to:
+# docker run --rm -v "$(pwd)":/workspace -w /workspace \
+#     -u $(id -u):$(id -g) peertalk-dev make clean all test-local
+```
+
+### coverage
+Tests with HTML coverage report:
+```bash
+make docker-coverage
+# Report: build/coverage/html/index.html
+```
+
+### analyze
+Run static analysis suite (complexity, cppcheck, duplicates):
+```bash
+make docker-analyze
+# Reports: build/analysis/*.json
 ```
 
 ### all
-Build for all platforms:
+Build for all platforms (POSIX + 68k + PPC):
 ```bash
-./tools/build/build_all.sh
+./tools/build/build_all.sh all
+# Uses Docker automatically when $RETRO68 not set
 ```
 
 ### package
 Build and create transferable Mac binaries:
 ```bash
-./tools/build/build_all.sh
+./tools/build/build_all.sh all
 ./tools/build/package.sh
+# Creates: packages/PeerTalk-68k.bin, packages/PeerTalk-PPC.bin
 ```
-Creates: `packages/PeerTalk-68k.bin`, `packages/PeerTalk-PPC.bin`
 
 ### release
 Full pipeline with all quality gates:
 ```bash
-./tools/build/build_all.sh
-make test
+make docker-test
+make docker-analyze
 ./tools/build/quality_gates.sh
-python tools/validators/isr_safety.py src/
+./tools/build/build_all.sh all
 ./tools/build/package.sh
 ```
 
@@ -97,116 +110,128 @@ python tools/validators/isr_safety.py src/
 Build LaunchAPPLServer for MacTCP (68k):
 ```bash
 ./scripts/build-launcher.sh mactcp
+# Output: Built in container at /opt/Retro68/LaunchAPPL/build-mactcp/Server/
+# Copy to workspace: LaunchAPPL-build/LaunchAPPLServer-MacTCP.bin
 ```
-Creates: `LaunchAPPL/build-mactcp/Server/LaunchAPPLServer-MacTCP.bin`
-
-**Used by:** `/setup-launcher` when deploying to MacTCP machines
 
 ### launcher-ot
 Build LaunchAPPLServer for Open Transport (PPC):
 ```bash
 ./scripts/build-launcher.sh ot
+# Output: Built in container at /opt/Retro68/LaunchAPPL/build-ppc/Server/
+# Copy to workspace: LaunchAPPL-build/LaunchAPPLServer-OpenTransport.bin
 ```
-Creates: `LaunchAPPL/build-ppc/Server/LaunchAPPLServer-OpenTransport.bin`
-
-**Used by:** `/setup-launcher` when deploying to Open Transport machines
 
 ### launcher-all
 Build both LaunchAPPLServer versions:
 ```bash
 ./scripts/build-launcher.sh both
 ```
-Creates both MacTCP and Open Transport binaries.
 
-**Note:** LaunchAPPLServer is the remote execution server for Classic Macs, not the PeerTalk library itself. See `.claude/mcp-servers/classic-mac-hardware/SETUP.md` for deployment instructions.
+---
 
 ## Quality Gates
 
-The orchestrator enforces these quality gates from CLAUDE.md:
+Enforced by `./tools/build/quality_gates.sh`:
 
-| Gate | Threshold | How Checked |
-|------|-----------|-------------|
-| File size | 500 lines max | wc -l on all .c/.h files |
-| Function length | 100 lines max | ctags analysis |
-| Coverage | 10% minimum | lcov summary |
-| Compiler warnings | Treat as errors | -Werror flag |
-| ISR safety | No violations | isr_safety.py |
-| Formatting | clang-format | --dry-run --Werror |
+| Gate | Threshold | Tool |
+|------|-----------|------|
+| File size | 500 lines max | `wc -l` |
+| Function length | 100 lines max (prefer 50) | `ctags` |
+| Coverage | 10% minimum | `lcov` |
+| Compiler warnings | Treat as errors | `-Werror` |
+| Cyclomatic complexity | 15 max per function | `pmccabe`/`lizard` |
+| ISR safety | No violations (Mac code) | `tools/validators/isr_safety.py` |
 
-## Requirements
-
-### Prerequisite Check
-
-Before running build commands, verify requirements are met:
-
+Run quick quality check:
 ```bash
-.claude/skills/build/scripts/check-build-prereqs.sh
+./tools/build/quality_gates.sh quick
 ```
 
-This script checks for:
-- Required: gcc, make, Docker or $RETRO68
-- Optional: lcov, clang-format, ctags, python3
+Run full quality gates:
+```bash
+./tools/build/quality_gates.sh
+```
 
-### POSIX Build
-- gcc or clang (required)
-- make (required)
+---
 
-### Mac Builds (choose one)
-- **Docker (recommended):** Run `docker compose -f docker/docker-compose.yml up -d` first
-- **Native:** Set `$RETRO68` to local Retro68 installation path
-- `Makefile.retro68` in project root (created in Phase 1)
+## Build Artifacts
 
-### Quality Checks (optional but recommended)
-- lcov (for coverage reports)
-- ctags (for function length analysis)
-- clang-format (for code formatting)
-- Python 3 (for ISR safety validator)
-
-## Output
-
-Build artifacts go to:
-- `build/` - Compiled binaries
-- `packages/` - MacBinary packages for transfer
-- `coverage/` - HTML coverage reports
+| Directory | Contents |
+|-----------|----------|
+| `build/` | Compiled binaries and objects |
+| `build/lib/` | Static libraries (`libpeertalk.a`, `libptlog.a`) |
+| `build/bin/` | Test executables |
+| `build/coverage/` | Coverage reports (HTML in `html/`) |
+| `build/analysis/` | Static analysis JSON reports |
+| `packages/` | MacBinary packages for transfer |
+| `LaunchAPPL-build/` | Built LaunchAPPLServer binaries |
 
 ---
 
 ## Example Workflows
 
 ### Quick Development Cycle
-```bash
-# Edit code...
-/build quick          # Fast syntax check (~5 sec)
+```
+/build quick          # Fast syntax check
 # Fix any errors
-/build test           # Full test with coverage (~30 sec)
+/build test           # Full test with coverage
 ```
 
-### Preparing for Mac Transfer
-```bash
+### Before Committing
+```
+/build test           # Verify tests pass
+/build analyze        # Check for issues
+```
+
+### Preparing for Mac Hardware
+```
 /build test           # Verify POSIX tests pass
 /check-isr            # Validate ISR safety
 /build package        # Create .bin files
-# Transfer to Mac and test
+# Transfer packages/*.bin to Mac
 ```
 
-### Release Build
-```bash
+### Full Release
+```
 /build release
-# Runs:
-#   - All platform builds (POSIX + 68k + PPC)
-#   - Test suite
-#   - Quality gates (coverage, ISR safety, formatting)
-#   - Package creation
+# Creates tested, validated packages for all platforms
 ```
 
-### Debugging Build Failures
-```bash
-# Check prerequisites first
-which gcc && which make && echo $RETRO68
-docker compose -f docker/docker-compose.yml ps
+### Setting Up LaunchAPPL for Hardware Testing
+```
+/build launcher-mactcp    # For 68k Macs (SE/30, IIci)
+/build launcher-ot        # For PPC Macs
+# Then use /deploy to transfer to Mac
+```
 
-# Try modes incrementally
-/build quick          # Syntax only
-/build compile        # Full compile
-/build test           # With tests
+---
+
+## Troubleshooting
+
+### Docker image not found
+```bash
+# Build POSIX image locally
+docker build -t peertalk-posix -f docker/Dockerfile.posix .
+
+# Or pull pre-built dev image
+docker pull ghcr.io/matthewdeaves/peertalk-dev:develop
+```
+
+### Permission denied on build artifacts
+The Makefile uses `-u $(id -u):$(id -g)` to match host user. If issues persist:
+```bash
+sudo chown -R $(id -u):$(id -g) build/
+```
+
+### Mac builds fail with "Retro68 not available"
+Ensure Docker is running and the dev image is available:
+```bash
+docker compose -f docker/docker-compose.yml run --rm peertalk-dev which m68k-apple-macos-gcc
+```
+
+### Coverage shows 0%
+Coverage requires tests to actually run. Check for test failures:
+```bash
+make docker-test
 ```

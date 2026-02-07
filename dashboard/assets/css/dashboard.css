@@ -54,6 +54,39 @@ main {
   margin-bottom: 0.5rem;
 }
 
+.branch-selector {
+  margin: 1rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.branch-selector label {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.branch-selector select {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  border: 2px solid var(--color-primary);
+  border-radius: 4px;
+  background: white;
+  color: var(--text-primary);
+  cursor: pointer;
+  min-width: 120px;
+}
+
+.branch-selector select:hover {
+  border-color: #0056b3;
+}
+
+.branch-selector select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
 .last-update, .commit-info {
   color: var(--text-secondary);
   font-size: 0.9rem;

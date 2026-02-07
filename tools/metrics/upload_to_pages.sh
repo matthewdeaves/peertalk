@@ -11,7 +11,11 @@ METRICS_FILE="$(realpath "$1")"
 COVERAGE_DIR="${2:-}"
 ISR_REPORT="${3:-}"
 DATE=$(date +%Y-%m-%d)
+BRANCH="${GITHUB_REF_NAME:-develop}"
 TEMP_DIR=$(mktemp -d)
+
+echo "Branch: $BRANCH"
+echo "Date: $DATE"
 
 # Resolve coverage directory to absolute path before changing directories
 if [ -n "$COVERAGE_DIR" ] && [ -d "$COVERAGE_DIR" ]; then
@@ -36,14 +40,14 @@ cd "$TEMP_DIR"
 # Pull latest changes to avoid conflicts
 git pull --rebase origin gh-pages || true
 
-# Create metrics directory
-mkdir -p _data/metrics
+# Create metrics directory for this branch
+mkdir -p "_data/metrics/${BRANCH}"
 
-# Copy metrics with date-based filename
-cp "$METRICS_FILE" "_data/metrics/${DATE}.json"
-cp "$METRICS_FILE" "_data/metrics/latest.json"
+# Copy metrics with date-based filename into branch subdirectory
+cp "$METRICS_FILE" "_data/metrics/${BRANCH}/${DATE}.json"
+cp "$METRICS_FILE" "_data/metrics/${BRANCH}/latest.json"
 
-# Cleanup old metrics (keep 90 days)
+# Cleanup old metrics (keep 90 days) - check all branch directories
 find _data/metrics -name "*.json" -type f -mtime +90 -not -name "latest.json" -delete || true
 
 # Copy coverage HTML if provided
