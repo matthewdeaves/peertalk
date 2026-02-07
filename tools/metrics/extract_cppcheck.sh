@@ -51,7 +51,9 @@ trap "rm -f $TMPFILE" EXIT
 
 # Run cppcheck with XML output
 # Suppress some noisy checks that don't apply to embedded/Mac code
+# Use --quiet to suppress progress output to stdout
 cppcheck \
+    --quiet \
     --enable=all \
     --xml \
     --xml-version=2 \

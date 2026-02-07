@@ -13,13 +13,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y gcc make lcov bc
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (with cache)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: false
+          load: true
+          tags: peertalk-dev:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build POSIX
         run: |
           if [ -f "Makefile" ]; then
-            make
+            docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest make all
           else
             echo "No Makefile yet - skipping POSIX build"
           fi
@@ -27,7 +38,7 @@ jobs:
       - name: Run tests
         run: |
           if [ -f "Makefile" ]; then
-            make test || exit 1
+            docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest make test-local || exit 1
             echo "✓ All tests passed"
           else
             echo "No Makefile yet - skipping tests"
@@ -36,8 +47,8 @@ jobs:
       - name: Check coverage
         run: |
           if [ -f "Makefile" ]; then
-            make coverage
-            COVERAGE=$(lcov --summary build/coverage/coverage.info 2>&1 | grep "lines" | awk '{print $2}' | tr -d '%')
+            docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest bash -c "make coverage-local && lcov --summary build/coverage/coverage.info 2>&1"
+            COVERAGE=$(docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest lcov --summary build/coverage/coverage.info 2>&1 | grep "lines" | awk '{print $2}' | tr -d '%')
             echo "Coverage: ${COVERAGE}%"
             if (( $(echo "$COVERAGE < 10.0" | bc -l) )); then
               echo "::warning::Coverage ${COVERAGE}% is below 10% threshold"
@@ -52,34 +63,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install validator dependencies
-        run: pip install click rich
-
-      - name: Run ISR Safety Validator
-        run: |
-          if [ -d "src/" ]; then
-            python tools/validators/isr_safety.py src/
-          else
-            echo "No src/ directory yet - skipping ISR validation"
-          fi
-
-  # Retro68 cross-compilation - builds PeerTalk SDK library for Classic Mac platforms
-  build-retro68:
-    runs-on: ubuntu-latest
-    # Only run on main branch or when Docker/Mac code changes
-    if: github.ref == 'refs/heads/main' || contains(github.event.pull_request.labels.*.name, 'build-retro68')
-    steps:
-      - uses: actions/checkout@v4
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image
+      - name: Build Docker image (with cache)
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -89,6 +76,80 @@ jobs:
           tags: peertalk-dev:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Run ISR Safety Validator
+        run: |
+          if [ -d "src/" ]; then
+            docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest \
+              python tools/validators/isr_safety.py src/
+          else
+            echo "No src/ directory yet - skipping ISR validation"
+          fi
+
+  # Build and push Docker image to GitHub Container Registry
+  # This makes the image available for local development: docker pull ghcr.io/OWNER/peertalk-dev
+  build-docker:
+    runs-on: ubuntu-latest
+    # Build on main/develop pushes (not PRs to avoid duplicate builds)
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/peertalk-dev
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Retro68 cross-compilation - builds PeerTalk SDK library for Classic Mac platforms
+  build-retro68:
+    runs-on: ubuntu-latest
+    needs: [build-docker]
+    # Only run on main branch or when Docker/Mac code changes
+    if: github.ref == 'refs/heads/main' || contains(github.event.pull_request.labels.*.name, 'build-retro68')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull Docker image
+        run: docker pull ghcr.io/${{ github.repository_owner }}/peertalk-dev:latest || docker pull ghcr.io/${{ github.repository_owner }}/peertalk-dev:main
+
+      - name: Tag image for local use
+        run: docker tag ghcr.io/${{ github.repository_owner }}/peertalk-dev:latest peertalk-dev:latest 2>/dev/null || docker tag ghcr.io/${{ github.repository_owner }}/peertalk-dev:main peertalk-dev:latest
 
       - name: Build PeerTalk SDK for 68k (MacTCP)
         run: |
@@ -114,39 +175,52 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install analysis tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cppcheck pmccabe
-          pip3 install lizard
-          npm install -g jscpd@3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (with cache)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: false
+          load: true
+          tags: peertalk-dev:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Check file sizes
         run: |
           echo "Checking file sizes (max 500 lines)..."
-          ERRORS=0
-          for f in $(find . \( -name "*.c" -o -name "*.h" \) | grep -v node_modules); do
-            lines=$(wc -l < "$f")
-            if [ "$lines" -gt 500 ]; then
-              echo "::warning file=$f::$f has $lines lines (max 500)"
-              ERRORS=$((ERRORS + 1))
+          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest bash -c '
+            ERRORS=0
+            for f in $(find . \( -name "*.c" -o -name "*.h" \) | grep -v node_modules); do
+              lines=$(wc -l < "$f")
+              if [ "$lines" -gt 500 ]; then
+                echo "::warning file=$f::$f has $lines lines (max 500)"
+                ERRORS=$((ERRORS + 1))
+              fi
+            done
+            if [ $ERRORS -gt 0 ]; then
+              echo "::warning::$ERRORS files exceed 500 line limit"
             fi
-          done
-          if [ $ERRORS -gt 0 ]; then
-            echo "::warning::$ERRORS files exceed 500 line limit"
-          fi
+          '
 
       - name: Check for TODO/FIXME
         run: |
           echo "Checking for unresolved TODOs..."
-          if grep -rn "TODO\|FIXME" --include="*.c" --include="*.h" . 2>/dev/null; then
-            echo "::notice::Found TODO/FIXME comments - consider resolving"
-          fi
+          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest bash -c '
+            if grep -rn "TODO\|FIXME" --include="*.c" --include="*.h" . 2>/dev/null; then
+              echo "::notice::Found TODO/FIXME comments - consider resolving"
+            fi
+          '
 
       - name: Run static analysis
         run: |
-          mkdir -p build/analysis
-          ./tools/analyze.sh --quick || true
+          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest bash -c '
+            mkdir -p build/analysis
+            ./tools/analyze.sh --quick || true
+          '
 
       - name: Check for cppcheck errors
         run: |
@@ -154,12 +228,12 @@ jobs:
             ERRORS=$(python3 -c "import json; d=json.load(open('build/analysis/cppcheck.json')); print(d.get('by_severity', {}).get('error', 0))")
             if [ "$ERRORS" -gt 0 ]; then
               echo "::error::cppcheck found $ERRORS error(s)"
-              python3 -c "
-import json
-d = json.load(open('build/analysis/cppcheck.json'))
-for i in [x for x in d.get('issues', []) if x.get('severity') == 'error'][:10]:
-    print(f\"::error file={i.get('file', '?')},line={i.get('line', 0)}::{i.get('message', '?')}\")
-"
+              python3 << 'PYEOF'
+          import json
+          d = json.load(open('build/analysis/cppcheck.json'))
+          for i in [x for x in d.get('issues', []) if x.get('severity') == 'error'][:10]:
+              print(f"::error file={i.get('file', '?')},line={i.get('line', 0)}::{i.get('message', '?')}")
+          PYEOF
             fi
           fi
 
@@ -187,14 +261,26 @@ for i in [x for x in d.get('issues', []) if x.get('severity') == 'error'][:10]:
         with:
           fetch-depth: 0  # Full history for gh-pages
 
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y python3 jq bc gcc make lcov pmccabe
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (with cache)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: false
+          load: true
+          tags: peertalk-dev:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build library
         id: build
         run: |
           START_TIME=$(date +%s)
-          make all 2>&1 | tee /tmp/build_output.txt
+          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest \
+            make all 2>&1 | tee /tmp/build_output.txt
           BUILD_END=$(date +%s)
           echo "build_duration=$((BUILD_END - START_TIME))" >> $GITHUB_OUTPUT
 
@@ -202,7 +288,8 @@ for i in [x for x in d.get('issues', []) if x.get('severity') == 'error'][:10]:
         id: tests
         run: |
           START_TIME=$(date +%s)
-          make test 2>&1 | tee /tmp/test_output.txt
+          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest \
+            make test-local 2>&1 | tee /tmp/test_output.txt
           TEST_END=$(date +%s)
           echo "test_duration=$((TEST_END - START_TIME))" >> $GITHUB_OUTPUT
 
@@ -210,63 +297,95 @@ for i in [x for x in d.get('issues', []) if x.get('severity') == 'error'][:10]:
         id: coverage
         run: |
           START_TIME=$(date +%s)
-          make coverage
+          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace -u $(id -u):$(id -g) peertalk-dev:latest \
+            make coverage-local
           COV_END=$(date +%s)
           echo "coverage_duration=$((COV_END - START_TIME))" >> $GITHUB_OUTPUT
 
       - name: Extract metrics
         run: |
           mkdir -p /tmp/metrics
+          # Copy test output to workspace so Docker can access it
+          cp /tmp/test_output.txt ${{ github.workspace }}/test_output.txt
 
-          # Extract test results
-          ./tools/metrics/extract_test_results.sh /tmp/test_output.txt > /tmp/metrics/test_results.json
+          # Run all metric extraction in Docker (has all analysis tools)
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -v /tmp/metrics:/metrics \
+            -w /workspace \
+            -e BUILD_DURATION_SEC="${{ steps.build.outputs.build_duration }}" \
+            -e TEST_DURATION_SEC="${{ steps.tests.outputs.test_duration }}" \
+            -e COVERAGE_DURATION_SEC="${{ steps.coverage.outputs.coverage_duration }}" \
+            peertalk-dev:latest bash -c '
+              # click and rich are pre-installed in Docker image
 
-          # Extract test count metrics
-          ./tools/metrics/extract_test_count.sh /tmp/test_output.txt > /tmp/metrics/test_count.json
+              # Extract test results
+              ./tools/metrics/extract_test_results.sh test_output.txt > /metrics/test_results.json
 
-          # Extract coverage metrics
-          ./tools/metrics/extract_coverage.sh > /tmp/metrics/coverage.json
+              # Extract test count metrics
+              ./tools/metrics/extract_test_count.sh test_output.txt > /metrics/test_count.json
 
-          # Extract ISR safety metrics
-          ./tools/metrics/extract_isr_violations.sh > /tmp/metrics/isr_safety.json
+              # Extract coverage metrics
+              ./tools/metrics/extract_coverage.sh > /metrics/coverage.json
 
-          # Extract quality metrics
-          ./tools/metrics/extract_quality_metrics.sh > /tmp/metrics/quality.json
+              # Extract ISR safety metrics
+              ./tools/metrics/extract_isr_violations.sh > /metrics/isr_safety.json
 
-          # Extract binary size metrics
-          ./tools/metrics/extract_binary_size.sh > /tmp/metrics/binary_size.json
+              # Extract quality metrics
+              ./tools/metrics/extract_quality_metrics.sh > /metrics/quality.json
 
-          # Extract complexity metrics
-          ./tools/metrics/extract_complexity.sh > /tmp/metrics/complexity.json
+              # Extract binary size metrics
+              ./tools/metrics/extract_binary_size.sh > /metrics/binary_size.json
 
-          # Extract CI metrics (with timing from previous steps)
-          export BUILD_DURATION_SEC="${{ steps.build.outputs.build_duration }}"
-          export TEST_DURATION_SEC="${{ steps.tests.outputs.test_duration }}"
-          export COVERAGE_DURATION_SEC="${{ steps.coverage.outputs.coverage_duration }}"
-          ./tools/metrics/extract_ci_metrics.sh > /tmp/metrics/ci_metrics.json
+              # Extract complexity metrics
+              ./tools/metrics/extract_complexity.sh > /metrics/complexity.json
+
+              # Extract static analysis metrics (cppcheck)
+              ./tools/metrics/extract_cppcheck.sh > /metrics/cppcheck.json
+
+              # Extract code duplication metrics (jscpd)
+              ./tools/metrics/extract_duplicates.sh > /metrics/duplicates.json
+
+              # Extract CI metrics (with timing from previous steps)
+              ./tools/metrics/extract_ci_metrics.sh > /metrics/ci_metrics.json
+            '
 
       - name: Aggregate metrics
         run: |
-          python3 tools/metrics/aggregate_metrics.py \
-            /tmp/metrics/test_results.json \
-            /tmp/metrics/coverage.json \
-            /tmp/metrics/isr_safety.json \
-            /tmp/metrics/quality.json \
-            /tmp/metrics/ci_metrics.json \
-            /tmp/metrics/aggregated.json \
-            /tmp/metrics/binary_size.json \
-            /tmp/metrics/complexity.json \
-            /tmp/metrics/test_count.json
+          # Run aggregation in Docker
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -v /tmp/metrics:/metrics \
+            -w /workspace \
+            -e GITHUB_SHA="${{ github.sha }}" \
+            -e GITHUB_REF_NAME="${{ github.ref_name }}" \
+            peertalk-dev:latest bash -c '
+              python3 tools/metrics/aggregate_metrics.py \
+                /metrics/test_results.json \
+                /metrics/coverage.json \
+                /metrics/isr_safety.json \
+                /metrics/quality.json \
+                /metrics/ci_metrics.json \
+                /metrics/aggregated.json \
+                /metrics
 
-          echo "Aggregated metrics:"
-          cat /tmp/metrics/aggregated.json | python3 -m json.tool
+              echo "Aggregated metrics:"
+              cat /metrics/aggregated.json | python3 -m json.tool
+            '
 
       - name: Generate HTML reports
         run: |
-          # Generate ISR safety HTML report
-          python3 tools/metrics/generate_isr_report.py \
-            /tmp/metrics/isr_safety.json \
-            /tmp/metrics/isr_report.html
+          # Generate ISR safety HTML report in Docker
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -v /tmp/metrics:/metrics \
+            -w /workspace \
+            peertalk-dev:latest bash -c '
+              # click and rich are pre-installed in Docker image
+              python3 tools/metrics/generate_isr_report.py \
+                /metrics/isr_safety.json \
+                /metrics/isr_report.html
+            '
 
       - name: Upload to gh-pages
         run: |

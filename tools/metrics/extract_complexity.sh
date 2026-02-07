@@ -43,6 +43,7 @@ if command -v pmccabe &> /dev/null; then
 
         # Format violations as JSON array
         VIOLATIONS_JSON=$(echo "$RESULTS" | awk -v max=$MAX_COMPLEXITY '
+            BEGIN { first = 1 }
             $1 > max {
                 # Parse pmccabe output
                 complexity = $1
@@ -58,7 +59,8 @@ if command -v pmccabe &> /dev/null; then
                         break
                     }
                 }
-                if (NR > 1) printf ","
+                if (!first) printf ","
+                first = 0
                 printf "\n    {\"function\": \"%s\", \"file\": \"%s\", \"line\": %s, \"complexity\": %d}", func, file, line, complexity
             }
         ')
@@ -83,29 +85,45 @@ fi
 if command -v lizard &> /dev/null; then
     TOOL="lizard"
 
-    # lizard output: CCN, lines, tokens, params, length, location, function
-    RESULTS=$(echo "$SRC_FILES" | xargs lizard -l c --csv 2>/dev/null | tail -n +2 || true)
+    # lizard CSV format: CCN,nloc,tokens,params,length,location,file,function,signature,start,end
+    # Column 1: complexity (CCN)
+    # Column 7: file path
+    # Column 8: function name
+    # Column 10: start line
+    RESULTS=$(echo "$SRC_FILES" | xargs lizard -l c --csv 2>/dev/null || true)
 
     if [ -n "$RESULTS" ]; then
         TOTAL=$(echo "$RESULTS" | wc -l | awk '{print $1}')
         VIOLATIONS=$(echo "$RESULTS" | awk -F',' -v max=$MAX_COMPLEXITY '$1 > max')
         VIOLATION_COUNT=$(echo "$VIOLATIONS" | grep -c . || echo "0")
         HIGHEST=$(echo "$RESULTS" | awk -F',' '{print $1}' | sort -rn | head -1)
-        AVG=$(echo "$RESULTS" | awk -F',' '{sum+=$1; count++} END {printf "%.1f", sum/count}')
+        AVG=$(echo "$RESULTS" | awk -F',' '{sum+=$1; count++} END {if(count>0) printf "%.1f", sum/count; else print "0"}')
 
-        VIOLATIONS_JSON=$(echo "$RESULTS" | awk -F',' -v max=$MAX_COMPLEXITY '
-            $1 > max {
-                complexity = $1
-                file = $6
-                func = $7
-                gsub(/"/, "", file)
-                gsub(/"/, "", func)
-                # Extract line from location
-                line = 0
-                if (NR > 1) printf ","
-                printf "\n    {\"function\": \"%s\", \"file\": \"%s\", \"line\": %d, \"complexity\": %d}", func, file, line, complexity
-            }
-        ')
+        # Use Python for reliable CSV parsing (handles quoted fields)
+        VIOLATIONS_JSON=$(echo "$RESULTS" | python3 -c "
+import sys
+import csv
+max_ccn = $MAX_COMPLEXITY
+violations = []
+reader = csv.reader(sys.stdin)
+for row in reader:
+    if len(row) >= 10:
+        try:
+            ccn = int(row[0])
+            if ccn > max_ccn:
+                violations.append({
+                    'function': row[7],
+                    'file': row[6],
+                    'line': int(row[9]),
+                    'complexity': ccn
+                })
+        except (ValueError, IndexError):
+            pass
+import json
+for i, v in enumerate(violations):
+    prefix = ',' if i > 0 else ''
+    print(f\"{prefix}\\n    {{\\\"function\\\": \\\"{v['function']}\\\", \\\"file\\\": \\\"{v['file']}\\\", \\\"line\\\": {v['line']}, \\\"complexity\\\": {v['complexity']}}}\", end='')
+")
 
         cat <<EOF
 {

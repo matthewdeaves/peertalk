@@ -80,10 +80,13 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python-based analysis tools
-RUN pip3 install --break-system-packages \
-    mcp>=1.0.0 \
-    lizard \
-    flawfinder
+# Use --root-user-action=ignore to suppress warning, and create venv for system-managed Python
+RUN python3 -m venv /opt/venv && \
+    /opt/venv/bin/pip install --upgrade pip && \
+    /opt/venv/bin/pip install mcp>=1.0.0 lizard flawfinder click rich
+
+# Add venv to PATH
+ENV PATH="/opt/venv/bin:${PATH}"
 
 # Install Node-based analysis tools
 RUN npm install -g jscpd@3
