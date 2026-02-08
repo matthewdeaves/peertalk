@@ -196,6 +196,11 @@ int pt_mactcp_tcp_create(struct pt_context *ctx, int idx)
     }
     cold->rcv_buffer_size = buf_size;
 
+    /* Log actual allocation for debugging */
+    PT_LOG_INFO(ctx->log, PT_LOG_CAT_MEMORY,
+        "TCP[%d] buffer allocated: %lu bytes (25%% threshold=%lu)",
+        idx, buf_size, buf_size / 4);
+
     /* Clear ASR flags and log events */
     hot->asr_flags = 0;
     hot->log_events = 0;
@@ -276,15 +281,17 @@ int pt_mactcp_tcp_create_listener(struct pt_context *ctx)
         return -1;
     }
 
-    /* Use block-oriented buffer size for high throughput.
+    /* Use memory-aware buffer sizing.
      * The listener's buffer is transferred to the connected stream
-     * after TCPPassiveOpen completes. 16KB enables 4KB threshold
-     * for the 25% completion rule. */
-    buf_size = PT_TCP_RCV_BUF_BLOCK;
+     * after TCPPassiveOpen completes. */
+    buf_size = pt_mactcp_buffer_size_for_memory(ctx);
 
     cold->rcv_buffer = pt_mactcp_alloc_buffer(buf_size);
     if (cold->rcv_buffer == NULL) {
         /* Try minimum size */
+        PT_LOG_WARN(ctx->log, PT_LOG_CAT_MEMORY,
+            "Buffer alloc failed (%lu bytes), trying minimum",
+            (unsigned long)buf_size);
         buf_size = PT_TCP_RCV_BUF_MIN;
         cold->rcv_buffer = pt_mactcp_alloc_buffer(buf_size);
         if (cold->rcv_buffer == NULL) {

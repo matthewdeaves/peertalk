@@ -2227,8 +2227,14 @@ int pt_posix_poll(struct pt_context *ctx) {
         /* Check for incoming data (if socket readable) */
         if (FD_ISSET(sock, &read_fds)) {
             /* Process messages via pt_posix_recv() loop */
-            while (pt_posix_recv(ctx, peer) > 0) {
+            int recv_ret;
+            while ((recv_ret = pt_posix_recv(ctx, peer)) > 0) {
                 /* Keep receiving until no more complete messages */
+            }
+
+            /* If recv returned -1 (error/close), mark peer for disconnection */
+            if (recv_ret < 0 && peer->hot.state == PT_PEER_CONNECTED) {
+                peer->hot.state = PT_PEER_DISCONNECTING;
             }
 
             /* On connection error, close socket and remove from active */

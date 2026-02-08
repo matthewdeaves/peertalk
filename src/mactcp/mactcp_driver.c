@@ -261,31 +261,39 @@ unsigned long pt_mactcp_buffer_size_for_memory(struct pt_context *ctx)
         "Memory check: FreeMem=%ld MaxBlock=%ld", free_mem, max_block);
 
     /*
-     * Conservative sizing - leave room for heap operations
-     * Mac SE 4MB typical: FreeMem ~2.5MB at app launch
+     * STRATEGY: Always TRY for 16KB buffers for good throughput.
+     * The allocation code has fallback logic that will reduce size
+     * if allocation fails, so we don't need to be conservative here.
+     *
+     * FreeMem() often shows very low values after MacTCP init because
+     * MacTCP consumes heap space. But we may still be able to allocate
+     * 16KB from the remaining contiguous block.
+     *
+     * The 25% receive threshold rule means:
+     * - 4KB buffer = completion at 1KB (very frequent, slow)
+     * - 8KB buffer = completion at 2KB
+     * - 16KB buffer = completion at 4KB (better pipelining)
      */
-    if (free_mem > PT_MEM_PLENTY) {
-        /* Plenty of memory - use optimal formula */
-        buf_size = pt_mactcp_optimal_buffer_size(ctx);
-    } else if (free_mem > PT_MEM_MODERATE) {
-        /* Moderate memory - use 16KB for block-oriented throughput */
+    if (max_block >= PT_TCP_RCV_BUF_BLOCK + 2048) {
+        /* MaxBlock can hold 16KB with 2KB headroom - use it */
         buf_size = PT_TCP_RCV_BUF_BLOCK;
-    } else if (free_mem > PT_MEM_LOW) {
-        /* Low memory - use minimum viable */
+        PT_LOG_INFO(ctx->log, PT_LOG_CAT_MEMORY,
+            "Requesting 16KB buffer (MaxBlock=%ld)", max_block);
+    } else if (max_block >= PT_TCP_RCV_BUF_CHAR + 1024) {
+        /* Can fit 8KB with 1KB headroom */
+        buf_size = PT_TCP_RCV_BUF_CHAR;
+        PT_LOG_INFO(ctx->log, PT_LOG_CAT_MEMORY,
+            "Requesting 8KB buffer (MaxBlock=%ld)", max_block);
+    } else if (max_block >= PT_TCP_RCV_BUF_MIN) {
+        /* Can fit 4KB minimum */
         buf_size = PT_TCP_RCV_BUF_MIN;
+        PT_LOG_WARN(ctx->log, PT_LOG_CAT_MEMORY,
+            "Requesting minimum 4KB buffer (MaxBlock=%ld)", max_block);
     } else {
-        /* Critical - warn and use minimum */
-        PT_LOG_WARN(ctx->log, PT_LOG_CAT_MEMORY,
-            "Low memory warning: FreeMem=%ld - using minimum buffers", free_mem);
-        buf_size = PT_TCP_RCV_BUF_MIN;
-    }
-
-    /* Don't allocate more than MaxBlock can provide
-     * Leave headroom for other allocations */
-    if ((long)buf_size > max_block / 2) {
+        /* Very tight - let allocation fallback handle it */
         buf_size = PT_TCP_RCV_BUF_MIN;
         PT_LOG_WARN(ctx->log, PT_LOG_CAT_MEMORY,
-            "MaxBlock too small (%ld), using minimum buffer", max_block);
+            "MaxBlock=%ld very low, requesting 4KB", max_block);
     }
 
     return buf_size;
