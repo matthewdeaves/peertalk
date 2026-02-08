@@ -264,11 +264,15 @@ static unsigned long mactcp_get_max_block(void) {
 }
 
 /* ========================================================================== */
-/* Async Send Pipeline Stubs (Session 2)                                      */
+/* Async Send Pipeline (Session 3)                                            */
 /* ========================================================================== */
 
+/* Forward declaration for core pipeline functions */
+extern int pt_pipeline_init(struct pt_context *ctx, struct pt_peer *peer);
+extern void pt_pipeline_cleanup(struct pt_context *ctx, struct pt_peer *peer);
+
 /**
- * These stubs return PT_ERR_NOT_SUPPORTED until Session 4 implements them.
+ * Async send ops - Session 4 will implement these.
  * The pipeline ops allow MacTCP to keep multiple TCP sends in-flight
  * simultaneously, improving throughput by 200-400%.
  */
@@ -286,17 +290,31 @@ static int mactcp_poll_send_completions(struct pt_context *ctx, struct pt_peer *
 
 static int mactcp_send_slots_available(struct pt_context *ctx, struct pt_peer *peer) {
     (void)ctx; (void)peer;
-    return 0;  /* No slots available until initialized */
+    if (!peer || !peer->pipeline.initialized) {
+        return 0;
+    }
+    return PT_SEND_PIPELINE_DEPTH - peer->pipeline.pending_count;
 }
 
 static int mactcp_pipeline_init(struct pt_context *ctx, struct pt_peer *peer) {
-    (void)ctx; (void)peer;
-    return PT_ERR_NOT_SUPPORTED;  /* TODO: Session 3 */
+    int err;
+
+    /* Allocate core buffers first */
+    err = pt_pipeline_init(ctx, peer);
+    if (err != PT_OK) {
+        return err;
+    }
+
+    /* Session 4 will add TCPiopb allocation here */
+
+    return PT_OK;
 }
 
 static void mactcp_pipeline_cleanup(struct pt_context *ctx, struct pt_peer *peer) {
-    (void)ctx; (void)peer;
-    /* Nothing to clean up until implemented */
+    /* Session 4 will add TCPiopb cleanup here */
+
+    /* Free core buffers */
+    pt_pipeline_cleanup(ctx, peer);
 }
 
 /* Platform operations structure */

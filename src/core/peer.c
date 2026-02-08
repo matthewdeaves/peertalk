@@ -365,6 +365,9 @@ void pt_peer_destroy(struct pt_context *ctx, struct pt_peer *peer)
                "Peer destroyed: id=%u name='%s'",
                peer->hot.id, ctx->peer_names[peer->hot.name_idx]);
 
+    /* Cleanup async send pipeline */
+    pt_pipeline_cleanup(ctx, peer);
+
     /* Free Tier 2 direct buffers */
     pt_direct_buffer_free(&peer->send_direct);
     pt_direct_buffer_free(&peer->recv_direct);
@@ -670,6 +673,151 @@ int pt_peer_should_throttle(struct pt_peer *peer, uint8_t priority)
     }
 
     return 0;  /* Don't throttle - send normally */
+}
+
+/* ========================================================================== */
+/* Async Send Pipeline Management                                             */
+/* ========================================================================== */
+
+/**
+ * Calculate buffer size for a pipeline slot
+ */
+static size_t pt_pipeline_buf_size(void)
+{
+    return (size_t)PT_PIPELINE_MAX_PAYLOAD + PT_MESSAGE_HEADER_SIZE + 4;
+}
+
+int pt_pipeline_init(struct pt_context *ctx, struct pt_peer *peer)
+{
+    int i;
+    size_t buf_size;
+
+    if (!ctx || !peer || peer->hot.magic != PT_PEER_MAGIC) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Already initialized? */
+    if (peer->pipeline.initialized) {
+        return PT_OK;
+    }
+
+    buf_size = pt_pipeline_buf_size();
+
+    /* Initialize slot metadata */
+    for (i = 0; i < PT_SEND_PIPELINE_DEPTH; i++) {
+        peer->pipeline.slots[i].in_use = 0;
+        peer->pipeline.slots[i].completed = 0;
+        peer->pipeline.slots[i].platform_data = NULL;
+
+        /* Initialize WDS sentinel */
+        peer->pipeline.slots[i].wds[1].length = 0;
+        peer->pipeline.slots[i].wds[1].ptr = NULL;
+
+#ifdef PT_LOWMEM
+        /* Lazy allocation: defer buffer allocation until first use.
+         * This saves ~2KB per peer on Mac SE (4MB RAM) when peers
+         * aren't actively sending data. */
+        peer->pipeline.slots[i].buffer = NULL;
+        peer->pipeline.slots[i].buffer_size = (uint16_t)buf_size;  /* Remember target size */
+#else
+        /* Eager allocation: allocate all buffers upfront.
+         * Better for high-throughput scenarios. */
+        peer->pipeline.slots[i].buffer = (uint8_t *)pt_alloc(buf_size);
+        if (!peer->pipeline.slots[i].buffer) {
+            PT_CTX_WARN(ctx, PT_LOG_CAT_MEMORY,
+                "Pipeline init failed: slot %d alloc (%zu bytes)", i, buf_size);
+            pt_pipeline_cleanup(ctx, peer);
+            return PT_ERR_NO_MEMORY;
+        }
+        peer->pipeline.slots[i].buffer_size = (uint16_t)buf_size;
+#endif
+    }
+
+    peer->pipeline.pending_count = 0;
+    peer->pipeline.next_slot = 0;
+    peer->pipeline.initialized = 1;
+
+#ifdef PT_LOWMEM
+    PT_CTX_DEBUG(ctx, PT_LOG_CAT_MEMORY,
+        "Pipeline init (lazy): peer=%u depth=%d buf_size=%zu",
+        peer->hot.id, PT_SEND_PIPELINE_DEPTH, buf_size);
+#else
+    PT_CTX_DEBUG(ctx, PT_LOG_CAT_MEMORY,
+        "Pipeline init: peer=%u depth=%d buf_size=%zu",
+        peer->hot.id, PT_SEND_PIPELINE_DEPTH, buf_size);
+#endif
+
+    return PT_OK;
+}
+
+pt_send_slot *pt_pipeline_get_slot(struct pt_context *ctx, struct pt_peer *peer)
+{
+    int i;
+
+    if (!peer || !peer->pipeline.initialized) {
+        return NULL;
+    }
+
+    /* Find a free slot */
+    for (i = 0; i < PT_SEND_PIPELINE_DEPTH; i++) {
+        pt_send_slot *slot = &peer->pipeline.slots[i];
+
+        if (!slot->in_use) {
+#ifdef PT_LOWMEM
+            /* Lazy allocation: allocate buffer on first use */
+            if (!slot->buffer) {
+                size_t buf_size = pt_pipeline_buf_size();
+                slot->buffer = (uint8_t *)pt_alloc(buf_size);
+                if (!slot->buffer) {
+                    PT_CTX_WARN(ctx, PT_LOG_CAT_MEMORY,
+                        "Pipeline lazy alloc failed: slot %d (%zu bytes)",
+                        i, buf_size);
+                    return NULL;  /* Allocation failed */
+                }
+                PT_CTX_DEBUG(ctx, PT_LOG_CAT_MEMORY,
+                    "Pipeline lazy alloc: peer=%u slot=%d", peer->hot.id, i);
+            }
+#else
+            (void)ctx;  /* Unused in non-lowmem builds */
+#endif
+            return slot;
+        }
+    }
+
+    return NULL;  /* All slots busy */
+}
+
+void pt_pipeline_cleanup(struct pt_context *ctx, struct pt_peer *peer)
+{
+    int i;
+    uint8_t pending;
+
+    if (!peer) {
+        return;
+    }
+
+    pending = peer->pipeline.pending_count;
+
+    /* Free buffers */
+    for (i = 0; i < PT_SEND_PIPELINE_DEPTH; i++) {
+        if (peer->pipeline.slots[i].buffer) {
+            pt_free(peer->pipeline.slots[i].buffer);
+            peer->pipeline.slots[i].buffer = NULL;
+        }
+        /* Note: platform_data cleanup is platform's responsibility */
+        peer->pipeline.slots[i].in_use = 0;
+        peer->pipeline.slots[i].completed = 0;
+    }
+
+    peer->pipeline.pending_count = 0;
+    peer->pipeline.next_slot = 0;
+    peer->pipeline.initialized = 0;
+
+    if (ctx && pending > 0) {
+        PT_CTX_DEBUG(ctx, PT_LOG_CAT_MEMORY,
+            "Pipeline cleanup: peer=%u pending=%u",
+            peer->hot.id, pending);
+    }
 }
 
 /* ========================================================================== */
