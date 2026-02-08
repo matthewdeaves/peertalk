@@ -264,6 +264,7 @@ docker run --rm --network host -v "$(pwd)":/workspace -w /workspace \
 4. **TCPPassiveOpen re-use** - It's one-shot. Need stream transfer pattern.
 5. **Testing only in emulator** - Real hardware behaves differently.
 6. **Large debug logs** - PT_LibDebug can grow to 1MB+. Use `tail` or `head` when reading.
+7. **Mac SE memory limits** - CRITICAL: Mac SE (4MB RAM) REQUIRES `*_lowmem.bin` builds! Standard builds request 2-3MB heap and won't launch. Use `make -f Makefile.retro68 PLATFORM=mactcp lowmem_tests` for Mac SE.
 
 ## Build Scripts
 

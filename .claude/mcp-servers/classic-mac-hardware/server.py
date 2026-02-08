@@ -446,7 +446,20 @@ class ClassicMacHardwareServer:
             if 'launchappl' in m:
                 features.append('LaunchAPPL')
             features_str = '+'.join(features) if features else 'no remote'
-            lines.append(f"  {mid}: {m['name']} ({m['platform']}) - {host} [{features_str}]")
+
+            # Show build requirement and RAM
+            build_type = m.get('build', 'standard')
+            ram = m.get('ram', '')
+            build_info = f" [{build_type}]" if build_type == 'lowmem' else ""
+            ram_info = f" ({ram})" if ram else ""
+
+            lines.append(f"  {mid}: {m['name']} ({m['platform']}) - {host} [{features_str}]{ram_info}{build_info}")
+
+        # Add helpful note if any machine requires lowmem builds
+        if any(m.get('build') == 'lowmem' for m in self.machines.values()):
+            lines.append("")
+            lines.append("⚠️ Machines marked [lowmem] require *_lowmem.bin builds!")
+            lines.append("   Build with: make -f Makefile.retro68 PLATFORM=mactcp lowmem_tests")
 
         return [TextContent(type="text", text="\n".join(lines))]
 
@@ -619,11 +632,35 @@ class ClassicMacHardwareServer:
                  "\n".join(f"  - {d}" for d in deleted)
         )]
 
+    def _has_ftp(self, machine_id: str) -> bool:
+        """Check if machine has FTP configured."""
+        self._validate_machine_id(machine_id)
+        return 'ftp' in self.machines[machine_id]
+
+    def _has_launchappl(self, machine_id: str) -> bool:
+        """Check if machine has LaunchAPPL configured."""
+        self._validate_machine_id(machine_id)
+        return 'launchappl' in self.machines[machine_id]
+
     def _tool_upload_file(self, args: dict) -> list[TextContent]:
         """Upload file to Classic Mac."""
         machine_id = args["machine"]
         local_path = args["local_path"]
         remote_path = args["remote_path"]
+
+        self._validate_machine_id(machine_id)
+        machine = self.machines[machine_id]
+
+        # Check if FTP is configured
+        if not self._has_ftp(machine_id):
+            if self._has_launchappl(machine_id):
+                return [TextContent(
+                    type="text",
+                    text=f"❌ Error: FTP not configured for {machine['name']}. This machine uses LaunchAPPL only.\n\n"
+                         f"Use execute_binary instead to transfer and run in one step:\n"
+                         f"  mcp__classic-mac-hardware__execute_binary(machine=\"{machine_id}\", platform=\"mactcp\", binary_path=\"{local_path}\")"
+                )]
+            return [TextContent(type="text", text=f"❌ Error: No FTP or LaunchAPPL configured for {machine['name']}.")]
 
         # Verify local file exists
         if not Path(local_path).exists():

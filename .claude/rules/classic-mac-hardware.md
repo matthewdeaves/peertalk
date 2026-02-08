@@ -72,6 +72,39 @@ EOF
 All machines are configured in `.claude/mcp-servers/classic-mac-hardware/machines.json`.
 Use `mcp__classic-mac-hardware__list_machines` to see available machines.
 
+### Machine-Specific Build Requirements
+
+**CRITICAL: Check `machines.json` for the `build` field before deploying:**
+
+| Build Type | Heap Size | Machines | Binary Pattern |
+|------------|-----------|----------|----------------|
+| `standard` | 2-3MB | Performa 6200 (8MB RAM) | `test_*.bin` |
+| `lowmem` | 384-512KB | Mac SE (4MB RAM) | `test_*_lowmem.bin` |
+
+**Mac SE WILL NOT LAUNCH standard builds!** The 2-3MB heap request exceeds available RAM.
+
+Build commands:
+```bash
+# Standard builds for high-RAM machines
+make -f Makefile.retro68 PLATFORM=mactcp perf_tests
+
+# Low-memory builds for 4MB machines (Mac SE, Plus, Classic)
+make -f Makefile.retro68 PLATFORM=mactcp lowmem_tests
+```
+
+### Deployment Methods
+
+Machines may support FTP, LaunchAPPL, or both:
+
+| Machine | FTP | LaunchAPPL | Preferred for Deployment |
+|---------|-----|------------|--------------------------|
+| Performa 6200 | ✓ | ✓ | Either (FTP for files, LaunchAPPL for execution) |
+| Mac SE | ✗ | ✓ | LaunchAPPL only |
+
+- **If no FTP configured**: Use `execute_binary` (LaunchAPPL) which transfers and runs in one step
+- **LaunchAPPL port**: Always 1984 when configured
+- **Check capability**: Use `test_connection` with `test_launchappl=true`
+
 ## If MCP Doesn't Work
 
 If the MCP server has issues:
