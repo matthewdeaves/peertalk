@@ -212,17 +212,21 @@ unsigned long pt_mactcp_optimal_buffer_size(struct pt_context *ctx)
     if (err != noErr) {
         PT_LOG_WARN(ctx->log, PT_LOG_CAT_PLATFORM,
             "UDPMTU query failed: %d, using default buffer size", (int)err);
-        return PT_TCP_RCV_BUF_CHAR;  /* Safe default */
+        return PT_TCP_RCV_BUF_BLOCK;  /* Safe default for throughput */
     }
 
     mtu = pb.csParam.mtu.mtuSize;
 
-    /* Per documentation: optimal = 4 * MTU + 1024 */
+    /* Per documentation: optimal = 4 * MTU + 1024
+     * BUT: For high-throughput block-oriented apps, 16KB minimum is
+     * recommended. The 4*MTU formula gives ~7KB for Ethernet which
+     * causes the 25% threshold (1.75KB) to trigger early completion
+     * on every 2KB+ message. Use 16KB minimum for proper pipelining. */
     optimal = (4UL * mtu) + 1024;
 
-    /* Clamp to reasonable range */
-    if (optimal < PT_TCP_RCV_BUF_MIN)
-        optimal = PT_TCP_RCV_BUF_MIN;
+    /* Clamp to 16KB minimum for throughput (25% threshold = 4KB) */
+    if (optimal < PT_TCP_RCV_BUF_BLOCK)
+        optimal = PT_TCP_RCV_BUF_BLOCK;
     if (optimal > PT_TCP_RCV_BUF_MAX)
         optimal = PT_TCP_RCV_BUF_MAX;
 
@@ -264,8 +268,8 @@ unsigned long pt_mactcp_buffer_size_for_memory(struct pt_context *ctx)
         /* Plenty of memory - use optimal formula */
         buf_size = pt_mactcp_optimal_buffer_size(ctx);
     } else if (free_mem > PT_MEM_MODERATE) {
-        /* Moderate memory - use 8KB (character app) */
-        buf_size = PT_TCP_RCV_BUF_CHAR;
+        /* Moderate memory - use 16KB for block-oriented throughput */
+        buf_size = PT_TCP_RCV_BUF_BLOCK;
     } else if (free_mem > PT_MEM_LOW) {
         /* Low memory - use minimum viable */
         buf_size = PT_TCP_RCV_BUF_MIN;

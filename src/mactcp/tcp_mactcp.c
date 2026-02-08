@@ -276,8 +276,11 @@ int pt_mactcp_tcp_create_listener(struct pt_context *ctx)
         return -1;
     }
 
-    /* Use character app buffer size for listener */
-    buf_size = PT_TCP_RCV_BUF_CHAR;
+    /* Use block-oriented buffer size for high throughput.
+     * The listener's buffer is transferred to the connected stream
+     * after TCPPassiveOpen completes. 16KB enables 4KB threshold
+     * for the 25% completion rule. */
+    buf_size = PT_TCP_RCV_BUF_BLOCK;
 
     cold->rcv_buffer = pt_mactcp_alloc_buffer(buf_size);
     if (cold->rcv_buffer == NULL) {

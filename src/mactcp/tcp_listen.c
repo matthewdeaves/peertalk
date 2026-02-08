@@ -183,7 +183,7 @@ int pt_mactcp_listen_start(struct pt_context *ctx)
     cold->pb.csParam.open.localHost = 0;
     cold->pb.csParam.open.localPort = port;
 
-    cold->pb.csParam.open.tosFlags = 0x1;  /* Low delay */
+    cold->pb.csParam.open.tosFlags = 0x2;  /* High throughput (not low delay) */
     cold->pb.csParam.open.userDataPtr = (Ptr)hot;  /* Completion gets hot struct */
 
     hot->async_pending = 1;
