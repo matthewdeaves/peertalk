@@ -396,6 +396,18 @@ int pt_mactcp_listen_poll(struct pt_context *ctx)
     /* Store idx+1 so stream 0 doesn't become NULL pointer */
     peer->hot.connection = (void *)(intptr_t)(client_idx + 1);
 
+    /* Initialize async send pipeline for this peer.
+     * This allocates TCPiopb structures for pipelined sends. */
+    if (ctx->plat && ctx->plat->pipeline_init) {
+        int perr = ctx->plat->pipeline_init(ctx, peer);
+        if (perr != PT_OK) {
+            PT_LOG_WARN(ctx->log, PT_LOG_CAT_MEMORY,
+                "Pipeline init failed for peer %u: %d",
+                (unsigned)peer->hot.id, perr);
+            /* Continue anyway - will fall back to sync sends */
+        }
+    }
+
     /* Fire callback */
     if (ctx->callbacks.on_peer_connected != NULL) {
         ctx->callbacks.on_peer_connected((PeerTalk_Context *)ctx,
