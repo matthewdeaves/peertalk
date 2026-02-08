@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2026-02-08 14:17:06</td>
+            <td class="headerValue">2026-02-08 16:31:49</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">9</td>
@@ -102,17 +102,17 @@
 <a name="40"><span class="lineNum">      40 </span><span class="lineCov">        222 :     PT_CTX_INFO(ctx, PT_LOG_CAT_GENERAL, &quot;POSIX platform shutdown&quot;);</span></a>
 <a name="41"><span class="lineNum">      41 </span><span class="lineCov">        222 : }</span></a>
 <a name="42"><span class="lineNum">      42 </span>            : </a>
-<a name="43"><span class="lineNum">      43 </span><span class="lineCov">       1124 : static int posix_poll(struct pt_context *ctx) {</span></a>
+<a name="43"><span class="lineNum">      43 </span><span class="lineCov">       1118 : static int posix_poll(struct pt_context *ctx) {</span></a>
 <a name="44"><span class="lineNum">      44 </span>            :     /* Delegate to networking poll (Session 4.1+) */</a>
-<a name="45"><span class="lineNum">      45 </span><span class="lineCov">       1124 :     return pt_posix_poll(ctx);</span></a>
+<a name="45"><span class="lineNum">      45 </span><span class="lineCov">       1118 :     return pt_posix_poll(ctx);</span></a>
 <a name="46"><span class="lineNum">      46 </span>            : }</a>
 <a name="47"><span class="lineNum">      47 </span>            : </a>
-<a name="48"><span class="lineNum">      48 </span><span class="lineCov">       1227 : static pt_tick_t posix_get_ticks(void) {</span></a>
+<a name="48"><span class="lineNum">      48 </span><span class="lineCov">       1221 : static pt_tick_t posix_get_ticks(void) {</span></a>
 <a name="49"><span class="lineNum">      49 </span>            :     struct timeval tv;</a>
-<a name="50"><span class="lineNum">      50 </span><span class="lineCov">       1227 :     gettimeofday(&amp;tv, NULL);</span></a>
+<a name="50"><span class="lineNum">      50 </span><span class="lineCov">       1221 :     gettimeofday(&amp;tv, NULL);</span></a>
 <a name="51"><span class="lineNum">      51 </span>            : </a>
 <a name="52"><span class="lineNum">      52 </span>            :     /* Return milliseconds - wraps every ~49 days, which is acceptable */</a>
-<a name="53"><span class="lineNum">      53 </span><span class="lineCov">       1227 :     return (pt_tick_t)((tv.tv_sec * 1000) + (tv.tv_usec / 1000));</span></a>
+<a name="53"><span class="lineNum">      53 </span><span class="lineCov">       1221 :     return (pt_tick_t)((tv.tv_sec * 1000) + (tv.tv_usec / 1000));</span></a>
 <a name="54"><span class="lineNum">      54 </span>            : }</a>
 <a name="55"><span class="lineNum">      55 </span>            : </a>
 <a name="56"><span class="lineNum">      56 </span><span class="lineCov">          1 : static unsigned long posix_get_free_mem(void) {</span></a>

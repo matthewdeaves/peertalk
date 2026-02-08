@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2026-02-08 14:17:06</td>
+            <td class="headerValue">2026-02-08 16:31:49</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">16</td>
@@ -620,15 +620,15 @@
 <a name="558"><span class="lineNum">     558 </span>            : /**</a>
 <a name="559"><span class="lineNum">     559 </span>            :  * Get the pressure threshold level (0, 25, 50, 75, 100) for a pressure value</a>
 <a name="560"><span class="lineNum">     560 </span>            :  */</a>
-<a name="561"><span class="lineNum">     561 </span><span class="lineCov">       1402 : static uint8_t pt_pressure_level(uint8_t pressure)</span></a>
+<a name="561"><span class="lineNum">     561 </span><span class="lineCov">       1390 : static uint8_t pt_pressure_level(uint8_t pressure)</span></a>
 <a name="562"><span class="lineNum">     562 </span>            : {</a>
-<a name="563"><span class="lineNum">     563 </span><span class="lineCov">       1402 :     if (pressure &gt;= 75) return 75;</span></a>
-<a name="564"><span class="lineNum">     564 </span><span class="lineCov">       1401 :     if (pressure &gt;= 50) return 50;</span></a>
-<a name="565"><span class="lineNum">     565 </span><span class="lineCov">       1397 :     if (pressure &gt;= 25) return 25;</span></a>
-<a name="566"><span class="lineNum">     566 </span><span class="lineCov">       1389 :     return 0;</span></a>
+<a name="563"><span class="lineNum">     563 </span><span class="lineCov">       1390 :     if (pressure &gt;= 75) return 75;</span></a>
+<a name="564"><span class="lineNum">     564 </span><span class="lineCov">       1389 :     if (pressure &gt;= 50) return 50;</span></a>
+<a name="565"><span class="lineNum">     565 </span><span class="lineCov">       1387 :     if (pressure &gt;= 25) return 25;</span></a>
+<a name="566"><span class="lineNum">     566 </span><span class="lineCov">       1387 :     return 0;</span></a>
 <a name="567"><span class="lineNum">     567 </span>            : }</a>
 <a name="568"><span class="lineNum">     568 </span>            : </a>
-<a name="569"><span class="lineNum">     569 </span><span class="lineCov">        701 : int pt_peer_check_pressure_update(struct pt_context *ctx, struct pt_peer *peer)</span></a>
+<a name="569"><span class="lineNum">     569 </span><span class="lineCov">        695 : int pt_peer_check_pressure_update(struct pt_context *ctx, struct pt_peer *peer)</span></a>
 <a name="570"><span class="lineNum">     570 </span>            : {</a>
 <a name="571"><span class="lineNum">     571 </span>            :     uint8_t send_pressure;</a>
 <a name="572"><span class="lineNum">     572 </span>            :     uint8_t recv_pressure;</a>
@@ -636,12 +636,12 @@
 <a name="574"><span class="lineNum">     574 </span>            :     uint8_t current_level;</a>
 <a name="575"><span class="lineNum">     575 </span>            :     uint8_t last_level;</a>
 <a name="576"><span class="lineNum">     576 </span>            : </a>
-<a name="577"><span class="lineNum">     577 </span><span class="lineCov">        701 :     if (!ctx || !peer || peer-&gt;hot.magic != PT_PEER_MAGIC) {</span></a>
+<a name="577"><span class="lineNum">     577 </span><span class="lineCov">        695 :     if (!ctx || !peer || peer-&gt;hot.magic != PT_PEER_MAGIC) {</span></a>
 <a name="578"><span class="lineNum">     578 </span><span class="lineNoCov">          0 :         return 0;</span></a>
 <a name="579"><span class="lineNum">     579 </span>            :     }</a>
 <a name="580"><span class="lineNum">     580 </span>            : </a>
 <a name="581"><span class="lineNum">     581 </span>            :     /* Only check for connected peers */</a>
-<a name="582"><span class="lineNum">     582 </span><span class="lineCov">        701 :     if (peer-&gt;hot.state != PT_PEER_STATE_CONNECTED) {</span></a>
+<a name="582"><span class="lineNum">     582 </span><span class="lineCov">        695 :     if (peer-&gt;hot.state != PT_PEER_STATE_CONNECTED) {</span></a>
 <a name="583"><span class="lineNum">     583 </span><span class="lineNoCov">          0 :         return 0;</span></a>
 <a name="584"><span class="lineNum">     584 </span>            :     }</a>
 <a name="585"><span class="lineNum">     585 </span>            : </a>
@@ -655,29 +655,29 @@
 <a name="593"><span class="lineNum">     593 </span>            :      * The real bottleneck shows up in send_queue when echoing back.</a>
 <a name="594"><span class="lineNum">     594 </span>            :      * By reporting MAX, we capture whichever is the actual constraint.</a>
 <a name="595"><span class="lineNum">     595 </span>            :      */</a>
-<a name="596"><span class="lineNum">     596 </span><span class="lineCov">        701 :     send_pressure = peer-&gt;send_queue ? pt_queue_pressure(peer-&gt;send_queue) : 0;</span></a>
-<a name="597"><span class="lineNum">     597 </span><span class="lineCov">        701 :     recv_pressure = peer-&gt;recv_queue ? pt_queue_pressure(peer-&gt;recv_queue) : 0;</span></a>
-<a name="598"><span class="lineNum">     598 </span><span class="lineCov">        701 :     current_pressure = (send_pressure &gt; recv_pressure) ? send_pressure : recv_pressure;</span></a>
+<a name="596"><span class="lineNum">     596 </span><span class="lineCov">        695 :     send_pressure = peer-&gt;send_queue ? pt_queue_pressure(peer-&gt;send_queue) : 0;</span></a>
+<a name="597"><span class="lineNum">     597 </span><span class="lineCov">        695 :     recv_pressure = peer-&gt;recv_queue ? pt_queue_pressure(peer-&gt;recv_queue) : 0;</span></a>
+<a name="598"><span class="lineNum">     598 </span><span class="lineCov">        695 :     current_pressure = (send_pressure &gt; recv_pressure) ? send_pressure : recv_pressure;</span></a>
 <a name="599"><span class="lineNum">     599 </span>            : </a>
 <a name="600"><span class="lineNum">     600 </span>            :     /* Quantize to threshold levels for hysteresis */</a>
-<a name="601"><span class="lineNum">     601 </span><span class="lineCov">        701 :     current_level = pt_pressure_level(current_pressure);</span></a>
-<a name="602"><span class="lineNum">     602 </span><span class="lineCov">        701 :     last_level = pt_pressure_level(peer-&gt;cold.caps.last_reported_pressure);</span></a>
+<a name="601"><span class="lineNum">     601 </span><span class="lineCov">        695 :     current_level = pt_pressure_level(current_pressure);</span></a>
+<a name="602"><span class="lineNum">     602 </span><span class="lineCov">        695 :     last_level = pt_pressure_level(peer-&gt;cold.caps.last_reported_pressure);</span></a>
 <a name="603"><span class="lineNum">     603 </span>            : </a>
 <a name="604"><span class="lineNum">     604 </span>            :     /* Check if we crossed a threshold */</a>
-<a name="605"><span class="lineNum">     605 </span><span class="lineCov">        701 :     if (current_level != last_level) {</span></a>
-<a name="606"><span class="lineNum">     606 </span><span class="lineCov">          5 :         PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
+<a name="605"><span class="lineNum">     605 </span><span class="lineCov">        695 :     if (current_level != last_level) {</span></a>
+<a name="606"><span class="lineNum">     606 </span><span class="lineCov">          2 :         PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="607"><span class="lineNum">     607 </span>            :             &quot;Pressure threshold crossed for peer %u: %u%% -&gt; %u%% (level %u -&gt; %u)&quot;,</a>
 <a name="608"><span class="lineNum">     608 </span>            :             peer-&gt;hot.id, peer-&gt;cold.caps.last_reported_pressure,</a>
 <a name="609"><span class="lineNum">     609 </span>            :             current_pressure, last_level, current_level);</a>
 <a name="610"><span class="lineNum">     610 </span>            : </a>
 <a name="611"><span class="lineNum">     611 </span>            :         /* Mark update pending - poll loop will send capability message */</a>
-<a name="612"><span class="lineNum">     612 </span><span class="lineCov">          5 :         peer-&gt;cold.caps.pressure_update_pending = 1;</span></a>
-<a name="613"><span class="lineNum">     613 </span><span class="lineCov">          5 :         peer-&gt;cold.caps.last_reported_pressure = current_pressure;</span></a>
+<a name="612"><span class="lineNum">     612 </span><span class="lineCov">          2 :         peer-&gt;cold.caps.pressure_update_pending = 1;</span></a>
+<a name="613"><span class="lineNum">     613 </span><span class="lineCov">          2 :         peer-&gt;cold.caps.last_reported_pressure = current_pressure;</span></a>
 <a name="614"><span class="lineNum">     614 </span>            : </a>
-<a name="615"><span class="lineNum">     615 </span><span class="lineCov">          5 :         return 1;</span></a>
+<a name="615"><span class="lineNum">     615 </span><span class="lineCov">          2 :         return 1;</span></a>
 <a name="616"><span class="lineNum">     616 </span>            :     }</a>
 <a name="617"><span class="lineNum">     617 </span>            : </a>
-<a name="618"><span class="lineNum">     618 </span><span class="lineCov">        696 :     return 0;</span></a>
+<a name="618"><span class="lineNum">     618 </span><span class="lineCov">        693 :     return 0;</span></a>
 <a name="619"><span class="lineNum">     619 </span>            : }</a>
 <a name="620"><span class="lineNum">     620 </span>            : </a>
 <a name="621"><span class="lineNum">     621 </span><span class="lineCov">        271 : int pt_peer_should_throttle(struct pt_peer *peer, uint8_t priority)</span></a>
