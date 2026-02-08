@@ -441,6 +441,40 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
             peer->cold.ibuflen = 0;
             return -1;
 
+        case PT_MSG_TYPE_CAPABILITY:
+            {
+                pt_capability_msg caps;
+                uint16_t effective_max;
+
+                if (pt_capability_decode(ctx, data_ptr, hdr.payload_len, &caps) == 0) {
+                    /* Store peer's capabilities in cold struct */
+                    peer->cold.caps.max_message_size = caps.max_message_size;
+                    peer->cold.caps.preferred_chunk = caps.preferred_chunk;
+                    peer->cold.caps.capability_flags = caps.capability_flags;
+                    peer->cold.caps.buffer_pressure = caps.buffer_pressure;
+                    peer->cold.caps.caps_exchanged = 1;
+
+                    /* Calculate effective max = min(ours, theirs) */
+                    effective_max = ctx->local_max_message;
+                    if (caps.max_message_size < effective_max) {
+                        effective_max = caps.max_message_size;
+                    }
+                    peer->hot.effective_max_msg = effective_max;
+
+                    PT_LOG_INFO(ctx->log, PT_LOG_CAT_NETWORK,
+                        "Received capabilities from peer %u: max=%u chunk=%u pressure=%u",
+                        (unsigned)peer->hot.id,
+                        (unsigned)caps.max_message_size,
+                        (unsigned)caps.preferred_chunk,
+                        (unsigned)caps.buffer_pressure);
+                } else {
+                    PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
+                        "Failed to decode capabilities from peer %u",
+                        (unsigned)peer->hot.id);
+                }
+            }
+            break;
+
         default:
             PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
                 "Unknown message type %u from peer %u",
@@ -600,6 +634,121 @@ int pt_mactcp_tcp_send_disconnect(struct pt_context *ctx, struct pt_peer *peer)
         return PT_ERR_INVALID_STATE;
 
     return pt_mactcp_tcp_send_control(ctx, idx, PT_MSG_TYPE_DISCONNECT);
+}
+
+/* ========================================================================== */
+/* Capability Exchange                                                        */
+/* ========================================================================== */
+
+/**
+ * Send capability message to peer.
+ *
+ * Called after connection is established to exchange capabilities.
+ * Enables automatic fragmentation for constrained peers.
+ *
+ * DOD: Uses local buffer on stack - synchronous send completes before return.
+ *
+ * @param ctx   PeerTalk context
+ * @param peer  Peer to send to
+ * @return      0 on success, negative error code on failure
+ */
+int pt_mactcp_send_capability(struct pt_context *ctx, struct pt_peer *peer)
+{
+    pt_mactcp_data *md = pt_mactcp_get(ctx);
+    pt_capability_msg caps;
+    pt_message_header hdr;
+    uint8_t header_buf[PT_MESSAGE_HEADER_SIZE];
+    uint8_t payload_buf[16];  /* TLV payload max ~12 bytes */
+    uint8_t crc_buf[2];
+    uint16_t crc;
+    int payload_len;
+    wdsEntry wds[4];
+    OSErr err;
+    int idx;
+    pt_tcp_stream_hot *hot;
+    pt_tcp_stream_cold *cold;
+
+    if (peer == NULL || peer->hot.magic != PT_PEER_MAGIC)
+        return PT_ERR_INVALID_PARAM;
+
+    idx = pt_peer_stream_idx(peer);
+    if (idx < 0 || idx >= PT_MAX_PEERS)
+        return PT_ERR_INVALID_STATE;
+
+    hot = &md->tcp_hot[idx];
+    cold = &md->tcp_cold[idx];
+
+    if (hot->state != PT_STREAM_CONNECTED)
+        return PT_ERR_INVALID_STATE;
+
+    /* Fill in our capabilities */
+    caps.max_message_size = ctx->local_max_message;
+    caps.preferred_chunk = ctx->local_preferred_chunk;
+    caps.capability_flags = 0;
+    caps.buffer_pressure = 0;
+
+    /* Encode TLV payload */
+    payload_len = pt_capability_encode(&caps, payload_buf, sizeof(payload_buf));
+    if (payload_len < 0) {
+        PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
+            "Failed to encode capabilities");
+        return PT_ERR_INTERNAL;
+    }
+
+    /* Build message header */
+    hdr.version = PT_PROTOCOL_VERSION;
+    hdr.type = PT_MSG_TYPE_CAPABILITY;
+    hdr.flags = 0;
+    hdr.sequence = peer->hot.send_seq++;
+    hdr.payload_len = (uint16_t)payload_len;
+
+    pt_message_encode_header(&hdr, header_buf);
+
+    /* Calculate CRC over header + payload */
+    crc = pt_crc16(header_buf, PT_MESSAGE_HEADER_SIZE);
+    crc = pt_crc16_update(crc, payload_buf, (size_t)payload_len);
+    crc_buf[0] = (crc >> 8) & 0xFF;
+    crc_buf[1] = crc & 0xFF;
+
+    /* Build WDS: header + payload + CRC */
+    wds[0].length = PT_MESSAGE_HEADER_SIZE;
+    wds[0].ptr = (Ptr)header_buf;
+    wds[1].length = (unsigned short)payload_len;
+    wds[1].ptr = (Ptr)payload_buf;
+    wds[2].length = 2;
+    wds[2].ptr = (Ptr)crc_buf;
+    wds[3].length = 0;
+    wds[3].ptr = NULL;
+
+    /* Setup send call */
+    pt_memset(&cold->pb, 0, sizeof(cold->pb));
+    cold->pb.csCode = TCPSend;
+    cold->pb.ioCRefNum = md->driver_refnum;
+    cold->pb.tcpStream = hot->stream;
+
+    cold->pb.csParam.send.ulpTimeoutValue = 30;
+    cold->pb.csParam.send.ulpTimeoutAction = 1;
+    cold->pb.csParam.send.validityFlags = 0xC0;
+    cold->pb.csParam.send.pushFlag = 1;
+    cold->pb.csParam.send.urgentFlag = 0;
+    cold->pb.csParam.send.wdsPtr = (Ptr)wds;
+
+    /* Synchronous send */
+    err = PBControlSync((ParmBlkPtr)&cold->pb);
+
+    if (err != noErr) {
+        PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
+            "Failed to send capabilities: %d", (int)err);
+        return PT_ERR_NETWORK;
+    }
+
+    PT_LOG_INFO(ctx->log, PT_LOG_CAT_NETWORK,
+        "Sent capabilities to peer %u: max=%u chunk=%u",
+        (unsigned)peer->hot.id,
+        (unsigned)caps.max_message_size,
+        (unsigned)caps.preferred_chunk);
+
+    return 0;
 }
 
 #endif /* PT_PLATFORM_MACTCP */

@@ -245,6 +245,7 @@ typedef struct pt_udp_stream_cold {
 #define PT_TCP_RCV_BUF_MIN      4096   /* Absolute minimum per MacTCP */
 #define PT_TCP_RCV_BUF_CHAR     8192   /* "at least 8192 bytes is recommended" */
 #define PT_TCP_RCV_BUF_BLOCK    16384  /* "16 KB is recommended" for block apps */
+#define PT_TCP_RCV_BUF_HIGH     32768  /* 32 KB for high-throughput (25% = 8KB) */
 #define PT_TCP_RCV_BUF_MAX      65536  /* Up to 128KB can be useful but overkill */
 
 #define PT_UDP_RCV_BUF_MIN      2048   /* Actual minimum per MacTCP */

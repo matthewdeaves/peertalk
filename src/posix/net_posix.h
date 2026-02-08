@@ -289,6 +289,16 @@ int pt_posix_recv(struct pt_context *ctx, struct pt_peer *peer);
 int pt_posix_send_control(struct pt_context *ctx, struct pt_peer *peer,
                           uint8_t msg_type);
 
+/**
+ * Send capability message to peer
+ *
+ * Called after connection established to exchange capability information.
+ * Enables automatic fragmentation for constrained peers.
+ *
+ * Returns: PT_OK on success, error code on failure
+ */
+int pt_posix_send_capability(struct pt_context *ctx, struct pt_peer *peer);
+
 /* ========================================================================== */
 /* UDP Messaging (Session 4.4)                                               */
 /* ========================================================================== */

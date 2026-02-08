@@ -79,6 +79,9 @@ extern short pt_mactcp_get_refnum(void);
 extern int pt_mactcp_tcp_create_listener(struct pt_context *ctx);
 extern int pt_mactcp_tcp_release_listener(struct pt_context *ctx);
 
+/* From tcp_io.c */
+extern int pt_mactcp_send_capability(struct pt_context *ctx, struct pt_peer *peer);
+
 /* ========================================================================== */
 /* Constants                                                                  */
 /* ========================================================================== */
@@ -399,6 +402,9 @@ int pt_mactcp_listen_poll(struct pt_context *ctx)
                                          peer->hot.id,
                                          ctx->callbacks.user_data);
     }
+
+    /* Send capability message to negotiate constraints */
+    pt_mactcp_send_capability(ctx, peer);
 
     PT_LOG_INFO(ctx->log, PT_LOG_CAT_CONNECT,
         "Accepted connection from peer %u at 0x%08X (assigned to slot %d)",

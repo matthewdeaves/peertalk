@@ -264,11 +264,25 @@ static void on_peer_discovered(PeerTalk_Context *ctx, const PeerTalk_PeerInfo *p
 static void on_peer_connected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
                                void *user_data)
 {
-    (void)ctx;
+    PeerTalk_Capabilities caps;
+    uint16_t effective_max;
     (void)user_data;
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "CONNECTED to peer %u", (unsigned)peer_id);
     g_connected_peer = peer_id;
+
+    /* Log peer capabilities (may take a poll cycle to negotiate) */
+    if (PeerTalk_GetPeerCapabilities(ctx, peer_id, &caps) == PT_OK) {
+        PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+            "Peer capabilities: max_msg=%u chunk=%u pressure=%u",
+            (unsigned)caps.max_message_size,
+            (unsigned)caps.preferred_chunk,
+            (unsigned)caps.buffer_pressure);
+    }
+
+    effective_max = PeerTalk_GetPeerMaxMessage(ctx, peer_id);
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+        "Effective max message size: %u bytes", (unsigned)effective_max);
 
     /* Start first test */
     g_test.stats[0].start_ticks = TickCount();

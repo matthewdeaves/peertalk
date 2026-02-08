@@ -930,6 +930,9 @@ int pt_posix_listen_poll(struct pt_context *ctx) {
                                          peer->hot.id, ctx->callbacks.user_data);
     }
 
+    /* Send capabilities for negotiation */
+    pt_posix_send_capability(ctx, peer);
+
     return 1;
 }
 
@@ -1046,6 +1049,9 @@ int pt_posix_connect(struct pt_context *ctx, struct pt_peer *peer) {
         ctx->callbacks.on_peer_connected((PeerTalk_Context *)ctx,
                                          peer->hot.id, ctx->callbacks.user_data);
     }
+
+    /* Send capabilities for negotiation */
+    pt_posix_send_capability(ctx, peer);
 
     return PT_OK;
 }
@@ -1334,6 +1340,95 @@ int pt_posix_send_control(struct pt_context *ctx, struct pt_peer *peer,
 
     PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
         "Sent control message type=%u to peer %u", msg_type, peer->hot.id);
+
+    return PT_OK;
+}
+
+/**
+ * Send capability message to peer
+ *
+ * Called after connection is established to exchange capability information.
+ * This enables automatic fragmentation for constrained peers.
+ *
+ * @param ctx PeerTalk context
+ * @param peer Target peer
+ * @return PT_OK on success, error code on failure
+ */
+int pt_posix_send_capability(struct pt_context *ctx, struct pt_peer *peer) {
+    pt_posix_data *pd = pt_posix_get(ctx);
+    pt_message_header hdr;
+    pt_capability_msg caps;
+    uint8_t header_buf[PT_MESSAGE_HEADER_SIZE];
+    uint8_t payload_buf[32];  /* Capability TLV max ~15 bytes */
+    uint8_t crc_buf[2];
+    struct iovec iov[3];
+    uint16_t crc;
+    ssize_t sent;
+    int payload_len;
+    int peer_idx;
+    int sock;
+
+    if (!peer || peer->hot.magic != PT_PEER_MAGIC)
+        return PT_ERR_INVALID_PARAM;
+
+    if (peer->hot.state != PT_PEER_CONNECTED)
+        return PT_ERR_INVALID_STATE;
+
+    peer_idx = peer->hot.id - 1;
+    sock = pd->tcp_socks[peer_idx];
+
+    if (sock < 0)
+        return PT_ERR_INVALID_STATE;
+
+    /* Fill in our capabilities */
+    caps.max_message_size = ctx->local_max_message;
+    caps.preferred_chunk = ctx->local_preferred_chunk;
+    caps.capability_flags = ctx->local_capability_flags;
+    caps.buffer_pressure = 0;  /* POSIX has minimal constraints */
+    caps.reserved = 0;
+
+    /* Encode capability TLV payload */
+    payload_len = pt_capability_encode(&caps, payload_buf, sizeof(payload_buf));
+    if (payload_len < 0) {
+        PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,
+            "Failed to encode capabilities for peer %u", peer->hot.id);
+        return PT_ERR_INTERNAL;
+    }
+
+    /* Encode header */
+    hdr.version = PT_PROTOCOL_VERSION;
+    hdr.type = PT_MSG_TYPE_CAPABILITY;
+    hdr.flags = 0;
+    hdr.sequence = 0;  /* Capability messages use seq=0 */
+    hdr.payload_len = (uint16_t)payload_len;
+    pt_message_encode_header(&hdr, header_buf);
+
+    /* Calculate CRC over header + payload */
+    crc = pt_crc16(header_buf, PT_MESSAGE_HEADER_SIZE);
+    crc = pt_crc16_update(crc, payload_buf, (size_t)payload_len);
+    crc_buf[0] = (crc >> 8) & 0xFF;
+    crc_buf[1] = crc & 0xFF;
+
+    /* Prepare iovec for atomic send */
+    iov[0].iov_base = header_buf;
+    iov[0].iov_len = PT_MESSAGE_HEADER_SIZE;
+    iov[1].iov_base = payload_buf;
+    iov[1].iov_len = (size_t)payload_len;
+    iov[2].iov_base = crc_buf;
+    iov[2].iov_len = 2;
+
+    /* Send with writev */
+    sent = writev(sock, iov, 3);
+
+    if (sent < 0) {
+        if (errno == EWOULDBLOCK || errno == EAGAIN)
+            return PT_ERR_WOULD_BLOCK;
+        return PT_ERR_NETWORK;
+    }
+
+    PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,
+        "Sent capabilities to peer %u: max=%u chunk=%u",
+        peer->hot.id, caps.max_message_size, caps.preferred_chunk);
 
     return PT_OK;
 }
@@ -1641,6 +1736,39 @@ static int pt_recv_process_message(struct pt_context *ctx, struct pt_peer *peer,
             /* Handle reliable message ACK - TODO in future session */
             PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
                 "Received ACK from peer %u", peer->hot.id);
+            break;
+
+        case PT_MSG_TYPE_CAPABILITY:
+            /* Process capability message */
+            {
+                pt_capability_msg caps;
+                uint16_t effective_max;
+
+                if (pt_capability_decode(ctx, buf->cold.payload_buf,
+                                         buf->cold.hdr.payload_len, &caps) == 0) {
+                    /* Store peer capabilities */
+                    peer->cold.caps.max_message_size = caps.max_message_size;
+                    peer->cold.caps.preferred_chunk = caps.preferred_chunk;
+                    peer->cold.caps.capability_flags = caps.capability_flags;
+                    peer->cold.caps.buffer_pressure = caps.buffer_pressure;
+                    peer->cold.caps.caps_exchanged = 1;
+
+                    /* Calculate effective max = min(ours, theirs) */
+                    effective_max = ctx->local_max_message;
+                    if (caps.max_message_size < effective_max) {
+                        effective_max = caps.max_message_size;
+                    }
+                    peer->hot.effective_max_msg = effective_max;
+
+                    PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,
+                        "Received capabilities from peer %u: max=%u chunk=%u pressure=%u",
+                        peer->hot.id, caps.max_message_size, caps.preferred_chunk,
+                        caps.buffer_pressure);
+                } else {
+                    PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+                        "Failed to decode capabilities from peer %u", peer->hot.id);
+                }
+            }
             break;
 
         default:
@@ -2219,6 +2347,9 @@ int pt_posix_poll(struct pt_context *ctx) {
                                                  peer->hot.id,
                                                  ctx->callbacks.user_data);
             }
+
+            /* Send capabilities for negotiation */
+            pt_posix_send_capability(ctx, peer);
 
             /* Mark fd_sets dirty to move socket from write set to read-only */
             pd->fd_dirty = 1;

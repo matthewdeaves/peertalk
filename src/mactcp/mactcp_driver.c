@@ -261,21 +261,30 @@ unsigned long pt_mactcp_buffer_size_for_memory(struct pt_context *ctx)
         "Memory check: FreeMem=%ld MaxBlock=%ld", free_mem, max_block);
 
     /*
-     * STRATEGY: Always TRY for 16KB buffers for good throughput.
+     * STRATEGY: Prefer 32KB buffers for high throughput when memory allows.
      * The allocation code has fallback logic that will reduce size
-     * if allocation fails, so we don't need to be conservative here.
+     * if allocation fails, so we don't need to be overly conservative.
      *
      * FreeMem() often shows very low values after MacTCP init because
      * MacTCP consumes heap space. But we may still be able to allocate
-     * 16KB from the remaining contiguous block.
+     * larger buffers from the remaining contiguous block.
      *
-     * The 25% receive threshold rule means:
+     * The 25% receive threshold rule (MacTCP Programmer's Guide lines 3070-3091):
      * - 4KB buffer = completion at 1KB (very frequent, slow)
      * - 8KB buffer = completion at 2KB
-     * - 16KB buffer = completion at 4KB (better pipelining)
+     * - 16KB buffer = completion at 4KB
+     * - 32KB buffer = completion at 8KB (handles 4096-byte messages in one call)
+     *
+     * For 4096-byte messages, 32KB buffer eliminates the fragmentation that
+     * causes asymmetric send/receive throughput with smaller buffers.
      */
-    if (max_block >= PT_TCP_RCV_BUF_BLOCK + 2048) {
-        /* MaxBlock can hold 16KB with 2KB headroom - use it */
+    if (max_block >= PT_TCP_RCV_BUF_HIGH + 4096) {
+        /* MaxBlock can hold 32KB with 4KB headroom - optimal for throughput */
+        buf_size = PT_TCP_RCV_BUF_HIGH;
+        PT_LOG_INFO(ctx->log, PT_LOG_CAT_MEMORY,
+            "Requesting 32KB buffer (MaxBlock=%ld)", max_block);
+    } else if (max_block >= PT_TCP_RCV_BUF_BLOCK + 2048) {
+        /* MaxBlock can hold 16KB with 2KB headroom */
         buf_size = PT_TCP_RCV_BUF_BLOCK;
         PT_LOG_INFO(ctx->log, PT_LOG_CAT_MEMORY,
             "Requesting 16KB buffer (MaxBlock=%ld)", max_block);

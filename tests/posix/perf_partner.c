@@ -264,12 +264,25 @@ static void on_peer_discovered(PeerTalk_Context *ctx, const PeerTalk_PeerInfo *p
 static void on_peer_connected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
                                void *user_data)
 {
-    (void)ctx;
+    PeerTalk_Capabilities caps;
+    uint16_t effective_max;
     (void)user_data;
 
     printf("[CONNECTED] Peer %u\n", peer_id);
     g_connected_peer = peer_id;
     g_stats.connect_successes++;
+
+    /* Log peer capabilities */
+    if (PeerTalk_GetPeerCapabilities(ctx, peer_id, &caps) == PT_OK) {
+        printf("[CAPS] Peer %u: max_msg=%u chunk=%u pressure=%u%s\n",
+               peer_id,
+               caps.max_message_size,
+               caps.preferred_chunk,
+               caps.buffer_pressure,
+               caps.fragmentation_active ? " [FRAG]" : "");
+    }
+    effective_max = PeerTalk_GetPeerMaxMessage(ctx, peer_id);
+    printf("[CAPS] Effective max message: %u bytes\n", effective_max);
 
     /* Start streaming if in stream mode */
     if (g_config.mode == MODE_STREAM) {

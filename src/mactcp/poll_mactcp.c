@@ -83,6 +83,7 @@ extern int pt_mactcp_listen_poll(struct pt_context *ctx);
 extern int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer);
 extern int pt_mactcp_tcp_send(struct pt_context *ctx, struct pt_peer *peer,
                                const void *data, uint16_t len);
+extern int pt_mactcp_send_capability(struct pt_context *ctx, struct pt_peer *peer);
 
 /* From tcp_mactcp.c */
 extern int pt_mactcp_tcp_release(struct pt_context *ctx, int idx);
@@ -189,6 +190,9 @@ static void pt_mactcp_poll_connecting(struct pt_context *ctx,
                                              peer->hot.id,
                                              ctx->callbacks.user_data);
         }
+
+        /* Send capability message to negotiate constraints */
+        pt_mactcp_send_capability(ctx, peer);
     } else {
         /* Failed */
         PT_LOG_WARN(ctx->log, PT_LOG_CAT_CONNECT,
