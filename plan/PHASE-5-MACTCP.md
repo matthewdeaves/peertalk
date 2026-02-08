@@ -1,6 +1,6 @@
 # PHASE 5: MacTCP Networking
 
-> **Status:** OPEN
+> **Status:** DONE
 > **Depends on:** Phase 2 (Protocol layer for shared types and encoding), optionally Phase 3 (Advanced Queues)
 > **Required Phase 2 Addition:** Session 5.9 requires `pt_peer_find_by_name()` - must be added to Phase 2, Session 2.2
 > **Validates against:** Phase 4 (POSIX - use as protocol reference and cross-platform test partner)
@@ -419,16 +419,16 @@ int pt_mactcp_poll(struct pt_context *ctx) {
 
 | Session | Focus | Status | Files Created/Modified | Tests | Verify |
 |---------|-------|--------|------------------------|-------|--------|
-| 5.1 | MacTCP Driver & Types | [OPEN] | `src/mactcp/mactcp_defs.h`, `src/mactcp/mactcp_driver.c` | Real hardware | PBOpen succeeds |
-| 5.2 | UDP Stream | [OPEN] | `src/mactcp/udp_mactcp.c` | Real hardware | Stream lifecycle |
-| 5.3 | UDP Discovery | [OPEN] | `src/mactcp/discovery_mactcp.c` | Real hardware | Peers appear |
-| 5.4 | TCP Stream | [OPEN] | `src/mactcp/tcp_mactcp.c` | Real hardware | Stream lifecycle |
-| 5.5 | TCP Listen | [OPEN] | `src/mactcp/tcp_listen.c` | Real hardware | Accept works |
-| 5.6 | TCP Connect | [OPEN] | `src/mactcp/tcp_connect.c` | Real hardware | Connect works |
-| 5.7 | TCP I/O | [OPEN] | `src/mactcp/tcp_io.c` | Real hardware | Messages work |
-| 5.8 | TCP/IP Integration | [OPEN] | All MacTCP TCP/IP files | Real 68k Mac hardware | End-to-end TCP/IP, MaxBlock check |
-| **5.9** | **AppleTalk Integration** | [OPEN] | `src/mactcp/mactcp_multi.c` | Real hardware | Links with Phase 7 AT code |
-| **5.10** | **Unified Library Build** | [OPEN] | `Makefile.retro68` update | Real hardware | `libpeertalk_mactcp_at.a` builds |
+| 5.1 | MacTCP Driver & Types | [DONE] | `src/mactcp/mactcp_defs.h`, `src/mactcp/mactcp_driver.c` | Real hardware | PBOpen succeeds |
+| 5.2 | UDP Stream | [DONE] | `src/mactcp/udp_mactcp.c` | Real hardware | Stream lifecycle |
+| 5.3 | UDP Discovery | [DONE] | `src/mactcp/discovery_mactcp.c` | Real hardware | Peers appear |
+| 5.4 | TCP Stream | [DONE] | `src/mactcp/tcp_mactcp.c` | Real hardware | Stream lifecycle |
+| 5.5 | TCP Listen | [DONE] | `src/mactcp/tcp_listen.c` | Real hardware | Accept works |
+| 5.6 | TCP Connect | [DONE] | `src/mactcp/tcp_connect.c` | Real hardware | Connect works |
+| 5.7 | TCP I/O | [DONE] | `src/mactcp/tcp_io.c` | Real hardware | Messages work |
+| 5.8 | TCP/IP Integration | [DONE] | `src/mactcp/poll_mactcp.c` | Real 68k Mac hardware | End-to-end TCP/IP, MaxBlock check |
+| **5.9** | **AppleTalk Integration** | [DONE] | `src/mactcp/mactcp_multi.c` | Real hardware | Links with Phase 7 AT code |
+| **5.10** | **Unified Library Build** | [DONE] | `Makefile.retro68` update | Real hardware | `libpeertalk_mactcp_at.a` builds |
 
 ### Status Key
 - **[OPEN]** - Not started

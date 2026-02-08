@@ -62,15 +62,15 @@ DisposeUDPNotifyUPP(g_udp_upp);
 
 ### TCP ASR Event Codes
 
-> **Verified:** MacTCP Programmer's Guide (Lines 4269-4312, 6471-6493)
+> **Verified:** MacTCP.h (Retro68 toolchain) and MacTCP Programmer's Guide
 
 | Code | Event | Meaning | Action |
 |------|-------|---------|--------|
-| 0 | `TCPClosing` | All data received and delivered, connection closing | Set `remote_close` flag |
-| 1 | `TCPUrgent` | Urgent data outstanding | Set `urgent` flag, enter urgent mode |
-| 2 | `TCPDataArrival` | Data arrived, no receive commands outstanding | Set `data_available` flag |
-| 4 | `TCPULPTimeout` | No response from remote (only if configured to report) | Handle timeout |
-| 5 | `TCPTerminate` | Connection no longer exists | Set `terminated` flag, save reason |
+| 1 | `TCPClosing` | All data received and delivered, connection closing | Set `remote_close` flag |
+| 2 | `TCPULPTimeout` | No response from remote (only if configured to report) | Handle timeout |
+| 3 | `TCPTerminate` | Connection no longer exists | Set `terminated` flag, save reason |
+| 4 | `TCPDataArrival` | Data arrived, no receive commands outstanding | Set `data_available` flag |
+| 5 | `TCPUrgent` | Urgent data outstanding | Set `urgent` flag, enter urgent mode |
 | 6 | `TCPICMPReceived` | ICMP message received (A1 points to report) | Set `icmp_received` flag |
 
 > **Note:** Data arrival notification is given ONCE per batch - "TCP does not issue another data arrival notification until a receive command has been issued and completed" (Lines 4334-4338)

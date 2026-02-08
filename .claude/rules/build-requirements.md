@@ -9,6 +9,65 @@
 3. **Clean isolation** - No pollution of host system with build artifacts
 4. **CI parity** - Local builds match exactly what runs in GitHub Actions
 
+## Prohibited: Direct Host Commands
+
+**NEVER run these directly on the host:**
+
+- `gcc`, `g++`, `clang`, `clang++` - any compiler invocation
+- `make` (without Docker wrapper)
+- `cmake`, `ninja`, `meson` - any build system
+- `./build/bin/*` - running any POSIX compiled binary
+- `mkdir -p build/` - creating build directories
+- `cppcheck`, `valgrind`, `lcov` - any analysis tools
+- `sudo` anything build-related
+
+## Running POSIX Binaries
+
+**POSIX binaries MUST run inside Docker** (they're compiled for the container environment):
+
+```bash
+# CORRECT - run POSIX test binary in Docker
+docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest ./build/bin/test_partner
+
+# WRONG - never run POSIX binaries directly on host
+./build/bin/test_partner       # NO!
+sudo ./build/bin/test_partner  # NO!
+```
+
+## Running Mac Binaries
+
+**Mac binaries run on real Classic Mac hardware**, not in Docker. Use the MCP server:
+
+```bash
+# CORRECT - deploy and execute via MCP tools
+mcp__classic-mac-hardware__deploy_binary(machine="se30", platform="mactcp", binary_path="build/mactcp/PeerTalk.bin")
+mcp__classic-mac-hardware__execute_binary(machine="se30", platform="mactcp", binary_path="build/mactcp/PeerTalk.bin")
+
+# Or use skills
+/deploy se30 mactcp
+/execute se30 build/mactcp/PeerTalk.bin
+```
+
+See `.claude/rules/classic-mac-hardware.md` for MCP enforcement rules.
+
+## Compiling Individual Files
+
+```bash
+# CORRECT - compile in Docker
+docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest \
+    gcc -Wall -std=c99 -I./include -o build/bin/test_partner tests/posix/test_partner.c
+
+# WRONG - never compile on host
+gcc -Wall -std=c99 -I./include -o build/bin/test_partner tests/posix/test_partner.c  # NO!
+```
+
+## If Docker Has Issues
+
+If Docker doesn't work:
+1. Fix Docker - DO NOT fall back to host commands
+2. Check `docker ps` to verify daemon is running
+3. Rebuild image if needed: `docker build -t peertalk-posix -f docker/Dockerfile.posix .`
+
 ## Commands
 
 ### POSIX Builds and Tests

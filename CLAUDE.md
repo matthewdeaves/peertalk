@@ -55,6 +55,11 @@ docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make 
 /build coverage
 ```
 
+**NEVER run directly on host:**
+- `gcc`, `g++`, `make`, `cmake` - always wrap with Docker
+- `./build/bin/*` - run POSIX binaries inside containers (Mac binaries run on real hardware via MCP)
+- `cppcheck`, `valgrind` - use Docker for all analysis tools
+
 See `.claude/rules/build-requirements.md` for complete Docker command reference.
 
 ## Code Quality Gates
@@ -122,6 +127,79 @@ docker/
 - **Protocol:** Client reads local .bin file → transfers via TCP (port 1984) → Server executes on Mac
 - **Used by:** `/execute` skill and MCP `execute_binary` tool
 
+## Hardware Test Applications
+
+### Mac Test Apps (built with Retro68)
+
+| App | Log File | Purpose |
+|-----|----------|---------|
+| `test_mactcp` | `PT_Log` | Basic discovery test - verifies UDP broadcast works |
+| `test_latency` | `PT_Latency` | RTT measurement with various message sizes (16-4096 bytes) |
+| `test_throughput` | `PT_Throughput` | Streaming throughput measurement |
+| `test_stress` | `PT_Stress` | Rapid connect/disconnect cycles |
+| `test_discovery` | `PT_Discovery` | Extended discovery packet counting |
+
+**Build:**
+```bash
+docker-compose -f docker/docker-compose.yml run --rm peertalk-dev \
+    make -f Makefile.retro68 PLATFORM=mactcp test perf_tests
+```
+
+**Deploy to Mac:**
+```bash
+# Via MCP (preferred)
+mcp__classic-mac-hardware__deploy_binary(machine="performa6200", platform="mactcp", binary_path="build/mac/test_mactcp.bin")
+
+# Or upload individual test apps
+mcp__classic-mac-hardware__upload_file(machine="performa6200", local_path="build/mac/test_latency.bin", remote_path="test_latency.bin")
+```
+
+### POSIX Test Partners
+
+| App | Mode | Purpose |
+|-----|------|---------|
+| `test_partner` | - | Basic discovery partner, sends canned responses |
+| `perf_partner` | `--mode echo` | **Echo server** for latency tests (default) |
+| `perf_partner` | `--mode stream` | Throughput streaming to Mac |
+| `perf_partner` | `--mode stress` | Stress test partner |
+
+**Build:**
+```bash
+docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make build/bin/perf_partner
+```
+
+**Run (must use host networking for UDP broadcast):**
+```bash
+# Echo mode for latency tests
+docker run --rm --network host -v "$(pwd)":/workspace -w /workspace \
+    peertalk-posix:latest ./build/bin/perf_partner --mode echo --verbose
+
+# Stream mode for throughput tests
+docker run --rm --network host -v "$(pwd)":/workspace -w /workspace \
+    peertalk-posix:latest ./build/bin/perf_partner --mode stream --size 4096
+```
+
+### Testing Workflow
+
+1. **Start POSIX partner** (on Linux/macOS):
+   ```bash
+   ./build/bin/perf_partner --mode echo --verbose
+   ```
+
+2. **Run Mac test app** (on Classic Mac):
+   - Transfer `.bin` file via FTP
+   - Double-click to run
+   - Check log file (e.g., `PT_Latency`) for results
+
+3. **Fetch logs**:
+   ```bash
+   mcp__classic-mac-hardware__fetch_logs(machine="performa6200")
+   # Or download specific log:
+   mcp__classic-mac-hardware__download_file(machine="performa6200", remote_path="PT_Latency")
+   ```
+
+**Note:** Mac apps use ports 7353 (discovery) and 7354 (TCP). The POSIX partner must use the same ports.
+
 ## Common Pitfalls
 
 1. **Allocating in ASR/notifier** - Crashes. Use pre-allocated buffers.
@@ -157,6 +235,7 @@ Path: `~/peertalk/books/`
 Detailed rules are in `.claude/rules/`:
 
 - **build-requirements.md** - Docker-only builds (CRITICAL - always use Docker)
+- **classic-mac-hardware.md** - MCP-only file operations (CRITICAL - never use raw FTP)
 - **isr-safety.md** - Universal interrupt-time rules
 - **mactcp.md** - MacTCP ASR, error codes, TCPPassiveOpen
 - **opentransport.md** - OT notifier, endpoint states, tilisten
@@ -180,6 +259,9 @@ Platform rules are automatically loaded when editing files in the corresponding 
 | `/build test` | Compile and run POSIX tests with coverage |
 | `/build package` | Create Mac binaries for hardware transfer |
 | `/hw-test generate X.Y` | Create hardware test plan for Classic Mac |
+| `/test-partner start [mode]` | Start POSIX test partner (echo/stream/stress) in named container |
+| `/test-partner stop` | Stop test partner container |
+| `/test-partner status` | Check if partner is running |
 
 ### Hardware Setup & Deployment
 | Skill | When to Use |
@@ -210,11 +292,15 @@ Platform rules are automatically loaded when editing files in the corresponding 
 |--------|---------|
 | `classic-mac-hardware` | FTP access to Classic Mac test machines for binary deployment, log retrieval, and file transfer |
 
+**CRITICAL: Always use MCP tools for Classic Mac file operations. NEVER use raw FTP scripts or bash commands.**
+
+See `.claude/rules/classic-mac-hardware.md` for complete enforcement rules.
+
 **Key Tools:**
-- `deploy_binary` - Deploy PeerTalk builds (.bin/.dsk) via FTP (supports relative paths)
-- `execute_binary` - Run apps remotely via LaunchAPPL TCP protocol (supports relative paths)
+- `upload_file` - Upload any file to Classic Mac (preserves filename)
+- `download_file` - Download file from Classic Mac
+- `execute_binary` - Run apps remotely via LaunchAPPL TCP protocol
 - `fetch_logs` - Retrieve PT_Log output from Mac
-- `upload_file` / `download_file` - Transfer any file to/from Classic Mac (relative paths)
 - `list_directory` / `create_directory` / `delete_files` - File management
 - `test_connection` - Verify FTP and LaunchAPPL connectivity
 - `reload_config` - Hot-reload machine registry after changes
@@ -251,8 +337,10 @@ Each machine entry includes:
     hw-test/                   # Hardware test plan generation
     mac-api/                   # Inside Macintosh API search
     backport/                  # Cherry-pick tooling updates
+    test-partner/              # Manage POSIX test partner containers
   rules/                       # Development and platform rules
     build-requirements.md      # Docker-only builds (CRITICAL)
+    classic-mac-hardware.md    # MCP-only file operations (CRITICAL)
     isr-safety.md              # Universal interrupt-time rules
     mactcp.md                  # MacTCP ASR, TCPPassiveOpen, error codes
     opentransport.md           # OT notifier, endpoint states, tilisten
