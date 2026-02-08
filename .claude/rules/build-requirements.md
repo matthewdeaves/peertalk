@@ -127,3 +127,22 @@ The `/build` skill automatically uses Docker. Prefer using it:
 ## Exception
 
 The only exception is when explicitly debugging Docker or container issues themselves.
+
+## Docker Maintenance
+
+Docker can accumulate significant disk usage over time. Check and clean periodically:
+
+```bash
+# Check disk usage
+docker system df
+
+# Clean unused images, containers, volumes (safe)
+docker system prune -af --volumes
+
+# Check for running containers (avoid killing perf-partner during tests)
+docker ps
+```
+
+**Named containers to preserve:**
+- `perf-partner` - POSIX test partner for Mac hardware testing
+- `peertalk-dev` - Development container (optional, can be recreated)

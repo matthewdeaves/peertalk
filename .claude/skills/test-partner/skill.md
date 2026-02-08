@@ -17,19 +17,19 @@ Manage POSIX test partner containers for hardware testing. Uses named containers
 
 1. Check if the partner container is already running
 2. If not, start with the specified mode (default: echo)
-3. Use a named container `peertalk-partner` that persists
+3. Use a named container `perf-partner` that persists
 
 ### Container Management
 
-**CRITICAL:** The partner runs in a named container `peertalk-partner`.
+**CRITICAL:** The partner runs in a named container `perf-partner`.
 
 When you need to stop other Docker containers:
 ```bash
 # CORRECT - stop only anonymous containers, preserve named partner
-docker ps -q --filter "name=peertalk-partner" -q | xargs -r docker stop
+docker ps -q --filter "name=perf-partner" -q | xargs -r docker stop
 
 # Or to stop EVERYTHING except the partner:
-docker ps -q | grep -v $(docker ps -q --filter "name=peertalk-partner") | xargs -r docker stop
+docker ps -q | grep -v $(docker ps -q --filter "name=perf-partner") | xargs -r docker stop
 ```
 
 **NEVER run `docker stop $(docker ps -q)` while the partner is needed for testing.**
@@ -39,32 +39,32 @@ docker ps -q | grep -v $(docker ps -q --filter "name=peertalk-partner") | xargs 
 **Start partner:**
 ```bash
 # Check if already running
-docker ps --filter "name=peertalk-partner" --format "{{.Names}}" | grep -q peertalk-partner && echo "Already running"
+docker ps --filter "name=perf-partner" --format "{{.Names}}" | grep -q perf-partner && echo "Already running"
 
 # Start if not running
-docker run -d --name peertalk-partner --rm --network host \
+docker run -d --name perf-partner --rm --network host \
     -v "$(pwd)":/workspace -w /workspace \
     peertalk-posix:latest ./build/bin/perf_partner --mode echo --verbose
 ```
 
 **Stop partner:**
 ```bash
-docker stop peertalk-partner 2>/dev/null || echo "Not running"
+docker stop perf-partner 2>/dev/null || echo "Not running"
 ```
 
 **Check status:**
 ```bash
-docker ps --filter "name=peertalk-partner" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+docker ps --filter "name=perf-partner" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 ```
 
 **View logs:**
 ```bash
-docker logs peertalk-partner --tail 50
+docker logs perf-partner --tail 50
 ```
 
 **Follow logs:**
 ```bash
-docker logs -f peertalk-partner
+docker logs -f perf-partner
 ```
 
 ## Modes
@@ -112,7 +112,7 @@ docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make 
 docker stop $(docker ps -q)
 
 # SAFE alternative - stop only build containers
-docker stop $(docker ps -q --filter "name!=peertalk-partner")
+docker stop $(docker ps -q --filter "name!=perf-partner")
 ```
 
 ARGUMENTS: $1 = action (start|stop|status|logs), $2 = mode for start (echo|stream|stress)

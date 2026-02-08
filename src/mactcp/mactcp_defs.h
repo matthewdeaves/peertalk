@@ -135,6 +135,17 @@ typedef struct pt_tcp_stream_hot {
 } pt_tcp_stream_hot;
 
 /**
+ * Maximum RDS (Read Data Structure) entries for TCPNoCopyRcv.
+ *
+ * MacTCP delivers data in noncontiguous chunks (one per TCP segment).
+ * With Ethernet MTU ~1500 and TCP overhead, each chunk is ~1400 bytes.
+ * 16 entries allows receiving ~20KB before RDS fills and triggers early completion.
+ *
+ * Trade-off: Each entry is 6 bytes (ptr + length), so 16 = 96 bytes per stream.
+ */
+#define PT_MAX_RDS_ENTRIES      16
+
+/**
  * Cold path data - accessed during setup, I/O, teardown
  */
 typedef struct pt_tcp_stream_cold {
@@ -144,8 +155,12 @@ typedef struct pt_tcp_stream_cold {
     Ptr               rcv_buffer;       /* Passed to TCPCreate */
     unsigned long     rcv_buffer_size;
 
-    /* For TCPNoCopyRcv - Read Data Structure */
-    rdsEntry          rds[6];           /* 6 entries for multi-buffer receive */
+    /* For TCPNoCopyRcv - Read Data Structure
+     * MacTCP fragments large messages across TCP segments (~480 bytes each).
+     * With 16 entries, we can receive up to ~7KB in one TCPNoCopyRcv call.
+     * This reduces poll cycles needed for 2048+ byte messages.
+     */
+    rdsEntry          rds[PT_MAX_RDS_ENTRIES];
 
     /* Connection info */
     ip_addr           local_ip;

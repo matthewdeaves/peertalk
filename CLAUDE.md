@@ -181,22 +181,56 @@ docker run --rm --network host -v "$(pwd)":/workspace -w /workspace \
 
 ### Testing Workflow
 
-1. **Start POSIX partner** (on Linux/macOS):
+**Complete end-to-end hardware test:**
+
+1. **Build Mac test apps** (in Docker):
    ```bash
-   ./build/bin/perf_partner --mode echo --verbose
+   docker-compose -f docker/docker-compose.yml run --rm peertalk-dev \
+       make -f Makefile.retro68 PLATFORM=mactcp clean test perf_tests
    ```
 
-2. **Run Mac test app** (on Classic Mac):
-   - Transfer `.bin` file via FTP
-   - Double-click to run
-   - Check log file (e.g., `PT_Latency`) for results
-
-3. **Fetch logs**:
+2. **Build and start POSIX partner** (in named container):
    ```bash
-   mcp__classic-mac-hardware__fetch_logs(machine="performa6200")
-   # Or download specific log:
-   mcp__classic-mac-hardware__download_file(machine="performa6200", remote_path="PT_Latency")
+   # Build first
+   docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make build/bin/perf_partner
+
+   # Start partner (stays running)
+   docker run -d --name perf-partner --network host \
+       -v "$(pwd)":/workspace -w /workspace \
+       peertalk-posix:latest ./build/bin/perf_partner --mode echo --verbose
    ```
+
+3. **Deploy to Mac** (via MCP):
+   ```bash
+   mcp__classic-mac-hardware__upload_file(machine="performa6200",
+       local_path="build/mac/test_throughput.bin", remote_path="test_throughput.bin")
+   ```
+
+4. **Run Mac test** (on real hardware):
+   - Double-click the test app
+   - Wait for test to complete
+   - Press any key to exit
+
+5. **Fetch and view logs**:
+   ```bash
+   mcp__classic-mac-hardware__download_file(machine="performa6200",
+       remote_path="PT_Throughput", local_path="downloads/performa6200/PT_Throughput")
+   # Logs use CRLF line endings for cross-platform compatibility
+   cat downloads/performa6200/PT_Throughput
+   ```
+
+6. **Stop partner when done**:
+   ```bash
+   docker stop perf-partner
+   ```
+
+**Skill shortcuts:**
+```
+/test-partner start echo     # Start partner container
+/test-partner status         # Check if running
+/test-partner stop           # Stop when done
+/fetch-logs performa6200     # Get PT_Log from Mac
+```
 
 **Note:** Mac apps use ports 7353 (discovery) and 7354 (TCP). The POSIX partner must use the same ports.
 
@@ -207,6 +241,7 @@ docker run --rm --network host -v "$(pwd)":/workspace -w /workspace \
 3. **Wrong byte order** - Use htonl/ntohl for network data.
 4. **TCPPassiveOpen re-use** - It's one-shot. Need stream transfer pattern.
 5. **Testing only in emulator** - Real hardware behaves differently.
+6. **Large debug logs** - PT_LibDebug can grow to 1MB+. Use `tail` or `head` when reading.
 
 ## Development Resources
 

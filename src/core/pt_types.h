@@ -83,6 +83,20 @@
 #define PT_DISCOVERY_MAGIC  "PTLK"      /* UDP discovery packets */
 #define PT_MESSAGE_MAGIC    "PTMG"      /* TCP message frames */
 
+/**
+ * Framing buffer size for peer I/O.
+ *
+ * This is the staging buffer for TCP receive/send framing. Must be large
+ * enough to hold the largest expected message plus header (10) + CRC (2).
+ *
+ * 8192 bytes balances throughput (fewer copies) with memory usage.
+ * MacTCP recommends 16KB for block apps, but 8KB is sufficient for
+ * most messages and reduces memory pressure on 4-8MB Macs.
+ *
+ * With PT_MAX_PEERS=8, ibuf+obuf = 16KB per peer = 128KB total.
+ */
+#define PT_FRAME_BUF_SIZE   8192
+
 /* ========================================================================== */
 /* Internal Types                                                             */
 /* ========================================================================== */

@@ -124,8 +124,8 @@ typedef struct {
     uint16_t            rtt_samples[8];     /* Rolling RTT samples */
     uint8_t             rtt_index;
     uint8_t             rtt_count;
-    uint8_t             obuf[4128];         /* Output framing buffer (max payload + header + CRC) */
-    uint8_t             ibuf[4128];         /* Input framing buffer (max payload + header + CRC) */
+    uint8_t             obuf[PT_FRAME_BUF_SIZE];  /* Output framing buffer */
+    uint8_t             ibuf[PT_FRAME_BUF_SIZE];  /* Input framing buffer */
     uint16_t            obuflen;
     uint16_t            ibuflen;
 #ifdef PT_DEBUG

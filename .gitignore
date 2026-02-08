@@ -140,3 +140,4 @@ LaunchAPPL-build/
 node_modules/
 _site/
 package-lock.json
+downloads/
