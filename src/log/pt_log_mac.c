@@ -434,7 +434,7 @@ void PT_LogWriteV(
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-overflow"
         /* Use sprintf RETURN VALUE (not strlen) */
-        len = sprintf(line, "[%08lu][%s] %s\r",
+        len = sprintf(line, "[%08lu][%s] %s\r\n",
                       (unsigned long)timestamp, level_name, formatted);
 #pragma GCC diagnostic pop
 
@@ -474,7 +474,7 @@ void PT_LogPerf(PT_Log *log, const PT_LogPerfEntry *entry, const char *label) {
         /* Use sprintf return value instead of strlen() */
         if (label && *label) {
             len = sprintf(line,
-                "[%08lu][INF] PERF %s: seq=%lu type=%u v1=%u v2=%u flags=0x%02X cat=0x%04X\r",
+                "[%08lu][INF] PERF %s: seq=%lu type=%u v1=%u v2=%u flags=0x%02X cat=0x%04X\r\n",
                 (unsigned long)entry->timestamp_ms,
                 label,
                 (unsigned long)entry->seq_num,
@@ -485,7 +485,7 @@ void PT_LogPerf(PT_Log *log, const PT_LogPerfEntry *entry, const char *label) {
                 (unsigned)entry->category);
         } else {
             len = sprintf(line,
-                "[%08lu][INF] PERF seq=%lu type=%u v1=%u v2=%u flags=0x%02X cat=0x%04X\r",
+                "[%08lu][INF] PERF seq=%lu type=%u v1=%u v2=%u flags=0x%02X cat=0x%04X\r\n",
                 (unsigned long)entry->timestamp_ms,
                 (unsigned long)entry->seq_num,
                 (unsigned)entry->event_type,
