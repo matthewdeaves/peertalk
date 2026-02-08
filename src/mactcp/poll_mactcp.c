@@ -255,6 +255,16 @@ static void pt_mactcp_poll_connected(struct pt_context *ctx,
         hot->log_events &= ~(PT_LOG_EVT_TERMINATED | PT_LOG_EVT_ERROR);
     }
 
+    /* Poll async send completions - free slots before sending more
+     *
+     * This checks ioResult for pending async sends and marks completed
+     * slots as available for reuse. Must be done before any new sends
+     * to maximize pipeline efficiency.
+     */
+    if (ctx->plat && ctx->plat->poll_send_completions) {
+        ctx->plat->poll_send_completions(ctx, peer);
+    }
+
     /* Tier 2: Send large message from direct buffer first (priority) */
     if (pt_direct_buffer_ready(&peer->send_direct)) {
         pt_direct_buffer *buf = &peer->send_direct;
@@ -554,6 +564,11 @@ int pt_mactcp_poll_fast(struct pt_context *ctx)
 
         if (peer == NULL)
             continue;
+
+        /* Poll async send completions first to free slots */
+        if (ctx->plat && ctx->plat->poll_send_completions) {
+            ctx->plat->poll_send_completions(ctx, peer);
+        }
 
         /* Tier 2: Send from direct buffer first */
         if (pt_direct_buffer_ready(&peer->send_direct)) {
