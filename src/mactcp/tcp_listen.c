@@ -20,11 +20,54 @@
 #include "peer.h"
 #include "pt_internal.h"
 #include "pt_compat.h"
+#include "queue.h"
 
 #if defined(PT_PLATFORM_MACTCP)
 
 #include <Devices.h>
 #include <OSUtils.h>  /* For TickCount() - only in main loop! */
+
+/* ========================================================================== */
+/* Queue Allocation Helpers                                                   */
+/* ========================================================================== */
+
+/**
+ * Allocate and initialize a peer queue.
+ * DOD: Uses pt_alloc for consistent memory management.
+ */
+static pt_queue *pt_mactcp_alloc_peer_queue(struct pt_context *ctx)
+{
+    pt_queue *q;
+    int result;
+
+    q = (pt_queue *)pt_alloc(sizeof(pt_queue));
+    if (!q) {
+        PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,
+            "Failed to allocate queue: out of memory");
+        return NULL;
+    }
+
+    result = pt_queue_init(ctx, q, 16);
+    if (result != 0) {
+        PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,
+            "Failed to initialize queue: error %d", result);
+        pt_free(q);
+        return NULL;
+    }
+
+    return q;
+}
+
+/**
+ * Free a peer queue.
+ */
+static void pt_mactcp_free_peer_queue(pt_queue *q)
+{
+    if (q) {
+        pt_queue_free(q);
+        pt_free(q);
+    }
+}
 
 /* ========================================================================== */
 /* External Accessors                                                         */
@@ -321,23 +364,45 @@ int pt_mactcp_listen_poll(struct pt_context *ctx)
             "Failed to restart listener");
     }
 
+    /* Allocate send and receive queues for the peer */
+    peer->send_queue = pt_mactcp_alloc_peer_queue(ctx);
+    peer->recv_queue = pt_mactcp_alloc_peer_queue(ctx);
+
+    if (!peer->send_queue || !peer->recv_queue) {
+        PT_LOG_ERR(ctx->log, PT_LOG_CAT_MEMORY,
+            "Failed to allocate queues for peer %u, rejecting connection",
+            (unsigned)peer->hot.id);
+        pt_mactcp_free_peer_queue(peer->send_queue);
+        pt_mactcp_free_peer_queue(peer->recv_queue);
+        peer->send_queue = NULL;
+        peer->recv_queue = NULL;
+        /* Clean up - don't accept this connection */
+        md->tcp_hot[client_idx].state = PT_STREAM_UNUSED;
+        return 0;
+    }
+
     /* Update peer state */
     pt_peer_set_state(ctx, peer, PT_PEER_STATE_CONNECTED);
     peer->hot.last_seen = (pt_tick_t)TickCount();
 
+    /* CRITICAL: Reset receive buffer state for new connection.
+     * If peer struct is reused, ibuflen may have stale data. */
+    peer->cold.ibuflen = 0;
+
     /* Store stream index in peer's platform-specific connection handle */
-    peer->hot.connection = (void *)(intptr_t)client_idx;
+    /* Store idx+1 so stream 0 doesn't become NULL pointer */
+    peer->hot.connection = (void *)(intptr_t)(client_idx + 1);
 
     /* Fire callback */
     if (ctx->callbacks.on_peer_connected != NULL) {
         ctx->callbacks.on_peer_connected((PeerTalk_Context *)ctx,
-                                         peer->cold.info.id,
+                                         peer->hot.id,
                                          ctx->callbacks.user_data);
     }
 
     PT_LOG_INFO(ctx->log, PT_LOG_CAT_CONNECT,
-        "Peer %u connected on stream %d",
-        (unsigned)peer->cold.info.id, client_idx);
+        "Accepted connection from peer %u at 0x%08X (assigned to slot %d)",
+        (unsigned)peer->hot.id, remote_ip, client_idx);
 
     return 1;
 }

@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <string.h>
 #include <ifaddrs.h>
+#include <stdlib.h>
 
 /* ========================================================================== */
 /* Port Configuration                                                         */
@@ -1206,11 +1207,62 @@ int pt_posix_send(struct pt_context *ctx, struct pt_peer *peer,
         return PT_ERR_NETWORK;
     }
 
+    /* Handle partial writes by continuing with write() */
     if (sent < total_len) {
-        PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
-            "Partial send to peer %u: %zd/%zd bytes", peer->hot.id, sent, total_len);
-        /* TODO: Handle partial sends with send queue */
-        return PT_ERR_WOULD_BLOCK;
+        /* Build combined buffer for remaining data */
+        uint8_t *sendbuf;
+        size_t buflen = (size_t)total_len;
+        size_t offset = (size_t)sent;
+        int max_retries = 100;
+        int retry_count = 0;
+
+        sendbuf = (uint8_t *)malloc(buflen);
+        if (!sendbuf) {
+            PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL, "Failed to allocate send buffer");
+            return PT_ERR_NO_MEMORY;
+        }
+
+        /* Copy header + payload + crc into buffer */
+        memcpy(sendbuf, header_buf, PT_MESSAGE_HEADER_SIZE);
+        memcpy(sendbuf + PT_MESSAGE_HEADER_SIZE, data, len);
+        memcpy(sendbuf + PT_MESSAGE_HEADER_SIZE + len, crc_buf, 2);
+
+        /* Continue sending from where we left off */
+        while (offset < buflen && retry_count < max_retries) {
+            ssize_t n = write(sock, sendbuf + offset, buflen - offset);
+            if (n < 0) {
+                if (errno == EWOULDBLOCK || errno == EAGAIN) {
+                    struct timeval tv;
+                    fd_set wfds;
+                    FD_ZERO(&wfds);
+                    FD_SET(sock, &wfds);
+                    tv.tv_sec = 0;
+                    tv.tv_usec = 10000;  /* 10ms */
+                    select(sock + 1, NULL, &wfds, NULL, &tv);
+                    retry_count++;
+                    continue;
+                }
+                free(sendbuf);
+                PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,
+                    "Send failed for peer %u: %s", peer->hot.id, strerror(errno));
+                return PT_ERR_NETWORK;
+            }
+            offset += (size_t)n;
+            PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+                "Partial send to peer %u: %zu/%zu bytes, continuing...",
+                peer->hot.id, offset, buflen);
+        }
+
+        free(sendbuf);
+
+        if (offset < buflen) {
+            PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,
+                "Send incomplete after %d retries: %zu/%zu bytes",
+                retry_count, offset, buflen);
+            return PT_ERR_NETWORK;
+        }
+
+        sent = (ssize_t)offset;
     }
 
     /* Update statistics */

@@ -245,6 +245,11 @@ typedef enum {
 typedef struct pt_context PeerTalk_Context;
 
 /**
+ * Forward declaration for logging (see pt_log.h)
+ */
+typedef struct pt_log PT_Log;
+
+/**
  * Peer identifier (unique per session)
  */
 typedef uint16_t PeerTalk_PeerID;
@@ -836,6 +841,13 @@ PeerTalk_Error PeerTalk_ModifyFlags(
 PeerTalk_Error PeerTalk_GetLocalInfo(
     PeerTalk_Context *ctx,
     PeerTalk_PeerInfo *out_info);
+
+/**
+ * Get the library's internal logger for configuration.
+ * Allows apps to configure log level, output, and file.
+ * Returns NULL if logging not initialized.
+ */
+PT_Log *PeerTalk_GetLog(PeerTalk_Context *ctx);
 
 #ifdef __cplusplus
 }

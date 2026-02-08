@@ -176,6 +176,10 @@ static void pt_mactcp_poll_connecting(struct pt_context *ctx,
         pt_peer_set_state(ctx, peer, PT_PEER_STATE_CONNECTED);
         peer->hot.last_seen = (pt_tick_t)now;
 
+        /* CRITICAL: Reset receive buffer state for new connection.
+         * If peer struct is reused, ibuflen may have stale data. */
+        peer->cold.ibuflen = 0;
+
         /* CRITICAL: Store stream index so pt_mactcp_tcp_send can find it.
          * Use idx+1 so that stream 0 doesn't become NULL pointer. */
         peer->hot.connection = (void *)(intptr_t)(idx + 1);

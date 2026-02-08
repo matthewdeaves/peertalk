@@ -173,10 +173,11 @@ PT_Log *PT_LogCreate(void) {
     log = (PT_Log *)NewPtrClear(sizeof(PT_Log));
     if (!log) return NULL;
 
-    /* Defaults */
+    /* Defaults - Mac has NO console, so default to FILE output.
+     * User must call PT_LogSetFile() to specify filename. */
     log->level = PT_LOG_INFO;
     log->categories = PT_LOG_CAT_ALL;
-    log->outputs = PT_LOG_OUT_CONSOLE;
+    log->outputs = PT_LOG_OUT_FILE;
     log->auto_flush = 0;
     log->next_seq = 1;
     log->file_refnum = 0;

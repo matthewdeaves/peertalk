@@ -755,3 +755,15 @@ PeerTalk_Error PeerTalk_GetQueueStatus(PeerTalk_Context *ctx_pub,
 
     return PT_OK;
 }
+
+/* ========================================================================== */
+/* PeerTalk_GetLog - Get Library Logger for Configuration                     */
+/* ========================================================================== */
+
+PT_Log *PeerTalk_GetLog(PeerTalk_Context *ctx_handle) {
+    struct pt_context *ctx = (struct pt_context *)ctx_handle;
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return NULL;
+    }
+    return ctx->log;
+}
