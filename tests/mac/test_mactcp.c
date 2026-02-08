@@ -295,8 +295,8 @@ cleanup:
 
             stream_err = log_stream_send(g_ctx, stream_peer);
             if (stream_err == PT_OK) {
-                /* Poll until streaming complete */
-                while (!log_stream_complete()) {
+                /* Poll until streaming complete or peer disconnects */
+                while (!log_stream_complete() && g_connected_peer != 0) {
                     EventRecord evt;
                     if (WaitNextEvent(everyEvent, &evt, 1, NULL)) {
                         if (evt.what == keyDown) break;
@@ -304,7 +304,10 @@ cleanup:
                     PeerTalk_Poll(g_ctx);
                 }
 
-                if (log_stream_result() == PT_OK) {
+                if (g_connected_peer == 0) {
+                    PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                        "Peer disconnected during log streaming");
+                } else if (log_stream_result() == PT_OK) {
                     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
                         "Log stream complete: %lu bytes sent",
                         (unsigned long)log_stream_bytes_sent());

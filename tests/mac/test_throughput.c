@@ -472,14 +472,21 @@ int main(void)
             }
         }
 
-        /* Wait for log streaming to complete */
-        if (g_log_stream.complete && g_test.test_complete) {
-            if (log_stream_bytes_sent() > 0) {
-                PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
-                    "Log streaming complete: %lu bytes sent",
-                    (unsigned long)log_stream_bytes_sent());
+        /* Wait for log streaming to complete, or exit if peer disconnected */
+        if (g_test.test_complete) {
+            if (g_log_stream.complete) {
+                if (log_stream_bytes_sent() > 0) {
+                    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+                        "Log streaming complete: %lu bytes sent",
+                        (unsigned long)log_stream_bytes_sent());
+                }
+                g_running = 0;
+            } else if (g_log_stream.streaming && g_connected_peer == 0) {
+                /* Peer disconnected during streaming - abort and exit */
+                PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                    "Peer disconnected during log streaming - exiting");
+                g_running = 0;
             }
-            g_running = 0;
         }
     }
 

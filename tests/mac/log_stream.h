@@ -151,6 +151,13 @@ static void log_stream_callback(
         return;
     }
 
+    /* Sanity check: if length is already corrupt/too large, stop capturing.
+     * This prevents unsigned underflow in the remaining calculation. */
+    if (g_log_stream.length >= LOG_STREAM_BUFFER_SIZE - LOG_STREAM_HEADER_SIZE) {
+        g_log_stream.overflow = 1;
+        return;
+    }
+
     msg_len = strlen(message);
     /* Reserve space for header when calculating remaining */
     remaining = LOG_STREAM_BUFFER_SIZE - LOG_STREAM_HEADER_SIZE - g_log_stream.length;
