@@ -37,12 +37,13 @@ extern short pt_mactcp_get_refnum(void);
 
 /**
  * Get stream index from peer's connection handle.
+ * Connection stores idx+1 so that stream 0 doesn't become NULL.
  */
 static int pt_peer_stream_idx(struct pt_peer *peer)
 {
     if (peer == NULL || peer->hot.connection == NULL)
         return -1;
-    return (int)(intptr_t)peer->hot.connection;
+    return (int)(intptr_t)peer->hot.connection - 1;
 }
 
 /* Forward declaration */
@@ -168,7 +169,7 @@ int pt_mactcp_tcp_send(struct pt_context *ctx, struct pt_peer *peer,
 
     PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
         "Sent %u bytes to peer %u (seq=%u)",
-        (unsigned)len, (unsigned)peer->cold.info.id, (unsigned)hdr.sequence);
+        (unsigned)len, (unsigned)peer->hot.id, (unsigned)hdr.sequence);
 
     /* Update last seen timestamp (main loop context - TickCount() is safe here) */
     peer->hot.last_seen = (pt_tick_t)TickCount();
@@ -184,23 +185,25 @@ int pt_mactcp_tcp_send(struct pt_context *ctx, struct pt_peer *peer,
 /**
  * Receive data using TCPNoCopyRcv (high-performance method).
  *
- * NOTE: For simpler implementations or debugging, TCPRcv can be used
- * instead. TCPRcv copies data to your buffer directly, eliminating the
- * need for TCPRcvBfrReturn, at the cost of an extra memory copy. Use
- * TCPNoCopyRcv (this function) for production performance.
+ * Implements proper message framing to handle:
+ * - Multiple messages arriving in one TCPNoCopyRcv call
+ * - Partial messages split across multiple calls
+ *
+ * Uses peer->cold.ibuf as a persistent receive buffer with ibuflen
+ * tracking unprocessed bytes.
  *
  * DOD: Uses hot/cold struct split. Looks up stream by index stored in peer.
  *
  * @param ctx   PeerTalk context
  * @param peer  Peer to receive from
- * @return      1 if message processed, 0 if no data, -1 on error/disconnect
+ * @return      Number of messages processed (0+), or -1 on error/disconnect
  */
 int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
 {
     pt_mactcp_data *md = pt_mactcp_get(ctx);
     pt_message_header hdr;
+    uint8_t *msg_start;
     uint8_t *data_ptr;
-    uint16_t data_len;
     uint16_t crc_expected, crc_actual;
     OSErr err;
     int idx;
@@ -208,6 +211,8 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
     pt_tcp_stream_cold *cold;
     int rds_idx;
     uint16_t expected_len;
+    uint16_t bytes_consumed;
+    int messages_processed = 0;
 
     if (peer == NULL || peer->hot.magic != PT_PEER_MAGIC)
         return PT_ERR_INVALID_PARAM;
@@ -225,158 +230,195 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
         return -1;  /* Trigger disconnect */
     }
 
-    /* Check for data (hot struct flags) */
-    if (!(hot->asr_flags & PT_ASR_DATA_ARRIVED))
-        return 0;
+    /* Fetch new data if ASR signaled arrival */
+    if (hot->asr_flags & PT_ASR_DATA_ARRIVED) {
+        PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
+            "RCV: ASR signaled, stream=%d ibuflen=%u",
+            idx, (unsigned)peer->cold.ibuflen);
+        hot->asr_flags &= ~PT_ASR_DATA_ARRIVED;
 
-    hot->asr_flags &= ~PT_ASR_DATA_ARRIVED;
+        /*
+         * Issue TCPNoCopyRcv (pb and rds in cold struct).
+         * From MacTCP Programmer's Guide: "The minimum value of the command
+         * timeout is 2 seconds; 0 means infinite."
+         */
+        pt_memset(&cold->pb, 0, sizeof(cold->pb));
+        cold->pb.csCode = TCPNoCopyRcv;
+        cold->pb.ioCRefNum = md->driver_refnum;
+        cold->pb.tcpStream = hot->stream;
 
-    /* Return any previous RDS buffers (rds in cold struct) */
-    if (hot->rds_outstanding) {
-        TCPiopb return_pb;
-        pt_memset(&return_pb, 0, sizeof(return_pb));
-        return_pb.csCode = TCPRcvBfrReturn;
-        return_pb.ioCRefNum = md->driver_refnum;
-        return_pb.tcpStream = hot->stream;
-        return_pb.csParam.receive.rdsPtr = (Ptr)cold->rds;
+        cold->pb.csParam.receive.commandTimeoutValue = 2;
+        cold->pb.csParam.receive.rdsPtr = (Ptr)cold->rds;
+        cold->pb.csParam.receive.rdsLength = sizeof(cold->rds) / sizeof(cold->rds[0]);
 
-        err = PBControlSync((ParmBlkPtr)&return_pb);
-        if (err != noErr) {
+        err = PBControlSync((ParmBlkPtr)&cold->pb);
+
+        if (err == commandTimeout) {
+            /* No data ready - continue to process existing ibuf */
+        } else if (err != noErr) {
             PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
-                "TCPRcvBfrReturn failed: %d (buffer leak possible)", (int)err);
+                "TCPNoCopyRcv failed: %d", (int)err);
+
+            if (err == connectionClosing || err == connectionTerminated) {
+                return -1;
+            }
+        } else {
+            /* Append RDS data to ibuf after existing content */
+            uint16_t ibuflen_before = peer->cold.ibuflen;
+            hot->rds_outstanding = 1;
+
+            for (rds_idx = 0; rds_idx < 6 && cold->rds[rds_idx].length > 0; rds_idx++) {
+                unsigned short chunk_len = cold->rds[rds_idx].length;
+                if (peer->cold.ibuflen + chunk_len > sizeof(peer->cold.ibuf)) {
+                    PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
+                        "RCV: data exceeds ibuf (%u + %u > %u)",
+                        (unsigned)peer->cold.ibuflen, (unsigned)chunk_len,
+                        (unsigned)sizeof(peer->cold.ibuf));
+                    break;
+                }
+                pt_memcpy(peer->cold.ibuf + peer->cold.ibuflen,
+                          cold->rds[rds_idx].ptr, chunk_len);
+                peer->cold.ibuflen += chunk_len;
+            }
+
+            PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
+                "RCV: +%u bytes in %d chunks (ibuflen %u->%u)",
+                (unsigned)(peer->cold.ibuflen - ibuflen_before), rds_idx,
+                (unsigned)ibuflen_before, (unsigned)peer->cold.ibuflen);
+
+            /*
+             * CRITICAL: Return RDS buffers IMMEDIATELY after copying.
+             * MacTCP won't send another ASR until buffers are returned.
+             */
+            if (hot->rds_outstanding) {
+                TCPiopb return_pb;
+                pt_memset(&return_pb, 0, sizeof(return_pb));
+                return_pb.csCode = TCPRcvBfrReturn;
+                return_pb.ioCRefNum = md->driver_refnum;
+                return_pb.tcpStream = hot->stream;
+                return_pb.csParam.receive.rdsPtr = (Ptr)cold->rds;
+
+                err = PBControlSync((ParmBlkPtr)&return_pb);
+                if (err != noErr) {
+                    PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
+                        "TCPRcvBfrReturn failed: %d", (int)err);
+                }
+                hot->rds_outstanding = 0;
+            }
         }
-        hot->rds_outstanding = 0;
     }
 
     /*
-     * Issue TCPNoCopyRcv (pb and rds in cold struct).
-     * From MacTCP Programmer's Guide: "The minimum value of the command
-     * timeout is 2 seconds; 0 means infinite."
-     *
-     * Since we only call this after ASR signals data arrival, data is
-     * already buffered and will return immediately. The 2s timeout is
-     * only a fallback for rare race conditions.
+     * Process all complete messages in ibuf.
+     * This handles multiple messages arriving in one receive call.
      */
-    pt_memset(&cold->pb, 0, sizeof(cold->pb));
-    cold->pb.csCode = TCPNoCopyRcv;
-    cold->pb.ioCRefNum = md->driver_refnum;
-    cold->pb.tcpStream = hot->stream;
+    bytes_consumed = 0;
+    msg_start = peer->cold.ibuf;
 
-    cold->pb.csParam.receive.commandTimeoutValue = 2;  /* Minimum per docs */
-    cold->pb.csParam.receive.rdsPtr = (Ptr)cold->rds;
-    cold->pb.csParam.receive.rdsLength = sizeof(cold->rds) / sizeof(cold->rds[0]);
+    while (peer->cold.ibuflen - bytes_consumed >= PT_MESSAGE_HEADER_SIZE + 2) {
+        uint16_t remaining = peer->cold.ibuflen - bytes_consumed;
 
-    err = PBControlSync((ParmBlkPtr)&cold->pb);
-
-    if (err == commandTimeout) {
-        /* No data ready */
-        return 0;
-    }
-
-    if (err != noErr) {
-        PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
-            "TCPNoCopyRcv failed: %d", (int)err);
-
-        if (err == connectionClosing || err == connectionTerminated) {
-            return -1;
+        /* Parse header */
+        if (pt_message_decode_header(ctx, msg_start, remaining, &hdr) < 0) {
+            PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
+                "Invalid message header from peer %u (offset %u)",
+                (unsigned)peer->hot.id, (unsigned)bytes_consumed);
+            /* Discard buffer on framing error - can't recover */
+            peer->cold.ibuflen = 0;
+            return messages_processed > 0 ? messages_processed : 0;
         }
 
-        return 0;
-    }
-
-    /* Mark RDS as needing return (hot struct flag) */
-    hot->rds_outstanding = 1;
-
-    /* Process received data - may be in multiple RDS entries (in cold struct) */
-    /* Copy to peer's ibuf and process there */
-    data_len = 0;
-    for (rds_idx = 0; rds_idx < 6 && cold->rds[rds_idx].length > 0; rds_idx++) {
-        unsigned short chunk_len = cold->rds[rds_idx].length;
-        if (data_len + chunk_len > sizeof(peer->cold.ibuf)) {
-            PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
-                "Received data exceeds ibuf");
+        /* Check we have complete message */
+        expected_len = PT_MESSAGE_HEADER_SIZE + hdr.payload_len + 2;
+        if (remaining < expected_len) {
+            /* Partial message - wait for more data */
             break;
         }
-        pt_memcpy(peer->cold.ibuf + data_len, cold->rds[rds_idx].ptr, chunk_len);
-        data_len += chunk_len;
-    }
 
-    if (data_len < PT_MESSAGE_HEADER_SIZE + 2) {
-        /* Not enough data for header + CRC - partial message */
-        return 0;
-    }
+        /* Verify CRC */
+        data_ptr = msg_start + PT_MESSAGE_HEADER_SIZE;
+        crc_expected = ((uint16_t)msg_start[PT_MESSAGE_HEADER_SIZE + hdr.payload_len] << 8) |
+                        msg_start[PT_MESSAGE_HEADER_SIZE + hdr.payload_len + 1];
+        crc_actual = pt_crc16(msg_start, PT_MESSAGE_HEADER_SIZE);
+        if (hdr.payload_len > 0)
+            crc_actual = pt_crc16_update(crc_actual, data_ptr, hdr.payload_len);
 
-    /* Parse header */
-    if (pt_message_decode_header(ctx, peer->cold.ibuf, data_len, &hdr) < 0) {
-        PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
-            "Invalid message header from peer %u", (unsigned)peer->cold.info.id);
-        return 0;
-    }
-
-    /* Check we have complete message */
-    expected_len = PT_MESSAGE_HEADER_SIZE + hdr.payload_len + 2;
-    if (data_len < expected_len) {
-        /* Partial message - need more data */
-        return 0;
-    }
-
-    /* Verify CRC */
-    data_ptr = peer->cold.ibuf + PT_MESSAGE_HEADER_SIZE;
-    crc_expected = ((uint16_t)peer->cold.ibuf[PT_MESSAGE_HEADER_SIZE + hdr.payload_len] << 8) |
-                    peer->cold.ibuf[PT_MESSAGE_HEADER_SIZE + hdr.payload_len + 1];
-    crc_actual = pt_crc16(peer->cold.ibuf, PT_MESSAGE_HEADER_SIZE);
-    if (hdr.payload_len > 0)
-        crc_actual = pt_crc16_update(crc_actual, data_ptr, hdr.payload_len);
-
-    if (crc_actual != crc_expected) {
-        PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
-            "CRC mismatch: expected=%04X actual=%04X",
-            (unsigned)crc_expected, (unsigned)crc_actual);
-        return 0;
-    }
-
-    /* Update peer state */
-    peer->hot.last_seen = (pt_tick_t)TickCount();
-    peer->hot.recv_seq = hdr.sequence;
-    pt_peer_check_canaries(ctx, peer);
-
-    /* Handle by message type */
-    switch (hdr.type) {
-    case PT_MSG_TYPE_DATA:
-        PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
-            "Received %u bytes from peer %u (seq=%u)",
-            (unsigned)hdr.payload_len, (unsigned)peer->cold.info.id,
-            (unsigned)hdr.sequence);
-
-        if (ctx->callbacks.on_message_received != NULL) {
-            ctx->callbacks.on_message_received(
-                (PeerTalk_Context *)ctx,
-                peer->cold.info.id, data_ptr, hdr.payload_len,
-                ctx->callbacks.user_data);
+        if (crc_actual != crc_expected) {
+            PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
+                "CRC mismatch: expected=%04X actual=%04X",
+                (unsigned)crc_expected, (unsigned)crc_actual);
+            /* Discard buffer on CRC error - can't recover */
+            peer->cold.ibuflen = 0;
+            return messages_processed > 0 ? messages_processed : 0;
         }
-        break;
 
-    case PT_MSG_TYPE_PING:
-        pt_mactcp_tcp_send_control(ctx, idx, PT_MSG_TYPE_PONG);
-        break;
+        /* Message is valid - consume it */
+        bytes_consumed += expected_len;
+        messages_processed++;
 
-    case PT_MSG_TYPE_PONG:
-        /* Update latency estimate - could calculate RTT here */
-        break;
+        /* Update peer state */
+        peer->hot.last_seen = (pt_tick_t)TickCount();
+        peer->hot.recv_seq = hdr.sequence;
+        pt_peer_check_canaries(ctx, peer);
 
-    case PT_MSG_TYPE_DISCONNECT:
-        PT_LOG_INFO(ctx->log, PT_LOG_CAT_NETWORK,
-            "Received DISCONNECT from peer %u", (unsigned)peer->cold.info.id);
-        return -1;
+        /* Handle by message type */
+        switch (hdr.type) {
+        case PT_MSG_TYPE_DATA:
+            PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
+                "Received %u bytes from peer %u (seq=%u)",
+                (unsigned)hdr.payload_len, (unsigned)peer->hot.id,
+                (unsigned)hdr.sequence);
 
-    default:
-        PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
-            "Unknown message type %u from peer %u",
-            (unsigned)hdr.type, (unsigned)peer->cold.info.id);
-        break;
+            if (ctx->callbacks.on_message_received != NULL) {
+                ctx->callbacks.on_message_received(
+                    (PeerTalk_Context *)ctx,
+                    peer->hot.id, data_ptr, hdr.payload_len,
+                    ctx->callbacks.user_data);
+            }
+            break;
+
+        case PT_MSG_TYPE_PING:
+            pt_mactcp_tcp_send_control(ctx, idx, PT_MSG_TYPE_PONG);
+            break;
+
+        case PT_MSG_TYPE_PONG:
+            /* Update latency estimate - could calculate RTT here */
+            break;
+
+        case PT_MSG_TYPE_DISCONNECT:
+            PT_LOG_INFO(ctx->log, PT_LOG_CAT_NETWORK,
+                "Received DISCONNECT from peer %u", (unsigned)peer->hot.id);
+            peer->cold.ibuflen = 0;
+            return -1;
+
+        default:
+            PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
+                "Unknown message type %u from peer %u",
+                (unsigned)hdr.type, (unsigned)peer->hot.id);
+            break;
+        }
+
+        /* Advance to next message */
+        msg_start += expected_len;
     }
 
-    return 1;
+    /*
+     * Shift remaining partial message to front of buffer.
+     * This preserves data for the next receive call.
+     */
+    if (bytes_consumed > 0 && bytes_consumed < peer->cold.ibuflen) {
+        uint16_t remaining = peer->cold.ibuflen - bytes_consumed;
+        pt_memmove(peer->cold.ibuf, peer->cold.ibuf + bytes_consumed, remaining);
+        peer->cold.ibuflen = remaining;
+        PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
+            "RCV: shifted %u bytes, %u remaining",
+            (unsigned)bytes_consumed, (unsigned)remaining);
+    } else if (bytes_consumed == peer->cold.ibuflen) {
+        /* All data consumed */
+        peer->cold.ibuflen = 0;
+    }
+
+    return messages_processed;
 }
 
 /* ========================================================================== */

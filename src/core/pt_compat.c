@@ -235,6 +235,10 @@ int pt_memcmp(const void *a, const void *b, size_t n) {
     return memcmp(a, b, n);
 }
 
+void *pt_memmove(void *dest, const void *src, size_t n) {
+    return memmove(dest, src, n);
+}
+
 size_t pt_strlen(const char *s) {
     return strlen(s);
 }
@@ -280,6 +284,31 @@ int pt_memcmp(const void *a, const void *b, size_t n) {
         }
     }
     return 0;
+}
+
+void *pt_memmove(void *dest, const void *src, size_t n) {
+    unsigned char *d = (unsigned char *)dest;
+    const unsigned char *s = (const unsigned char *)src;
+
+    if (d == s || n == 0) {
+        return dest;
+    }
+
+    if (d < s) {
+        /* Forward copy (no overlap or dest before src) */
+        size_t i;
+        for (i = 0; i < n; i++) {
+            d[i] = s[i];
+        }
+    } else {
+        /* Backward copy (dest after src, may overlap) */
+        size_t i = n;
+        while (i > 0) {
+            i--;
+            d[i] = s[i];
+        }
+    }
+    return dest;
 }
 
 size_t pt_strlen(const char *s) {

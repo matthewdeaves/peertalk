@@ -245,7 +245,7 @@ int pt_mactcp_discovery_poll(struct pt_context *ctx)
         if (peer != NULL) {
             if (ctx->callbacks.on_peer_lost != NULL) {
                 ctx->callbacks.on_peer_lost((PeerTalk_Context *)ctx,
-                                            peer->cold.info.id,
+                                            peer->hot.id,
                                             ctx->callbacks.user_data);
             }
             pt_peer_destroy(ctx, peer);

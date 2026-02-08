@@ -105,12 +105,13 @@ static int pt_peer_index(struct pt_context *ctx, struct pt_peer *peer)
 
 /**
  * Get stream index from peer's connection handle.
+ * Connection stores idx+1 so that stream 0 doesn't become NULL.
  */
 static int pt_peer_stream_idx(struct pt_peer *peer)
 {
     if (peer == NULL || peer->hot.connection == NULL)
         return -1;
-    return (int)(intptr_t)peer->hot.connection;
+    return (int)(intptr_t)peer->hot.connection - 1;
 }
 
 /**
@@ -201,7 +202,7 @@ int pt_mactcp_connect(struct pt_context *ctx, struct pt_peer *peer)
 
     PT_LOG_INFO(ctx->log, PT_LOG_CAT_CONNECT,
         "Connecting to peer %u (\"%s\") at %lu.%lu.%lu.%lu:%u",
-        (unsigned)peer->cold.info.id, peer->cold.name,
+        (unsigned)peer->hot.id, peer->cold.name,
         (peer->cold.info.address >> 24) & 0xFF,
         (peer->cold.info.address >> 16) & 0xFF,
         (peer->cold.info.address >> 8) & 0xFF,
@@ -266,7 +267,7 @@ int pt_mactcp_connect_poll(struct pt_context *ctx)
             (long)(now - cold->close_start) > (long)PT_CONNECT_TIMEOUT_TICKS) {
             PT_LOG_WARN(ctx->log, PT_LOG_CAT_CONNECT,
                 "Connect to peer %u timed out after 30s, aborting",
-                (unsigned)peer->cold.info.id);
+                (unsigned)peer->hot.id);
 
             /* Abort the pending connection */
             pt_memset(&abort_pb, 0, sizeof(abort_pb));
@@ -294,7 +295,7 @@ int pt_mactcp_connect_poll(struct pt_context *ctx)
 
             PT_LOG_INFO(ctx->log, PT_LOG_CAT_CONNECT,
                 "Connected to peer %u (\"%s\")",
-                (unsigned)peer->cold.info.id, peer->cold.name);
+                (unsigned)peer->hot.id, peer->cold.name);
 
             hot->state = PT_STREAM_CONNECTED;
             pt_peer_set_state(ctx, peer, PT_PEER_STATE_CONNECTED);
@@ -302,14 +303,14 @@ int pt_mactcp_connect_poll(struct pt_context *ctx)
 
             if (ctx->callbacks.on_peer_connected != NULL) {
                 ctx->callbacks.on_peer_connected((PeerTalk_Context *)ctx,
-                                                 peer->cold.info.id,
+                                                 peer->hot.id,
                                                  ctx->callbacks.user_data);
             }
         } else {
             /* Failed */
             PT_LOG_WARN(ctx->log, PT_LOG_CAT_CONNECT,
                 "Connect to peer %u failed: %d",
-                (unsigned)peer->cold.info.id, (int)hot->async_result);
+                (unsigned)peer->hot.id, (int)hot->async_result);
 
             pt_peer_set_state(ctx, peer, PT_PEER_STATE_FAILED);
             peer->hot.connection = NULL;
@@ -384,7 +385,7 @@ int pt_mactcp_disconnect(struct pt_context *ctx, struct pt_peer *peer)
         cold->close_start = (unsigned long)TickCount();
 
         PT_LOG_INFO(ctx->log, PT_LOG_CAT_CONNECT,
-            "Closing connection to peer %u", (unsigned)peer->cold.info.id);
+            "Closing connection to peer %u", (unsigned)peer->hot.id);
 
         /* ASYNC close - returns immediately, completion routine called later */
         err = PBControlAsync((ParmBlkPtr)&cold->pb);
@@ -406,7 +407,7 @@ int pt_mactcp_disconnect(struct pt_context *ctx, struct pt_peer *peer)
     /* Update peer state */
     if (ctx->callbacks.on_peer_disconnected != NULL) {
         ctx->callbacks.on_peer_disconnected((PeerTalk_Context *)ctx,
-                                            peer->cold.info.id, 0,
+                                            peer->hot.id, 0,
                                             ctx->callbacks.user_data);
     }
 
@@ -484,7 +485,7 @@ int pt_mactcp_close_poll(struct pt_context *ctx)
 
             if (ctx->callbacks.on_peer_disconnected != NULL) {
                 ctx->callbacks.on_peer_disconnected((PeerTalk_Context *)ctx,
-                                                    peer->cold.info.id, 0,
+                                                    peer->hot.id, 0,
                                                     ctx->callbacks.user_data);
             }
 

@@ -182,6 +182,16 @@ void *pt_memset(void *dest, int c, size_t n);
  */
 int pt_memcmp(const void *a, const void *b, size_t n);
 
+/**
+ * Move memory (handles overlapping regions).
+ * Safe when src and dest overlap - copies in correct direction.
+ * @param dest Destination pointer
+ * @param src Source pointer
+ * @param n Number of bytes to move
+ * @return dest
+ */
+void *pt_memmove(void *dest, const void *src, size_t n);
+
 /* ========================================================================== */
 /* String Utilities                                                           */
 /* ========================================================================== */

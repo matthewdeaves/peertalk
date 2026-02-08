@@ -45,9 +45,9 @@ extern unsigned long pt_mactcp_buffer_size_for_memory(struct pt_context *ctx);
  * - CAN issue additional ASYNCHRONOUS MacTCP calls if needed
  * - Must preserve registers D3-D7, A3-A7 (A0-A2, D0-D2 may be modified)
  *
- * Event codes:
+ * Event codes (from MacTCP.h):
  * - TCPClosing (1): Remote is closing (send pending data, then close)
- * - TCPULPTimeout (2): ULP timer expired
+ * - TCPULPTimeout (2): ULP timer expired (only if configured to report)
  * - TCPTerminate (3): Connection gone - terminReason tells why
  * - TCPDataArrival (4): Data waiting to be read
  * - TCPUrgent (5): Urgent data received
