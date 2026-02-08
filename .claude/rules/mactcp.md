@@ -333,3 +333,64 @@ typedef struct {
     unsigned long   optionalAddlInfoPtr;
 } ICMPReport;
 ```
+
+## Async I/O Pattern
+
+> **Verified:** MacTCP Programmer's Guide (Lines 700-722, 712-713):
+> - All MacTCP routines support sync and async modes via PBControlSync/PBControlAsync
+> - Poll ioResult: when it changes from 1 (in progress) to another value, call completed
+> - Completion routines execute at interrupt level - CANNOT call Memory Manager
+
+> **Verified:** Inside Macintosh Volume V (Lines 61337-61340):
+> "It is executed at interrupt level and must not make any memory manager calls."
+
+### Polling vs Completion Routines
+
+**Recommended pattern:** Set `ioCompletion = NULL` and poll `ioResult` in main loop.
+
+```c
+/* Issue async call */
+pb->ioCompletion = NULL;  /* No completion routine - we poll */
+err = PBControlAsync((ParmBlkPtr)pb);
+
+/* In poll loop */
+if (pb->ioResult > 0) {
+    return;  /* Still in progress (1 = commandInProgress) */
+}
+/* ioResult <= 0: completed (0 = noErr, negative = error) */
+```
+
+**Why avoid completion routines:**
+1. Execute at interrupt level - cannot allocate/free memory
+2. TCPAbort can fire pending completions during shutdown
+3. If memory already freed, completion routine crashes
+4. Polling is simpler and proven safe in PeerTalk codebase
+
+### Buffer Lifetime for Async TCPSend
+
+> **Verified:** MacTCP Programmer's Guide (Lines 2959-2961):
+> "You must not modify or relocate the WDS and the buffers it describes until the TCPSend command has been completed."
+
+For async sends, copy data to dedicated slot buffers before calling PBControlAsync:
+
+```c
+/* CORRECT: Copy to persistent buffer */
+memcpy(slot->buffer, data, len);
+slot->wds[0].ptr = (Ptr)slot->buffer;
+slot->wds[0].length = len;
+slot->wds[1].length = 0;  /* Sentinel */
+pb->csParam.send.wdsPtr = (Ptr)slot->wds;
+PBControlAsync((ParmBlkPtr)pb);
+
+/* WRONG: Stack buffer freed before completion */
+char temp[1024];
+memcpy(temp, data, len);
+wds[0].ptr = temp;  /* CRASH: temp invalid after function returns */
+```
+
+### TCPSend Completion Semantics
+
+> **Verified:** MacTCP Programmer's Guide (Lines 2939-2940):
+> "TCPSend sends the specified data over the connection. The command is completed when all data has been sent and acknowledged, or when an error occurs."
+
+This is why synchronous sends are slow - each blocks until TCP ACK received. Async pipelining keeps multiple sends in-flight.

@@ -3,6 +3,18 @@
 **Status:** PLANNING
 **Priority:** High
 **Estimated Improvement:** 200-400% throughput increase (87 KB/s → 200-350 KB/s)
+**Review Applied:** 2026-02-08 - Fixed struct definitions, added ISR safety notes, corrected memory calculations
+
+### Fact-Check Summary
+
+| Claim | Verified | Source |
+|-------|----------|--------|
+| PBControlAsync valid for MacTCP | ✓ | MacTCP Guide Lines 700-722 |
+| ioResult polling: 1=progress, 0=success, <0=error | ✓ | MacTCP Guide Lines 712-713 |
+| Completion routines run at interrupt level | ✓ | Inside Mac V Lines 61337-61340 |
+| WDS must persist until completion | ✓ | MacTCP Guide Lines 2959-2961 |
+| TCPiopb size ~92 bytes (not 108) | ✓ | Retro68 MacTCP.h:556-575 |
+| System limit: 64 TCP+UDP streams | ✓ | MacTCP Guide Line 926 |
 
 ## Overview
 
@@ -29,9 +41,9 @@ Result: ~80-100 messages/sec at 4096 bytes = 300+ KB/s
 | Component | Per-Slot | × 4 Slots | Total |
 |-----------|----------|-----------|-------|
 | Send buffer | 4,112 bytes | 16,448 bytes | |
-| TCPiopb | 108 bytes | 432 bytes | |
-| Slot metadata | 8 bytes | 32 bytes | |
-| **Per-peer total** | | | **~17 KB** |
+| TCPiopb | 92 bytes | 368 bytes | (verified: MacTCP.h) |
+| pt_send_slot | 24 bytes | 96 bytes | (includes WDS) |
+| **Per-peer total** | ~4,228 | | **~17 KB** |
 | **8 peers max** | | | **~136 KB** |
 
 ### Low-Memory Build (Mac SE, 4MB RAM)
@@ -49,9 +61,11 @@ Result: ~80-100 messages/sec at 4096 bytes = 300+ KB/s
 | `PT_SEND_PIPELINE_DEPTH` | 4 | 2 |
 | `PT_MAX_PEERS` | 8 | 4 |
 | `PT_MESSAGE_MAX_PAYLOAD` | 4096 | 1024 |
-| Max send buffer | 4,112 | 1,040 |
-| **Per-peer memory** | 17 KB | 2.5 KB |
-| **Total (all peers)** | 136 KB | 10 KB |
+| Send buffer per slot | 4,112 | 1,040 |
+| TCPiopb per slot | 92 | 92 |
+| pt_send_slot | 24 | 24 |
+| **Per-peer memory** | ~17 KB | ~2.3 KB |
+| **Total (all peers)** | ~136 KB | ~9 KB |
 
 **Compile-time selection:**
 ```c
@@ -112,25 +126,35 @@ struct pt_platform_ops {
 
 **Deliverables:**
 ```c
-/* Send slot - holds one in-flight message */
+/* Send slot - holds one in-flight message (24 bytes)
+ *
+ * Design notes:
+ * - WDS embedded to avoid separate allocation
+ * - ioResult cached locally for cache-efficient polling (avoids pointer chase)
+ * - Hot fields (buffer, platform_data, ioResult) grouped first
+ */
 typedef struct {
-    uint8_t        *buffer;         /* Message buffer (header + payload + CRC) */
-    uint16_t        buffer_size;    /* Allocated size */
-    uint16_t        message_len;    /* Actual message length */
-    uint8_t         in_use;         /* 1 if send pending */
-    uint8_t         completed;      /* 1 if send finished (success or error) */
-    int16_t         result;         /* Completion result code */
-    void           *platform_data;  /* Platform-specific (TCPiopb*, etc.) */
-} pt_send_slot;
+    uint8_t        *buffer;         /* 4 bytes - Message buffer (header + payload + CRC) */
+    void           *platform_data;  /* 4 bytes - Platform-specific (TCPiopb*, etc.) */
+    wdsEntry        wds[2];         /* 8 bytes - WDS[0]=message, WDS[1]=sentinel */
+    volatile int16_t ioResult;      /* 2 bytes - Cached from pb->ioResult for fast polling */
+    uint16_t        message_len;    /* 2 bytes - Actual message length */
+    uint8_t         in_use;         /* 1 byte  - 1 if send pending */
+    uint8_t         completed;      /* 1 byte  - 1 if send finished (success or error) */
+    uint16_t        buffer_size;    /* 2 bytes - Allocated size (cold - only at init) */
+} pt_send_slot;  /* Total: 24 bytes */
 
+/* Pipeline control - hot field (pending_count) first for cache locality */
 typedef struct {
-    pt_send_slot    slots[PT_SEND_PIPELINE_DEPTH];
-    uint8_t         next_slot;      /* Round-robin allocation index */
-    uint8_t         pending_count;  /* Number of in-flight sends */
-    uint8_t         initialized;    /* 1 if buffers allocated */
+    uint8_t         pending_count;  /* Hot: checked every poll */
+    uint8_t         next_slot;      /* Warm: checked on send */
+    uint8_t         initialized;    /* Cold: rarely checked */
     uint8_t         reserved;
+    pt_send_slot    slots[PT_SEND_PIPELINE_DEPTH];  /* 96 bytes (4 slots) or 48 bytes (2 slots) */
 } pt_send_pipeline;
 ```
+
+**Note on slot size:** Each slot is 24 bytes (increased from 16 to include WDS array and cached ioResult). This improves polling efficiency by avoiding a pointer dereference to check completion status.
 
 **Acceptance Criteria:**
 - [ ] Structures compile on all platforms
@@ -242,11 +266,25 @@ static pt_send_slot *pt_pipeline_get_slot(struct pt_peer *peer)
 #endif
 ```
 
+**Logging Requirements:**
+```c
+/* On init success */
+PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_MEMORY,
+    "Pipeline init: peer=%d depth=%d buf_size=%d",
+    peer_idx, PT_SEND_PIPELINE_DEPTH, (int)buf_size);
+
+/* On cleanup */
+PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_MEMORY,
+    "Pipeline cleanup: peer=%d pending=%d",
+    peer_idx, peer->pipeline.pending_count);
+```
+
 **Acceptance Criteria:**
 - [ ] Buffers allocated on peer connect
 - [ ] Buffers freed on peer disconnect
 - [ ] No memory leaks (test with stress test)
 - [ ] Lowmem build uses lazy allocation
+- [ ] Init/cleanup logged at DEBUG level
 
 ---
 
@@ -296,9 +334,19 @@ int pt_mactcp_tcp_send_async(struct pt_context *ctx, struct pt_peer *peer,
     pb->csParam.send.validityFlags = 0xC0;
     pb->csParam.send.pushFlag = 0;  /* Don't push - allow batching */
     pb->csParam.send.wdsPtr = (Ptr)slot->wds;
-    pb->ioCompletion = NULL;  /* We poll instead of using completion routine */
+
+    /* CRITICAL: Do NOT use completion routines.
+     * Per Inside Macintosh Vol V (Lines 61337-61340):
+     * "It is executed at interrupt level and must not make any memory manager calls."
+     *
+     * Additionally, TCPAbort (called during shutdown) fires pending completion
+     * routines at interrupt time. If memory is already freed, the completion
+     * crashes. Polling ioResult in main loop is safer and proven in PeerTalk.
+     */
+    pb->ioCompletion = NULL;
 
     slot->in_use = 1;
+    slot->ioResult = 1;  /* Mark as in-progress (will be updated by polling) */
     slot->completed = 0;
     peer->pipeline.pending_count++;
 
@@ -337,22 +385,29 @@ int pt_mactcp_poll_send_completions(struct pt_context *ctx, struct pt_peer *peer
 
     for (i = 0; i < PT_SEND_PIPELINE_DEPTH; i++) {
         pt_send_slot *slot = &peer->pipeline.slots[i];
-        TCPiopb *pb = (TCPiopb *)slot->platform_data;
+        TCPiopb *pb;
 
         if (!slot->in_use) continue;
 
-        /* Check if async operation completed */
-        /* ioResult: 1 = in progress, 0 = success, <0 = error */
-        if (pb->ioResult <= 0) {
-            slot->result = pb->ioResult;
+        /* Copy ioResult to slot for cache-efficient polling.
+         * This avoids dereferencing platform_data pointer on every poll.
+         * Per MacTCP Guide (Lines 712-713):
+         *   ioResult > 0: still in progress (typically 1)
+         *   ioResult == 0: success (noErr)
+         *   ioResult < 0: error code
+         */
+        pb = (TCPiopb *)slot->platform_data;
+        slot->ioResult = pb->ioResult;
+
+        if (slot->ioResult <= 0) {
             slot->in_use = 0;
             slot->completed = 1;
             peer->pipeline.pending_count--;
             completions++;
 
-            if (pb->ioResult != noErr) {
+            if (slot->ioResult != noErr) {
                 PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
-                    "Async send error: %d", (int)pb->ioResult);
+                    "Async send slot %d error: %d", i, (int)slot->ioResult);
                 /* Handle error - may need to disconnect */
             }
         }
@@ -376,9 +431,11 @@ static void pt_mactcp_poll_connected(struct pt_context *ctx, struct pt_peer *pee
 ```
 
 **Acceptance Criteria:**
-- [ ] Completions detected correctly
-- [ ] Errors logged and handled
+- [ ] Completions detected correctly (ioResult transitions from 1 to 0 or negative)
+- [ ] Errors logged with slot index and error code
 - [ ] Slot freed for reuse after completion
+- [ ] Verify with connectionDoesntExist (-23008) error handling
+- [ ] Test slot->ioResult caching (avoid pb-> dereference in tight loop)
 
 ---
 
@@ -412,6 +469,9 @@ PeerTalk_Error PeerTalk_Send(PeerTalk_Context *ctx_pub, PeerTalk_PeerID peer_id,
             return err;  /* Success or fatal error */
         }
         /* Fall through to sync if would block */
+        PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
+            "Pipeline full (%d pending), falling back to sync",
+            peer->pipeline.pending_count);
     }
 
     /* Fallback to sync send */
@@ -421,8 +481,9 @@ PeerTalk_Error PeerTalk_Send(PeerTalk_Context *ctx_pub, PeerTalk_PeerID peer_id,
 
 **Acceptance Criteria:**
 - [ ] Async used when slots available
-- [ ] Graceful fallback to sync when slots exhausted
+- [ ] Graceful fallback to sync when slots exhausted (logged at DEBUG)
 - [ ] No API change for callers
+- [ ] Verify fallback works correctly under load
 
 ---
 
