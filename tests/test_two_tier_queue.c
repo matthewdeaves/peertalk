@@ -68,6 +68,8 @@ static void test_size_based_routing(void) {
     memset(&config, 0, sizeof(config));
     strncpy(config.local_name, "SizeRouter", PT_MAX_PEER_NAME);
     config.tcp_port = 18500;
+    /* Disable fragmentation to test Tier 2 routing (2 = disabled) */
+    config.enable_fragmentation = 2;
 
     ctx = PeerTalk_Init(&config);
     if (!ctx) {
@@ -223,6 +225,8 @@ static void test_mixed_message_sizes(void) {
     memset(&config, 0, sizeof(config));
     strncpy(config.local_name, "MixedSizes", PT_MAX_PEER_NAME);
     config.tcp_port = 18502;
+    /* Disable fragmentation to test Tier 2 routing (2 = disabled) */
+    config.enable_fragmentation = 2;
 
     ctx = PeerTalk_Init(&config);
     if (!ctx) {
@@ -382,6 +386,8 @@ static void test_tier2_stress(void) {
     memset(&config, 0, sizeof(config));
     strncpy(config.local_name, "Tier2Stress", PT_MAX_PEER_NAME);
     config.tcp_port = 18504;
+    /* Disable fragmentation to test Tier 2 routing (2 = disabled) */
+    config.enable_fragmentation = 2;
 
     ctx = PeerTalk_Init(&config);
     if (!ctx) {
@@ -701,6 +707,8 @@ static void test_buffer_size_config(void) {
     strncpy(config.local_name, "ConfigTest", PT_MAX_PEER_NAME);
     config.tcp_port = 18506;
     config.direct_buffer_size = 8192;  /* Max size */
+    /* Disable fragmentation to test Tier 2 buffer size config (2 = disabled) */
+    config.enable_fragmentation = 2;
 
     ctx = PeerTalk_Init(&config);
     if (!ctx) {

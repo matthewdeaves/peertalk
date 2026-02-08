@@ -268,12 +268,25 @@ static void pt_mactcp_poll_connected(struct pt_context *ctx,
 
     /* Tier 1: Drain send queue - send one message per poll iteration */
     if (peer->send_queue) {
-        if (pt_queue_pop_priority_direct(peer->send_queue, &data, &len) == 0) {
-            result = pt_mactcp_tcp_send(ctx, peer, data, len);
+        pt_queue *q = peer->send_queue;
+        if (pt_queue_pop_priority_direct(q, &data, &len) == 0) {
+            uint8_t slot_flags = q->slots[q->pending_pop_slot].flags;
+
+            /* Check if this is a fragment - needs PT_MSG_FLAG_FRAGMENT */
+            if (slot_flags & PT_SLOT_FRAGMENT) {
+                result = pt_mactcp_tcp_send_with_flags(ctx, peer, data, len,
+                                                        PT_MSG_FLAG_FRAGMENT);
+            } else {
+                result = pt_mactcp_tcp_send(ctx, peer, data, len);
+            }
+
             if (result == 0) {
-                pt_queue_pop_priority_commit(peer->send_queue);
+                pt_queue_pop_priority_commit(q);
                 PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
-                    "Sent %u bytes (Tier 1) to peer %u", (unsigned)len, (unsigned)peer->hot.id);
+                    "Sent %u bytes (Tier 1%s) to peer %u",
+                    (unsigned)len,
+                    (slot_flags & PT_SLOT_FRAGMENT) ? " frag" : "",
+                    (unsigned)peer->hot.id);
             } else {
                 PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
                     "Tier 1 send to peer %u failed: %d", (unsigned)peer->hot.id, result);

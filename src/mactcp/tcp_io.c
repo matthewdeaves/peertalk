@@ -734,7 +734,7 @@ int pt_mactcp_send_capability(struct pt_context *ctx, struct pt_peer *peer)
     /* Fill in our capabilities */
     caps.max_message_size = ctx->local_max_message;
     caps.preferred_chunk = ctx->local_preferred_chunk;
-    caps.capability_flags = 0;
+    caps.capability_flags = ctx->local_capability_flags;
 
     /* Calculate current buffer pressure from BOTH queues - report the worse one.
      * On MacTCP, recv uses zero-copy so recv_queue is often empty.

@@ -88,14 +88,15 @@ PeerTalk_Context *PeerTalk_Init(const PeerTalk_Config *config) {
     if (ctx->config.preferred_chunk == 0) {
         ctx->config.preferred_chunk = 1024;
     }
-    /* enable_fragmentation defaults to 0, but treat 0xFF as unset and enable */
-    if (ctx->config.enable_fragmentation == 0xFF) {
-        ctx->config.enable_fragmentation = 1;
+    /* enable_fragmentation: 0 or 0xFF = unset (default enabled), 1 = enabled, 2+ = disabled
+     * This allows memset(&config, 0, ...) to get sensible defaults */
+    if (ctx->config.enable_fragmentation == 0 || ctx->config.enable_fragmentation == 0xFF) {
+        ctx->config.enable_fragmentation = 1;  /* Default to enabled */
     }
     ctx->local_max_message = ctx->config.max_message_size;
     ctx->local_preferred_chunk = ctx->config.preferred_chunk;
     ctx->local_capability_flags = PT_CAPFLAG_FRAGMENTATION;  /* We support fragmentation */
-    ctx->enable_fragmentation = ctx->config.enable_fragmentation ? 1 : 0;
+    ctx->enable_fragmentation = (ctx->config.enable_fragmentation == 1) ? 1 : 0;
 
     /* Initialize PT_Log from Phase 0 */
     ctx->log = PT_LogCreate();
@@ -191,6 +192,9 @@ void PeerTalk_Shutdown(PeerTalk_Context *ctx_handle) {
     if (ctx->plat && ctx->plat->shutdown) {
         ctx->plat->shutdown(ctx);
     }
+
+    /* Free peer list */
+    pt_peer_list_free(ctx);
 
     /* Destroy PT_Log context last (need it for shutdown logging) */
     if (ctx->log) {

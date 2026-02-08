@@ -30,10 +30,17 @@ static int pt_send_fragment(struct pt_context *ctx, struct pt_peer *peer,
                             uint16_t msg_id, uint16_t total_len,
                             uint16_t offset, uint8_t frag_flags,
                             uint8_t priority) {
-    pt_direct_buffer *buf = &peer->send_direct;
+    pt_queue *q = peer->send_queue;
     pt_fragment_header frag_hdr;
-    uint8_t frag_hdr_buf[PT_FRAGMENT_HEADER_SIZE];
+    uint8_t frag_buf[PT_QUEUE_SLOT_SIZE];
+    uint16_t total_frag_len;
     int result;
+
+    if (!q) {
+        PT_CTX_ERR(ctx, PT_LOG_CAT_SEND,
+            "Peer %u has no send queue", peer->hot.id);
+        return PT_ERR_INVALID_STATE;
+    }
 
     /* Build fragment header */
     frag_hdr.message_id = msg_id;
@@ -42,33 +49,25 @@ static int pt_send_fragment(struct pt_context *ctx, struct pt_peer *peer,
     frag_hdr.fragment_flags = frag_flags;
     frag_hdr.reserved = 0;
 
-    pt_fragment_encode(&frag_hdr, frag_hdr_buf);
-
-    /* Queue fragment: header + data into send_direct buffer
-     * Use the existing direct buffer for each fragment */
-    if (!pt_direct_buffer_available(buf)) {
-        return PT_ERR_WOULD_BLOCK;
-    }
-
-    /* Copy fragment header + data into buffer */
-    if (PT_FRAGMENT_HEADER_SIZE + frag_len > buf->capacity) {
+    /* Check fragment fits in queue slot */
+    total_frag_len = PT_FRAGMENT_HEADER_SIZE + frag_len;
+    if (total_frag_len > PT_QUEUE_SLOT_SIZE) {
         PT_CTX_ERR(ctx, PT_LOG_CAT_SEND,
             "Fragment too large: %u + %u > %u",
-            PT_FRAGMENT_HEADER_SIZE, frag_len, buf->capacity);
+            PT_FRAGMENT_HEADER_SIZE, frag_len, PT_QUEUE_SLOT_SIZE);
         return PT_ERR_MESSAGE_TOO_LARGE;
     }
 
-    pt_memcpy(buf->data, frag_hdr_buf, PT_FRAGMENT_HEADER_SIZE);
-    pt_memcpy(buf->data + PT_FRAGMENT_HEADER_SIZE, data, frag_len);
+    /* Build fragment: header + data */
+    pt_fragment_encode(&frag_hdr, frag_buf);
+    pt_memcpy(frag_buf + PT_FRAGMENT_HEADER_SIZE, data, frag_len);
 
-    result = pt_direct_buffer_queue(buf, buf->data,
-                                    (uint16_t)(PT_FRAGMENT_HEADER_SIZE + frag_len),
-                                    priority);
+    /* Queue fragment with PT_SLOT_FRAGMENT flag
+     * The drain code checks this flag and sets PT_MSG_FLAG_FRAGMENT on send */
+    result = pt_queue_push(ctx, q, frag_buf, total_frag_len,
+                           priority, PT_SLOT_FRAGMENT);
 
     if (result == 0) {
-        /* Mark buffer as having fragment data so framing sets PT_MSG_FLAG_FRAGMENT */
-        buf->msg_flags = PT_MSG_FLAG_FRAGMENT;
-
         PT_CTX_DEBUG(ctx, PT_LOG_CAT_SEND,
             "Queued fragment: id=%u offset=%u len=%u %s%s",
             msg_id, offset, frag_len,
@@ -103,6 +102,8 @@ static int pt_send_fragment(struct pt_context *ctx, struct pt_peer *peer,
 void pt_batch_init(pt_batch *batch) {
     batch->used = 0;
     batch->count = 0;
+    batch->is_fragment = 0;
+    batch->reserved = 0;
 }
 
 int pt_batch_add(pt_batch *batch, const void *data, uint16_t len) {
@@ -202,6 +203,7 @@ int pt_drain_send_queue(struct pt_context *ctx, struct pt_peer *peer,
     pt_queue *q = peer->send_queue;
     const void *msg_data;  /* Zero-copy pointer to slot data */
     uint16_t len;
+    uint8_t slot_flags;
     int sent = 0;
 
     if (!ctx || !q || pt_queue_is_empty(q) || !send_fn)
@@ -215,8 +217,44 @@ int pt_drain_send_queue(struct pt_context *ctx, struct pt_peer *peer,
      * This avoids double-copy: instead of slot->temp->batch, we do slot->batch.
      * On 68k with 2-10 MB/s memory bandwidth, this saves significant time.
      *
+     * FRAGMENT HANDLING: Fragments (PT_SLOT_FRAGMENT) must be sent individually
+     * with PT_MSG_FLAG_FRAGMENT set, NOT batched with normal messages.
+     *
      * PROTOCOL: Only commit after successful batch_add to avoid message loss. */
     while (pt_queue_pop_priority_direct(q, &msg_data, &len) == 0) {
+        /* Check if this is a fragment - needs special handling */
+        slot_flags = q->slots[q->pending_pop_slot].flags;
+
+        if (slot_flags & PT_SLOT_FRAGMENT) {
+            /* Fragment: Flush any pending batch first, then send fragment alone */
+            if (batch->count > 0) {
+                if (send_fn(ctx, peer, batch) == 0) {
+                    sent++;
+                    PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+                        "Batch sent: %u messages, %u bytes", batch->count, batch->used);
+                } else {
+                    PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL, "Batch send failed");
+                }
+                pt_batch_init(batch);
+            }
+
+            /* Send fragment as its own "batch" with is_fragment flag */
+            if (pt_batch_add(batch, msg_data, len) == 0) {
+                batch->is_fragment = 1;
+                if (send_fn(ctx, peer, batch) == 0) {
+                    sent++;
+                    PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+                        "Fragment sent: %u bytes", len);
+                } else {
+                    PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL, "Fragment send failed");
+                }
+            }
+            pt_batch_init(batch);
+            pt_queue_pop_priority_commit(q);
+            continue;
+        }
+
+        /* Regular message: add to batch */
         if (pt_batch_add(batch, msg_data, len) < 0) {
             /* Batch full - DON'T commit yet, send current batch first */
             if (send_fn(ctx, peer, batch) == 0) {
@@ -404,8 +442,18 @@ PeerTalk_Error PeerTalk_SendEx(PeerTalk_Context *ctx_pub,
         /* Allocate unique message ID for this fragmented message */
         msg_id = (uint16_t)(ctx->next_message_id++ & 0xFFFF);
 
-        /* Max fragment data = peer's max minus fragment header overhead */
+        /* Max fragment data = peer's max minus fragment header overhead.
+         * Also must fit in a queue slot (fragments go through Tier 1 queue). */
         max_frag_data = peer->hot.effective_max_msg - PT_FRAGMENT_HEADER_SIZE;
+
+        /* Limit to queue slot size (fragment header + data must fit) */
+        {
+            uint16_t max_slot_data = PT_QUEUE_SLOT_SIZE - PT_FRAGMENT_HEADER_SIZE;
+            if (max_frag_data > max_slot_data) {
+                max_frag_data = max_slot_data;
+            }
+        }
+
         if (max_frag_data < 64) {
             /* Peer's max is too small for practical fragmentation */
             PT_CTX_ERR(ctx, PT_LOG_CAT_SEND,

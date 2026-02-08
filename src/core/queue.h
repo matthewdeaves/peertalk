@@ -35,6 +35,7 @@ struct pt_context;
 #define PT_SLOT_USED        0x01  /* Slot contains valid data */
 #define PT_SLOT_COALESCABLE 0x02  /* Message can be coalesced */
 #define PT_SLOT_READY       0x04  /* Data fully written (OT reentrancy safety) */
+#define PT_SLOT_FRAGMENT    0x08  /* Message is a fragment (set PT_MSG_FLAG_FRAGMENT on send) */
 
 /* ========================================================================
  * Phase 3: Priority & Coalescing Constants

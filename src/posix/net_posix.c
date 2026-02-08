@@ -2502,17 +2502,26 @@ periodic_work:
             }
         }
 
-        /* Tier 1: Drain queue (small messages) */
+        /* Tier 1: Drain queue (small messages and fragments) */
         if (peer->send_queue) {
             const void *data;
             uint16_t len;
+            pt_queue *q = peer->send_queue;
 
-            if (pt_queue_pop_priority_direct(peer->send_queue, &data, &len) == 0) {
-                /* Got a message - send it */
-                int result = pt_posix_send(ctx, peer, data, len);
+            if (pt_queue_pop_priority_direct(q, &data, &len) == 0) {
+                int result;
+                uint8_t slot_flags = q->slots[q->pending_pop_slot].flags;
+
+                /* Check if this is a fragment - needs PT_MSG_FLAG_FRAGMENT */
+                if (slot_flags & PT_SLOT_FRAGMENT) {
+                    result = pt_posix_send_with_flags(ctx, peer, data, len,
+                                                       PT_MSG_FLAG_FRAGMENT);
+                } else {
+                    result = pt_posix_send(ctx, peer, data, len);
+                }
 
                 /* Commit the pop to remove message from queue */
-                pt_queue_pop_priority_commit(peer->send_queue);
+                pt_queue_pop_priority_commit(q);
 
                 if (result != PT_OK && result != PT_ERR_WOULD_BLOCK) {
                     /* Send failed - message lost */

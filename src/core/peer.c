@@ -281,9 +281,12 @@ struct pt_peer *pt_peer_create(struct pt_context *ctx,
     peer->hot.send_seq = 0;
     peer->hot.recv_seq = 0;
 
-    /* Initialize capabilities (defaults for unknown peer) */
-    peer->cold.caps.max_message_size = 0;  /* Unknown until exchanged */
-    peer->cold.caps.preferred_chunk = 0;
+    /* Initialize capabilities with conservative defaults for pre-exchange.
+     * These are used if the peer doesn't support capability negotiation
+     * (legacy peer) or until the capability message arrives. Values update
+     * when PT_MSG_TYPE_CAPABILITY is received in poll loop. */
+    peer->cold.caps.max_message_size = PT_CAP_DEFAULT_MAX_MSG;  /* 512 = conservative */
+    peer->cold.caps.preferred_chunk = PT_CAP_DEFAULT_CHUNK;     /* 1024 */
     peer->cold.caps.capability_flags = 0;
     peer->cold.caps.buffer_pressure = 0;
     peer->cold.caps.caps_exchanged = 0;

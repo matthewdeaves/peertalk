@@ -39,6 +39,8 @@ struct pt_peer;
 typedef struct {
     uint16_t used;                       /* HOT: accessed every pt_batch_add() */
     uint16_t count;                      /* HOT: accessed every pt_batch_add() */
+    uint8_t  is_fragment;                /* Set if batch contains a fragment */
+    uint8_t  reserved;                   /* Padding */
     uint8_t  buffer[PT_BATCH_MAX_SIZE];  /* COLD: sequential writes only */
 } pt_batch;
 
