@@ -178,6 +178,27 @@ test_discovery: $(BUILD_DIR)/test_discovery.bin
 
 .PHONY: test_latency test_throughput test_stress test_discovery perf_tests
 
+# ============================================================================
+# Low-Memory Performance Tests (for 4MB Macs like SE, Plus, Classic)
+# ============================================================================
+
+LOWMEM_TESTS = test_throughput_lowmem test_latency_lowmem test_discovery_lowmem
+
+lowmem_tests: $(LOWMEM_TESTS:%=$(BUILD_DIR)/%.bin)
+	@echo "Low-memory tests built (512KB-768KB heap):"
+	@ls -la $(BUILD_DIR)/*_lowmem.bin 2>/dev/null || true
+
+# Low-memory test binaries use same code but different SIZE resource
+$(BUILD_DIR)/test_%_lowmem.bin: $(BUILD_DIR)/test_%.code.bin tests/mac/PeerTalkTest_LowMem.r
+	$(REZ) $(REZ_TEMPLATES)/Retro68APPL.r tests/mac/PeerTalkTest_LowMem.r \
+		--copy $< \
+		-o $@ \
+		-t "APPL" -c "PTTK" \
+		--cc $(BUILD_DIR)/test_$*_lowmem.dsk
+	@echo "Built: $@ (for 4MB Macs) - 512KB-768KB heap"
+
+.PHONY: lowmem_tests
+
 # Clean
 clean:
 	rm -rf $(BUILD_DIR)
