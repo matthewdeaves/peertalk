@@ -69,7 +69,7 @@ typedef struct {
     uint16_t length;                 /* Payload length in buffer */
     uint16_t capacity;               /* Buffer size (default 4096) */
     uint8_t  priority;               /* Message priority (PT_PRIORITY_*) */
-    uint8_t  reserved;               /* Explicit padding */
+    uint8_t  msg_flags;              /* Message flags (PT_MSG_FLAG_*) for framing */
     uint8_t *data;                   /* Pre-allocated buffer pointer */
 } pt_direct_buffer;
 

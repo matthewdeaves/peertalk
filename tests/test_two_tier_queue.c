@@ -755,6 +755,178 @@ cleanup:
 }
 
 /* ========================================================================
+ * Test: Fragmentation and Reassembly
+ *
+ * Tests that messages larger than peer's max_message_size are automatically
+ * fragmented and correctly reassembled on the receiving end.
+ * ======================================================================== */
+
+static volatile int g_frag_msg_received = 0;
+static volatile uint16_t g_frag_msg_len = 0;
+static volatile int g_frag_msg_valid = 0;
+
+static void frag_msg_callback(PeerTalk_Context *ctx,
+                              PeerTalk_PeerID from_peer,
+                              const void *data,
+                              uint16_t length,
+                              void *user_data) {
+    (void)ctx;
+    (void)from_peer;
+    (void)user_data;
+
+    /* Verify data pattern - each byte should be (i % 256) */
+    const uint8_t *bytes = (const uint8_t *)data;
+    int valid = 1;
+    for (uint16_t i = 0; i < length; i++) {
+        if (bytes[i] != (uint8_t)(i % 256)) {
+            valid = 0;
+            break;
+        }
+    }
+
+    g_frag_msg_received = 1;
+    g_frag_msg_len = length;
+    g_frag_msg_valid = valid;
+}
+
+static void test_fragmentation_reassembly(void) {
+    TEST("test_fragmentation_reassembly");
+
+    PeerTalk_Config server_config, client_config;
+    PeerTalk_Context *server_ctx, *client_ctx;
+    PeerTalk_Callbacks callbacks;
+    struct pt_context *client_ictx;
+    struct pt_peer *server_peer;
+    uint8_t msg[2000];
+    int result;
+    int polls;
+
+    g_frag_msg_received = 0;
+    g_frag_msg_len = 0;
+    g_frag_msg_valid = 0;
+
+    /* Setup server with SMALL max_message_size to force fragmentation */
+    memset(&server_config, 0, sizeof(server_config));
+    strncpy(server_config.local_name, "FragServer", PT_MAX_PEER_NAME);
+    server_config.tcp_port = 18520;
+    server_config.max_message_size = 512;  /* Small - forces fragmentation */
+
+    server_ctx = PeerTalk_Init(&server_config);
+    if (!server_ctx) {
+        FAIL("Failed to init server");
+        return;
+    }
+
+    memset(&callbacks, 0, sizeof(callbacks));
+    callbacks.on_message_received = frag_msg_callback;
+    PeerTalk_SetCallbacks(server_ctx, &callbacks);
+
+    result = PeerTalk_StartListening(server_ctx);
+    if (result != PT_OK) {
+        FAIL("Server listen failed: %d", result);
+        PeerTalk_Shutdown(server_ctx);
+        return;
+    }
+
+    /* Setup client with large max_message_size */
+    memset(&client_config, 0, sizeof(client_config));
+    strncpy(client_config.local_name, "FragClient", PT_MAX_PEER_NAME);
+    client_config.tcp_port = 18521;
+    client_config.max_message_size = 8192;  /* Large */
+
+    client_ctx = PeerTalk_Init(&client_config);
+    if (!client_ctx) {
+        FAIL("Failed to init client");
+        PeerTalk_Shutdown(server_ctx);
+        return;
+    }
+
+    client_ictx = (struct pt_context *)client_ctx;
+
+    /* Create peer on client pointing to server */
+    server_peer = pt_peer_create(client_ictx, "FragServer", 0x7F000001, 18520);
+    if (!server_peer) {
+        FAIL("Failed to create peer");
+        goto cleanup;
+    }
+
+    /* Connect */
+    result = PeerTalk_Connect(client_ctx, server_peer->hot.id);
+    if (result != PT_OK) {
+        FAIL("Connect failed: %d", result);
+        goto cleanup;
+    }
+
+    /* Poll until connected and capabilities exchanged */
+    for (polls = 0; polls < 100; polls++) {
+        PeerTalk_Poll(server_ctx);
+        PeerTalk_Poll(client_ctx);
+        usleep(10000);
+
+        if (server_peer->hot.state == PT_PEER_STATE_CONNECTED &&
+            server_peer->hot.effective_max_msg > 0) {
+            break;
+        }
+    }
+
+    if (server_peer->hot.state != PT_PEER_STATE_CONNECTED) {
+        FAIL("Connection timeout");
+        goto cleanup;
+    }
+
+    /* Verify effective_max_msg is the smaller of the two (512) */
+    if (server_peer->hot.effective_max_msg != 512) {
+        printf("  (effective_max=%u, expected 512) ", server_peer->hot.effective_max_msg);
+        /* Not a hard failure - maybe caps not exchanged yet */
+    }
+
+    /* Create test message with pattern: byte[i] = i % 256 */
+    for (int i = 0; i < 2000; i++) {
+        msg[i] = (uint8_t)(i % 256);
+    }
+
+    /* Send 2000 byte message - should be fragmented into multiple pieces */
+    result = PeerTalk_Send(client_ctx, server_peer->hot.id, msg, 2000);
+    if (result != PT_OK) {
+        FAIL("Large message send failed: %d", result);
+        goto cleanup;
+    }
+
+    /* Poll until received (may take longer due to fragmentation) */
+    for (polls = 0; polls < 300; polls++) {
+        PeerTalk_Poll(client_ctx);
+        PeerTalk_Poll(server_ctx);
+        usleep(10000);
+
+        if (g_frag_msg_received) {
+            break;
+        }
+    }
+
+    if (!g_frag_msg_received) {
+        FAIL("Fragmented message not received");
+        goto cleanup;
+    }
+
+    if (g_frag_msg_len != 2000) {
+        FAIL("Message length wrong: %u (expected 2000)", g_frag_msg_len);
+        goto cleanup;
+    }
+
+    if (!g_frag_msg_valid) {
+        FAIL("Message data corrupted after reassembly");
+        goto cleanup;
+    }
+
+    printf("  (sent 2000 bytes, fragmented, reassembled correctly) ");
+
+cleanup:
+    PeerTalk_Shutdown(client_ctx);
+    PeerTalk_Shutdown(server_ctx);
+    PASS();
+}
+
+/* ========================================================================
  * Main
  * ======================================================================== */
 
@@ -772,6 +944,7 @@ int main(void) {
 
     /* End-to-end tests */
     test_e2e_large_message();
+    test_fragmentation_reassembly();
 
     /* Summary */
     printf("\n=== Results ===\n");

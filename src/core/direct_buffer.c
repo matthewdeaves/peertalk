@@ -38,7 +38,7 @@ int pt_direct_buffer_init(pt_direct_buffer *buf, uint16_t capacity)
     buf->length = 0;
     buf->capacity = capacity;
     buf->priority = PT_PRIORITY_NORMAL;
-    buf->reserved = 0;
+    buf->msg_flags = 0;
 
     return PT_OK;
 }
@@ -84,6 +84,7 @@ int pt_direct_buffer_queue(pt_direct_buffer *buf, const void *data,
     pt_memcpy(buf->data, data, length);
     buf->length = length;
     buf->priority = priority;
+    buf->msg_flags = 0;  /* Caller can override for fragments */
 
     /* Mark as queued - atomic write last for visibility */
     buf->state = PT_DIRECT_QUEUED;

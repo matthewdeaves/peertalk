@@ -1134,8 +1134,14 @@ int pt_posix_disconnect(struct pt_context *ctx, struct pt_peer *peer) {
  * @param len Payload length (max PT_MAX_MESSAGE_SIZE)
  * @return PT_OK on success, error code on failure
  */
-int pt_posix_send(struct pt_context *ctx, struct pt_peer *peer,
-                  const void *data, size_t len) {
+/**
+ * Send data message to peer with specified flags
+ *
+ * Internal function that allows setting message flags (e.g., for fragments).
+ * Regular data messages use flags=0, fragments use PT_MSG_FLAG_FRAGMENT.
+ */
+static int pt_posix_send_with_flags(struct pt_context *ctx, struct pt_peer *peer,
+                                    const void *data, size_t len, uint8_t msg_flags) {
     pt_posix_data *pd = pt_posix_get(ctx);
     pt_message_header hdr;
     uint8_t header_buf[PT_MESSAGE_HEADER_SIZE];
@@ -1178,7 +1184,7 @@ int pt_posix_send(struct pt_context *ctx, struct pt_peer *peer,
     /* Encode header */
     hdr.version = PT_PROTOCOL_VERSION;
     hdr.type = PT_MSG_TYPE_DATA;
-    hdr.flags = 0;
+    hdr.flags = msg_flags;
     hdr.sequence = peer->hot.send_seq++;
     hdr.payload_len = (uint16_t)len;
     pt_message_encode_header(&hdr, header_buf);
@@ -1278,9 +1284,20 @@ int pt_posix_send(struct pt_context *ctx, struct pt_peer *peer,
     ctx->global_stats.total_messages_sent++;
 
     PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
-        "Sent %zd bytes to peer %u (seq=%u)", sent, peer->hot.id, hdr.sequence);
+        "Sent %zd bytes to peer %u (seq=%u, flags=0x%02X)",
+        sent, peer->hot.id, hdr.sequence, msg_flags);
 
     return PT_OK;
+}
+
+/**
+ * Send data message to peer (backward-compatible wrapper)
+ *
+ * Calls pt_posix_send_with_flags with flags=0 for normal data messages.
+ */
+int pt_posix_send(struct pt_context *ctx, struct pt_peer *peer,
+                  const void *data, size_t len) {
+    return pt_posix_send_with_flags(ctx, peer, data, len, 0);
 }
 
 /**
@@ -1705,13 +1722,52 @@ static int pt_recv_process_message(struct pt_context *ctx, struct pt_peer *peer,
     /* Dispatch by message type */
     switch (buf->cold.hdr.type) {
         case PT_MSG_TYPE_DATA:
-            /* Fire callback */
-            if (ctx->callbacks.on_message_received) {
-                ctx->callbacks.on_message_received((PeerTalk_Context *)ctx,
-                    peer->hot.id,
-                    buf->cold.payload_buf,
-                    buf->cold.hdr.payload_len,
-                    ctx->callbacks.user_data);
+            /* Check for fragmented message */
+            if (buf->cold.hdr.flags & PT_MSG_FLAG_FRAGMENT) {
+                /* Fragment - process through reassembly */
+                pt_fragment_header frag_hdr;
+                const uint8_t *complete_data = NULL;
+                uint16_t complete_len = 0;
+                int reassembly_result;
+
+                /* Decode fragment header from payload */
+                if (pt_fragment_decode(buf->cold.payload_buf,
+                                       buf->cold.hdr.payload_len,
+                                       &frag_hdr) != 0) {
+                    PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+                        "Failed to decode fragment header from peer %u",
+                        peer->hot.id);
+                    break;
+                }
+
+                /* Process fragment through reassembly */
+                reassembly_result = pt_reassembly_process(ctx, peer,
+                    buf->cold.payload_buf, buf->cold.hdr.payload_len,
+                    &frag_hdr, &complete_data, &complete_len);
+
+                if (reassembly_result == 1 && complete_data != NULL) {
+                    /* Complete message reassembled - deliver to app callback */
+                    if (ctx->callbacks.on_message_received) {
+                        ctx->callbacks.on_message_received((PeerTalk_Context *)ctx,
+                            peer->hot.id,
+                            complete_data,
+                            complete_len,
+                            ctx->callbacks.user_data);
+                    }
+                } else if (reassembly_result < 0) {
+                    PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+                        "Fragment reassembly error: %d", reassembly_result);
+                }
+                /* If 0, more fragments expected - nothing to do yet */
+            } else {
+                /* Non-fragmented - fire callback directly */
+                if (ctx->callbacks.on_message_received) {
+                    ctx->callbacks.on_message_received((PeerTalk_Context *)ctx,
+                        peer->hot.id,
+                        buf->cold.payload_buf,
+                        buf->cold.hdr.payload_len,
+                        ctx->callbacks.user_data);
+                }
             }
             break;
 
@@ -2416,8 +2472,8 @@ periodic_work:
             /* Mark as sending */
             pt_direct_buffer_mark_sending(buf);
 
-            /* Send via TCP */
-            int result = pt_posix_send(ctx, peer, buf->data, buf->length);
+            /* Send via TCP with message flags (supports fragmentation) */
+            int result = pt_posix_send_with_flags(ctx, peer, buf->data, buf->length, buf->msg_flags);
 
             /* Complete the send (success or fail, buffer becomes available) */
             pt_direct_buffer_complete(buf);

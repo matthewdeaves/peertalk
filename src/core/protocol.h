@@ -12,8 +12,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
-/* Forward declaration */
+/* Forward declarations */
 struct pt_context;
+struct pt_peer;
 
 /* ========================================================================
  * Protocol Constants
@@ -394,5 +395,43 @@ int pt_fragment_encode(const pt_fragment_header *hdr, uint8_t *buf);
  * Returns: 0 on success, negative error code on failure
  */
 int pt_fragment_decode(const uint8_t *buf, size_t len, pt_fragment_header *hdr);
+
+/* ========================================================================
+ * Fragment Reassembly API
+ *
+ * These functions handle transparent fragment reassembly. Applications
+ * never see fragments - the SDK accumulates them and delivers complete
+ * messages to the callback.
+ * ======================================================================== */
+
+/* Process a received fragment
+ *
+ * Accumulates fragment data in peer's recv_direct buffer. When the last
+ * fragment arrives, returns the complete reassembled message.
+ *
+ * Args:
+ *   ctx           - PeerTalk context
+ *   peer          - Peer that sent the fragment
+ *   fragment_data - Raw fragment data (includes fragment header)
+ *   fragment_len  - Length of fragment data
+ *   frag_hdr      - Decoded fragment header
+ *   complete_data - OUTPUT: pointer to complete message data (if ready)
+ *   complete_len  - OUTPUT: length of complete message (if ready)
+ *
+ * Returns:
+ *   1 - Complete message ready (check complete_data/complete_len)
+ *   0 - Fragment received, more expected
+ *   <0 - Error code (PT_ERR_*)
+ */
+int pt_reassembly_process(struct pt_context *ctx, struct pt_peer *peer,
+                          const uint8_t *fragment_data, uint16_t fragment_len,
+                          const pt_fragment_header *frag_hdr,
+                          const uint8_t **complete_data, uint16_t *complete_len);
+
+/* Reset reassembly state for a peer
+ *
+ * Called on disconnect or error to clean up partial reassembly.
+ */
+void pt_reassembly_reset(struct pt_peer *peer);
 
 #endif /* PT_PROTOCOL_H */

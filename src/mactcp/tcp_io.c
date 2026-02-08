@@ -56,7 +56,7 @@ static int pt_mactcp_tcp_send_control(struct pt_context *ctx,
 /* ========================================================================== */
 
 /**
- * Send data on TCP stream.
+ * Send data on TCP stream with custom message flags.
  *
  * From MacTCP Programmer's Guide: TCPSend with WDS.
  *
@@ -66,10 +66,11 @@ static int pt_mactcp_tcp_send_control(struct pt_context *ctx,
  * @param peer  Peer to send to
  * @param data  Data to send
  * @param len   Data length
+ * @param flags Message flags (PT_MSG_FLAG_*)
  * @return      0 on success, negative error code on failure
  */
-int pt_mactcp_tcp_send(struct pt_context *ctx, struct pt_peer *peer,
-                       const void *data, uint16_t len)
+int pt_mactcp_tcp_send_with_flags(struct pt_context *ctx, struct pt_peer *peer,
+                                  const void *data, uint16_t len, uint8_t flags)
 {
     pt_mactcp_data *md = pt_mactcp_get(ctx);
     pt_message_header hdr;
@@ -101,7 +102,7 @@ int pt_mactcp_tcp_send(struct pt_context *ctx, struct pt_peer *peer,
     /* Build message header */
     hdr.version = PT_PROTOCOL_VERSION;
     hdr.type = PT_MSG_TYPE_DATA;
-    hdr.flags = 0;
+    hdr.flags = flags;
     hdr.sequence = peer->hot.send_seq++;
     hdr.payload_len = len;
 
@@ -176,6 +177,17 @@ int pt_mactcp_tcp_send(struct pt_context *ctx, struct pt_peer *peer,
     pt_peer_check_canaries(ctx, peer);
 
     return 0;
+}
+
+/**
+ * Send data on TCP stream (convenience wrapper).
+ *
+ * Calls pt_mactcp_tcp_send_with_flags with flags=0 for normal data messages.
+ */
+int pt_mactcp_tcp_send(struct pt_context *ctx, struct pt_peer *peer,
+                       const void *data, uint16_t len)
+{
+    return pt_mactcp_tcp_send_with_flags(ctx, peer, data, len, 0);
 }
 
 /* ========================================================================== */
@@ -419,11 +431,48 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
                 (unsigned)hdr.payload_len, (unsigned)peer->hot.id,
                 (unsigned)hdr.sequence);
 
-            if (ctx->callbacks.on_message_received != NULL) {
-                ctx->callbacks.on_message_received(
-                    (PeerTalk_Context *)ctx,
-                    peer->hot.id, data_ptr, hdr.payload_len,
-                    ctx->callbacks.user_data);
+            /* Check for fragmented message */
+            if (hdr.flags & PT_MSG_FLAG_FRAGMENT) {
+                /* Fragment - process through reassembly */
+                pt_fragment_header frag_hdr;
+                const uint8_t *complete_data = NULL;
+                uint16_t complete_len = 0;
+                int reassembly_result;
+
+                /* Decode fragment header from payload */
+                if (pt_fragment_decode(data_ptr, hdr.payload_len, &frag_hdr) != 0) {
+                    PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
+                        "Failed to decode fragment header from peer %u",
+                        (unsigned)peer->hot.id);
+                    break;
+                }
+
+                /* Process fragment through reassembly */
+                reassembly_result = pt_reassembly_process(ctx, peer,
+                    data_ptr, hdr.payload_len,
+                    &frag_hdr, &complete_data, &complete_len);
+
+                if (reassembly_result == 1 && complete_data != NULL) {
+                    /* Complete message reassembled - deliver to app callback */
+                    if (ctx->callbacks.on_message_received != NULL) {
+                        ctx->callbacks.on_message_received(
+                            (PeerTalk_Context *)ctx,
+                            peer->hot.id, complete_data, complete_len,
+                            ctx->callbacks.user_data);
+                    }
+                } else if (reassembly_result < 0) {
+                    PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
+                        "Fragment reassembly error: %d", reassembly_result);
+                }
+                /* If 0, more fragments expected - nothing to do yet */
+            } else {
+                /* Non-fragmented - fire callback directly */
+                if (ctx->callbacks.on_message_received != NULL) {
+                    ctx->callbacks.on_message_received(
+                        (PeerTalk_Context *)ctx,
+                        peer->hot.id, data_ptr, hdr.payload_len,
+                        ctx->callbacks.user_data);
+                }
             }
             break;
 

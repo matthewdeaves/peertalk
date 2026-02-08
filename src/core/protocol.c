@@ -591,3 +591,139 @@ int pt_fragment_decode(const uint8_t *buf, size_t len, pt_fragment_header *hdr)
 
     return 0;
 }
+
+/* ========================================================================
+ * Fragment Reassembly
+ *
+ * These functions handle transparent fragment reassembly. When fragments
+ * arrive, they're accumulated in the peer's recv_direct buffer. When the
+ * last fragment arrives, the complete message is delivered to the app
+ * callback. Applications never see individual fragments.
+ *
+ * DOD: Reassembly state is stored in pt_peer_cold (rarely accessed after
+ * negotiation). The actual data goes in recv_direct buffer.
+ * ======================================================================== */
+
+int pt_reassembly_process(struct pt_context *ctx, struct pt_peer *peer,
+                          const uint8_t *fragment_data, uint16_t fragment_len,
+                          const pt_fragment_header *frag_hdr,
+                          const uint8_t **complete_data, uint16_t *complete_len)
+{
+    pt_reassembly_state *rs = &peer->cold.reassembly;
+    pt_direct_buffer *buf = &peer->recv_direct;
+    const uint8_t *payload;
+    uint16_t payload_len;
+
+    /* Extract fragment payload (skip fragment header in data) */
+    if (fragment_len < PT_FRAGMENT_HEADER_SIZE) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+            "Fragment too short: %u bytes", fragment_len);
+        return PT_ERR_TRUNCATED;
+    }
+    payload = fragment_data + PT_FRAGMENT_HEADER_SIZE;
+    payload_len = fragment_len - PT_FRAGMENT_HEADER_SIZE;
+
+    /* Validate fragment offset + length doesn't exceed total */
+    if (frag_hdr->fragment_offset + payload_len > frag_hdr->total_length) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+            "Fragment exceeds total: offset=%u len=%u total=%u",
+            frag_hdr->fragment_offset, payload_len, frag_hdr->total_length);
+        rs->active = 0;
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Check if this is the first fragment */
+    if (frag_hdr->fragment_flags & PT_FRAGMENT_FLAG_FIRST) {
+        /* Start new reassembly */
+        if (rs->active && rs->message_id != frag_hdr->message_id) {
+            PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+                "Dropping incomplete reassembly for msg %u (new msg %u)",
+                rs->message_id, frag_hdr->message_id);
+        }
+
+        /* Validate total length fits in buffer */
+        if (frag_hdr->total_length > buf->capacity) {
+            PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+                "Reassembly too large: %u > %u",
+                frag_hdr->total_length, buf->capacity);
+            return PT_ERR_MESSAGE_TOO_LARGE;
+        }
+
+        /* Initialize reassembly state */
+        rs->message_id = frag_hdr->message_id;
+        rs->total_length = frag_hdr->total_length;
+        rs->received_length = 0;
+        rs->active = 1;
+
+        PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+            "Starting reassembly: msg_id=%u total=%u",
+            frag_hdr->message_id, frag_hdr->total_length);
+    }
+
+    /* Validate we're reassembling the right message */
+    if (!rs->active) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+            "Fragment received without FIRST: msg_id=%u offset=%u",
+            frag_hdr->message_id, frag_hdr->fragment_offset);
+        return PT_ERR_INVALID_STATE;
+    }
+
+    if (rs->message_id != frag_hdr->message_id) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+            "Fragment msg_id mismatch: expected %u got %u",
+            rs->message_id, frag_hdr->message_id);
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Validate offset matches what we've received */
+    if (frag_hdr->fragment_offset != rs->received_length) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+            "Fragment offset mismatch: expected %u got %u",
+            rs->received_length, frag_hdr->fragment_offset);
+        /* Could be out-of-order - for now, abort reassembly */
+        rs->active = 0;
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Copy fragment data to buffer */
+    pt_memcpy(buf->data + rs->received_length, payload, payload_len);
+    rs->received_length += payload_len;
+
+    PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+        "Fragment received: msg_id=%u offset=%u len=%u (%u/%u)",
+        frag_hdr->message_id, frag_hdr->fragment_offset, payload_len,
+        rs->received_length, rs->total_length);
+
+    /* Check if this is the last fragment */
+    if (frag_hdr->fragment_flags & PT_FRAGMENT_FLAG_LAST) {
+        if (rs->received_length != rs->total_length) {
+            PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+                "LAST fragment but length mismatch: received=%u total=%u",
+                rs->received_length, rs->total_length);
+            rs->active = 0;
+            return PT_ERR_TRUNCATED;
+        }
+
+        /* Reassembly complete! */
+        *complete_data = buf->data;
+        *complete_len = rs->total_length;
+
+        PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,
+            "Reassembly complete: msg_id=%u total=%u bytes",
+            rs->message_id, rs->total_length);
+
+        rs->active = 0;
+        return 1;  /* Complete message ready */
+    }
+
+    /* More fragments expected */
+    *complete_data = NULL;
+    *complete_len = 0;
+    return 0;  /* Not complete yet */
+}
+
+void pt_reassembly_reset(struct pt_peer *peer)
+{
+    peer->cold.reassembly.active = 0;
+    peer->cold.reassembly.received_length = 0;
+}
