@@ -2055,10 +2055,11 @@ int pt_posix_send_udp(struct pt_context *ctx, struct pt_peer *peer,
         return PT_ERR_PEER_NOT_FOUND;
     }
 
-    /* Validate message size (enforce 512-byte limit) */
-    if (len > PT_MAX_UDP_MESSAGE_SIZE - 8) {  /* 8-byte header */
+    /* Validate message size (PT_MAX_UDP_MESSAGE_SIZE minus 8-byte header) */
+    if (len > PT_MAX_UDP_MESSAGE_SIZE - 8) {
         PT_CTX_WARN(ctx, PT_LOG_CAT_NETWORK,
-                    "UDP message too large: %u bytes (max 504)", len);
+                    "UDP message too large: %u bytes (max %u)",
+                    len, PT_MAX_UDP_MESSAGE_SIZE - 8);
         return PT_ERR_MESSAGE_TOO_LARGE;
     }
 
@@ -2817,6 +2818,48 @@ PeerTalk_Error PeerTalk_SendUDP(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
     }
 
     /* Call internal send function */
+    return pt_posix_send_udp(ictx, peer, data, length);
+}
+
+/**
+ * Send UDP message with zero-queue semantics (fast path)
+ *
+ * Identical to PeerTalk_SendUDP() - UDP already has no queuing.
+ * This function makes the zero-queue semantics explicit for documentation
+ * and supports larger payloads up to PT_MAX_UDP_MESSAGE_SIZE (1400 bytes).
+ *
+ * Returns: PT_OK on success, PT_ERR_* on failure
+ */
+PeerTalk_Error PeerTalk_SendUDPFast(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
+                                     const void *data, uint16_t length) {
+    struct pt_context *ictx = (struct pt_context *)ctx;
+    struct pt_peer *peer;
+
+    /* Validate context */
+    if (!ictx || ictx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_STATE;
+    }
+
+    /* Validate data and length */
+    if (!data && length > 0) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Check max size for UDP fast path */
+    if (length > PT_MAX_UDP_MESSAGE_SIZE) {
+        PT_CTX_WARN(ictx, PT_LOG_CAT_SEND,
+            "UDP fast path: message too large (%u > %u)",
+            length, PT_MAX_UDP_MESSAGE_SIZE);
+        return PT_ERR_MESSAGE_TOO_LARGE;
+    }
+
+    /* Find peer by ID */
+    peer = pt_peer_find_by_id(ictx, peer_id);
+    if (!peer) {
+        return PT_ERR_PEER_NOT_FOUND;
+    }
+
+    /* Call internal send function - no queuing, direct to network */
     return pt_posix_send_udp(ictx, peer, data, length);
 }
 

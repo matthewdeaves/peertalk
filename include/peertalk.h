@@ -77,7 +77,7 @@ const char *PeerTalk_Version(void);
 #define PT_MAX_PEER_NAME        31      /* Max peer name length (excl. null) */
 #define PT_MAX_PEERS            16      /* Default max peer slots */
 #define PT_MAX_MESSAGE_SIZE     8192    /* Max TCP message size */
-#define PT_MAX_UDP_MESSAGE_SIZE 512     /* Max UDP message size */
+#define PT_MAX_UDP_MESSAGE_SIZE 1400    /* Max UDP message size (fits in MTU) */
 #define PT_MAX_BATCH_SIZE       16      /* Max messages per batch callback */
 
 #define PT_DEFAULT_DISCOVERY_PORT   7353
@@ -181,6 +181,7 @@ typedef enum {
 #define PT_SEND_UNRELIABLE      0x01    /* Use UDP if available */
 #define PT_SEND_COALESCABLE     0x02    /* Allow message coalescing */
 #define PT_SEND_NO_DELAY        0x04    /* Disable Nagle algorithm */
+#define PT_SEND_UDP_NO_QUEUE    0x08    /* UDP fast path - explicit no queue */
 
 /* ========================================================================== */
 /* Coalesce Keys                                                              */
@@ -796,6 +797,22 @@ PeerTalk_Error PeerTalk_SendUDP(
  */
 PeerTalk_Error PeerTalk_BroadcastUDP(
     PeerTalk_Context *ctx,
+    const void *data,
+    uint16_t length);
+
+/**
+ * Send UDP message with zero-queue semantics (fast path)
+ *
+ * Identical to PeerTalk_SendUDP() but explicitly documented as
+ * having no queuing - messages go directly to the network stack.
+ * Supports larger payloads up to PT_MAX_UDP_MESSAGE_SIZE (1400 bytes).
+ *
+ * Use for game state updates, position packets, and other time-sensitive
+ * data where occasional packet loss is acceptable.
+ */
+PeerTalk_Error PeerTalk_SendUDPFast(
+    PeerTalk_Context *ctx,
+    PeerTalk_PeerID peer_id,
     const void *data,
     uint16_t length);
 
