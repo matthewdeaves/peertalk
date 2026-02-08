@@ -14,7 +14,7 @@ BIN_DIR = $(BUILD_DIR)/bin
 COV_DIR = $(BUILD_DIR)/coverage
 
 # PeerTalk core library
-CORE_SRCS = src/core/pt_version.c src/core/pt_compat.c src/core/pt_init.c src/core/protocol.c src/core/peer.c src/core/queue.c src/core/send.c src/core/direct_buffer.c
+CORE_SRCS = src/core/pt_version.c src/core/pt_compat.c src/core/pt_init.c src/core/protocol.c src/core/peer.c src/core/queue.c src/core/send.c src/core/direct_buffer.c src/core/stream.c
 POSIX_SRCS = src/posix/platform_posix.c src/posix/net_posix.c
 PEERTALK_SRCS = $(CORE_SRCS) $(POSIX_SRCS)
 PEERTALK_OBJS = $(PEERTALK_SRCS:%.c=$(OBJ_DIR)/%.o)

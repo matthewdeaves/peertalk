@@ -301,6 +301,15 @@ struct pt_peer *pt_peer_create(struct pt_context *ctx,
     peer->cold.reassembly.active = 0;
     peer->cold.reassembly.reserved = 0;
 
+    /* Initialize stream state */
+    peer->stream.data = NULL;
+    peer->stream.user_data = NULL;
+    peer->stream.on_complete = NULL;
+    peer->stream.total_length = 0;
+    peer->stream.bytes_sent = 0;
+    peer->stream.active = 0;
+    peer->stream.cancelled = 0;
+
     /* Clear connection handle */
     peer->hot.connection = NULL;
 

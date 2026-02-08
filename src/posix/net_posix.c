@@ -12,6 +12,7 @@
 #include "peer.h"
 #include "queue.h"
 #include "direct_buffer.h"
+#include "stream.h"
 #include "pt_compat.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -2580,6 +2581,9 @@ periodic_work:
             }
         }
 
+        /* Stream: Process active stream transfers */
+        pt_stream_poll(ctx, peer, pt_posix_send);
+
         /* Flow control: Check for pressure updates to send
          *
          * When our recv queue pressure crosses a threshold (25%, 50%, 75%),
@@ -2779,6 +2783,9 @@ drain_queues:
                 drain_count++;
             }
         }
+
+        /* Stream: Process active stream transfers */
+        pt_stream_poll(ctx, peer, pt_posix_send);
     }
 
     return 0;

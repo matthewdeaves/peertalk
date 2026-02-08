@@ -147,6 +147,10 @@ typedef enum {
     PT_ERR_VERSION              = -23,
     PT_ERR_NOT_POWER2           = -24,
 
+    /* Operation Errors */
+    PT_ERR_BUSY                 = -27,  /* Resource busy (e.g., stream already active) */
+    PT_ERR_CANCELLED            = -28,  /* Operation was cancelled */
+
     /* System Errors */
     PT_ERR_PLATFORM             = -14,
     PT_ERR_RESOURCE             = -26,
@@ -514,6 +518,19 @@ typedef void (*PeerTalk_UDPBatchCB)(
     void *user_data);
 
 /**
+ * Stream transfer complete callback
+ *
+ * Called when a PeerTalk_StreamSend() operation completes (success or failure).
+ * The data buffer passed to StreamSend can be freed after this callback.
+ */
+typedef void (*PeerTalk_StreamCompleteCB)(
+    PeerTalk_Context *ctx,
+    PeerTalk_PeerID peer_id,
+    uint32_t bytes_sent,
+    PeerTalk_Error result,
+    void *user_data);
+
+/**
  * Callback structure
  *
  * Batch callbacks (on_message_batch, on_udp_batch) are preferred if set.
@@ -815,6 +832,75 @@ PeerTalk_Error PeerTalk_SendUDPFast(
     PeerTalk_PeerID peer_id,
     const void *data,
     uint16_t length);
+
+/* ========================================================================== */
+/* Streaming Functions                                                        */
+/* ========================================================================== */
+
+/**
+ * Maximum stream transfer size (64KB)
+ */
+#define PT_MAX_STREAM_SIZE  65536
+
+/**
+ * Stream send - transfer large data bypassing queues
+ *
+ * Sends data larger than PT_MAX_MESSAGE_SIZE by streaming directly
+ * to the TCP connection, bypassing the normal message queue.
+ * Only one stream can be active per peer at a time.
+ *
+ * The data buffer must remain valid until the on_complete callback
+ * is invoked. The callback is called from PeerTalk_Poll().
+ *
+ * Use this for:
+ * - Log file transfers
+ * - Large state synchronization
+ * - File transfers up to 64KB
+ *
+ * @param ctx         PeerTalk context
+ * @param peer_id     Target peer (must be connected)
+ * @param data        Data to send (must remain valid until callback)
+ * @param length      Data length (1 to PT_MAX_STREAM_SIZE)
+ * @param on_complete Callback when transfer completes (can be NULL)
+ * @param user_data   User data passed to callback
+ *
+ * @return PT_OK if streaming started, PT_ERR_* on failure
+ *         PT_ERR_BUSY if another stream is in progress
+ */
+PeerTalk_Error PeerTalk_StreamSend(
+    PeerTalk_Context *ctx,
+    PeerTalk_PeerID peer_id,
+    const void *data,
+    uint32_t length,
+    PeerTalk_StreamCompleteCB on_complete,
+    void *user_data);
+
+/**
+ * Cancel an active stream transfer
+ *
+ * Aborts an in-progress stream. The on_complete callback will be
+ * invoked with PT_ERR_CANCELLED.
+ *
+ * @param ctx      PeerTalk context
+ * @param peer_id  Peer with active stream
+ *
+ * @return PT_OK if cancelled, PT_ERR_NOT_FOUND if no active stream
+ */
+PeerTalk_Error PeerTalk_StreamCancel(
+    PeerTalk_Context *ctx,
+    PeerTalk_PeerID peer_id);
+
+/**
+ * Check if a stream is in progress for a peer
+ *
+ * @param ctx      PeerTalk context
+ * @param peer_id  Peer to check
+ *
+ * @return 1 if streaming, 0 if not
+ */
+int PeerTalk_StreamActive(
+    PeerTalk_Context *ctx,
+    PeerTalk_PeerID peer_id);
 
 /* ========================================================================== */
 /* Queue Status                                                               */

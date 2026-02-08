@@ -119,6 +119,27 @@ typedef struct {
 } pt_reassembly_state;
 
 /* ========================================================================== */
+/* Stream Transfer State                                                      */
+/* ========================================================================== */
+
+/**
+ * Per-peer stream transfer state
+ *
+ * Tracks an active PeerTalk_StreamSend() operation. Only one stream
+ * can be active per peer at a time.
+ */
+typedef struct {
+    const uint8_t      *data;           /* Pointer to user's data buffer */
+    void               *user_data;      /* User callback context */
+    void               *on_complete;    /* PeerTalk_StreamCompleteCB (void* to avoid include) */
+    uint32_t            total_length;   /* Total bytes to send */
+    uint32_t            bytes_sent;     /* Bytes sent so far */
+    uint8_t             active;         /* 1 if stream in progress */
+    uint8_t             cancelled;      /* 1 if cancel requested */
+    uint8_t             reserved[2];
+} pt_stream_state;
+
+/* ========================================================================== */
 /* Internal Peer Address Structure                                           */
 /* ========================================================================== */
 
@@ -194,6 +215,7 @@ struct pt_peer {
     struct pt_queue    *recv_queue;     /* Tier 1: 256-byte slots for control messages */
     pt_direct_buffer    send_direct;    /* Tier 2: 4KB buffer for large outgoing messages */
     pt_direct_buffer    recv_direct;    /* Tier 2: 4KB buffer for large incoming messages */
+    pt_stream_state     stream;         /* Active stream transfer state */
 };
 
 /* ========================================================================== */
