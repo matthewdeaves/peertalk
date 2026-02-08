@@ -560,6 +560,26 @@ void PeerTalk_Shutdown(PeerTalk_Context *ctx);
 PeerTalk_Error PeerTalk_Poll(PeerTalk_Context *ctx);
 
 /**
+ * Fast poll - TCP I/O only, skipping discovery and periodic tasks
+ *
+ * Use this in tight game loops where you need maximum throughput.
+ * PollFast only performs:
+ * - TCP send queue drain for connected peers
+ * - TCP receive for connected peers
+ *
+ * PollFast does NOT:
+ * - Poll discovery socket (UDP broadcast)
+ * - Poll UDP message socket
+ * - Poll listen socket for new connections
+ * - Send periodic discovery announces
+ * - Check peer timeouts
+ *
+ * Call PeerTalk_Poll() periodically (e.g., every 10-15 frames) to
+ * handle discovery, new connections, and peer maintenance.
+ */
+PeerTalk_Error PeerTalk_PollFast(PeerTalk_Context *ctx);
+
+/**
  * Set callbacks
  */
 PeerTalk_Error PeerTalk_SetCallbacks(

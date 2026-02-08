@@ -48,6 +48,7 @@ typedef struct {
     int             (*init)(struct pt_context *ctx);
     void            (*shutdown)(struct pt_context *ctx);
     int             (*poll)(struct pt_context *ctx);
+    int             (*poll_fast)(struct pt_context *ctx);  /* TCP I/O only */
     pt_tick_t       (*get_ticks)(void);
     unsigned long   (*get_free_mem)(void);
     unsigned long   (*get_max_block)(void);

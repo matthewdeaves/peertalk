@@ -233,6 +233,28 @@ PeerTalk_Error PeerTalk_Poll(PeerTalk_Context *ctx_handle) {
 }
 
 /* ========================================================================== */
+/* PeerTalk_PollFast - Fast Poll for Tight Game Loops                         */
+/* ========================================================================== */
+
+PeerTalk_Error PeerTalk_PollFast(PeerTalk_Context *ctx_handle) {
+    struct pt_context *ctx = (struct pt_context *)ctx_handle;
+
+    /* Validate context */
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Call platform-specific fast poll */
+    if (ctx->plat && ctx->plat->poll_fast) {
+        if (ctx->plat->poll_fast(ctx) != 0) {
+            return PT_ERR_NETWORK;
+        }
+    }
+
+    return PT_OK;
+}
+
+/* ========================================================================== */
 /* PeerTalk_SetCallbacks - Register Callbacks (Stub for Phase 4+)            */
 /* ========================================================================== */
 

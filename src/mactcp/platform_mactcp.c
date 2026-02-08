@@ -225,11 +225,16 @@ static void mactcp_shutdown(struct pt_context *ctx) {
     g_mactcp_refnum = 0;
 }
 
-/* Forward declaration for poll function (implemented in poll_mactcp.c) */
+/* Forward declarations for poll functions (implemented in poll_mactcp.c) */
 extern int pt_mactcp_poll(struct pt_context *ctx);
+extern int pt_mactcp_poll_fast(struct pt_context *ctx);
 
 static int mactcp_poll(struct pt_context *ctx) {
     return pt_mactcp_poll(ctx);
+}
+
+static int mactcp_poll_fast(struct pt_context *ctx) {
+    return pt_mactcp_poll_fast(ctx);
 }
 
 static pt_tick_t mactcp_get_ticks(void) {
@@ -263,6 +268,7 @@ pt_platform_ops pt_mactcp_ops = {
     mactcp_init,
     mactcp_shutdown,
     mactcp_poll,
+    mactcp_poll_fast,
     mactcp_get_ticks,
     mactcp_get_free_mem,
     mactcp_get_max_block,

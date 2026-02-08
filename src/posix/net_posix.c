@@ -2610,6 +2610,166 @@ periodic_work:
 }
 
 /* ========================================================================== */
+/* Fast Poll (TCP I/O Only)                                                   */
+/* ========================================================================== */
+
+int pt_posix_poll_fast(struct pt_context *ctx) {
+    pt_posix_data *pd;
+    fd_set read_fds;
+    struct timeval tv;
+    int select_result;
+
+    if (!ctx) {
+        return -1;
+    }
+
+    pd = pt_posix_get(ctx);
+
+    /* Build fd_set with only active TCP peer sockets */
+    FD_ZERO(&read_fds);
+    int max_fd = -1;
+
+    for (uint8_t i = 0; i < pd->active_count; i++) {
+        uint8_t peer_idx = pd->active_peers[i];
+        int sock = pd->tcp_socks[peer_idx];
+        struct pt_peer *peer = &ctx->peers[peer_idx];
+
+        /* Only include connected peers (not connecting) */
+        if (sock >= 0 && peer->hot.state == PT_PEER_CONNECTED) {
+            FD_SET(sock, &read_fds);
+            if (sock > max_fd)
+                max_fd = sock;
+        }
+    }
+
+    if (max_fd < 0) {
+        /* No connected peers - nothing to do */
+        goto drain_queues;
+    }
+
+    /* Zero timeout - non-blocking check */
+    tv.tv_sec = 0;
+    tv.tv_usec = 0;
+
+    select_result = select(max_fd + 1, &read_fds, NULL, NULL, &tv);
+
+    if (select_result < 0) {
+        if (errno != EINTR) {
+            PT_CTX_WARN(ctx, PT_LOG_CAT_NETWORK,
+                "Select failed in fast poll: %s", strerror(errno));
+        }
+        goto drain_queues;
+    }
+
+    if (select_result == 0) {
+        /* No incoming data - just drain queues */
+        goto drain_queues;
+    }
+
+    /* Process incoming TCP data for connected peers */
+    for (uint8_t i = 0; i < pd->active_count; i++) {
+        uint8_t peer_idx = pd->active_peers[i];
+        struct pt_peer *peer = &ctx->peers[peer_idx];
+        int sock = pd->tcp_socks[peer_idx];
+
+        if (sock < 0 || peer->hot.state != PT_PEER_CONNECTED)
+            continue;
+
+        if (FD_ISSET(sock, &read_fds)) {
+            int recv_ret;
+            while ((recv_ret = pt_posix_recv(ctx, peer)) > 0) {
+                /* Keep receiving until no more complete messages */
+            }
+
+            /* If recv returned -1, mark for disconnection */
+            if (recv_ret < 0 && peer->hot.state == PT_PEER_CONNECTED) {
+                peer->hot.state = PT_PEER_DISCONNECTING;
+            }
+
+            /* Handle disconnection */
+            if (peer->hot.state == PT_PEER_DISCONNECTING ||
+                peer->hot.state == PT_PEER_FAILED) {
+                PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT,
+                    "Closing connection to peer %u (fast poll)", peer->hot.id);
+
+                pt_free_peer_queue(peer->send_queue);
+                pt_free_peer_queue(peer->recv_queue);
+                peer->send_queue = NULL;
+                peer->recv_queue = NULL;
+
+                close(sock);
+                pd->tcp_socks[peer_idx] = -1;
+                pt_posix_remove_active_peer(pd, peer_idx);
+
+                if (ctx->callbacks.on_peer_disconnected) {
+                    ctx->callbacks.on_peer_disconnected((PeerTalk_Context *)ctx,
+                                                        peer->hot.id,
+                                                        PT_OK,
+                                                        ctx->callbacks.user_data);
+                }
+
+                pt_peer_destroy(ctx, peer);
+            }
+        }
+    }
+
+drain_queues:
+    /* Drain send queues for all connected peers */
+    for (uint8_t i = 0; i < ctx->max_peers; i++) {
+        struct pt_peer *peer = &ctx->peers[i];
+
+        if (peer->hot.state != PT_PEER_CONNECTED) {
+            continue;
+        }
+
+        /* Tier 2: Direct buffer first */
+        if (pt_direct_buffer_ready(&peer->send_direct)) {
+            pt_direct_buffer *buf = &peer->send_direct;
+            pt_direct_buffer_mark_sending(buf);
+            int result = pt_posix_send_with_flags(ctx, peer, buf->data, buf->length, buf->msg_flags);
+            pt_direct_buffer_complete(buf);
+
+            if (result != PT_OK && result != PT_ERR_WOULD_BLOCK) {
+                PT_CTX_WARN(ctx, PT_LOG_CAT_SEND,
+                    "Tier 2 fast send failed: %d", result);
+            }
+        }
+
+        /* Tier 1: Queue drain */
+        if (peer->send_queue) {
+            const void *data;
+            uint16_t len;
+            pt_queue *q = peer->send_queue;
+            int drain_count = 0;
+            const int max_drain = 16;
+
+            while (drain_count < max_drain &&
+                   pt_queue_pop_priority_direct(q, &data, &len) == 0) {
+                int result;
+                uint8_t slot_flags = q->slots[q->pending_pop_slot].flags;
+
+                if (slot_flags & PT_SLOT_FRAGMENT) {
+                    result = pt_posix_send_with_flags(ctx, peer, data, len,
+                                                       PT_MSG_FLAG_FRAGMENT);
+                } else {
+                    result = pt_posix_send(ctx, peer, data, len);
+                }
+
+                if (result == PT_ERR_WOULD_BLOCK) {
+                    pt_queue_pop_priority_rollback(q);
+                    break;
+                }
+
+                pt_queue_pop_priority_commit(q);
+                drain_count++;
+            }
+        }
+    }
+
+    return 0;
+}
+
+/* ========================================================================== */
 /* Public API (Session 4.4)                                                  */
 /* ========================================================================== */
 

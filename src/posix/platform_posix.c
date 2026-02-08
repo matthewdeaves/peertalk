@@ -63,11 +63,17 @@ static unsigned long posix_get_max_block(void) {
     return 1024UL * 1024UL * 1024UL; /* 1GB */
 }
 
+static int posix_poll_fast(struct pt_context *ctx) {
+    /* Delegate to networking fast poll */
+    return pt_posix_poll_fast(ctx);
+}
+
 /* Platform operations structure */
 pt_platform_ops pt_posix_ops = {
     posix_init,
     posix_shutdown,
     posix_poll,
+    posix_poll_fast,
     posix_get_ticks,
     posix_get_free_mem,
     posix_get_max_block,

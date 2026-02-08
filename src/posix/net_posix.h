@@ -346,4 +346,25 @@ int pt_posix_recv_udp(struct pt_context *ctx);
  */
 int pt_posix_poll(struct pt_context *ctx);
 
+/**
+ * Fast POSIX poll function
+ *
+ * Only handles TCP I/O for connected peers - no discovery, UDP, listen,
+ * periodic announces, or peer timeouts. Use for tight game loops.
+ *
+ * Performs:
+ * - TCP send queue drain for connected peers
+ * - TCP receive for connected peers
+ *
+ * Does NOT:
+ * - Poll discovery socket
+ * - Poll UDP message socket
+ * - Poll listen socket for new connections
+ * - Send periodic discovery announces
+ * - Check peer timeouts
+ *
+ * Returns: 0 on success, -1 on error
+ */
+int pt_posix_poll_fast(struct pt_context *ctx);
+
 #endif /* PT_NET_POSIX_H */

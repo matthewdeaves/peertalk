@@ -508,6 +508,110 @@ int pt_mactcp_poll(struct pt_context *ctx)
 }
 
 /* ========================================================================== */
+/* Fast Poll (TCP I/O Only)                                                   */
+/* ========================================================================== */
+
+/**
+ * Fast MacTCP poll function.
+ *
+ * Only handles TCP I/O for connected peers - no discovery, listener,
+ * periodic announces, or peer timeouts. Use for tight game loops.
+ *
+ * @param ctx  PeerTalk context
+ * @return     0 on success
+ */
+int pt_mactcp_poll_fast(struct pt_context *ctx)
+{
+    pt_mactcp_data *md = pt_mactcp_get(ctx);
+    int i;
+
+    /*
+     * Only poll connected streams for TCP I/O.
+     * Skip: discovery, listener, connecting, closing, periodic work.
+     */
+    for (i = 0; i < PT_MAX_PEERS; i++) {
+        pt_tcp_stream_hot *hot = &md->tcp_hot[i];
+        pt_tcp_stream_cold *cold = &md->tcp_cold[i];
+        struct pt_peer *peer = PT_PEER_FROM_IDX(ctx, hot->peer_idx);
+
+        if (hot->state != PT_STREAM_CONNECTED)
+            continue;
+
+        if (peer == NULL)
+            continue;
+
+        /* Tier 2: Send from direct buffer first */
+        if (pt_direct_buffer_ready(&peer->send_direct)) {
+            pt_direct_buffer *buf = &peer->send_direct;
+            int result;
+
+            pt_direct_buffer_mark_sending(buf);
+            result = pt_mactcp_tcp_send_with_flags(ctx, peer, buf->data, buf->length, buf->msg_flags);
+            pt_direct_buffer_complete(buf);
+
+            if (result != 0 && result != PT_ERR_WOULD_BLOCK) {
+                PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
+                    "Tier 2 fast send failed: %d", result);
+            }
+        }
+
+        /* Tier 1: Drain send queue - multiple messages per poll */
+        if (peer->send_queue) {
+            pt_queue *q = peer->send_queue;
+            const void *data;
+            uint16_t len;
+            int drain_count = 0;
+            const int max_drain = 8;  /* Fewer than POSIX due to slower CPU */
+
+            while (drain_count < max_drain &&
+                   pt_queue_pop_priority_direct(q, &data, &len) == 0) {
+                uint8_t slot_flags = q->slots[q->pending_pop_slot].flags;
+                int result;
+
+                if (slot_flags & PT_SLOT_FRAGMENT) {
+                    result = pt_mactcp_tcp_send_with_flags(ctx, peer, data, len,
+                                                            PT_MSG_FLAG_FRAGMENT);
+                } else {
+                    result = pt_mactcp_tcp_send(ctx, peer, data, len);
+                }
+
+                if (result == PT_ERR_WOULD_BLOCK) {
+                    pt_queue_pop_priority_rollback(q);
+                    break;
+                }
+
+                pt_queue_pop_priority_commit(q);
+                drain_count++;
+            }
+        }
+
+        /* Receive data */
+        {
+            int result = pt_mactcp_tcp_recv(ctx, peer);
+            if (result < 0) {
+                /* Connection lost */
+                PT_LOG_INFO(ctx->log, PT_LOG_CAT_CONNECT,
+                    "Connection lost to peer %u (fast poll)", (unsigned)peer->hot.id);
+
+                if (ctx->callbacks.on_peer_disconnected != NULL) {
+                    ctx->callbacks.on_peer_disconnected((PeerTalk_Context *)ctx,
+                                                        peer->hot.id, PT_ERR_NETWORK,
+                                                        ctx->callbacks.user_data);
+                }
+
+                peer->hot.connection = NULL;
+                pt_peer_destroy(ctx, peer);
+                pt_mactcp_tcp_release(ctx, i);
+            }
+        }
+
+        (void)cold;  /* Unused in fast poll */
+    }
+
+    return 0;
+}
+
+/* ========================================================================== */
 /* Memory Leak Test (for hardware verification)                               */
 /* ========================================================================== */
 
