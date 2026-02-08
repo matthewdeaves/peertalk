@@ -80,6 +80,15 @@ const char *PeerTalk_Version(void);
 #define PT_MAX_UDP_MESSAGE_SIZE 1400    /* Max UDP message size (fits in MTU) */
 #define PT_MAX_BATCH_SIZE       16      /* Max messages per batch callback */
 
+/* Async send pipelining configuration */
+#ifdef PT_LOWMEM
+    #define PT_SEND_PIPELINE_DEPTH  2   /* Mac SE (4MB): 2 in-flight sends */
+    #define PT_PIPELINE_MAX_PAYLOAD 1024
+#else
+    #define PT_SEND_PIPELINE_DEPTH  4   /* Standard: 4 in-flight sends */
+    #define PT_PIPELINE_MAX_PAYLOAD 4096
+#endif
+
 #define PT_DEFAULT_DISCOVERY_PORT   7353
 #define PT_DEFAULT_TCP_PORT         7354
 #define PT_DEFAULT_UDP_PORT         7355

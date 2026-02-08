@@ -74,6 +74,69 @@ extern pt_platform_ops pt_appletalk_ops;
 #endif
 
 /* ========================================================================== */
+/* Async Send Pipeline Structures                                             */
+/* ========================================================================== */
+
+/**
+ * Platform-agnostic WDS entry (matches MacTCP wdsEntry layout)
+ *
+ * On MacTCP: used directly for TCPSend WDS array
+ * On POSIX: not used (kernel handles buffering)
+ * On OT: similar to TNetbuf
+ */
+typedef struct {
+    uint16_t    length;     /* Length of buffer */
+    void       *ptr;        /* Pointer to buffer data */
+} pt_wds_entry;
+
+/**
+ * Send slot - holds one in-flight async message (24 bytes)
+ *
+ * Design notes:
+ * - WDS embedded to avoid separate allocation
+ * - ioResult cached locally for cache-efficient polling (avoids pointer chase)
+ * - Hot fields (buffer, platform_data, ioResult) grouped first
+ *
+ * Per MacTCP Guide (Lines 2959-2961): "You must not modify or relocate the
+ * WDS and the buffers it describes until the TCPSend command has been completed."
+ */
+typedef struct {
+    uint8_t        *buffer;         /* 4 bytes - Message buffer (header + payload + CRC) */
+    void           *platform_data;  /* 4 bytes - Platform-specific (TCPiopb*, etc.) */
+    pt_wds_entry    wds[2];         /* 8 bytes - WDS[0]=message, WDS[1]=sentinel */
+    volatile int16_t ioResult;      /* 2 bytes - Cached from pb->ioResult for fast polling */
+    uint16_t        message_len;    /* 2 bytes - Actual message length */
+    uint8_t         in_use;         /* 1 byte  - 1 if send pending */
+    uint8_t         completed;      /* 1 byte  - 1 if send finished (success or error) */
+    uint16_t        buffer_size;    /* 2 bytes - Allocated size (cold - only at init) */
+} pt_send_slot;  /* Total: 24 bytes */
+
+/**
+ * Send pipeline - manages async send slots for a peer
+ *
+ * Hot field (pending_count) first for cache locality on 68030 (256-byte cache).
+ *
+ * Memory per peer (standard build, depth=4):
+ *   - 4 x pt_send_slot = 96 bytes
+ *   - 4 x buffer (~4KB each) = 16,448 bytes
+ *   - 4 x TCPiopb (~92 bytes) = 368 bytes
+ *   - Total: ~17KB per peer
+ *
+ * Memory per peer (lowmem build, depth=2):
+ *   - 2 x pt_send_slot = 48 bytes
+ *   - 2 x buffer (~1KB each) = 2,080 bytes
+ *   - 2 x TCPiopb (~92 bytes) = 184 bytes
+ *   - Total: ~2.3KB per peer
+ */
+typedef struct {
+    uint8_t         pending_count;  /* Hot: checked every poll */
+    uint8_t         next_slot;      /* Warm: checked on send */
+    uint8_t         initialized;    /* Cold: rarely checked */
+    uint8_t         reserved;
+    pt_send_slot    slots[PT_SEND_PIPELINE_DEPTH];
+} pt_send_pipeline;
+
+/* ========================================================================== */
 /* Peer Capability Structure                                                  */
 /* ========================================================================== */
 
@@ -216,6 +279,7 @@ struct pt_peer {
     pt_direct_buffer    send_direct;    /* Tier 2: 4KB buffer for large outgoing messages */
     pt_direct_buffer    recv_direct;    /* Tier 2: 4KB buffer for large incoming messages */
     pt_peer_stream      stream;         /* Active stream transfer state */
+    pt_send_pipeline    pipeline;       /* Async send pipeline (MacTCP/OT optimization) */
 };
 
 /* ========================================================================== */
