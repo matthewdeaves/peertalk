@@ -465,6 +465,7 @@ int pt_capability_decode(struct pt_context *ctx, const uint8_t *buf, size_t len,
                          pt_capability_msg *caps)
 {
     size_t offset = 0;
+    int tlvs_parsed = 0;
 
     /* Initialize with defaults (for missing TLVs) */
     caps->max_message_size = PT_CAP_DEFAULT_MAX_MSG;
@@ -472,6 +473,16 @@ int pt_capability_decode(struct pt_context *ctx, const uint8_t *buf, size_t len,
     caps->buffer_pressure = PT_CAP_DEFAULT_PRESSURE;
     caps->capability_flags = 0;
     caps->reserved = 0;
+
+    /* Log payload info for debugging capability exchange issues */
+    if (ctx && len < 15) {
+        /* Expected payload is 15 bytes (4 TLVs). Log if shorter. */
+        PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+            "Capability payload short: len=%zu (expected 15), bytes: %02X %02X %02X %02X",
+            len,
+            (len > 0) ? buf[0] : 0, (len > 1) ? buf[1] : 0,
+            (len > 2) ? buf[2] : 0, (len > 3) ? buf[3] : 0);
+    }
 
     /* Parse TLVs */
     while (offset + 2 <= len) {
@@ -499,6 +510,7 @@ int pt_capability_decode(struct pt_context *ctx, const uint8_t *buf, size_t len,
                 if (caps->max_message_size > PT_CAP_MAX_MAX_MSG) {
                     caps->max_message_size = PT_CAP_MAX_MAX_MSG;
                 }
+                tlvs_parsed++;
             }
             break;
 
@@ -533,6 +545,12 @@ int pt_capability_decode(struct pt_context *ctx, const uint8_t *buf, size_t len,
         }
 
         offset += tlv_len;
+    }
+
+    /* Warn if no TLVs were parsed - indicates empty or malformed payload */
+    if (ctx && tlvs_parsed == 0 && len > 0) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+            "Capability decode: no MAX_MESSAGE TLV found in %zu bytes", len);
     }
 
     if (ctx) {

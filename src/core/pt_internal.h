@@ -95,6 +95,7 @@ typedef struct {
     uint8_t  caps_exchanged;     /* 1 after exchange complete */
     uint8_t  last_reported_pressure; /* 0-100: what we last told peer */
     uint8_t  pressure_update_pending; /* 1 if need to send pressure update */
+    uint8_t  first_send_logged;  /* 1 after logging first send effective_max */
 } pt_peer_caps;
 
 /* ========================================================================== */

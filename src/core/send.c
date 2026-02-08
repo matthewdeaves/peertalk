@@ -427,6 +427,15 @@ PeerTalk_Error PeerTalk_SendEx(PeerTalk_Context *ctx_pub,
      * The app developer never sees this - they just call PeerTalk_Send()
      * and the SDK handles everything.
      * ================================================================ */
+    /* Log effective_max on first send to this peer for debugging */
+    if (!peer->cold.caps.first_send_logged) {
+        PT_CTX_INFO(ctx, PT_LOG_CAT_SEND,
+            "First send to peer %u: effective_max=%u, fragmentation=%s",
+            peer_id, peer->hot.effective_max_msg,
+            ctx->enable_fragmentation ? "enabled" : "disabled");
+        peer->cold.caps.first_send_logged = 1;
+    }
+
     if (ctx->enable_fragmentation &&
         peer->hot.effective_max_msg > 0 &&
         length > peer->hot.effective_max_msg) {
