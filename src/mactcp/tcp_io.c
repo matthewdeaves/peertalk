@@ -75,7 +75,8 @@ int pt_mactcp_tcp_send_with_flags(struct pt_context *ctx, struct pt_peer *peer,
 {
     pt_mactcp_data *md = pt_mactcp_get(ctx);
     pt_message_header hdr;
-    uint8_t header_buf[PT_MESSAGE_HEADER_SIZE];
+    pt_compact_header compact_hdr;
+    uint8_t header_buf[PT_MESSAGE_HEADER_SIZE];  /* Large enough for either format */
     uint8_t crc_buf[2];
     uint16_t crc;
     wdsEntry wds[4];
@@ -83,6 +84,8 @@ int pt_mactcp_tcp_send_with_flags(struct pt_context *ctx, struct pt_peer *peer,
     int idx;
     pt_tcp_stream_hot *hot;
     pt_tcp_stream_cold *cold;
+    int use_compact;
+    uint16_t header_size;
 
     if (peer == NULL || peer->hot.magic != PT_PEER_MAGIC)
         return PT_ERR_INVALID_PARAM;
@@ -100,40 +103,64 @@ int pt_mactcp_tcp_send_with_flags(struct pt_context *ctx, struct pt_peer *peer,
     if (len > PT_MESSAGE_MAX_PAYLOAD)
         return PT_ERR_INVALID_PARAM;
 
-    /* Build message header */
-    hdr.version = PT_PROTOCOL_VERSION;
-    hdr.type = PT_MSG_TYPE_DATA;
-    hdr.flags = flags;
-    hdr.sequence = peer->hot.send_seq++;
-    hdr.payload_len = len;
+    /* Check if compact headers are negotiated with this peer.
+     * IMPORTANT: Don't use compact headers for fragments because
+     * PT_MSG_FLAG_FRAGMENT (0x10) doesn't fit in the 4-bit flags field. */
+    use_compact = peer->cold.caps.compact_mode &&
+                  !(flags & PT_MSG_FLAG_FRAGMENT);
 
-    pt_message_encode_header(&hdr, header_buf);
+    if (use_compact) {
+        /* Build compact header (4 bytes, no CRC) */
+        compact_hdr.type = PT_MSG_TYPE_DATA;
+        compact_hdr.flags = flags;
+        compact_hdr.payload_len = len;
+        pt_message_encode_compact(&compact_hdr, header_buf);
+        header_size = PT_COMPACT_HEADER_SIZE;
 
-    /* Calculate CRC over header + payload */
-    crc = pt_crc16(header_buf, PT_MESSAGE_HEADER_SIZE);
-    if (len > 0)
-        crc = pt_crc16_update(crc, data, len);
-    crc_buf[0] = (crc >> 8) & 0xFF;
-    crc_buf[1] = crc & 0xFF;
+        /* WDS: header + payload only (no CRC for compact) */
+        wds[0].length = header_size;
+        wds[0].ptr = (Ptr)header_buf;
+        wds[1].length = len;
+        wds[1].ptr = (Ptr)data;
+        wds[2].length = 0;  /* Terminator */
+        wds[2].ptr = NULL;
+    } else {
+        /* Build full message header (10 bytes + 2 CRC) */
+        hdr.version = PT_PROTOCOL_VERSION;
+        hdr.type = PT_MSG_TYPE_DATA;
+        hdr.flags = flags;
+        hdr.sequence = peer->hot.send_seq++;
+        hdr.payload_len = len;
 
-    /*
-     * Build WDS: header + payload + CRC
-     *
-     * AMENDMENT (2026-02-03): LaunchAPPL Pattern Verification
-     * Verified from LaunchAPPL MacTCPStream.cc:96-98 - WDS array pattern:
-     *   wdsEntry wds[2] = { {(unsigned short)n, (Ptr)p}, {0, nullptr} };
-     *
-     * Stack-allocated WDS is safe because TCPSend is synchronous
-     * (PBControlSync blocks until complete).
-     */
-    wds[0].length = PT_MESSAGE_HEADER_SIZE;
-    wds[0].ptr = (Ptr)header_buf;
-    wds[1].length = len;
-    wds[1].ptr = (Ptr)data;
-    wds[2].length = 2;
-    wds[2].ptr = (Ptr)crc_buf;
-    wds[3].length = 0;  /* Terminator - WDS array MUST end with zero-length entry */
-    wds[3].ptr = NULL;
+        pt_message_encode_header(&hdr, header_buf);
+        header_size = PT_MESSAGE_HEADER_SIZE;
+
+        /* Calculate CRC over header + payload */
+        crc = pt_crc16(header_buf, PT_MESSAGE_HEADER_SIZE);
+        if (len > 0)
+            crc = pt_crc16_update(crc, data, len);
+        crc_buf[0] = (crc >> 8) & 0xFF;
+        crc_buf[1] = crc & 0xFF;
+
+        /*
+         * Build WDS: header + payload + CRC
+         *
+         * AMENDMENT (2026-02-03): LaunchAPPL Pattern Verification
+         * Verified from LaunchAPPL MacTCPStream.cc:96-98 - WDS array pattern:
+         *   wdsEntry wds[2] = { {(unsigned short)n, (Ptr)p}, {0, nullptr} };
+         *
+         * Stack-allocated WDS is safe because TCPSend is synchronous
+         * (PBControlSync blocks until complete).
+         */
+        wds[0].length = header_size;
+        wds[0].ptr = (Ptr)header_buf;
+        wds[1].length = len;
+        wds[1].ptr = (Ptr)data;
+        wds[2].length = 2;
+        wds[2].ptr = (Ptr)crc_buf;
+        wds[3].length = 0;  /* Terminator - WDS array MUST end with zero-length entry */
+        wds[3].ptr = NULL;
+    }
 
     /* Setup send call (pb in cold struct) */
     pt_memset(&cold->pb, 0, sizeof(cold->pb));
@@ -234,10 +261,13 @@ int pt_mactcp_tcp_send_async(struct pt_context *ctx, struct pt_peer *peer,
     pt_send_slot *slot;
     TCPiopb *pb;
     pt_message_header hdr;
+    pt_compact_header compact_hdr;
     uint16_t crc;
     int idx;
     pt_tcp_stream_hot *hot;
     OSErr err;
+    int use_compact;
+    uint16_t header_size;
 
     if (peer == NULL || peer->hot.magic != PT_PEER_MAGIC)
         return PT_ERR_INVALID_PARAM;
@@ -265,29 +295,49 @@ int pt_mactcp_tcp_send_async(struct pt_context *ctx, struct pt_peer *peer,
         return PT_ERR_INVALID_STATE;  /* TCPiopb not allocated */
     }
 
-    /* Build message in slot buffer: header + payload + CRC */
-    hdr.version = PT_PROTOCOL_VERSION;
-    hdr.type = PT_MSG_TYPE_DATA;
-    hdr.flags = 0;
-    hdr.sequence = peer->hot.send_seq++;
-    hdr.payload_len = len;
+    /* Check if compact headers are negotiated with this peer */
+    use_compact = peer->cold.caps.compact_mode;
 
-    pt_message_encode_header(&hdr, slot->buffer);
+    if (use_compact) {
+        /* Build compact header (4 bytes, no CRC) */
+        compact_hdr.type = PT_MSG_TYPE_DATA;
+        compact_hdr.flags = 0;
+        compact_hdr.payload_len = len;
+        pt_message_encode_compact(&compact_hdr, slot->buffer);
+        header_size = PT_COMPACT_HEADER_SIZE;
 
-    /* Copy payload after header */
-    if (len > 0) {
-        pt_memcpy(slot->buffer + PT_MESSAGE_HEADER_SIZE, data, len);
+        /* Copy payload after compact header */
+        if (len > 0) {
+            pt_memcpy(slot->buffer + header_size, data, len);
+        }
+
+        slot->message_len = header_size + len;  /* No CRC for compact */
+    } else {
+        /* Build full message header (10 bytes + 2 CRC) */
+        hdr.version = PT_PROTOCOL_VERSION;
+        hdr.type = PT_MSG_TYPE_DATA;
+        hdr.flags = 0;
+        hdr.sequence = peer->hot.send_seq++;
+        hdr.payload_len = len;
+
+        pt_message_encode_header(&hdr, slot->buffer);
+        header_size = PT_MESSAGE_HEADER_SIZE;
+
+        /* Copy payload after header */
+        if (len > 0) {
+            pt_memcpy(slot->buffer + header_size, data, len);
+        }
+
+        /* Calculate and append CRC */
+        crc = pt_crc16(slot->buffer, PT_MESSAGE_HEADER_SIZE);
+        if (len > 0) {
+            crc = pt_crc16_update(crc, data, len);
+        }
+        slot->buffer[header_size + len] = (crc >> 8) & 0xFF;
+        slot->buffer[header_size + len + 1] = crc & 0xFF;
+
+        slot->message_len = header_size + len + 2;
     }
-
-    /* Calculate and append CRC */
-    crc = pt_crc16(slot->buffer, PT_MESSAGE_HEADER_SIZE);
-    if (len > 0) {
-        crc = pt_crc16_update(crc, data, len);
-    }
-    slot->buffer[PT_MESSAGE_HEADER_SIZE + len] = (crc >> 8) & 0xFF;
-    slot->buffer[PT_MESSAGE_HEADER_SIZE + len + 1] = crc & 0xFF;
-
-    slot->message_len = PT_MESSAGE_HEADER_SIZE + len + 2;
 
     /* Setup WDS pointing to slot buffer */
     slot->wds[0].length = slot->message_len;
@@ -515,45 +565,85 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
     /*
      * Process all complete messages in ibuf.
      * This handles multiple messages arriving in one receive call.
+     * Supports both full headers (10+2) and compact headers (4, no CRC).
      */
     bytes_consumed = 0;
     msg_start = peer->cold.ibuf;
 
-    while (peer->cold.ibuflen - bytes_consumed >= PT_MESSAGE_HEADER_SIZE + 2) {
+    /* Minimum: 4 bytes (enough to detect compact header and read payload length) */
+    while (peer->cold.ibuflen - bytes_consumed >= PT_COMPACT_HEADER_SIZE) {
         uint16_t remaining = peer->cold.ibuflen - bytes_consumed;
+        int is_compact;
+        uint16_t header_size;
 
-        /* Parse header */
-        if (pt_message_decode_header(ctx, msg_start, remaining, &hdr) < 0) {
-            PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
-                "Invalid message header from peer %u (offset %u)",
-                (unsigned)peer->hot.id, (unsigned)bytes_consumed);
-            /* Discard buffer on framing error - can't recover */
-            peer->cold.ibuflen = 0;
-            return messages_processed > 0 ? messages_processed : 0;
-        }
+        /* Detect header format: compact (4 bytes, no CRC) vs full (10+2 bytes) */
+        is_compact = pt_message_is_compact(msg_start, remaining);
 
-        /* Check we have complete message */
-        expected_len = PT_MESSAGE_HEADER_SIZE + hdr.payload_len + 2;
-        if (remaining < expected_len) {
-            /* Partial message - wait for more data */
-            break;
-        }
+        if (is_compact) {
+            /* Compact header (4 bytes, no CRC) */
+            pt_compact_header compact_hdr;
 
-        /* Verify CRC */
-        data_ptr = msg_start + PT_MESSAGE_HEADER_SIZE;
-        crc_expected = ((uint16_t)msg_start[PT_MESSAGE_HEADER_SIZE + hdr.payload_len] << 8) |
-                        msg_start[PT_MESSAGE_HEADER_SIZE + hdr.payload_len + 1];
-        crc_actual = pt_crc16(msg_start, PT_MESSAGE_HEADER_SIZE);
-        if (hdr.payload_len > 0)
-            crc_actual = pt_crc16_update(crc_actual, data_ptr, hdr.payload_len);
+            if (pt_message_decode_compact(msg_start, remaining, &compact_hdr) < 0) {
+                PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
+                    "Invalid compact header from peer %u (offset %u)",
+                    (unsigned)peer->hot.id, (unsigned)bytes_consumed);
+                peer->cold.ibuflen = 0;
+                return messages_processed > 0 ? messages_processed : 0;
+            }
 
-        if (crc_actual != crc_expected) {
-            PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
-                "CRC mismatch: expected=%04X actual=%04X",
-                (unsigned)crc_expected, (unsigned)crc_actual);
-            /* Discard buffer on CRC error - can't recover */
-            peer->cold.ibuflen = 0;
-            return messages_processed > 0 ? messages_processed : 0;
+            header_size = PT_COMPACT_HEADER_SIZE;
+            expected_len = header_size + compact_hdr.payload_len;  /* No CRC */
+
+            if (remaining < expected_len) {
+                break;  /* Partial message */
+            }
+
+            /* Convert to standard header struct for message handling */
+            hdr.version = PT_PROTOCOL_VERSION;
+            hdr.type = compact_hdr.type;
+            hdr.flags = compact_hdr.flags;
+            hdr.sequence = 0;  /* Compact headers don't have sequence */
+            hdr.payload_len = compact_hdr.payload_len;
+
+            data_ptr = msg_start + header_size;
+            /* No CRC verification for compact headers */
+
+        } else {
+            /* Full header (10 bytes + 2 CRC) - need at least 12 bytes */
+            if (remaining < PT_MESSAGE_HEADER_SIZE + 2) {
+                break;  /* Wait for more data */
+            }
+
+            if (pt_message_decode_header(ctx, msg_start, remaining, &hdr) < 0) {
+                PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
+                    "Invalid message header from peer %u (offset %u)",
+                    (unsigned)peer->hot.id, (unsigned)bytes_consumed);
+                peer->cold.ibuflen = 0;
+                return messages_processed > 0 ? messages_processed : 0;
+            }
+
+            header_size = PT_MESSAGE_HEADER_SIZE;
+            expected_len = header_size + hdr.payload_len + 2;  /* With CRC */
+
+            if (remaining < expected_len) {
+                break;  /* Partial message */
+            }
+
+            /* Verify CRC for full headers */
+            data_ptr = msg_start + header_size;
+            crc_expected = ((uint16_t)msg_start[header_size + hdr.payload_len] << 8) |
+                            msg_start[header_size + hdr.payload_len + 1];
+            crc_actual = pt_crc16(msg_start, header_size);
+            if (hdr.payload_len > 0)
+                crc_actual = pt_crc16_update(crc_actual, data_ptr, hdr.payload_len);
+
+            if (crc_actual != crc_expected) {
+                PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
+                    "CRC mismatch: expected=%04X actual=%04X",
+                    (unsigned)crc_expected, (unsigned)crc_actual);
+                peer->cold.ibuflen = 0;
+                return messages_processed > 0 ? messages_processed : 0;
+            }
         }
 
         /* Message is valid - consume it */
