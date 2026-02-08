@@ -273,4 +273,25 @@ int pt_peer_check_pressure_update(struct pt_context *ctx, struct pt_peer *peer);
  */
 int pt_peer_should_throttle(struct pt_peer *peer, uint8_t priority);
 
+/* ========================================================================
+ * Adaptive Performance Tuning
+ * ======================================================================== */
+
+/* Update adaptive chunk size based on RTT
+ *
+ * Adjusts effective_chunk and pipeline_depth based on measured RTT.
+ * Call this after updating peer->hot.latency_ms.
+ *
+ * Tuning logic:
+ *   RTT < 50ms:  chunk=4096, pipeline=4 (Fast LAN)
+ *   RTT < 100ms: chunk=2048, pipeline=3
+ *   RTT < 200ms: chunk=1024, pipeline=2
+ *   RTT >= 200ms: chunk=512, pipeline=1 (Slow/lossy)
+ *
+ * Args:
+ *   ctx  - Context (for logging)
+ *   peer - Peer to update
+ */
+void pt_peer_update_adaptive_params(struct pt_context *ctx, struct pt_peer *peer);
+
 #endif /* PT_PEER_H */

@@ -291,6 +291,8 @@ struct pt_peer *pt_peer_create(struct pt_context *ctx,
     peer->cold.caps.buffer_pressure = 0;
     peer->cold.caps.caps_exchanged = 0;
     peer->hot.effective_max_msg = PT_CAP_DEFAULT_MAX_MSG;  /* Conservative default */
+    peer->hot.effective_chunk = 1024;  /* Default chunk for unknown RTT */
+    peer->hot.pipeline_depth = 2;      /* Conservative pipeline depth */
 
     /* Initialize reassembly state */
     peer->cold.reassembly.message_id = 0;
@@ -659,4 +661,59 @@ int pt_peer_should_throttle(struct pt_peer *peer, uint8_t priority)
     }
 
     return 0;  /* Don't throttle - send normally */
+}
+
+/* ========================================================================== */
+/* Adaptive Performance Tuning                                                */
+/* ========================================================================== */
+
+void pt_peer_update_adaptive_params(struct pt_context *ctx, struct pt_peer *peer)
+{
+    uint16_t rtt;
+    uint16_t new_chunk;
+    uint8_t new_pipeline;
+
+    if (!peer || peer->hot.magic != PT_PEER_MAGIC) {
+        return;
+    }
+
+    rtt = peer->hot.latency_ms;
+
+    /* Tuning logic based on measured RTT
+     *
+     * Larger chunks reduce per-message overhead but increase latency.
+     * Smaller chunks are better for slow/lossy links.
+     * Pipeline depth controls how many messages in flight.
+     */
+    if (rtt < 50) {
+        /* Fast LAN - maximize throughput */
+        new_chunk = 4096;
+        new_pipeline = 4;
+    } else if (rtt < 100) {
+        /* Good connection */
+        new_chunk = 2048;
+        new_pipeline = 3;
+    } else if (rtt < 200) {
+        /* Moderate latency */
+        new_chunk = 1024;
+        new_pipeline = 2;
+    } else {
+        /* Slow/lossy - minimize in-flight data */
+        new_chunk = 512;
+        new_pipeline = 1;
+    }
+
+    /* Only log if parameters actually changed */
+    if (peer->hot.effective_chunk != new_chunk ||
+        peer->hot.pipeline_depth != new_pipeline) {
+
+        peer->hot.effective_chunk = new_chunk;
+        peer->hot.pipeline_depth = new_pipeline;
+
+        if (ctx) {
+            PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+                "Adaptive tuning for peer %u: RTT=%ums chunk=%u pipeline=%u",
+                peer->hot.id, rtt, new_chunk, new_pipeline);
+        }
+    }
 }

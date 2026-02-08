@@ -1536,6 +1536,12 @@ static void update_peer_latency(struct pt_context *ctx, struct pt_peer *peer) {
         peer->cold.stats.latency_ms = (peer->cold.stats.latency_ms * 3 + rtt) / 4;
     }
 
+    /* Update hot latency for adaptive tuning */
+    peer->hot.latency_ms = peer->cold.stats.latency_ms;
+
+    /* Update adaptive chunk size and pipeline depth based on RTT */
+    pt_peer_update_adaptive_params(ctx, peer);
+
     /* Calculate quality */
     peer->cold.stats.quality = calculate_quality(peer->cold.stats.latency_ms);
 

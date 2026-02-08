@@ -149,13 +149,14 @@ typedef struct {
     uint16_t            peer_flags;     /* PT_PEER_FLAG_* from discovery */
     uint16_t            latency_ms;     /* Estimated RTT */
     uint16_t            effective_max_msg; /* min(ours, theirs) - cached for send path */
+    uint16_t            effective_chunk;   /* Adaptive chunk size based on RTT */
     pt_peer_state       state;
     uint8_t             address_count;
     uint8_t             preferred_transport;
     uint8_t             send_seq;       /* Send sequence number (Phase 2) */
     uint8_t             recv_seq;       /* Receive sequence number (Phase 2) */
     uint8_t             name_idx;       /* Index into context name table */
-    uint8_t             reserved;       /* Padding for alignment */
+    uint8_t             pipeline_depth; /* Adaptive pipeline depth based on RTT */
 } pt_peer_hot;
 
 /**
