@@ -486,9 +486,9 @@ PeerTalk_Error PeerTalk_Send(PeerTalk_Context *ctx_pub, PeerTalk_PeerID peer_id,
 ```
 
 **Acceptance Criteria:**
-- [ ] Async used when slots available
-- [ ] Graceful fallback to sync when slots exhausted (logged at DEBUG)
-- [ ] No API change for callers
+- [x] Async used when slots available
+- [x] Graceful fallback to sync when slots exhausted (logged at DEBUG)
+- [x] No API change for callers
 - [ ] Verify fallback works correctly under load
 
 ---
