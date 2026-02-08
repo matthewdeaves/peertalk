@@ -263,6 +263,42 @@ static unsigned long mactcp_get_max_block(void) {
     return (unsigned long)MaxBlock();
 }
 
+/* ========================================================================== */
+/* Async Send Pipeline Stubs (Session 2)                                      */
+/* ========================================================================== */
+
+/**
+ * These stubs return PT_ERR_NOT_SUPPORTED until Session 4 implements them.
+ * The pipeline ops allow MacTCP to keep multiple TCP sends in-flight
+ * simultaneously, improving throughput by 200-400%.
+ */
+
+static int mactcp_tcp_send_async(struct pt_context *ctx, struct pt_peer *peer,
+                                  const void *data, uint16_t len) {
+    (void)ctx; (void)peer; (void)data; (void)len;
+    return PT_ERR_NOT_SUPPORTED;  /* TODO: Session 4 */
+}
+
+static int mactcp_poll_send_completions(struct pt_context *ctx, struct pt_peer *peer) {
+    (void)ctx; (void)peer;
+    return 0;  /* No completions - not implemented yet */
+}
+
+static int mactcp_send_slots_available(struct pt_context *ctx, struct pt_peer *peer) {
+    (void)ctx; (void)peer;
+    return 0;  /* No slots available until initialized */
+}
+
+static int mactcp_pipeline_init(struct pt_context *ctx, struct pt_peer *peer) {
+    (void)ctx; (void)peer;
+    return PT_ERR_NOT_SUPPORTED;  /* TODO: Session 3 */
+}
+
+static void mactcp_pipeline_cleanup(struct pt_context *ctx, struct pt_peer *peer) {
+    (void)ctx; (void)peer;
+    /* Nothing to clean up until implemented */
+}
+
 /* Platform operations structure */
 pt_platform_ops pt_mactcp_ops = {
     mactcp_init,
@@ -272,7 +308,13 @@ pt_platform_ops pt_mactcp_ops = {
     mactcp_get_ticks,
     mactcp_get_free_mem,
     mactcp_get_max_block,
-    NULL  /* send_udp - set by Phase 5 to pt_mactcp_send_udp */
+    NULL,  /* send_udp - set by Phase 5 to pt_mactcp_send_udp */
+    /* Async send pipeline ops */
+    mactcp_tcp_send_async,
+    mactcp_poll_send_completions,
+    mactcp_send_slots_available,
+    mactcp_pipeline_init,
+    mactcp_pipeline_cleanup
 };
 
 /* ========================================================================== */

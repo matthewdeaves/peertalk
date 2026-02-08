@@ -54,6 +54,16 @@ typedef struct {
     unsigned long   (*get_max_block)(void);
     int             (*send_udp)(struct pt_context *ctx, struct pt_peer *peer,
                                 const void *data, uint16_t len);
+
+    /* Async send pipeline ops (NULL if platform doesn't support/need async) */
+    int             (*tcp_send_async)(struct pt_context *ctx, struct pt_peer *peer,
+                                      const void *data, uint16_t len);
+    int             (*poll_send_completions)(struct pt_context *ctx,
+                                             struct pt_peer *peer);
+    int             (*send_slots_available)(struct pt_context *ctx,
+                                            struct pt_peer *peer);
+    int             (*pipeline_init)(struct pt_context *ctx, struct pt_peer *peer);
+    void            (*pipeline_cleanup)(struct pt_context *ctx, struct pt_peer *peer);
 } pt_platform_ops;
 
 /* Platform ops implementations (defined in platform-specific files) */

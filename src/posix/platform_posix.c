@@ -77,7 +77,13 @@ pt_platform_ops pt_posix_ops = {
     posix_get_ticks,
     posix_get_free_mem,
     posix_get_max_block,
-    pt_posix_send_udp  /* Session 4.4 implements UDP messaging */
+    pt_posix_send_udp,  /* Session 4.4 implements UDP messaging */
+    /* Async send pipeline: not needed on POSIX (kernel handles buffering) */
+    NULL,               /* tcp_send_async */
+    NULL,               /* poll_send_completions */
+    NULL,               /* send_slots_available */
+    NULL,               /* pipeline_init */
+    NULL                /* pipeline_cleanup */
 };
 
 /* ========================================================================== */
