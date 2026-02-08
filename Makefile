@@ -14,7 +14,7 @@ BIN_DIR = $(BUILD_DIR)/bin
 COV_DIR = $(BUILD_DIR)/coverage
 
 # PeerTalk core library
-CORE_SRCS = src/core/pt_version.c src/core/pt_compat.c src/core/pt_init.c src/core/protocol.c src/core/peer.c src/core/queue.c src/core/send.c
+CORE_SRCS = src/core/pt_version.c src/core/pt_compat.c src/core/pt_init.c src/core/protocol.c src/core/peer.c src/core/queue.c src/core/send.c src/core/direct_buffer.c
 POSIX_SRCS = src/posix/platform_posix.c src/posix/net_posix.c
 PEERTALK_SRCS = $(CORE_SRCS) $(POSIX_SRCS)
 PEERTALK_OBJS = $(PEERTALK_SRCS:%.c=$(OBJ_DIR)/%.o)
@@ -40,7 +40,8 @@ TEST_BINS = $(BIN_DIR)/test_log $(BIN_DIR)/test_log_perf $(BIN_DIR)/test_log_thr
             $(BIN_DIR)/test_bidirectional $(BIN_DIR)/test_tcp_send_recv \
             $(BIN_DIR)/test_discovery_recv $(BIN_DIR)/test_error_strings \
             $(BIN_DIR)/test_perf_benchmarks $(BIN_DIR)/test_protocol_fuzz \
-            $(BIN_DIR)/test_queue_threads
+            $(BIN_DIR)/test_queue_threads $(BIN_DIR)/test_direct_buffer \
+            $(BIN_DIR)/test_two_tier_queue
 
 # Unity-based tests (optional - requires Unity framework)
 TEST_UNITY_BINS = $(BIN_DIR)/test_queue_unity
@@ -158,6 +159,19 @@ $(BIN_DIR)/test_protocol_fuzz: tests/test_protocol_fuzz.c $(LIBPEERTALK) $(LIBPT
 $(BIN_DIR)/test_queue_threads: tests/test_queue_threads.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -D_DEFAULT_SOURCE -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
 
+$(BIN_DIR)/test_direct_buffer: tests/test_direct_buffer.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
+$(BIN_DIR)/test_two_tier_queue: tests/test_two_tier_queue.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -D_DEFAULT_SOURCE -I./src/posix -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
+# Mac hardware test partners (POSIX side)
+$(BIN_DIR)/test_partner: tests/posix/test_partner.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
+$(BIN_DIR)/perf_partner: tests/posix/perf_partner.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -D_DEFAULT_SOURCE -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
 # Unity-based tests
 $(BIN_DIR)/test_queue_unity: tests/test_queue_unity.c tests/unity/unity.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ tests/test_queue_unity.c tests/unity/unity.c -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
@@ -225,6 +239,14 @@ test-queue-threads: $(BIN_DIR)/test_queue_threads
 	@echo "Running queue thread safety tests..."
 	@$(BIN_DIR)/test_queue_threads
 
+test-direct-buffer: $(BIN_DIR)/test_direct_buffer
+	@echo "Running Tier 2 direct buffer tests..."
+	@$(BIN_DIR)/test_direct_buffer
+
+test-two-tier-queue: $(BIN_DIR)/test_two_tier_queue
+	@echo "Running two-tier queue integration tests..."
+	@$(BIN_DIR)/test_two_tier_queue
+
 test-unity: $(BIN_DIR)/test_queue_unity
 	@echo "Running Unity-based queue tests..."
 	@$(BIN_DIR)/test_queue_unity
@@ -262,6 +284,8 @@ valgrind: $(BIN_DIR)/test_log $(BIN_DIR)/test_log_perf $(BIN_DIR)/test_log_threa
 	@echo "=== All valgrind checks PASSED ==="
 
 # Docker targets (run in container with current user to avoid root-owned files)
+# Detect if we're already inside Docker by checking for /.dockerenv
+IN_DOCKER := $(shell test -f /.dockerenv && echo 1)
 DOCKER_RUN = docker run --rm -v $(PWD):/workspace -w /workspace -u $(shell id -u):$(shell id -g)
 
 docker-build:
@@ -279,7 +303,7 @@ docker-coverage:
 # Local targets (run inside container or on host with dependencies)
 # Note: test-queue-threads is excluded from test-local due to MPMC hangs in Docker containers
 # Run 'make test-queue-threads' separately on bare metal if needed
-test-local: test-log test-compat test-foundation test-protocol test-peer test-queue test-queue-advanced test-backpressure test-discovery test-messaging test-udp test-stats test-integration-posix test-sendex test-api-errors test-queue-extended test-batch-send test-connection test-loopback-messaging test-protocol-messaging test-bidirectional test-tcp-send-recv test-discovery-recv test-error-strings test-fuzz
+test-local: test-log test-compat test-foundation test-protocol test-peer test-queue test-queue-advanced test-backpressure test-discovery test-messaging test-udp test-stats test-integration-posix test-sendex test-api-errors test-queue-extended test-batch-send test-connection test-loopback-messaging test-protocol-messaging test-bidirectional test-tcp-send-recv test-discovery-recv test-error-strings test-fuzz test-direct-buffer test-two-tier-queue
 	@echo ""
 	@echo "All tests passed!"
 
@@ -331,8 +355,30 @@ test-fuzz: $(BIN_DIR)/test_protocol_fuzz
 	@echo "Running protocol fuzz tests..."
 	@$(BIN_DIR)/test_protocol_fuzz
 
-# Default test target uses Docker
+# Mac hardware test partners (run on POSIX host while testing MacTCP on real Mac)
+partner: $(BIN_DIR)/test_partner
+	@echo "Starting Mac test partner..."
+	@echo "Press Ctrl+C to stop."
+	@$(BIN_DIR)/test_partner
+
+perf-partner: $(BIN_DIR)/perf_partner
+	@echo "Starting performance test partner..."
+	@echo "Usage: perf_partner --mode [echo|stream|stress|discovery]"
+	@echo "Press Ctrl+C to stop."
+	@$(BIN_DIR)/perf_partner
+
+perf-partner-echo: $(BIN_DIR)/perf_partner
+	@$(BIN_DIR)/perf_partner --mode echo --verbose
+
+perf-partner-stream: $(BIN_DIR)/perf_partner
+	@$(BIN_DIR)/perf_partner --mode stream --size 1024 --count 10000
+
+# Default test target - uses Docker if not already in container
+ifeq ($(IN_DOCKER),1)
+test: test-local
+else
 test: docker-test
+endif
 
 # Coverage target (local - runs inside container)
 coverage-local:
@@ -351,7 +397,8 @@ coverage-local:
 	        $(BIN_DIR)/test_protocol_messaging $(BIN_DIR)/test_bidirectional \
 	        $(BIN_DIR)/test_tcp_send_recv $(BIN_DIR)/test_discovery_recv \
 	        $(BIN_DIR)/test_error_strings $(BIN_DIR)/test_perf_benchmarks \
-	        $(BIN_DIR)/test_protocol_fuzz
+	        $(BIN_DIR)/test_protocol_fuzz $(BIN_DIR)/test_direct_buffer \
+	        $(BIN_DIR)/test_two_tier_queue
 	$(MAKE) test-local
 	lcov --capture --directory $(OBJ_DIR) --output-file $(COV_DIR)/coverage.info
 	lcov --remove $(COV_DIR)/coverage.info '/usr/*' --ignore-errors unused --output-file $(COV_DIR)/coverage.info
@@ -419,7 +466,8 @@ clean:
         test-api-errors test-queue-extended test-batch-send test-connection \
         test-loopback-messaging test-protocol-messaging test-bidirectional \
         test-tcp-send-recv test-discovery-recv test-error-strings test-benchmarks test-fuzz \
-        test-queue-threads test-unity \
+        test-queue-threads test-unity test-direct-buffer test-two-tier-queue \
         docker-build docker-test docker-coverage docker-analyze \
         analyze analyze-quick analyze-complexity analyze-cppcheck analyze-duplicates \
-        valgrind coverage coverage-local clean
+        valgrind coverage coverage-local clean \
+        partner perf-partner perf-partner-echo perf-partner-stream

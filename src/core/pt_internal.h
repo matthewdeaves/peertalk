@@ -8,7 +8,8 @@
 
 #include "pt_types.h"
 #include "pt_log.h"
-#include "send.h"  /* Phase 3: pt_batch type */
+#include "send.h"           /* Phase 3: pt_batch type */
+#include "direct_buffer.h"  /* Tier 2: large message buffers */
 
 /* ========================================================================== */
 /* PT_Log Integration (Phase 0)                                              */
@@ -139,8 +140,10 @@ typedef struct {
 struct pt_peer {
     pt_peer_hot         hot;            /* 32 bytes - frequently accessed */
     pt_peer_cold        cold;           /* ~1.4KB - rarely accessed */
-    struct pt_queue    *send_queue;
-    struct pt_queue    *recv_queue;
+    struct pt_queue    *send_queue;     /* Tier 1: 256-byte slots for control messages */
+    struct pt_queue    *recv_queue;     /* Tier 1: 256-byte slots for control messages */
+    pt_direct_buffer    send_direct;    /* Tier 2: 4KB buffer for large outgoing messages */
+    pt_direct_buffer    recv_direct;    /* Tier 2: 4KB buffer for large incoming messages */
 };
 
 /* ========================================================================== */
@@ -185,6 +188,10 @@ struct pt_context {
 
     /* Phase 3: Pre-allocated batch buffer (avoids 1.4KB stack allocation) */
     pt_batch            send_batch;     /* For pt_drain_send_queue() */
+
+    /* Two-tier message queue configuration */
+    uint16_t            direct_threshold;   /* Messages > this go to Tier 2 (default 256) */
+    uint16_t            direct_buffer_size; /* Tier 2 buffer size (default 4096) */
 
     /* Platform-specific data follows (allocated via pt_plat_extra_size) */
 };

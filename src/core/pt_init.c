@@ -9,6 +9,7 @@
 #include "pt_compat.h"
 #include "peer.h"
 #include "queue.h"
+#include "direct_buffer.h"
 #include <string.h>
 
 /* ========================================================================== */
@@ -71,6 +72,13 @@ PeerTalk_Context *PeerTalk_Init(const PeerTalk_Config *config) {
     if (ctx->config.peer_timeout == 0) {
         ctx->config.peer_timeout = 15000;  /* 15 seconds */
     }
+    if (ctx->config.direct_buffer_size == 0) {
+        ctx->config.direct_buffer_size = PT_DIRECT_DEFAULT_SIZE;
+    }
+
+    /* Apply two-tier queue configuration */
+    ctx->direct_threshold = PT_DIRECT_THRESHOLD;
+    ctx->direct_buffer_size = ctx->config.direct_buffer_size;
 
     /* Initialize PT_Log from Phase 0 */
     ctx->log = PT_LogCreate();
@@ -254,6 +262,10 @@ const char *pt_get_peer_name(struct pt_context *ctx, uint8_t name_idx) {
 /* Forward declarations from net_posix.h */
 extern int pt_posix_discovery_start(struct pt_context *ctx);
 extern void pt_posix_discovery_stop(struct pt_context *ctx);
+#elif defined(PT_PLATFORM_MACTCP)
+/* Forward declarations from discovery_mactcp.c */
+extern int pt_mactcp_discovery_start(struct pt_context *ctx);
+extern void pt_mactcp_discovery_stop(struct pt_context *ctx);
 #endif
 
 PeerTalk_Error PeerTalk_StartDiscovery(PeerTalk_Context *ctx_public) {
@@ -267,12 +279,16 @@ PeerTalk_Error PeerTalk_StartDiscovery(PeerTalk_Context *ctx_public) {
     if (pt_posix_discovery_start(ctx) < 0) {
         return PT_ERR_NETWORK;
     }
+#elif defined(PT_PLATFORM_MACTCP)
+    if (pt_mactcp_discovery_start(ctx) < 0) {
+        return PT_ERR_NETWORK;
+    }
 #else
-    /* TODO: Mac platform discovery */
     (void)ctx;
     return PT_ERR_NOT_SUPPORTED;
 #endif
 
+    ctx->discovery_active = 1;
     PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY, "Discovery started");
     return PT_OK;
 }
@@ -286,11 +302,13 @@ PeerTalk_Error PeerTalk_StopDiscovery(PeerTalk_Context *ctx_public) {
 
 #if defined(PT_PLATFORM_POSIX)
     pt_posix_discovery_stop(ctx);
+#elif defined(PT_PLATFORM_MACTCP)
+    pt_mactcp_discovery_stop(ctx);
 #else
-    /* TODO: Mac platform discovery */
     (void)ctx;
 #endif
 
+    ctx->discovery_active = 0;
     PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY, "Discovery stopped");
     return PT_OK;
 }
@@ -305,6 +323,12 @@ extern int pt_posix_listen_start(struct pt_context *ctx);
 extern void pt_posix_listen_stop(struct pt_context *ctx);
 extern int pt_posix_connect(struct pt_context *ctx, struct pt_peer *peer);
 extern int pt_posix_disconnect(struct pt_context *ctx, struct pt_peer *peer);
+#elif defined(PT_PLATFORM_MACTCP)
+/* Forward declarations from tcp_listen.c, tcp_connect.c */
+extern int pt_mactcp_listen_start(struct pt_context *ctx);
+extern void pt_mactcp_listen_stop(struct pt_context *ctx);
+extern int pt_mactcp_connect(struct pt_context *ctx, struct pt_peer *peer);
+extern int pt_mactcp_disconnect(struct pt_context *ctx, struct pt_peer *peer);
 #endif
 
 PeerTalk_Error PeerTalk_StartListening(PeerTalk_Context *ctx_public) {
@@ -318,8 +342,11 @@ PeerTalk_Error PeerTalk_StartListening(PeerTalk_Context *ctx_public) {
     if (pt_posix_listen_start(ctx) < 0) {
         return PT_ERR_NETWORK;
     }
+#elif defined(PT_PLATFORM_MACTCP)
+    if (pt_mactcp_listen_start(ctx) < 0) {
+        return PT_ERR_NETWORK;
+    }
 #else
-    /* TODO: Mac platform TCP listening */
     (void)ctx;
     return PT_ERR_NOT_SUPPORTED;
 #endif
@@ -337,8 +364,9 @@ PeerTalk_Error PeerTalk_StopListening(PeerTalk_Context *ctx_public) {
 
 #if defined(PT_PLATFORM_POSIX)
     pt_posix_listen_stop(ctx);
+#elif defined(PT_PLATFORM_MACTCP)
+    pt_mactcp_listen_stop(ctx);
 #else
-    /* TODO: Mac platform TCP listening */
     (void)ctx;
 #endif
 
@@ -365,8 +393,9 @@ PeerTalk_Error PeerTalk_Connect(PeerTalk_Context *ctx_public,
 
 #if defined(PT_PLATFORM_POSIX)
     return pt_posix_connect(ctx, peer);
+#elif defined(PT_PLATFORM_MACTCP)
+    return pt_mactcp_connect(ctx, peer);
 #else
-    /* TODO: Mac platform TCP connect */
     (void)peer;
     return PT_ERR_NOT_SUPPORTED;
 #endif
@@ -391,8 +420,9 @@ PeerTalk_Error PeerTalk_Disconnect(PeerTalk_Context *ctx_public,
 
 #if defined(PT_PLATFORM_POSIX)
     return pt_posix_disconnect(ctx, peer);
+#elif defined(PT_PLATFORM_MACTCP)
+    return pt_mactcp_disconnect(ctx, peer);
 #else
-    /* TODO: Mac platform TCP disconnect */
     (void)peer;
     return PT_ERR_NOT_SUPPORTED;
 #endif

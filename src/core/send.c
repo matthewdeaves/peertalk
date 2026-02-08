@@ -11,6 +11,7 @@
 #include "protocol.h"
 #include "peer.h"
 #include "pt_compat.h"
+#include "direct_buffer.h"
 
 /* ========================================================================
  * Batch Send Operations
@@ -191,6 +192,50 @@ int pt_drain_send_queue(struct pt_context *ctx, struct pt_peer *peer,
 }
 
 /* ========================================================================
+ * Tier 2: Direct Buffer Send
+ * ======================================================================== */
+
+int pt_drain_direct_buffer(struct pt_context *ctx, struct pt_peer *peer,
+                           pt_direct_send_fn send_fn) {
+    pt_direct_buffer *buf;
+    int result;
+
+    if (!ctx || !peer || !send_fn) {
+        return 0;
+    }
+
+    buf = &peer->send_direct;
+
+    /* Check if there's data queued to send */
+    if (!pt_direct_buffer_ready(buf)) {
+        return 0;
+    }
+
+    /* Mark as sending */
+    if (pt_direct_buffer_mark_sending(buf) != 0) {
+        return 0;
+    }
+
+    /* Send via platform callback */
+    result = send_fn(ctx, peer, buf->data, buf->length);
+
+    if (result == 0) {
+        PT_CTX_DEBUG(ctx, PT_LOG_CAT_SEND,
+                    "Tier 2: Sent %u bytes to peer %u",
+                    buf->length, peer->hot.id);
+        pt_direct_buffer_complete(buf);
+        return 1;
+    } else {
+        PT_CTX_ERR(ctx, PT_LOG_CAT_SEND,
+                  "Tier 2: Send failed for peer %u (%u bytes)",
+                  peer->hot.id, buf->length);
+        /* Mark complete even on error to allow retry with new data */
+        pt_direct_buffer_complete(buf);
+        return -1;
+    }
+}
+
+/* ========================================================================
  * Phase 3.5: SendEx API - Priority-based Sending with Coalescing
  * ======================================================================== */
 
@@ -264,7 +309,36 @@ PeerTalk_Error PeerTalk_SendEx(PeerTalk_Context *ctx_pub,
         /* No UDP available, fall through to TCP */
     }
 
-    /* Reliable send via TCP - enqueue message */
+    /* Two-tier routing: large messages go to Tier 2, small to Tier 1 */
+    {
+        uint16_t threshold = ctx->direct_threshold;
+        if (threshold == 0) {
+            threshold = PT_DIRECT_THRESHOLD;
+        }
+
+        if (length > threshold) {
+            /* Tier 2: Direct buffer for large messages */
+            result = pt_direct_buffer_queue(&peer->send_direct, data, length, priority);
+            if (result == PT_ERR_WOULD_BLOCK) {
+                PT_CTX_DEBUG(ctx, PT_LOG_CAT_SEND,
+                            "Tier 2 buffer busy for peer %u, caller should retry",
+                            peer_id);
+                return PT_ERR_WOULD_BLOCK;
+            }
+            if (result != 0) {
+                PT_CTX_WARN(ctx, PT_LOG_CAT_SEND,
+                           "Tier 2 queue failed for peer %u: %d", peer_id, result);
+                return result;
+            }
+
+            PT_CTX_DEBUG(ctx, PT_LOG_CAT_SEND,
+                        "Tier 2: Queued %u bytes to peer %u (pri=%u)",
+                        length, peer_id, priority);
+            return PT_OK;
+        }
+    }
+
+    /* Tier 1: Queue for small messages */
     q = peer->send_queue;
     if (!q) {
         PT_CTX_ERR(ctx, PT_LOG_CAT_SEND,
@@ -273,23 +347,25 @@ PeerTalk_Error PeerTalk_SendEx(PeerTalk_Context *ctx_pub,
     }
 
     /* Check backpressure before queuing */
-    float pressure = pt_queue_pressure(q);
-    if (pressure >= 0.90f) {
-        /* Queue >90% full - reject LOW priority messages */
-        if (priority == PT_PRIORITY_LOW) {
-            PT_CTX_WARN(ctx, PT_LOG_CAT_SEND,
-                       "Queue pressure %.0f%% - rejecting LOW priority message",
-                       pressure * 100.0f);
-            return PT_ERR_BUFFER_FULL;
+    {
+        float pressure = pt_queue_pressure(q);
+        if (pressure >= 0.90f) {
+            /* Queue >90% full - reject LOW priority messages */
+            if (priority == PT_PRIORITY_LOW) {
+                PT_CTX_WARN(ctx, PT_LOG_CAT_SEND,
+                           "Queue pressure %.0f%% - rejecting LOW priority message",
+                           pressure * 100.0f);
+                return PT_ERR_BUFFER_FULL;
+            }
         }
-    }
-    if (pressure >= 0.75f) {
-        /* Queue >75% full - reject NORMAL priority messages */
-        if (priority == PT_PRIORITY_NORMAL) {
-            PT_CTX_WARN(ctx, PT_LOG_CAT_SEND,
-                       "Queue pressure %.0f%% - rejecting NORMAL priority message",
-                       pressure * 100.0f);
-            return PT_ERR_BUFFER_FULL;
+        if (pressure >= 0.75f) {
+            /* Queue >75% full - reject NORMAL priority messages */
+            if (priority == PT_PRIORITY_NORMAL) {
+                PT_CTX_WARN(ctx, PT_LOG_CAT_SEND,
+                           "Queue pressure %.0f%% - rejecting NORMAL priority message",
+                           pressure * 100.0f);
+                return PT_ERR_BUFFER_FULL;
+            }
         }
     }
 

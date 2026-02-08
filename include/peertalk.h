@@ -128,7 +128,7 @@ typedef enum {
     PT_ERR_CONNECTION_CLOSED    = -8,
     PT_ERR_NO_NETWORK           = -13,
     PT_ERR_NOT_CONNECTED        = -18,
-    PT_ERR_WOULD_BLOCK          = -19,
+    PT_ERR_WOULD_BLOCK          = -19,  /* Resource busy, retry later (e.g., Tier 2 buffer in use) */
 
     /* Buffer & Queue Errors */
     PT_ERR_BUFFER_FULL          = -9,
@@ -342,6 +342,12 @@ typedef struct {
  *   - peer_timeout: 15000ms
  *   - auto_accept: 1 (enabled)
  *   - auto_cleanup: 1 (enabled)
+ *   - direct_buffer_size: 4096 (Tier 2 buffer)
+ *
+ * Two-Tier Message Queue:
+ *   Messages <= 256 bytes use Tier 1 (pre-allocated queue slots)
+ *   Messages > 256 bytes use Tier 2 (direct buffer, one per peer)
+ *   If Tier 2 buffer is busy, PeerTalk_Send returns PT_ERR_WOULD_BLOCK
  */
 typedef struct {
     /* Embedded name - eliminates pointer indirection */
@@ -357,6 +363,7 @@ typedef struct {
     uint16_t        send_buffer_size;       /* 0 = auto */
     uint16_t        discovery_interval;     /* ms, 0 = 5000 */
     uint16_t        peer_timeout;           /* ms, 0 = 15000 */
+    uint16_t        direct_buffer_size;     /* Tier 2 buffer size, 0 = 4096 (max 8192) */
 
     /* 8-bit fields grouped together */
     uint8_t         auto_accept;            /* Auto-accept connections, default = 1 */

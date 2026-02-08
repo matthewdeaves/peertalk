@@ -2,6 +2,7 @@
 
 #include "peer.h"
 #include "pt_compat.h"
+#include "direct_buffer.h"
 #include "../../include/peertalk.h"
 
 /* ========================================================================
@@ -293,6 +294,26 @@ struct pt_peer *pt_peer_create(struct pt_context *ctx,
         ctx->peer_names[peer->hot.name_idx][0] = '\0';
     }
 
+    /* Initialize Tier 2 direct buffers for large messages */
+    {
+        uint16_t buf_size = ctx->direct_buffer_size;
+        if (buf_size == 0) {
+            buf_size = PT_DIRECT_DEFAULT_SIZE;
+        }
+        if (pt_direct_buffer_init(&peer->send_direct, buf_size) != 0) {
+            PT_CTX_WARN(ctx, PT_LOG_CAT_MEMORY,
+                       "Failed to allocate send direct buffer for peer %u",
+                       peer->hot.id);
+            /* Non-fatal: peer can still use Tier 1 queue */
+        }
+        if (pt_direct_buffer_init(&peer->recv_direct, buf_size) != 0) {
+            PT_CTX_WARN(ctx, PT_LOG_CAT_MEMORY,
+                       "Failed to allocate recv direct buffer for peer %u",
+                       peer->hot.id);
+            /* Non-fatal: small messages still work */
+        }
+    }
+
     /* Increment peer count */
     ctx->peer_count++;
 
@@ -312,6 +333,10 @@ void pt_peer_destroy(struct pt_context *ctx, struct pt_peer *peer)
     PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT,
                "Peer destroyed: id=%u name='%s'",
                peer->hot.id, ctx->peer_names[peer->hot.name_idx]);
+
+    /* Free Tier 2 direct buffers */
+    pt_direct_buffer_free(&peer->send_direct);
+    pt_direct_buffer_free(&peer->recv_direct);
 
     /* Clear sensitive data */
     peer->hot.magic = 0;

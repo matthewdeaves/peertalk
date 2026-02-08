@@ -1,18 +1,33 @@
 # PeerTalk Retro68 Makefile for Classic Mac
 # Usage: make -f Makefile.retro68 PLATFORM=mactcp
-#    or: make -f Makefile.retro68 PLATFORM=ot
+#    or: make -f Makefile.retro68 PLATFORM=mactcp test
+#    or: make -f Makefile.retro68 unified   (MacTCP + AppleTalk)
+#
+# Produces:
+#   build/mac/libpeertalk_mactcp.a      - MacTCP-only library (TCP/IP)
+#   build/mac/libpeertalk_at.a          - AppleTalk-only library
+#   build/mac/libpeertalk_mactcp_at.a   - Unified library (both transports)
+#   build/mac/test_mactcp.bin           - Test application (BinHex)
+#   build/mac/test_mactcp.dsk           - Test application (disk image)
 
 RETRO68 ?= /opt/Retro68-build/toolchain
+
+# Build output directory
+BUILD_DIR = build/mac
 
 # Select toolchain based on platform
 ifeq ($(PLATFORM),mactcp)
     # 68k for MacTCP (System 6/7)
     PREFIX = $(RETRO68)/bin/m68k-apple-macos-
+    REZ = $(RETRO68)/bin/Rez
+    REZ_TEMPLATES = $(RETRO68)/RIncludes
     CFLAGS = -DPT_PLATFORM_MACTCP
     PLAT_DIR = mactcp
 else ifeq ($(PLATFORM),ot)
     # PowerPC for Open Transport (can also target late 68k)
     PREFIX = $(RETRO68)/bin/powerpc-apple-macos-
+    REZ = $(RETRO68)/bin/Rez
+    REZ_TEMPLATES = $(RETRO68)/RIncludes
     CFLAGS = -DPT_PLATFORM_OT
     PLAT_DIR = opentransport
 else
@@ -25,25 +40,223 @@ AR = $(PREFIX)ar
 CFLAGS += -Wall -Werror -O2 -I include -I src/core
 CFLAGS += -DPT_LOG_ENABLED
 
-# Source files (added incrementally as sessions complete)
-CORE_SRCS = src/core/pt_version.c
-PLAT_SRCS =
+# Core library sources
+CORE_SRCS = \
+    src/core/pt_version.c \
+    src/core/pt_compat.c \
+    src/core/pt_init.c \
+    src/core/protocol.c \
+    src/core/peer.c \
+    src/core/queue.c \
+    src/core/send.c \
+    src/core/direct_buffer.c
 
-SRCS = $(CORE_SRCS) $(PLAT_SRCS)
-OBJS = $(SRCS:.c=.o)
+# PT_Log sources (Mac version)
+LOG_SRCS = src/log/pt_log_mac.c
 
-LIBNAME = libpeertalk_$(PLATFORM).a
+# Platform-specific sources
+ifeq ($(PLATFORM),mactcp)
+PLAT_SRCS = \
+    src/mactcp/platform_mactcp.c \
+    src/mactcp/mactcp_driver.c \
+    src/mactcp/udp_mactcp.c \
+    src/mactcp/discovery_mactcp.c \
+    src/mactcp/tcp_mactcp.c \
+    src/mactcp/tcp_listen.c \
+    src/mactcp/tcp_connect.c \
+    src/mactcp/tcp_io.c \
+    src/mactcp/poll_mactcp.c \
+    src/mactcp/mactcp_multi.c
+endif
 
+# AppleTalk-specific sources (Phase 7 - stubs for now)
+APPLETALK_SRCS = \
+    src/appletalk/at_driver.c \
+    src/appletalk/nbp_appletalk.c \
+    src/appletalk/adsp_appletalk.c \
+    src/appletalk/adsp_listen.c \
+    src/appletalk/adsp_connect.c \
+    src/appletalk/adsp_io.c \
+    src/appletalk/poll_appletalk.c
+
+# All library sources
+LIB_SRCS = $(CORE_SRCS) $(LOG_SRCS) $(PLAT_SRCS)
+LIB_OBJS = $(LIB_SRCS:%.c=$(BUILD_DIR)/%.o)
+
+# Test application sources
+TEST_SRCS = tests/mac/test_mactcp.c
+TEST_OBJS = $(TEST_SRCS:%.c=$(BUILD_DIR)/%.o)
+
+# Performance test sources
+PERF_TESTS = test_latency test_throughput test_stress test_discovery
+
+# Output files
+LIBNAME = $(BUILD_DIR)/libpeertalk_$(PLATFORM).a
+TEST_CODE = $(BUILD_DIR)/test_mactcp.code.bin
+TEST_BIN = $(BUILD_DIR)/test_mactcp.bin
+TEST_DSK = $(BUILD_DIR)/test_mactcp.dsk
+
+# Targets
 all: $(LIBNAME)
 
-$(LIBNAME): $(OBJS)
-	$(AR) rcs $@ $^
+test: $(TEST_BIN) $(TEST_DSK)
 
-%.o: %.c
+# Performance test targets
+perf_tests: $(PERF_TESTS:%=$(BUILD_DIR)/%.bin)
+	@echo "Performance tests built:"
+	@ls -la $(BUILD_DIR)/*.bin 2>/dev/null || true
+
+# Create build directories
+$(BUILD_DIR):
+	@mkdir -p $(BUILD_DIR)
+
+$(BUILD_DIR)/src/core:
+	@mkdir -p $@
+
+$(BUILD_DIR)/src/log:
+	@mkdir -p $@
+
+$(BUILD_DIR)/src/$(PLAT_DIR):
+	@mkdir -p $@
+
+$(BUILD_DIR)/tests/mac:
+	@mkdir -p $@
+
+# Object file compilation
+$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-clean:
-	rm -f $(OBJS) $(LIBNAME)
-	find src -name "*.o" -delete
+# Static library
+$(LIBNAME): $(LIB_OBJS) | $(BUILD_DIR)
+	$(AR) rcs $@ $^
+	@echo "Built: $@"
 
-.PHONY: all clean
+# Test application (code segment)
+$(TEST_CODE): $(TEST_OBJS) $(LIBNAME)
+	$(CC) $(CFLAGS) -o $@ $(TEST_OBJS) -L$(BUILD_DIR) -lpeertalk_$(PLATFORM)
+	@echo "Built: $@"
+
+# Test application (.bin and .dsk via Rez)
+$(TEST_BIN) $(TEST_DSK): $(TEST_CODE)
+	$(REZ) $(REZ_TEMPLATES)/Retro68APPL.r \
+		--copy $(TEST_CODE) \
+		-o $(TEST_BIN) \
+		-t "APPL" -c "PTTK" \
+		--cc $(TEST_DSK)
+	@echo "Built: $(TEST_BIN) (transfer this to Mac)"
+	@echo "Built: $(TEST_DSK) (mount on Mac or use with emulator)"
+
+# ============================================================================
+# Performance Test Applications
+# ============================================================================
+
+# Generic rule for performance test binaries
+$(BUILD_DIR)/test_%.code.bin: $(BUILD_DIR)/tests/mac/test_%.o $(LIBNAME)
+	$(CC) $(CFLAGS) -o $@ $< -L$(BUILD_DIR) -lpeertalk_$(PLATFORM)
+
+$(BUILD_DIR)/test_%.bin: $(BUILD_DIR)/test_%.code.bin
+	$(REZ) $(REZ_TEMPLATES)/Retro68APPL.r \
+		--copy $< \
+		-o $@ \
+		-t "APPL" -c "PTTK" \
+		--cc $(BUILD_DIR)/test_$*.dsk
+	@echo "Built: $@ (transfer to Mac)"
+
+# Individual performance test targets
+test_latency: $(BUILD_DIR)/test_latency.bin
+	@echo "Latency test built: $<"
+
+test_throughput: $(BUILD_DIR)/test_throughput.bin
+	@echo "Throughput test built: $<"
+
+test_stress: $(BUILD_DIR)/test_stress.bin
+	@echo "Stress test built: $<"
+
+test_discovery: $(BUILD_DIR)/test_discovery.bin
+	@echo "Discovery test built: $<"
+
+.PHONY: test_latency test_throughput test_stress test_discovery perf_tests
+
+# Clean
+clean:
+	rm -rf $(BUILD_DIR)
+	find src -name "*.o" -delete
+	find tests -name "*.o" -delete
+
+# ============================================================================
+# Unified Library Builds (MacTCP + AppleTalk)
+# ============================================================================
+
+# Multi-transport compilation flags
+CFLAGS_UNIFIED = -DPT_MULTI_TRANSPORT=1
+
+# Unified library object files (need _unified suffix to avoid conflicts)
+MACTCP_UNIFIED_OBJS = $(PLAT_SRCS:src/mactcp/%.c=$(BUILD_DIR)/src/mactcp/%_unified.o)
+APPLETALK_UNIFIED_OBJS = $(APPLETALK_SRCS:src/appletalk/%.c=$(BUILD_DIR)/src/appletalk/%_unified.o)
+CORE_UNIFIED_OBJS = $(CORE_SRCS:%.c=$(BUILD_DIR)/%_unified.o)
+LOG_UNIFIED_OBJS = $(LOG_SRCS:%.c=$(BUILD_DIR)/%_unified.o)
+
+# Unified library target
+LIB_MACTCP_AT = $(BUILD_DIR)/libpeertalk_mactcp_at.a
+LIB_AT_ONLY = $(BUILD_DIR)/libpeertalk_at.a
+
+# Build unified library (MacTCP + AppleTalk)
+# Note: Requires Phase 7 AppleTalk sources to be implemented
+unified: $(LIB_MACTCP_AT)
+	@echo "Built: $(LIB_MACTCP_AT)"
+	@echo "Note: Link this library to get both TCP/IP and AppleTalk support"
+
+# Unified object file compilation (with PT_MULTI_TRANSPORT=1)
+$(BUILD_DIR)/%_unified.o: %.c | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(CFLAGS_UNIFIED) -c $< -o $@
+
+# AppleTalk-only object file compilation
+$(BUILD_DIR)/src/appletalk/%.o: src/appletalk/%.c | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -DPT_PLATFORM_APPLETALK -c $< -o $@
+
+# Unified library (MacTCP + AppleTalk)
+$(LIB_MACTCP_AT): $(CORE_UNIFIED_OBJS) $(LOG_UNIFIED_OBJS) $(MACTCP_UNIFIED_OBJS) $(APPLETALK_UNIFIED_OBJS)
+	$(AR) rcs $@ $^
+	@echo "Unified library: $@"
+
+# AppleTalk-only library
+$(LIB_AT_ONLY): $(CORE_SRCS:%.c=$(BUILD_DIR)/%.o) $(LOG_SRCS:%.c=$(BUILD_DIR)/%.o) $(APPLETALK_SRCS:src/appletalk/%.c=$(BUILD_DIR)/src/appletalk/%.o)
+	$(AR) rcs $@ $^
+	@echo "AppleTalk library: $@"
+
+# ============================================================================
+# Info and Help
+# ============================================================================
+
+# Show what would be built
+info:
+	@echo "Platform: $(PLATFORM)"
+	@echo "Toolchain: $(PREFIX)"
+	@echo "Rez: $(REZ)"
+	@echo "Library sources: $(LIB_SRCS)"
+	@echo "Test sources: $(TEST_SRCS)"
+	@echo "Output library: $(LIBNAME)"
+	@echo "Output test app: $(TEST_BIN)"
+	@echo "Output disk image: $(TEST_DSK)"
+
+help:
+	@echo "PeerTalk Retro68 Build System"
+	@echo ""
+	@echo "Usage:"
+	@echo "  make -f Makefile.retro68 PLATFORM=mactcp        Build MacTCP library"
+	@echo "  make -f Makefile.retro68 PLATFORM=mactcp test   Build MacTCP test app"
+	@echo "  make -f Makefile.retro68 PLATFORM=mactcp unified Build unified library"
+	@echo ""
+	@echo "Libraries:"
+	@echo "  libpeertalk_mactcp.a      MacTCP-only (TCP/IP)"
+	@echo "  libpeertalk_at.a          AppleTalk-only"
+	@echo "  libpeertalk_mactcp_at.a   Unified (both transports)"
+	@echo ""
+	@echo "Test Applications:"
+	@echo "  test_mactcp.bin           MacTCP test (BinHex format)"
+	@echo "  test_mactcp.dsk           MacTCP test (disk image)"
+
+.PHONY: all test clean info help unified

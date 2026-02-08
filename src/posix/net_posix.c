@@ -11,6 +11,7 @@
 #include "protocol.h"
 #include "peer.h"
 #include "queue.h"
+#include "direct_buffer.h"
 #include "pt_compat.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -2209,12 +2210,41 @@ int pt_posix_poll(struct pt_context *ctx) {
     }
 
 periodic_work:
-    /* Drain send queues for all connected peers (Session 4.3.5) */
+    /* Drain send buffers for all connected peers
+     * Two-tier system: Tier 2 (large messages) first, then Tier 1 (small messages)
+     */
     for (uint8_t i = 0; i < ctx->max_peers; i++) {
         struct pt_peer *peer = &ctx->peers[i];
 
-        if (peer->hot.state == PT_PEER_CONNECTED && peer->send_queue) {
-            /* Try to send one message from the queue using direct API */
+        if (peer->hot.state != PT_PEER_CONNECTED) {
+            continue;
+        }
+
+        /* Tier 2: Send large message from direct buffer first (priority) */
+        if (pt_direct_buffer_ready(&peer->send_direct)) {
+            pt_direct_buffer *buf = &peer->send_direct;
+
+            /* Mark as sending */
+            pt_direct_buffer_mark_sending(buf);
+
+            /* Send via TCP */
+            int result = pt_posix_send(ctx, peer, buf->data, buf->length);
+
+            /* Complete the send (success or fail, buffer becomes available) */
+            pt_direct_buffer_complete(buf);
+
+            if (result == PT_OK) {
+                PT_CTX_DEBUG(ctx, PT_LOG_CAT_SEND,
+                    "Tier 2: Sent %u bytes to peer %u", buf->length, peer->hot.id);
+            } else if (result != PT_ERR_WOULD_BLOCK) {
+                PT_CTX_WARN(ctx, PT_LOG_CAT_SEND,
+                    "Tier 2: Failed to send to peer %u: error %d",
+                    peer->hot.id, result);
+            }
+        }
+
+        /* Tier 1: Drain queue (small messages) */
+        if (peer->send_queue) {
             const void *data;
             uint16_t len;
 
@@ -2222,8 +2252,8 @@ periodic_work:
                 /* Got a message - send it */
                 int result = pt_posix_send(ctx, peer, data, len);
 
-                /* Consume the message from queue */
-                pt_queue_consume(peer->send_queue);
+                /* Commit the pop to remove message from queue */
+                pt_queue_pop_priority_commit(peer->send_queue);
 
                 if (result != PT_OK && result != PT_ERR_WOULD_BLOCK) {
                     /* Send failed - message lost */
