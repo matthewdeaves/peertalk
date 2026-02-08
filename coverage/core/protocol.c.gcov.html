@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2026-02-07 18:11:34</td>
+            <td class="headerValue">2026-02-08 00:24:39</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">9</td>
@@ -114,21 +114,21 @@
 <a name="52"><span class="lineNum">      52 </span>            :  * CRC-16 Functions</a>
 <a name="53"><span class="lineNum">      53 </span>            :  * ======================================================================== */</a>
 <a name="54"><span class="lineNum">      54 </span>            : </a>
-<a name="55"><span class="lineNum">      55 </span><span class="lineCov">      20264 : uint16_t pt_crc16(const uint8_t *data, size_t len)</span></a>
+<a name="55"><span class="lineNum">      55 </span><span class="lineCov">      20266 : uint16_t pt_crc16(const uint8_t *data, size_t len)</span></a>
 <a name="56"><span class="lineNum">      56 </span>            : {</a>
-<a name="57"><span class="lineNum">      57 </span><span class="lineCov">      20264 :     uint16_t crc = 0x0000;</span></a>
-<a name="58"><span class="lineNum">      58 </span><span class="lineCov">     571871 :     while (len--) {</span></a>
-<a name="59"><span class="lineNum">      59 </span><span class="lineCov">     551607 :         crc = (crc &gt;&gt; 8) ^ crc16_table[(crc ^ *data++) &amp; 0xFF];</span></a>
+<a name="57"><span class="lineNum">      57 </span><span class="lineCov">      20266 :     uint16_t crc = 0x0000;</span></a>
+<a name="58"><span class="lineNum">      58 </span><span class="lineCov">     571893 :     while (len--) {</span></a>
+<a name="59"><span class="lineNum">      59 </span><span class="lineCov">     551627 :         crc = (crc &gt;&gt; 8) ^ crc16_table[(crc ^ *data++) &amp; 0xFF];</span></a>
 <a name="60"><span class="lineNum">      60 </span>            :     }</a>
-<a name="61"><span class="lineNum">      61 </span><span class="lineCov">      20264 :     return crc;</span></a>
+<a name="61"><span class="lineNum">      61 </span><span class="lineCov">      20266 :     return crc;</span></a>
 <a name="62"><span class="lineNum">      62 </span>            : }</a>
 <a name="63"><span class="lineNum">      63 </span>            : </a>
-<a name="64"><span class="lineNum">      64 </span><span class="lineCov">         32 : uint16_t pt_crc16_update(uint16_t crc, const uint8_t *data, size_t len)</span></a>
+<a name="64"><span class="lineNum">      64 </span><span class="lineCov">         34 : uint16_t pt_crc16_update(uint16_t crc, const uint8_t *data, size_t len)</span></a>
 <a name="65"><span class="lineNum">      65 </span>            : {</a>
-<a name="66"><span class="lineNum">      66 </span><span class="lineCov">        768 :     while (len--) {</span></a>
-<a name="67"><span class="lineNum">      67 </span><span class="lineCov">        736 :         crc = (crc &gt;&gt; 8) ^ crc16_table[(crc ^ *data++) &amp; 0xFF];</span></a>
+<a name="66"><span class="lineNum">      66 </span><span class="lineCov">       2800 :     while (len--) {</span></a>
+<a name="67"><span class="lineNum">      67 </span><span class="lineCov">       2766 :         crc = (crc &gt;&gt; 8) ^ crc16_table[(crc ^ *data++) &amp; 0xFF];</span></a>
 <a name="68"><span class="lineNum">      68 </span>            :     }</a>
-<a name="69"><span class="lineNum">      69 </span><span class="lineCov">         32 :     return crc;</span></a>
+<a name="69"><span class="lineNum">      69 </span><span class="lineCov">         34 :     return crc;</span></a>
 <a name="70"><span class="lineNum">      70 </span>            : }</a>
 <a name="71"><span class="lineNum">      71 </span>            : </a>
 <a name="72"><span class="lineNum">      72 </span><span class="lineCov">          3 : int pt_crc16_check(const uint8_t *data, size_t len, uint16_t expected)</span></a>
@@ -306,32 +306,32 @@
 <a name="244"><span class="lineNum">     244 </span>            :  * Message Frame Functions</a>
 <a name="245"><span class="lineNum">     245 </span>            :  * ======================================================================== */</a>
 <a name="246"><span class="lineNum">     246 </span>            : </a>
-<a name="247"><span class="lineNum">     247 </span><span class="lineCov">         26 : int pt_message_encode_header(const pt_message_header *hdr, uint8_t *buf)</span></a>
+<a name="247"><span class="lineNum">     247 </span><span class="lineCov">         27 : int pt_message_encode_header(const pt_message_header *hdr, uint8_t *buf)</span></a>
 <a name="248"><span class="lineNum">     248 </span>            : {</a>
 <a name="249"><span class="lineNum">     249 </span>            :     /* Magic: &quot;PTMG&quot; */</a>
-<a name="250"><span class="lineNum">     250 </span><span class="lineCov">         26 :     buf[0] = 'P';</span></a>
-<a name="251"><span class="lineNum">     251 </span><span class="lineCov">         26 :     buf[1] = 'T';</span></a>
-<a name="252"><span class="lineNum">     252 </span><span class="lineCov">         26 :     buf[2] = 'M';</span></a>
-<a name="253"><span class="lineNum">     253 </span><span class="lineCov">         26 :     buf[3] = 'G';</span></a>
+<a name="250"><span class="lineNum">     250 </span><span class="lineCov">         27 :     buf[0] = 'P';</span></a>
+<a name="251"><span class="lineNum">     251 </span><span class="lineCov">         27 :     buf[1] = 'T';</span></a>
+<a name="252"><span class="lineNum">     252 </span><span class="lineCov">         27 :     buf[2] = 'M';</span></a>
+<a name="253"><span class="lineNum">     253 </span><span class="lineCov">         27 :     buf[3] = 'G';</span></a>
 <a name="254"><span class="lineNum">     254 </span>            : </a>
 <a name="255"><span class="lineNum">     255 </span>            :     /* Version, Type, Flags, Sequence */</a>
-<a name="256"><span class="lineNum">     256 </span><span class="lineCov">         26 :     buf[4] = hdr-&gt;version;</span></a>
-<a name="257"><span class="lineNum">     257 </span><span class="lineCov">         26 :     buf[5] = hdr-&gt;type;</span></a>
-<a name="258"><span class="lineNum">     258 </span><span class="lineCov">         26 :     buf[6] = hdr-&gt;flags;</span></a>
-<a name="259"><span class="lineNum">     259 </span><span class="lineCov">         26 :     buf[7] = hdr-&gt;sequence;</span></a>
+<a name="256"><span class="lineNum">     256 </span><span class="lineCov">         27 :     buf[4] = hdr-&gt;version;</span></a>
+<a name="257"><span class="lineNum">     257 </span><span class="lineCov">         27 :     buf[5] = hdr-&gt;type;</span></a>
+<a name="258"><span class="lineNum">     258 </span><span class="lineCov">         27 :     buf[6] = hdr-&gt;flags;</span></a>
+<a name="259"><span class="lineNum">     259 </span><span class="lineCov">         27 :     buf[7] = hdr-&gt;sequence;</span></a>
 <a name="260"><span class="lineNum">     260 </span>            : </a>
 <a name="261"><span class="lineNum">     261 </span>            :     /* Payload Length (big-endian) */</a>
-<a name="262"><span class="lineNum">     262 </span><span class="lineCov">         26 :     buf[8] = (hdr-&gt;payload_len &gt;&gt; 8) &amp; 0xFF;</span></a>
-<a name="263"><span class="lineNum">     263 </span><span class="lineCov">         26 :     buf[9] = hdr-&gt;payload_len &amp; 0xFF;</span></a>
+<a name="262"><span class="lineNum">     262 </span><span class="lineCov">         27 :     buf[8] = (hdr-&gt;payload_len &gt;&gt; 8) &amp; 0xFF;</span></a>
+<a name="263"><span class="lineNum">     263 </span><span class="lineCov">         27 :     buf[9] = hdr-&gt;payload_len &amp; 0xFF;</span></a>
 <a name="264"><span class="lineNum">     264 </span>            : </a>
-<a name="265"><span class="lineNum">     265 </span><span class="lineCov">         26 :     return PT_MESSAGE_HEADER_SIZE;</span></a>
+<a name="265"><span class="lineNum">     265 </span><span class="lineCov">         27 :     return PT_MESSAGE_HEADER_SIZE;</span></a>
 <a name="266"><span class="lineNum">     266 </span>            : }</a>
 <a name="267"><span class="lineNum">     267 </span>            : </a>
-<a name="268"><span class="lineNum">     268 </span><span class="lineCov">       1046 : int pt_message_decode_header(struct pt_context *ctx, const uint8_t *buf,</span></a>
+<a name="268"><span class="lineNum">     268 </span><span class="lineCov">       1047 : int pt_message_decode_header(struct pt_context *ctx, const uint8_t *buf,</span></a>
 <a name="269"><span class="lineNum">     269 </span>            :                              size_t len, pt_message_header *hdr)</a>
 <a name="270"><span class="lineNum">     270 </span>            : {</a>
 <a name="271"><span class="lineNum">     271 </span>            :     /* Minimum size check */</a>
-<a name="272"><span class="lineNum">     272 </span><span class="lineCov">       1046 :     if (len &lt; PT_MESSAGE_HEADER_SIZE) {</span></a>
+<a name="272"><span class="lineNum">     272 </span><span class="lineCov">       1047 :     if (len &lt; PT_MESSAGE_HEADER_SIZE) {</span></a>
 <a name="273"><span class="lineNum">     273 </span><span class="lineCov">        283 :         if (ctx) {</span></a>
 <a name="274"><span class="lineNum">     274 </span><span class="lineNoCov">          0 :             PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="275"><span class="lineNum">     275 </span>            :                     &quot;Message header too short: %zu bytes (min %d)&quot;,</a>
@@ -341,7 +341,7 @@
 <a name="279"><span class="lineNum">     279 </span>            :     }</a>
 <a name="280"><span class="lineNum">     280 </span>            : </a>
 <a name="281"><span class="lineNum">     281 </span>            :     /* Magic validation */</a>
-<a name="282"><span class="lineNum">     282 </span><span class="lineCov">        763 :     if (buf[0] != 'P' || buf[1] != 'T' || buf[2] != 'M' || buf[3] != 'G') {</span></a>
+<a name="282"><span class="lineNum">     282 </span><span class="lineCov">        764 :     if (buf[0] != 'P' || buf[1] != 'T' || buf[2] != 'M' || buf[3] != 'G') {</span></a>
 <a name="283"><span class="lineNum">     283 </span><span class="lineCov">        734 :         if (ctx) {</span></a>
 <a name="284"><span class="lineNum">     284 </span><span class="lineCov">          1 :             PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="285"><span class="lineNum">     285 </span>            :                     &quot;Invalid message magic: 0x%02X%02X%02X%02X&quot;,</a>
@@ -351,8 +351,8 @@
 <a name="289"><span class="lineNum">     289 </span>            :     }</a>
 <a name="290"><span class="lineNum">     290 </span>            : </a>
 <a name="291"><span class="lineNum">     291 </span>            :     /* Extract version */</a>
-<a name="292"><span class="lineNum">     292 </span><span class="lineCov">         29 :     hdr-&gt;version = buf[4];</span></a>
-<a name="293"><span class="lineNum">     293 </span><span class="lineCov">         29 :     if (hdr-&gt;version != PT_PROTOCOL_VERSION) {</span></a>
+<a name="292"><span class="lineNum">     292 </span><span class="lineCov">         30 :     hdr-&gt;version = buf[4];</span></a>
+<a name="293"><span class="lineNum">     293 </span><span class="lineCov">         30 :     if (hdr-&gt;version != PT_PROTOCOL_VERSION) {</span></a>
 <a name="294"><span class="lineNum">     294 </span><span class="lineCov">          1 :         if (ctx) {</span></a>
 <a name="295"><span class="lineNum">     295 </span><span class="lineNoCov">          0 :             PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="296"><span class="lineNum">     296 </span>            :                     &quot;Protocol version mismatch: got %u, expected %u&quot;,</a>
@@ -362,8 +362,8 @@
 <a name="300"><span class="lineNum">     300 </span>            :     }</a>
 <a name="301"><span class="lineNum">     301 </span>            : </a>
 <a name="302"><span class="lineNum">     302 </span>            :     /* Extract type */</a>
-<a name="303"><span class="lineNum">     303 </span><span class="lineCov">         28 :     hdr-&gt;type = buf[5];</span></a>
-<a name="304"><span class="lineNum">     304 </span><span class="lineCov">         28 :     if (hdr-&gt;type &lt; PT_MSG_TYPE_DATA || hdr-&gt;type &gt; PT_MSG_TYPE_REJECT) {</span></a>
+<a name="303"><span class="lineNum">     303 </span><span class="lineCov">         29 :     hdr-&gt;type = buf[5];</span></a>
+<a name="304"><span class="lineNum">     304 </span><span class="lineCov">         29 :     if (hdr-&gt;type &lt; PT_MSG_TYPE_DATA || hdr-&gt;type &gt; PT_MSG_TYPE_REJECT) {</span></a>
 <a name="305"><span class="lineNum">     305 </span><span class="lineCov">          7 :         if (ctx) {</span></a>
 <a name="306"><span class="lineNum">     306 </span><span class="lineNoCov">          0 :             PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="307"><span class="lineNum">     307 </span>            :                     &quot;Invalid message type: 0x%02X&quot;, hdr-&gt;type);</a>
@@ -372,19 +372,19 @@
 <a name="310"><span class="lineNum">     310 </span>            :     }</a>
 <a name="311"><span class="lineNum">     311 </span>            : </a>
 <a name="312"><span class="lineNum">     312 </span>            :     /* Extract flags, sequence */</a>
-<a name="313"><span class="lineNum">     313 </span><span class="lineCov">         21 :     hdr-&gt;flags = buf[6];</span></a>
-<a name="314"><span class="lineNum">     314 </span><span class="lineCov">         21 :     hdr-&gt;sequence = buf[7];</span></a>
+<a name="313"><span class="lineNum">     313 </span><span class="lineCov">         22 :     hdr-&gt;flags = buf[6];</span></a>
+<a name="314"><span class="lineNum">     314 </span><span class="lineCov">         22 :     hdr-&gt;sequence = buf[7];</span></a>
 <a name="315"><span class="lineNum">     315 </span>            : </a>
 <a name="316"><span class="lineNum">     316 </span>            :     /* Extract payload length (big-endian) */</a>
-<a name="317"><span class="lineNum">     317 </span><span class="lineCov">         21 :     hdr-&gt;payload_len = ((uint16_t)buf[8] &lt;&lt; 8) | buf[9];</span></a>
+<a name="317"><span class="lineNum">     317 </span><span class="lineCov">         22 :     hdr-&gt;payload_len = ((uint16_t)buf[8] &lt;&lt; 8) | buf[9];</span></a>
 <a name="318"><span class="lineNum">     318 </span>            : </a>
-<a name="319"><span class="lineNum">     319 </span><span class="lineCov">         21 :     if (ctx) {</span></a>
-<a name="320"><span class="lineNum">     320 </span><span class="lineCov">         18 :         PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
+<a name="319"><span class="lineNum">     319 </span><span class="lineCov">         22 :     if (ctx) {</span></a>
+<a name="320"><span class="lineNum">     320 </span><span class="lineCov">         19 :         PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="321"><span class="lineNum">     321 </span>            :                      &quot;Message header decoded: type=%u, seq=%u, len=%u&quot;,</a>
 <a name="322"><span class="lineNum">     322 </span>            :                      hdr-&gt;type, hdr-&gt;sequence, hdr-&gt;payload_len);</a>
 <a name="323"><span class="lineNum">     323 </span>            :     }</a>
 <a name="324"><span class="lineNum">     324 </span>            : </a>
-<a name="325"><span class="lineNum">     325 </span><span class="lineCov">         21 :     return 0;</span></a>
+<a name="325"><span class="lineNum">     325 </span><span class="lineCov">         22 :     return 0;</span></a>
 <a name="326"><span class="lineNum">     326 </span>            : }</a>
 <a name="327"><span class="lineNum">     327 </span>            : </a>
 <a name="328"><span class="lineNum">     328 </span>            : /* ========================================================================</a>

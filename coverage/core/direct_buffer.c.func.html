@@ -4,7 +4,7 @@
 
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  <title>LCOV - coverage.info - core/send.c - functions</title>
+  <title>LCOV - coverage.info - core/direct_buffer.c - functions</title>
   <link rel="stylesheet" type="text/css" href="../gcov.css">
 </head>
 
@@ -19,7 +19,7 @@
         <table cellpadding=1 border=0 width="100%">
           <tr>
             <td width="10%" class="headerItem">Current view:</td>
-            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">core</a> - send.c<span style="font-size: 80%;"> (<a href="send.c.gcov.html">source</a> / functions)</span></td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">core</a> - direct_buffer.c<span style="font-size: 80%;"> (<a href="direct_buffer.c.gcov.html">source</a> / functions)</span></td>
             <td width="5%"></td>
             <td width="15%"></td>
             <td width="10%" class="headerCovTableHead">Hit</td>
@@ -31,18 +31,18 @@
             <td class="headerValue">coverage.info</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntry">90</td>
-            <td class="headerCovTableEntry">121</td>
-            <td class="headerCovTableEntryLo">74.4 %</td>
+            <td class="headerCovTableEntry">61</td>
+            <td class="headerCovTableEntry">65</td>
+            <td class="headerCovTableEntryHi">93.8 %</td>
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
             <td class="headerValue">2026-02-08 00:24:39</td>
             <td></td>
             <td class="headerItem">Functions:</td>
-            <td class="headerCovTableEntry">6</td>
-            <td class="headerCovTableEntry">7</td>
-            <td class="headerCovTableEntryMed">85.7 %</td>
+            <td class="headerCovTableEntry">8</td>
+            <td class="headerCovTableEntry">8</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
           </tr>
           <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
         </table>
@@ -57,35 +57,39 @@
     <tr><td><br></td></tr>
     <tr>
       <td width="80%" class="tableHead">Function Name <span class="tableHeadSort"><img src="../glass.png" width=10 height=14 alt="Sort by function name" title="Sort by function name" border=0></span></td>
-      <td width="20%" class="tableHead">Hit count <span class="tableHeadSort"><a href="send.c.func-sort-c.html"><img src="../updown.png" width=10 height=14 alt="Sort by hit count" title="Sort by hit count" border=0></a></span></td>
+      <td width="20%" class="tableHead">Hit count <span class="tableHeadSort"><a href="direct_buffer.c.func-sort-c.html"><img src="../updown.png" width=10 height=14 alt="Sort by hit count" title="Sort by hit count" border=0></a></span></td>
     </tr>
     <tr>
-              <td class="coverFn"><a href="send.c.gcov.html#409">PeerTalk_Send</a></td>
-              <td class="coverFnHi">227</td>
+              <td class="coverFn"><a href="direct_buffer.c.gcov.html#125">pt_direct_buffer_available</a></td>
+              <td class="coverFnHi">4</td>
             </tr>
     <tr>
-              <td class="coverFn"><a href="send.c.gcov.html#261">PeerTalk_SendEx</a></td>
-              <td class="coverFnHi">268</td>
+              <td class="coverFn"><a href="direct_buffer.c.gcov.html#106">pt_direct_buffer_complete</a></td>
+              <td class="coverFnHi">79</td>
             </tr>
     <tr>
-              <td class="coverFn"><a href="send.c.gcov.html#40">pt_batch_add</a></td>
-              <td class="coverFnHi">53</td>
+              <td class="coverFn"><a href="direct_buffer.c.gcov.html#44">pt_direct_buffer_free</a></td>
+              <td class="coverFnHi">17</td>
             </tr>
     <tr>
-              <td class="coverFn"><a href="send.c.gcov.html#35">pt_batch_init</a></td>
-              <td class="coverFnHi">10</td>
+              <td class="coverFn"><a href="direct_buffer.c.gcov.html#14">pt_direct_buffer_init</a></td>
+              <td class="coverFnHi">130</td>
             </tr>
     <tr>
-              <td class="coverFn"><a href="send.c.gcov.html#70">pt_batch_prepare</a></td>
+              <td class="coverFn"><a href="direct_buffer.c.gcov.html#92">pt_direct_buffer_mark_sending</a></td>
+              <td class="coverFnHi">80</td>
+            </tr>
+    <tr>
+              <td class="coverFn"><a href="direct_buffer.c.gcov.html#64">pt_direct_buffer_queue</a></td>
+              <td class="coverFnHi">89</td>
+            </tr>
+    <tr>
+              <td class="coverFn"><a href="direct_buffer.c.gcov.html#117">pt_direct_buffer_ready</a></td>
+              <td class="coverFnHi">762</td>
+            </tr>
+    <tr>
+              <td class="coverFn"><a href="direct_buffer.c.gcov.html#137">pt_direct_buffer_receive</a></td>
               <td class="coverFnHi">2</td>
-            </tr>
-    <tr>
-              <td class="coverFn"><a href="send.c.gcov.html#196">pt_drain_direct_buffer</a></td>
-              <td class="coverFnLo">0</td>
-            </tr>
-    <tr>
-              <td class="coverFn"><a href="send.c.gcov.html#131">pt_drain_send_queue</a></td>
-              <td class="coverFnHi">3</td>
             </tr>
   </table>
   <br>
