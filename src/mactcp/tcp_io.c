@@ -17,6 +17,7 @@
 #include "mactcp_defs.h"
 #include "protocol.h"
 #include "peer.h"
+#include "queue.h"
 #include "pt_internal.h"
 #include "pt_compat.h"
 
@@ -734,7 +735,17 @@ int pt_mactcp_send_capability(struct pt_context *ctx, struct pt_peer *peer)
     caps.max_message_size = ctx->local_max_message;
     caps.preferred_chunk = ctx->local_preferred_chunk;
     caps.capability_flags = 0;
-    caps.buffer_pressure = 0;
+
+    /* Calculate current buffer pressure from recv queue */
+    if (peer->recv_queue) {
+        caps.buffer_pressure = pt_queue_pressure(peer->recv_queue);
+    } else {
+        caps.buffer_pressure = 0;
+    }
+
+    /* Track what we reported for flow control threshold detection */
+    peer->cold.caps.last_reported_pressure = caps.buffer_pressure;
+    peer->cold.caps.pressure_update_pending = 0;
 
     /* Encode TLV payload */
     payload_len = pt_capability_encode(&caps, payload_buf, sizeof(payload_buf));

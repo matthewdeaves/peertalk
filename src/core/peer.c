@@ -1,6 +1,7 @@
 /* peer.c - Peer management implementation */
 
 #include "peer.h"
+#include "queue.h"
 #include "pt_compat.h"
 #include "direct_buffer.h"
 #include "protocol.h"
@@ -545,4 +546,105 @@ void pt_peer_get_info(struct pt_peer *peer, PeerTalk_PeerInfo *info)
 
     /* Update connected field based on current state */
     info->connected = (peer->hot.state == PT_PEER_STATE_CONNECTED) ? 1 : 0;
+}
+
+/* ========================================================================
+ * Flow Control
+ * ======================================================================== */
+
+/**
+ * Get the pressure threshold level (0, 25, 50, 75, 100) for a pressure value
+ */
+static uint8_t pt_pressure_level(uint8_t pressure)
+{
+    if (pressure >= 75) return 75;
+    if (pressure >= 50) return 50;
+    if (pressure >= 25) return 25;
+    return 0;
+}
+
+int pt_peer_check_pressure_update(struct pt_context *ctx, struct pt_peer *peer)
+{
+    uint8_t current_pressure;
+    uint8_t current_level;
+    uint8_t last_level;
+
+    if (!ctx || !peer || peer->hot.magic != PT_PEER_MAGIC) {
+        return 0;
+    }
+
+    /* Only check for connected peers */
+    if (peer->hot.state != PT_PEER_STATE_CONNECTED) {
+        return 0;
+    }
+
+    /* Get current recv queue pressure */
+    if (peer->recv_queue) {
+        current_pressure = pt_queue_pressure(peer->recv_queue);
+    } else {
+        current_pressure = 0;
+    }
+
+    /* Quantize to threshold levels for hysteresis */
+    current_level = pt_pressure_level(current_pressure);
+    last_level = pt_pressure_level(peer->cold.caps.last_reported_pressure);
+
+    /* Check if we crossed a threshold */
+    if (current_level != last_level) {
+        PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+            "Pressure threshold crossed for peer %u: %u%% -> %u%% (level %u -> %u)",
+            peer->hot.id, peer->cold.caps.last_reported_pressure,
+            current_pressure, last_level, current_level);
+
+        /* Mark update pending - poll loop will send capability message */
+        peer->cold.caps.pressure_update_pending = 1;
+        peer->cold.caps.last_reported_pressure = current_pressure;
+
+        return 1;
+    }
+
+    return 0;
+}
+
+int pt_peer_should_throttle(struct pt_peer *peer, uint8_t priority)
+{
+    uint8_t peer_pressure;
+
+    if (!peer || peer->hot.magic != PT_PEER_MAGIC) {
+        return 0;  /* Don't throttle on invalid peer */
+    }
+
+    /* Get peer's reported buffer pressure */
+    peer_pressure = peer->cold.caps.buffer_pressure;
+
+    /* Decision thresholds based on peer's reported pressure:
+     *
+     * 0-50:  No throttle (send normally)
+     * 50-75: Light throttle (skip LOW priority)
+     * 75-90: Heavy throttle (skip NORMAL and LOW)
+     * 90+:   Blocking (only CRITICAL passes)
+     *
+     * This implements sender-side flow control based on receiver feedback.
+     * The receiver reports its queue pressure via capability updates,
+     * and we back off accordingly to prevent overwhelming it.
+     */
+
+    if (peer_pressure >= PT_PRESSURE_CRITICAL) {
+        /* Blocking: only CRITICAL priority passes */
+        if (priority < PT_PRIORITY_CRITICAL) {
+            return 1;  /* Throttle */
+        }
+    } else if (peer_pressure >= PT_PRESSURE_HIGH) {
+        /* Heavy throttle: skip NORMAL and LOW */
+        if (priority < PT_PRIORITY_HIGH) {
+            return 1;  /* Throttle */
+        }
+    } else if (peer_pressure >= PT_PRESSURE_MEDIUM) {
+        /* Light throttle: skip LOW priority */
+        if (priority < PT_PRIORITY_NORMAL) {
+            return 1;  /* Throttle */
+        }
+    }
+
+    return 0;  /* Don't throttle - send normally */
 }

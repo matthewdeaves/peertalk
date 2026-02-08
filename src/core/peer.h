@@ -229,4 +229,48 @@ int pt_peer_check_canaries(struct pt_context *ctx, struct pt_peer *peer);
  */
 void pt_peer_get_info(struct pt_peer *peer, PeerTalk_PeerInfo *info);
 
+/* ========================================================================
+ * Flow Control
+ * ======================================================================== */
+
+/* Pressure change threshold for sending updates.
+ * When local pressure crosses these thresholds, we send a capability update
+ * to inform the peer. This avoids sending updates on minor fluctuations.
+ */
+#define PT_PRESSURE_UPDATE_THRESHOLD 25  /* Report when crossing 25%, 50%, 75% */
+
+/* Check if pressure update needed for a peer
+ *
+ * Compares current recv queue pressure against last_reported_pressure.
+ * If pressure crossed a threshold (25%, 50%, 75%), marks update pending.
+ *
+ * Call this from poll loop after processing received data.
+ *
+ * Args:
+ *   ctx  - Context
+ *   peer - Peer to check
+ *
+ * Returns: 1 if update needed, 0 if not
+ */
+int pt_peer_check_pressure_update(struct pt_context *ctx, struct pt_peer *peer);
+
+/* Get pressure-based throttle decision
+ *
+ * Checks peer's reported buffer_pressure and returns whether sending
+ * should be throttled. Used in send path for flow control.
+ *
+ * Decision thresholds:
+ *   0-50:  No throttle (send normally)
+ *   50-75: Light throttle (skip LOW priority)
+ *   75-90: Heavy throttle (skip NORMAL and LOW)
+ *   90+:   Blocking (only CRITICAL passes)
+ *
+ * Args:
+ *   peer     - Peer to check
+ *   priority - Message priority (PT_PRIORITY_*)
+ *
+ * Returns: 1 if should throttle (skip send), 0 if should send
+ */
+int pt_peer_should_throttle(struct pt_peer *peer, uint8_t priority);
+
 #endif /* PT_PEER_H */

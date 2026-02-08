@@ -1401,8 +1401,18 @@ int pt_posix_send_capability(struct pt_context *ctx, struct pt_peer *peer) {
     caps.max_message_size = ctx->local_max_message;
     caps.preferred_chunk = ctx->local_preferred_chunk;
     caps.capability_flags = ctx->local_capability_flags;
-    caps.buffer_pressure = 0;  /* POSIX has minimal constraints */
+
+    /* Calculate current buffer pressure from recv queue */
+    if (peer->recv_queue) {
+        caps.buffer_pressure = pt_queue_pressure(peer->recv_queue);
+    } else {
+        caps.buffer_pressure = 0;  /* No recv queue = no pressure */
+    }
     caps.reserved = 0;
+
+    /* Track what we reported for flow control threshold detection */
+    peer->cold.caps.last_reported_pressure = caps.buffer_pressure;
+    peer->cold.caps.pressure_update_pending = 0;
 
     /* Encode capability TLV payload */
     payload_len = pt_capability_encode(&caps, payload_buf, sizeof(payload_buf));
@@ -2507,6 +2517,19 @@ periodic_work:
                         peer->hot.id, result);
                 }
             }
+        }
+
+        /* Flow control: Check for pressure updates to send
+         *
+         * When our recv queue pressure crosses a threshold (25%, 50%, 75%),
+         * we need to inform the peer so they can throttle their sends.
+         * This implements receiver-driven flow control - SDK handles it
+         * transparently so app developers don't need to manage it.
+         */
+        if (peer->cold.caps.pressure_update_pending ||
+            pt_peer_check_pressure_update(ctx, peer)) {
+            /* Send updated capabilities with new pressure value */
+            pt_posix_send_capability(ctx, peer);
         }
     }
 

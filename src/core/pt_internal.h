@@ -81,13 +81,20 @@ extern pt_platform_ops pt_appletalk_ops;
  *
  * Stored in pt_peer_cold (rarely accessed after negotiation).
  * Effective max is cached in pt_peer_hot for fast send-path access.
+ *
+ * Flow control: We track last_reported_pressure to detect when our local
+ * pressure has changed significantly (crosses PT_PRESSURE_* thresholds).
+ * When it changes, we send a capability update to inform the peer.
+ * The peer stores our pressure in buffer_pressure and throttles sends.
  */
 typedef struct {
     uint16_t max_message_size;   /* Peer's max (256-8192), 0=unknown */
     uint16_t preferred_chunk;    /* Optimal chunk size */
     uint16_t capability_flags;   /* PT_CAPFLAG_* */
-    uint8_t  buffer_pressure;    /* 0-100 constraint level */
+    uint8_t  buffer_pressure;    /* 0-100: peer's reported constraint level */
     uint8_t  caps_exchanged;     /* 1 after exchange complete */
+    uint8_t  last_reported_pressure; /* 0-100: what we last told peer */
+    uint8_t  pressure_update_pending; /* 1 if need to send pressure update */
 } pt_peer_caps;
 
 /* ========================================================================== */

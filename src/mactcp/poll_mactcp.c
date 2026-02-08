@@ -297,6 +297,19 @@ static void pt_mactcp_poll_connected(struct pt_context *ctx,
         peer->hot.connection = NULL;
         pt_peer_destroy(ctx, peer);
         pt_mactcp_tcp_release(ctx, idx);
+        return;  /* Peer destroyed, can't continue */
+    }
+
+    /* Flow control: Check for pressure updates to send
+     *
+     * When our recv queue pressure crosses a threshold (25%, 50%, 75%),
+     * inform the peer so they can throttle their sends.
+     * This is critical on constrained Mac hardware.
+     */
+    if (peer->cold.caps.pressure_update_pending ||
+        pt_peer_check_pressure_update(ctx, peer)) {
+        /* Send updated capabilities with new pressure value */
+        pt_mactcp_send_capability(ctx, peer);
     }
 
     (void)cold;  /* Unused in this handler */

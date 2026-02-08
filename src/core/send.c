@@ -363,6 +363,23 @@ PeerTalk_Error PeerTalk_SendEx(PeerTalk_Context *ctx_pub,
     }
 
     /* ================================================================
+     * FLOW CONTROL: Check peer's reported buffer pressure
+     *
+     * The peer reports its receive queue pressure via capability updates.
+     * When peer reports high pressure, we throttle outgoing sends based
+     * on message priority. This prevents overwhelming slow receivers.
+     *
+     * The throttling is transparent to the app - we return WOULD_BLOCK
+     * so they can retry later. The SDK handles all the complexity.
+     * ================================================================ */
+    if (pt_peer_should_throttle(peer, priority)) {
+        PT_CTX_DEBUG(ctx, PT_LOG_CAT_SEND,
+                    "Throttled: peer %u pressure=%u%%, priority=%u",
+                    peer_id, peer->cold.caps.buffer_pressure, priority);
+        return PT_ERR_WOULD_BLOCK;
+    }
+
+    /* ================================================================
      * AUTOMATIC FRAGMENTATION
      *
      * If message exceeds peer's negotiated max and fragmentation is enabled,

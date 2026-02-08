@@ -927,6 +927,94 @@ cleanup:
 }
 
 /* ========================================================================
+ * Flow Control Test
+ *
+ * Tests that:
+ * 1. pt_peer_should_throttle() returns correct decisions based on pressure
+ * 2. High peer pressure blocks low-priority sends
+ * 3. Critical priority bypasses throttling
+ * ======================================================================== */
+
+static void test_flow_control(void) {
+    struct pt_peer peer;
+    TEST("test_flow_control");
+
+    /* Initialize minimal peer structure for testing */
+    memset(&peer, 0, sizeof(peer));
+    peer.hot.magic = PT_PEER_MAGIC;
+
+    /* Test 1: No pressure - no throttling at any priority */
+    peer.cold.caps.buffer_pressure = 0;
+    if (pt_peer_should_throttle(&peer, PT_PRIORITY_LOW)) {
+        FAIL("Throttled LOW at 0%% pressure");
+        return;
+    }
+    if (pt_peer_should_throttle(&peer, PT_PRIORITY_NORMAL)) {
+        FAIL("Throttled NORMAL at 0%% pressure");
+        return;
+    }
+
+    /* Test 2: Medium pressure (50%) - throttle LOW only */
+    peer.cold.caps.buffer_pressure = 50;
+    if (!pt_peer_should_throttle(&peer, PT_PRIORITY_LOW)) {
+        FAIL("Should throttle LOW at 50%% pressure");
+        return;
+    }
+    if (pt_peer_should_throttle(&peer, PT_PRIORITY_NORMAL)) {
+        FAIL("Should not throttle NORMAL at 50%% pressure");
+        return;
+    }
+    if (pt_peer_should_throttle(&peer, PT_PRIORITY_HIGH)) {
+        FAIL("Should not throttle HIGH at 50%% pressure");
+        return;
+    }
+
+    /* Test 3: High pressure (75%) - throttle LOW and NORMAL */
+    peer.cold.caps.buffer_pressure = 75;
+    if (!pt_peer_should_throttle(&peer, PT_PRIORITY_LOW)) {
+        FAIL("Should throttle LOW at 75%% pressure");
+        return;
+    }
+    if (!pt_peer_should_throttle(&peer, PT_PRIORITY_NORMAL)) {
+        FAIL("Should throttle NORMAL at 75%% pressure");
+        return;
+    }
+    if (pt_peer_should_throttle(&peer, PT_PRIORITY_HIGH)) {
+        FAIL("Should not throttle HIGH at 75%% pressure");
+        return;
+    }
+
+    /* Test 4: Critical pressure (90%) - only CRITICAL passes */
+    peer.cold.caps.buffer_pressure = 90;
+    if (!pt_peer_should_throttle(&peer, PT_PRIORITY_LOW)) {
+        FAIL("Should throttle LOW at 90%% pressure");
+        return;
+    }
+    if (!pt_peer_should_throttle(&peer, PT_PRIORITY_NORMAL)) {
+        FAIL("Should throttle NORMAL at 90%% pressure");
+        return;
+    }
+    if (!pt_peer_should_throttle(&peer, PT_PRIORITY_HIGH)) {
+        FAIL("Should throttle HIGH at 90%% pressure");
+        return;
+    }
+    if (pt_peer_should_throttle(&peer, PT_PRIORITY_CRITICAL)) {
+        FAIL("Should NOT throttle CRITICAL at 90%% pressure");
+        return;
+    }
+
+    /* Test 5: Full pressure (100%) - still CRITICAL passes */
+    peer.cold.caps.buffer_pressure = 100;
+    if (pt_peer_should_throttle(&peer, PT_PRIORITY_CRITICAL)) {
+        FAIL("Should NOT throttle CRITICAL at 100%% pressure");
+        return;
+    }
+
+    printf("  (throttling decisions correct for all pressure levels) ");
+    PASS();
+}
+
+/* ========================================================================
  * Main
  * ======================================================================== */
 
@@ -945,6 +1033,9 @@ int main(void) {
     /* End-to-end tests */
     test_e2e_large_message();
     test_fragmentation_reassembly();
+
+    /* Flow control tests */
+    test_flow_control();
 
     /* Summary */
     printf("\n=== Results ===\n");
