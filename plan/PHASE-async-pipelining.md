@@ -364,7 +364,7 @@ int pt_mactcp_tcp_send_async(struct pt_context *ctx, struct pt_peer *peer,
 ```
 
 **Acceptance Criteria:**
-- [ ] Async send compiles and links
+- [x] Async send compiles and links
 - [ ] Basic send works (verified via packet capture)
 - [ ] Multiple sends can be issued without waiting
 
@@ -437,9 +437,9 @@ static void pt_mactcp_poll_connected(struct pt_context *ctx, struct pt_peer *pee
 ```
 
 **Acceptance Criteria:**
-- [ ] Completions detected correctly (ioResult transitions from 1 to 0 or negative)
-- [ ] Errors logged with slot index and error code
-- [ ] Slot freed for reuse after completion
+- [x] Completions detected correctly (ioResult transitions from 1 to 0 or negative)
+- [x] Errors logged with slot index and error code
+- [x] Slot freed for reuse after completion
 - [ ] Verify with connectionDoesntExist (-23008) error handling
 - [ ] Test slot->ioResult caching (avoid pb-> dereference in tight loop)
 

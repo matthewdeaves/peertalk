@@ -264,32 +264,67 @@ static unsigned long mactcp_get_max_block(void) {
 }
 
 /* ========================================================================== */
-/* Async Send Pipeline (Session 3)                                            */
+/* Async Send Pipeline (Session 3 & 4)                                        */
 /* ========================================================================== */
 
-/* Forward declaration for core pipeline functions */
+/* Forward declarations for core pipeline functions */
 extern int pt_pipeline_init(struct pt_context *ctx, struct pt_peer *peer);
 extern void pt_pipeline_cleanup(struct pt_context *ctx, struct pt_peer *peer);
+extern pt_send_slot *pt_pipeline_get_slot(struct pt_context *ctx, struct pt_peer *peer);
+
+/* Forward declaration for async send (implemented in tcp_io.c) */
+extern int pt_mactcp_tcp_send_async(struct pt_context *ctx, struct pt_peer *peer,
+                                    const void *data, uint16_t len);
 
 /**
- * Async send ops - Session 4 will implement these.
- * The pipeline ops allow MacTCP to keep multiple TCP sends in-flight
- * simultaneously, improving throughput by 200-400%.
+ * Poll for send completions - check ioResult of pending async sends.
+ *
+ * Per MacTCP Guide (Lines 712-713):
+ *   ioResult > 0: still in progress (typically 1)
+ *   ioResult == 0: success (noErr)
+ *   ioResult < 0: error code
  */
-
-static int mactcp_tcp_send_async(struct pt_context *ctx, struct pt_peer *peer,
-                                  const void *data, uint16_t len) {
-    (void)ctx; (void)peer; (void)data; (void)len;
-    return PT_ERR_NOT_SUPPORTED;  /* TODO: Session 4 */
-}
-
 static int mactcp_poll_send_completions(struct pt_context *ctx, struct pt_peer *peer) {
-    (void)ctx; (void)peer;
-    return 0;  /* No completions - not implemented yet */
+    int i;
+    int completions = 0;
+
+    if (!peer || !peer->pipeline.initialized || peer->pipeline.pending_count == 0) {
+        return 0;
+    }
+
+    for (i = 0; i < PT_SEND_PIPELINE_DEPTH; i++) {
+        pt_send_slot *slot = &peer->pipeline.slots[i];
+        TCPiopb *pb;
+
+        if (!slot->in_use) continue;
+
+        pb = (TCPiopb *)slot->platform_data;
+        if (!pb) continue;
+
+        /* Cache ioResult for polling efficiency */
+        slot->ioResult = pb->ioResult;
+
+        if (slot->ioResult <= 0) {
+            /* Completed (success or error) */
+            slot->in_use = 0;
+            slot->completed = 1;
+            if (peer->pipeline.pending_count > 0) {
+                peer->pipeline.pending_count--;
+            }
+            completions++;
+
+            if (slot->ioResult != noErr) {
+                PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
+                    "Async send slot %d error: %d", i, (int)slot->ioResult);
+            }
+        }
+    }
+
+    return completions;
 }
 
 static int mactcp_send_slots_available(struct pt_context *ctx, struct pt_peer *peer) {
-    (void)ctx; (void)peer;
+    (void)ctx;
     if (!peer || !peer->pipeline.initialized) {
         return 0;
     }
@@ -297,6 +332,7 @@ static int mactcp_send_slots_available(struct pt_context *ctx, struct pt_peer *p
 }
 
 static int mactcp_pipeline_init(struct pt_context *ctx, struct pt_peer *peer) {
+    int i;
     int err;
 
     /* Allocate core buffers first */
@@ -305,13 +341,46 @@ static int mactcp_pipeline_init(struct pt_context *ctx, struct pt_peer *peer) {
         return err;
     }
 
-    /* Session 4 will add TCPiopb allocation here */
+    /* Allocate TCPiopb for each slot */
+    for (i = 0; i < PT_SEND_PIPELINE_DEPTH; i++) {
+        pt_send_slot *slot = &peer->pipeline.slots[i];
+
+        slot->platform_data = (void *)NewPtrClear(sizeof(TCPiopb));
+        if (slot->platform_data == NULL) {
+            PT_LOG_WARN(ctx->log, PT_LOG_CAT_MEMORY,
+                "Failed to allocate TCPiopb for pipeline slot %d", i);
+            /* Cleanup already allocated slots */
+            while (--i >= 0) {
+                if (peer->pipeline.slots[i].platform_data) {
+                    DisposePtr((Ptr)peer->pipeline.slots[i].platform_data);
+                    peer->pipeline.slots[i].platform_data = NULL;
+                }
+            }
+            pt_pipeline_cleanup(ctx, peer);
+            return PT_ERR_NO_MEMORY;
+        }
+    }
+
+    PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_MEMORY,
+        "Pipeline TCPiopb allocated: peer=%u depth=%d",
+        peer->hot.id, PT_SEND_PIPELINE_DEPTH);
 
     return PT_OK;
 }
 
 static void mactcp_pipeline_cleanup(struct pt_context *ctx, struct pt_peer *peer) {
-    /* Session 4 will add TCPiopb cleanup here */
+    int i;
+
+    if (!peer) return;
+
+    /* Free TCPiopb for each slot */
+    for (i = 0; i < PT_SEND_PIPELINE_DEPTH; i++) {
+        pt_send_slot *slot = &peer->pipeline.slots[i];
+        if (slot->platform_data) {
+            DisposePtr((Ptr)slot->platform_data);
+            slot->platform_data = NULL;
+        }
+    }
 
     /* Free core buffers */
     pt_pipeline_cleanup(ctx, peer);
@@ -328,7 +397,7 @@ pt_platform_ops pt_mactcp_ops = {
     mactcp_get_max_block,
     NULL,  /* send_udp - set by Phase 5 to pt_mactcp_send_udp */
     /* Async send pipeline ops */
-    mactcp_tcp_send_async,
+    pt_mactcp_tcp_send_async,  /* Implemented in tcp_io.c */
     mactcp_poll_send_completions,
     mactcp_send_slots_available,
     mactcp_pipeline_init,
