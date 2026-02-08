@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2026-02-08 00:41:54</td>
+            <td class="headerValue">2026-02-08 08:45:37</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">1</td>
@@ -186,8 +186,8 @@
 <a name="124"><span class="lineNum">     124 </span>            :     uint16_t            rtt_samples[8];     /* Rolling RTT samples */</a>
 <a name="125"><span class="lineNum">     125 </span>            :     uint8_t             rtt_index;</a>
 <a name="126"><span class="lineNum">     126 </span>            :     uint8_t             rtt_count;</a>
-<a name="127"><span class="lineNum">     127 </span>            :     uint8_t             obuf[768];          /* Output framing buffer */</a>
-<a name="128"><span class="lineNum">     128 </span>            :     uint8_t             ibuf[512];          /* Input framing buffer */</a>
+<a name="127"><span class="lineNum">     127 </span>            :     uint8_t             obuf[4128];         /* Output framing buffer (max payload + header + CRC) */</a>
+<a name="128"><span class="lineNum">     128 </span>            :     uint8_t             ibuf[4128];         /* Input framing buffer (max payload + header + CRC) */</a>
 <a name="129"><span class="lineNum">     129 </span>            :     uint16_t            obuflen;</a>
 <a name="130"><span class="lineNum">     130 </span>            :     uint16_t            ibuflen;</a>
 <a name="131"><span class="lineNum">     131 </span>            : #ifdef PT_DEBUG</a>

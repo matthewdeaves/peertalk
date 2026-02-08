@@ -32,17 +32,17 @@
             <td></td>
             <td class="headerItem">Lines:</td>
             <td class="headerCovTableEntry">51</td>
-            <td class="headerCovTableEntry">53</td>
-            <td class="headerCovTableEntryHi">96.2 %</td>
+            <td class="headerCovTableEntry">55</td>
+            <td class="headerCovTableEntryHi">92.7 %</td>
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2026-02-08 00:41:54</td>
+            <td class="headerValue">2026-02-08 08:45:37</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">17</td>
-            <td class="headerCovTableEntry">18</td>
-            <td class="headerCovTableEntryHi">94.4 %</td>
+            <td class="headerCovTableEntry">19</td>
+            <td class="headerCovTableEntryMed">89.5 %</td>
           </tr>
           <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
         </table>
@@ -297,362 +297,391 @@
 <a name="235"><span class="lineNum">     235 </span><span class="lineCov">          3 :     return memcmp(a, b, n);</span></a>
 <a name="236"><span class="lineNum">     236 </span>            : }</a>
 <a name="237"><span class="lineNum">     237 </span>            : </a>
-<a name="238"><span class="lineNum">     238 </span><span class="lineCov">         83 : size_t pt_strlen(const char *s) {</span></a>
-<a name="239"><span class="lineNum">     239 </span><span class="lineCov">         83 :     return strlen(s);</span></a>
+<a name="238"><span class="lineNum">     238 </span><span class="lineNoCov">          0 : void *pt_memmove(void *dest, const void *src, size_t n) {</span></a>
+<a name="239"><span class="lineNum">     239 </span><span class="lineNoCov">          0 :     return memmove(dest, src, n);</span></a>
 <a name="240"><span class="lineNum">     240 </span>            : }</a>
 <a name="241"><span class="lineNum">     241 </span>            : </a>
-<a name="242"><span class="lineNum">     242 </span><span class="lineCov">         51 : char *pt_strncpy(char *dest, const char *src, size_t n) {</span></a>
-<a name="243"><span class="lineNum">     243 </span><span class="lineCov">         51 :     strncpy(dest, src, n);</span></a>
-<a name="244"><span class="lineNum">     244 </span><span class="lineCov">         51 :     if (n &gt; 0) {</span></a>
-<a name="245"><span class="lineNum">     245 </span><span class="lineCov">         51 :         dest[n - 1] = '\0'; /* Always null-terminate */</span></a>
-<a name="246"><span class="lineNum">     246 </span>            :     }</a>
-<a name="247"><span class="lineNum">     247 </span><span class="lineCov">         51 :     return dest;</span></a>
-<a name="248"><span class="lineNum">     248 </span>            : }</a>
-<a name="249"><span class="lineNum">     249 </span>            : </a>
-<a name="250"><span class="lineNum">     250 </span>            : #endif /* PT_PLATFORM_POSIX */</a>
-<a name="251"><span class="lineNum">     251 </span>            : </a>
-<a name="252"><span class="lineNum">     252 </span>            : /* ========================================================================== */</a>
-<a name="253"><span class="lineNum">     253 </span>            : /* Memory Utilities - Classic Mac                                             */</a>
-<a name="254"><span class="lineNum">     254 </span>            : /* ========================================================================== */</a>
+<a name="242"><span class="lineNum">     242 </span><span class="lineCov">         83 : size_t pt_strlen(const char *s) {</span></a>
+<a name="243"><span class="lineNum">     243 </span><span class="lineCov">         83 :     return strlen(s);</span></a>
+<a name="244"><span class="lineNum">     244 </span>            : }</a>
+<a name="245"><span class="lineNum">     245 </span>            : </a>
+<a name="246"><span class="lineNum">     246 </span><span class="lineCov">         51 : char *pt_strncpy(char *dest, const char *src, size_t n) {</span></a>
+<a name="247"><span class="lineNum">     247 </span><span class="lineCov">         51 :     strncpy(dest, src, n);</span></a>
+<a name="248"><span class="lineNum">     248 </span><span class="lineCov">         51 :     if (n &gt; 0) {</span></a>
+<a name="249"><span class="lineNum">     249 </span><span class="lineCov">         51 :         dest[n - 1] = '\0'; /* Always null-terminate */</span></a>
+<a name="250"><span class="lineNum">     250 </span>            :     }</a>
+<a name="251"><span class="lineNum">     251 </span><span class="lineCov">         51 :     return dest;</span></a>
+<a name="252"><span class="lineNum">     252 </span>            : }</a>
+<a name="253"><span class="lineNum">     253 </span>            : </a>
+<a name="254"><span class="lineNum">     254 </span>            : #endif /* PT_PLATFORM_POSIX */</a>
 <a name="255"><span class="lineNum">     255 </span>            : </a>
-<a name="256"><span class="lineNum">     256 </span>            : #if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)</a>
-<a name="257"><span class="lineNum">     257 </span>            : </a>
-<a name="258"><span class="lineNum">     258 </span>            : void *pt_memcpy(void *dest, const void *src, size_t n) {</a>
-<a name="259"><span class="lineNum">     259 </span>            :     BlockMoveData(src, dest, (Size)n);</a>
-<a name="260"><span class="lineNum">     260 </span>            :     return dest;</a>
-<a name="261"><span class="lineNum">     261 </span>            : }</a>
-<a name="262"><span class="lineNum">     262 </span>            : </a>
-<a name="263"><span class="lineNum">     263 </span>            : void *pt_memset(void *dest, int c, size_t n) {</a>
-<a name="264"><span class="lineNum">     264 </span>            :     unsigned char *p = (unsigned char *)dest;</a>
-<a name="265"><span class="lineNum">     265 </span>            :     unsigned char value = (unsigned char)c;</a>
-<a name="266"><span class="lineNum">     266 </span>            :     size_t i;</a>
-<a name="267"><span class="lineNum">     267 </span>            :     for (i = 0; i &lt; n; i++) {</a>
-<a name="268"><span class="lineNum">     268 </span>            :         p[i] = value;</a>
-<a name="269"><span class="lineNum">     269 </span>            :     }</a>
-<a name="270"><span class="lineNum">     270 </span>            :     return dest;</a>
-<a name="271"><span class="lineNum">     271 </span>            : }</a>
-<a name="272"><span class="lineNum">     272 </span>            : </a>
-<a name="273"><span class="lineNum">     273 </span>            : int pt_memcmp(const void *a, const void *b, size_t n) {</a>
-<a name="274"><span class="lineNum">     274 </span>            :     const unsigned char *pa = (const unsigned char *)a;</a>
-<a name="275"><span class="lineNum">     275 </span>            :     const unsigned char *pb = (const unsigned char *)b;</a>
-<a name="276"><span class="lineNum">     276 </span>            :     size_t i;</a>
-<a name="277"><span class="lineNum">     277 </span>            :     for (i = 0; i &lt; n; i++) {</a>
-<a name="278"><span class="lineNum">     278 </span>            :         if (pa[i] != pb[i]) {</a>
-<a name="279"><span class="lineNum">     279 </span>            :             return (pa[i] &lt; pb[i]) ? -1 : 1;</a>
-<a name="280"><span class="lineNum">     280 </span>            :         }</a>
-<a name="281"><span class="lineNum">     281 </span>            :     }</a>
-<a name="282"><span class="lineNum">     282 </span>            :     return 0;</a>
-<a name="283"><span class="lineNum">     283 </span>            : }</a>
-<a name="284"><span class="lineNum">     284 </span>            : </a>
-<a name="285"><span class="lineNum">     285 </span>            : size_t pt_strlen(const char *s) {</a>
-<a name="286"><span class="lineNum">     286 </span>            :     size_t len = 0;</a>
-<a name="287"><span class="lineNum">     287 </span>            :     while (*s++) {</a>
-<a name="288"><span class="lineNum">     288 </span>            :         len++;</a>
-<a name="289"><span class="lineNum">     289 </span>            :     }</a>
-<a name="290"><span class="lineNum">     290 </span>            :     return len;</a>
-<a name="291"><span class="lineNum">     291 </span>            : }</a>
+<a name="256"><span class="lineNum">     256 </span>            : /* ========================================================================== */</a>
+<a name="257"><span class="lineNum">     257 </span>            : /* Memory Utilities - Classic Mac                                             */</a>
+<a name="258"><span class="lineNum">     258 </span>            : /* ========================================================================== */</a>
+<a name="259"><span class="lineNum">     259 </span>            : </a>
+<a name="260"><span class="lineNum">     260 </span>            : #if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)</a>
+<a name="261"><span class="lineNum">     261 </span>            : </a>
+<a name="262"><span class="lineNum">     262 </span>            : void *pt_memcpy(void *dest, const void *src, size_t n) {</a>
+<a name="263"><span class="lineNum">     263 </span>            :     BlockMoveData(src, dest, (Size)n);</a>
+<a name="264"><span class="lineNum">     264 </span>            :     return dest;</a>
+<a name="265"><span class="lineNum">     265 </span>            : }</a>
+<a name="266"><span class="lineNum">     266 </span>            : </a>
+<a name="267"><span class="lineNum">     267 </span>            : void *pt_memset(void *dest, int c, size_t n) {</a>
+<a name="268"><span class="lineNum">     268 </span>            :     unsigned char *p = (unsigned char *)dest;</a>
+<a name="269"><span class="lineNum">     269 </span>            :     unsigned char value = (unsigned char)c;</a>
+<a name="270"><span class="lineNum">     270 </span>            :     size_t i;</a>
+<a name="271"><span class="lineNum">     271 </span>            :     for (i = 0; i &lt; n; i++) {</a>
+<a name="272"><span class="lineNum">     272 </span>            :         p[i] = value;</a>
+<a name="273"><span class="lineNum">     273 </span>            :     }</a>
+<a name="274"><span class="lineNum">     274 </span>            :     return dest;</a>
+<a name="275"><span class="lineNum">     275 </span>            : }</a>
+<a name="276"><span class="lineNum">     276 </span>            : </a>
+<a name="277"><span class="lineNum">     277 </span>            : int pt_memcmp(const void *a, const void *b, size_t n) {</a>
+<a name="278"><span class="lineNum">     278 </span>            :     const unsigned char *pa = (const unsigned char *)a;</a>
+<a name="279"><span class="lineNum">     279 </span>            :     const unsigned char *pb = (const unsigned char *)b;</a>
+<a name="280"><span class="lineNum">     280 </span>            :     size_t i;</a>
+<a name="281"><span class="lineNum">     281 </span>            :     for (i = 0; i &lt; n; i++) {</a>
+<a name="282"><span class="lineNum">     282 </span>            :         if (pa[i] != pb[i]) {</a>
+<a name="283"><span class="lineNum">     283 </span>            :             return (pa[i] &lt; pb[i]) ? -1 : 1;</a>
+<a name="284"><span class="lineNum">     284 </span>            :         }</a>
+<a name="285"><span class="lineNum">     285 </span>            :     }</a>
+<a name="286"><span class="lineNum">     286 </span>            :     return 0;</a>
+<a name="287"><span class="lineNum">     287 </span>            : }</a>
+<a name="288"><span class="lineNum">     288 </span>            : </a>
+<a name="289"><span class="lineNum">     289 </span>            : void *pt_memmove(void *dest, const void *src, size_t n) {</a>
+<a name="290"><span class="lineNum">     290 </span>            :     unsigned char *d = (unsigned char *)dest;</a>
+<a name="291"><span class="lineNum">     291 </span>            :     const unsigned char *s = (const unsigned char *)src;</a>
 <a name="292"><span class="lineNum">     292 </span>            : </a>
-<a name="293"><span class="lineNum">     293 </span>            : char *pt_strncpy(char *dest, const char *src, size_t n) {</a>
-<a name="294"><span class="lineNum">     294 </span>            :     size_t i;</a>
-<a name="295"><span class="lineNum">     295 </span>            :     for (i = 0; i &lt; n &amp;&amp; src[i] != '\0'; i++) {</a>
-<a name="296"><span class="lineNum">     296 </span>            :         dest[i] = src[i];</a>
-<a name="297"><span class="lineNum">     297 </span>            :     }</a>
-<a name="298"><span class="lineNum">     298 </span>            :     /* Pad with nulls if src is shorter than n */</a>
-<a name="299"><span class="lineNum">     299 </span>            :     for (; i &lt; n; i++) {</a>
-<a name="300"><span class="lineNum">     300 </span>            :         dest[i] = '\0';</a>
-<a name="301"><span class="lineNum">     301 </span>            :     }</a>
-<a name="302"><span class="lineNum">     302 </span>            :     /* Always null-terminate if buffer size &gt; 0 */</a>
-<a name="303"><span class="lineNum">     303 </span>            :     if (n &gt; 0) {</a>
-<a name="304"><span class="lineNum">     304 </span>            :         dest[n - 1] = '\0';</a>
-<a name="305"><span class="lineNum">     305 </span>            :     }</a>
-<a name="306"><span class="lineNum">     306 </span>            :     return dest;</a>
-<a name="307"><span class="lineNum">     307 </span>            : }</a>
-<a name="308"><span class="lineNum">     308 </span>            : </a>
-<a name="309"><span class="lineNum">     309 </span>            : #endif /* PT_PLATFORM_MACTCP || PT_PLATFORM_OT */</a>
-<a name="310"><span class="lineNum">     310 </span>            : </a>
-<a name="311"><span class="lineNum">     311 </span>            : /* ========================================================================== */</a>
-<a name="312"><span class="lineNum">     312 </span>            : /* ISR-Safe Memory Copy (All Platforms)                                       */</a>
-<a name="313"><span class="lineNum">     313 </span>            : /* ========================================================================== */</a>
-<a name="314"><span class="lineNum">     314 </span>            : </a>
-<a name="315"><span class="lineNum">     315 </span><span class="lineCov">          2 : void *pt_memcpy_isr(void *dest, const void *src, size_t n) {</span></a>
-<a name="316"><span class="lineNum">     316 </span><span class="lineCov">          2 :     unsigned char *d = (unsigned char *)dest;</span></a>
-<a name="317"><span class="lineNum">     317 </span><span class="lineCov">          2 :     const unsigned char *s = (const unsigned char *)src;</span></a>
-<a name="318"><span class="lineNum">     318 </span>            :     size_t i;</a>
-<a name="319"><span class="lineNum">     319 </span><span class="lineCov">         21 :     for (i = 0; i &lt; n; i++) {</span></a>
-<a name="320"><span class="lineNum">     320 </span><span class="lineCov">         19 :         d[i] = s[i];</span></a>
-<a name="321"><span class="lineNum">     321 </span>            :     }</a>
-<a name="322"><span class="lineNum">     322 </span><span class="lineCov">          2 :     return dest;</span></a>
-<a name="323"><span class="lineNum">     323 </span>            : }</a>
-<a name="324"><span class="lineNum">     324 </span>            : </a>
-<a name="325"><span class="lineNum">     325 </span>            : /* ========================================================================== */</a>
-<a name="326"><span class="lineNum">     326 </span>            : /* Formatted Output - POSIX                                                   */</a>
-<a name="327"><span class="lineNum">     327 </span>            : /* ========================================================================== */</a>
-<a name="328"><span class="lineNum">     328 </span>            : </a>
-<a name="329"><span class="lineNum">     329 </span>            : #if defined(PT_PLATFORM_POSIX)</a>
-<a name="330"><span class="lineNum">     330 </span>            : </a>
-<a name="331"><span class="lineNum">     331 </span><span class="lineNoCov">          0 : int pt_vsnprintf(char *buf, size_t size, const char *fmt, va_list args) {</span></a>
-<a name="332"><span class="lineNum">     332 </span><span class="lineNoCov">          0 :     return vsnprintf(buf, size, fmt, args);</span></a>
-<a name="333"><span class="lineNum">     333 </span>            : }</a>
-<a name="334"><span class="lineNum">     334 </span>            : </a>
-<a name="335"><span class="lineNum">     335 </span><span class="lineCov">         18 : int pt_snprintf(char *buf, size_t size, const char *fmt, ...) {</span></a>
-<a name="336"><span class="lineNum">     336 </span>            :     va_list args;</a>
-<a name="337"><span class="lineNum">     337 </span>            :     int result;</a>
-<a name="338"><span class="lineNum">     338 </span><span class="lineCov">         18 :     va_start(args, fmt);</span></a>
-<a name="339"><span class="lineNum">     339 </span><span class="lineCov">         18 :     result = vsnprintf(buf, size, fmt, args);</span></a>
-<a name="340"><span class="lineNum">     340 </span><span class="lineCov">         18 :     va_end(args);</span></a>
-<a name="341"><span class="lineNum">     341 </span><span class="lineCov">         18 :     return result;</span></a>
-<a name="342"><span class="lineNum">     342 </span>            : }</a>
+<a name="293"><span class="lineNum">     293 </span>            :     if (d == s || n == 0) {</a>
+<a name="294"><span class="lineNum">     294 </span>            :         return dest;</a>
+<a name="295"><span class="lineNum">     295 </span>            :     }</a>
+<a name="296"><span class="lineNum">     296 </span>            : </a>
+<a name="297"><span class="lineNum">     297 </span>            :     if (d &lt; s) {</a>
+<a name="298"><span class="lineNum">     298 </span>            :         /* Forward copy (no overlap or dest before src) */</a>
+<a name="299"><span class="lineNum">     299 </span>            :         size_t i;</a>
+<a name="300"><span class="lineNum">     300 </span>            :         for (i = 0; i &lt; n; i++) {</a>
+<a name="301"><span class="lineNum">     301 </span>            :             d[i] = s[i];</a>
+<a name="302"><span class="lineNum">     302 </span>            :         }</a>
+<a name="303"><span class="lineNum">     303 </span>            :     } else {</a>
+<a name="304"><span class="lineNum">     304 </span>            :         /* Backward copy (dest after src, may overlap) */</a>
+<a name="305"><span class="lineNum">     305 </span>            :         size_t i = n;</a>
+<a name="306"><span class="lineNum">     306 </span>            :         while (i &gt; 0) {</a>
+<a name="307"><span class="lineNum">     307 </span>            :             i--;</a>
+<a name="308"><span class="lineNum">     308 </span>            :             d[i] = s[i];</a>
+<a name="309"><span class="lineNum">     309 </span>            :         }</a>
+<a name="310"><span class="lineNum">     310 </span>            :     }</a>
+<a name="311"><span class="lineNum">     311 </span>            :     return dest;</a>
+<a name="312"><span class="lineNum">     312 </span>            : }</a>
+<a name="313"><span class="lineNum">     313 </span>            : </a>
+<a name="314"><span class="lineNum">     314 </span>            : size_t pt_strlen(const char *s) {</a>
+<a name="315"><span class="lineNum">     315 </span>            :     size_t len = 0;</a>
+<a name="316"><span class="lineNum">     316 </span>            :     while (*s++) {</a>
+<a name="317"><span class="lineNum">     317 </span>            :         len++;</a>
+<a name="318"><span class="lineNum">     318 </span>            :     }</a>
+<a name="319"><span class="lineNum">     319 </span>            :     return len;</a>
+<a name="320"><span class="lineNum">     320 </span>            : }</a>
+<a name="321"><span class="lineNum">     321 </span>            : </a>
+<a name="322"><span class="lineNum">     322 </span>            : char *pt_strncpy(char *dest, const char *src, size_t n) {</a>
+<a name="323"><span class="lineNum">     323 </span>            :     size_t i;</a>
+<a name="324"><span class="lineNum">     324 </span>            :     for (i = 0; i &lt; n &amp;&amp; src[i] != '\0'; i++) {</a>
+<a name="325"><span class="lineNum">     325 </span>            :         dest[i] = src[i];</a>
+<a name="326"><span class="lineNum">     326 </span>            :     }</a>
+<a name="327"><span class="lineNum">     327 </span>            :     /* Pad with nulls if src is shorter than n */</a>
+<a name="328"><span class="lineNum">     328 </span>            :     for (; i &lt; n; i++) {</a>
+<a name="329"><span class="lineNum">     329 </span>            :         dest[i] = '\0';</a>
+<a name="330"><span class="lineNum">     330 </span>            :     }</a>
+<a name="331"><span class="lineNum">     331 </span>            :     /* Always null-terminate if buffer size &gt; 0 */</a>
+<a name="332"><span class="lineNum">     332 </span>            :     if (n &gt; 0) {</a>
+<a name="333"><span class="lineNum">     333 </span>            :         dest[n - 1] = '\0';</a>
+<a name="334"><span class="lineNum">     334 </span>            :     }</a>
+<a name="335"><span class="lineNum">     335 </span>            :     return dest;</a>
+<a name="336"><span class="lineNum">     336 </span>            : }</a>
+<a name="337"><span class="lineNum">     337 </span>            : </a>
+<a name="338"><span class="lineNum">     338 </span>            : #endif /* PT_PLATFORM_MACTCP || PT_PLATFORM_OT */</a>
+<a name="339"><span class="lineNum">     339 </span>            : </a>
+<a name="340"><span class="lineNum">     340 </span>            : /* ========================================================================== */</a>
+<a name="341"><span class="lineNum">     341 </span>            : /* ISR-Safe Memory Copy (All Platforms)                                       */</a>
+<a name="342"><span class="lineNum">     342 </span>            : /* ========================================================================== */</a>
 <a name="343"><span class="lineNum">     343 </span>            : </a>
-<a name="344"><span class="lineNum">     344 </span>            : #endif /* PT_PLATFORM_POSIX */</a>
-<a name="345"><span class="lineNum">     345 </span>            : </a>
-<a name="346"><span class="lineNum">     346 </span>            : /* ========================================================================== */</a>
-<a name="347"><span class="lineNum">     347 </span>            : /* Formatted Output - Classic Mac (Limited Implementation)                    */</a>
-<a name="348"><span class="lineNum">     348 </span>            : /* ========================================================================== */</a>
-<a name="349"><span class="lineNum">     349 </span>            : </a>
-<a name="350"><span class="lineNum">     350 </span>            : #if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)</a>
-<a name="351"><span class="lineNum">     351 </span>            : </a>
-<a name="352"><span class="lineNum">     352 </span>            : /**</a>
-<a name="353"><span class="lineNum">     353 </span>            :  * Helper: Format an integer to a string buffer.</a>
-<a name="354"><span class="lineNum">     354 </span>            :  * @param value Integer value</a>
-<a name="355"><span class="lineNum">     355 </span>            :  * @param base Base (10 or 16)</a>
-<a name="356"><span class="lineNum">     356 </span>            :  * @param width Field width (0 = no padding)</a>
-<a name="357"><span class="lineNum">     357 </span>            :  * @param zero_pad 1 to pad with zeros, 0 to pad with spaces</a>
-<a name="358"><span class="lineNum">     358 </span>            :  * @param uppercase 1 for uppercase hex (A-F), 0 for lowercase (a-f)</a>
-<a name="359"><span class="lineNum">     359 </span>            :  * @param is_signed 1 if value should be treated as signed</a>
-<a name="360"><span class="lineNum">     360 </span>            :  * @param buf Output buffer</a>
-<a name="361"><span class="lineNum">     361 </span>            :  * @param bufsize Size of output buffer</a>
-<a name="362"><span class="lineNum">     362 </span>            :  * @return Number of characters written</a>
-<a name="363"><span class="lineNum">     363 </span>            :  */</a>
-<a name="364"><span class="lineNum">     364 </span>            : static int pt_format_int(long value, int base, int width, int zero_pad,</a>
-<a name="365"><span class="lineNum">     365 </span>            :                          int uppercase, int is_signed, char *buf,</a>
-<a name="366"><span class="lineNum">     366 </span>            :                          size_t bufsize) {</a>
-<a name="367"><span class="lineNum">     367 </span>            :     char temp[32];</a>
-<a name="368"><span class="lineNum">     368 </span>            :     int len = 0;</a>
-<a name="369"><span class="lineNum">     369 </span>            :     int negative = 0;</a>
-<a name="370"><span class="lineNum">     370 </span>            :     unsigned long uvalue;</a>
-<a name="371"><span class="lineNum">     371 </span>            :     const char *digits = uppercase ? &quot;0123456789ABCDEF&quot; : &quot;0123456789abcdef&quot;;</a>
+<a name="344"><span class="lineNum">     344 </span><span class="lineCov">          2 : void *pt_memcpy_isr(void *dest, const void *src, size_t n) {</span></a>
+<a name="345"><span class="lineNum">     345 </span><span class="lineCov">          2 :     unsigned char *d = (unsigned char *)dest;</span></a>
+<a name="346"><span class="lineNum">     346 </span><span class="lineCov">          2 :     const unsigned char *s = (const unsigned char *)src;</span></a>
+<a name="347"><span class="lineNum">     347 </span>            :     size_t i;</a>
+<a name="348"><span class="lineNum">     348 </span><span class="lineCov">         21 :     for (i = 0; i &lt; n; i++) {</span></a>
+<a name="349"><span class="lineNum">     349 </span><span class="lineCov">         19 :         d[i] = s[i];</span></a>
+<a name="350"><span class="lineNum">     350 </span>            :     }</a>
+<a name="351"><span class="lineNum">     351 </span><span class="lineCov">          2 :     return dest;</span></a>
+<a name="352"><span class="lineNum">     352 </span>            : }</a>
+<a name="353"><span class="lineNum">     353 </span>            : </a>
+<a name="354"><span class="lineNum">     354 </span>            : /* ========================================================================== */</a>
+<a name="355"><span class="lineNum">     355 </span>            : /* Formatted Output - POSIX                                                   */</a>
+<a name="356"><span class="lineNum">     356 </span>            : /* ========================================================================== */</a>
+<a name="357"><span class="lineNum">     357 </span>            : </a>
+<a name="358"><span class="lineNum">     358 </span>            : #if defined(PT_PLATFORM_POSIX)</a>
+<a name="359"><span class="lineNum">     359 </span>            : </a>
+<a name="360"><span class="lineNum">     360 </span><span class="lineNoCov">          0 : int pt_vsnprintf(char *buf, size_t size, const char *fmt, va_list args) {</span></a>
+<a name="361"><span class="lineNum">     361 </span><span class="lineNoCov">          0 :     return vsnprintf(buf, size, fmt, args);</span></a>
+<a name="362"><span class="lineNum">     362 </span>            : }</a>
+<a name="363"><span class="lineNum">     363 </span>            : </a>
+<a name="364"><span class="lineNum">     364 </span><span class="lineCov">         18 : int pt_snprintf(char *buf, size_t size, const char *fmt, ...) {</span></a>
+<a name="365"><span class="lineNum">     365 </span>            :     va_list args;</a>
+<a name="366"><span class="lineNum">     366 </span>            :     int result;</a>
+<a name="367"><span class="lineNum">     367 </span><span class="lineCov">         18 :     va_start(args, fmt);</span></a>
+<a name="368"><span class="lineNum">     368 </span><span class="lineCov">         18 :     result = vsnprintf(buf, size, fmt, args);</span></a>
+<a name="369"><span class="lineNum">     369 </span><span class="lineCov">         18 :     va_end(args);</span></a>
+<a name="370"><span class="lineNum">     370 </span><span class="lineCov">         18 :     return result;</span></a>
+<a name="371"><span class="lineNum">     371 </span>            : }</a>
 <a name="372"><span class="lineNum">     372 </span>            : </a>
-<a name="373"><span class="lineNum">     373 </span>            :     if (bufsize == 0) return 0;</a>
+<a name="373"><span class="lineNum">     373 </span>            : #endif /* PT_PLATFORM_POSIX */</a>
 <a name="374"><span class="lineNum">     374 </span>            : </a>
-<a name="375"><span class="lineNum">     375 </span>            :     /* Handle signed values */</a>
-<a name="376"><span class="lineNum">     376 </span>            :     if (is_signed &amp;&amp; value &lt; 0) {</a>
-<a name="377"><span class="lineNum">     377 </span>            :         negative = 1;</a>
-<a name="378"><span class="lineNum">     378 </span>            :         uvalue = (unsigned long)(-value);</a>
-<a name="379"><span class="lineNum">     379 </span>            :     } else {</a>
-<a name="380"><span class="lineNum">     380 </span>            :         uvalue = (unsigned long)value;</a>
-<a name="381"><span class="lineNum">     381 </span>            :     }</a>
-<a name="382"><span class="lineNum">     382 </span>            : </a>
-<a name="383"><span class="lineNum">     383 </span>            :     /* Convert to string (reversed) */</a>
-<a name="384"><span class="lineNum">     384 </span>            :     if (uvalue == 0) {</a>
-<a name="385"><span class="lineNum">     385 </span>            :         temp[len++] = '0';</a>
-<a name="386"><span class="lineNum">     386 </span>            :     } else {</a>
-<a name="387"><span class="lineNum">     387 </span>            :         while (uvalue &gt; 0 &amp;&amp; len &lt; (int)sizeof(temp)) {</a>
-<a name="388"><span class="lineNum">     388 </span>            :             /* cppcheck-suppress zerodivcond ; base is always 10 or 16 from callers */</a>
-<a name="389"><span class="lineNum">     389 </span>            :             temp[len++] = digits[uvalue % base];</a>
-<a name="390"><span class="lineNum">     390 </span>            :             uvalue /= base;</a>
-<a name="391"><span class="lineNum">     391 </span>            :         }</a>
-<a name="392"><span class="lineNum">     392 </span>            :     }</a>
-<a name="393"><span class="lineNum">     393 </span>            : </a>
-<a name="394"><span class="lineNum">     394 </span>            :     /* Add sign if negative */</a>
-<a name="395"><span class="lineNum">     395 </span>            :     if (negative) {</a>
-<a name="396"><span class="lineNum">     396 </span>            :         temp[len++] = '-';</a>
-<a name="397"><span class="lineNum">     397 </span>            :     }</a>
-<a name="398"><span class="lineNum">     398 </span>            : </a>
-<a name="399"><span class="lineNum">     399 </span>            :     /* Calculate padding */</a>
-<a name="400"><span class="lineNum">     400 </span>            :     int pad = width - len;</a>
-<a name="401"><span class="lineNum">     401 </span>            :     if (pad &lt; 0) pad = 0;</a>
-<a name="402"><span class="lineNum">     402 </span>            : </a>
-<a name="403"><span class="lineNum">     403 </span>            :     int pos = 0;</a>
-<a name="404"><span class="lineNum">     404 </span>            : </a>
-<a name="405"><span class="lineNum">     405 </span>            :     /* Pad with spaces (if not zero-padding) */</a>
-<a name="406"><span class="lineNum">     406 </span>            :     if (!zero_pad) {</a>
-<a name="407"><span class="lineNum">     407 </span>            :         while (pad &gt; 0 &amp;&amp; pos &lt; (int)bufsize - 1) {</a>
-<a name="408"><span class="lineNum">     408 </span>            :             buf[pos++] = ' ';</a>
-<a name="409"><span class="lineNum">     409 </span>            :             pad--;</a>
-<a name="410"><span class="lineNum">     410 </span>            :         }</a>
-<a name="411"><span class="lineNum">     411 </span>            :     }</a>
-<a name="412"><span class="lineNum">     412 </span>            : </a>
-<a name="413"><span class="lineNum">     413 </span>            :     /* If zero-padding and negative, write sign first */</a>
-<a name="414"><span class="lineNum">     414 </span>            :     if (zero_pad &amp;&amp; negative &amp;&amp; pos &lt; (int)bufsize - 1) {</a>
-<a name="415"><span class="lineNum">     415 </span>            :         buf[pos++] = '-';</a>
-<a name="416"><span class="lineNum">     416 </span>            :         len--; /* Sign already written */</a>
-<a name="417"><span class="lineNum">     417 </span>            :     }</a>
-<a name="418"><span class="lineNum">     418 </span>            : </a>
-<a name="419"><span class="lineNum">     419 </span>            :     /* Pad with zeros */</a>
-<a name="420"><span class="lineNum">     420 </span>            :     if (zero_pad) {</a>
-<a name="421"><span class="lineNum">     421 </span>            :         while (pad &gt; 0 &amp;&amp; pos &lt; (int)bufsize - 1) {</a>
-<a name="422"><span class="lineNum">     422 </span>            :             buf[pos++] = '0';</a>
-<a name="423"><span class="lineNum">     423 </span>            :             pad--;</a>
-<a name="424"><span class="lineNum">     424 </span>            :         }</a>
-<a name="425"><span class="lineNum">     425 </span>            :     }</a>
-<a name="426"><span class="lineNum">     426 </span>            : </a>
-<a name="427"><span class="lineNum">     427 </span>            :     /* Write digits (reversed) */</a>
-<a name="428"><span class="lineNum">     428 </span>            :     int start = negative &amp;&amp; zero_pad ? 1 : (negative ? 1 : 0);</a>
-<a name="429"><span class="lineNum">     429 </span>            :     for (int i = len - 1; i &gt;= start &amp;&amp; pos &lt; (int)bufsize - 1; i--) {</a>
-<a name="430"><span class="lineNum">     430 </span>            :         buf[pos++] = temp[i];</a>
-<a name="431"><span class="lineNum">     431 </span>            :     }</a>
-<a name="432"><span class="lineNum">     432 </span>            : </a>
-<a name="433"><span class="lineNum">     433 </span>            :     buf[pos] = '\0';</a>
-<a name="434"><span class="lineNum">     434 </span>            :     return pos;</a>
-<a name="435"><span class="lineNum">     435 </span>            : }</a>
-<a name="436"><span class="lineNum">     436 </span>            : </a>
-<a name="437"><span class="lineNum">     437 </span>            : int pt_vsnprintf(char *buf, size_t size, const char *fmt, va_list args) {</a>
-<a name="438"><span class="lineNum">     438 </span>            :     size_t pos = 0;</a>
-<a name="439"><span class="lineNum">     439 </span>            :     const char *p = fmt;</a>
-<a name="440"><span class="lineNum">     440 </span>            : </a>
-<a name="441"><span class="lineNum">     441 </span>            :     if (size == 0) return 0;</a>
-<a name="442"><span class="lineNum">     442 </span>            : </a>
-<a name="443"><span class="lineNum">     443 </span>            :     while (*p &amp;&amp; pos &lt; size - 1) {</a>
-<a name="444"><span class="lineNum">     444 </span>            :         if (*p != '%') {</a>
-<a name="445"><span class="lineNum">     445 </span>            :             buf[pos++] = *p++;</a>
-<a name="446"><span class="lineNum">     446 </span>            :             continue;</a>
-<a name="447"><span class="lineNum">     447 </span>            :         }</a>
-<a name="448"><span class="lineNum">     448 </span>            : </a>
-<a name="449"><span class="lineNum">     449 </span>            :         p++; /* Skip '%' */</a>
-<a name="450"><span class="lineNum">     450 </span>            : </a>
-<a name="451"><span class="lineNum">     451 </span>            :         /* Parse flags and width */</a>
-<a name="452"><span class="lineNum">     452 </span>            :         int zero_pad = 0;</a>
-<a name="453"><span class="lineNum">     453 </span>            :         int width = 0;</a>
-<a name="454"><span class="lineNum">     454 </span>            : </a>
-<a name="455"><span class="lineNum">     455 </span>            :         if (*p == '0') {</a>
-<a name="456"><span class="lineNum">     456 </span>            :             zero_pad = 1;</a>
-<a name="457"><span class="lineNum">     457 </span>            :             p++;</a>
-<a name="458"><span class="lineNum">     458 </span>            :         }</a>
-<a name="459"><span class="lineNum">     459 </span>            : </a>
-<a name="460"><span class="lineNum">     460 </span>            :         while (*p &gt;= '0' &amp;&amp; *p &lt;= '9') {</a>
-<a name="461"><span class="lineNum">     461 </span>            :             width = width * 10 + (*p - '0');</a>
-<a name="462"><span class="lineNum">     462 </span>            :             p++;</a>
-<a name="463"><span class="lineNum">     463 </span>            :         }</a>
-<a name="464"><span class="lineNum">     464 </span>            : </a>
-<a name="465"><span class="lineNum">     465 </span>            :         /* Parse length modifier */</a>
-<a name="466"><span class="lineNum">     466 </span>            :         int is_long = 0;</a>
-<a name="467"><span class="lineNum">     467 </span>            :         if (*p == 'l') {</a>
-<a name="468"><span class="lineNum">     468 </span>            :             is_long = 1;</a>
-<a name="469"><span class="lineNum">     469 </span>            :             p++;</a>
-<a name="470"><span class="lineNum">     470 </span>            :         }</a>
+<a name="375"><span class="lineNum">     375 </span>            : /* ========================================================================== */</a>
+<a name="376"><span class="lineNum">     376 </span>            : /* Formatted Output - Classic Mac (Limited Implementation)                    */</a>
+<a name="377"><span class="lineNum">     377 </span>            : /* ========================================================================== */</a>
+<a name="378"><span class="lineNum">     378 </span>            : </a>
+<a name="379"><span class="lineNum">     379 </span>            : #if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)</a>
+<a name="380"><span class="lineNum">     380 </span>            : </a>
+<a name="381"><span class="lineNum">     381 </span>            : /**</a>
+<a name="382"><span class="lineNum">     382 </span>            :  * Helper: Format an integer to a string buffer.</a>
+<a name="383"><span class="lineNum">     383 </span>            :  * @param value Integer value</a>
+<a name="384"><span class="lineNum">     384 </span>            :  * @param base Base (10 or 16)</a>
+<a name="385"><span class="lineNum">     385 </span>            :  * @param width Field width (0 = no padding)</a>
+<a name="386"><span class="lineNum">     386 </span>            :  * @param zero_pad 1 to pad with zeros, 0 to pad with spaces</a>
+<a name="387"><span class="lineNum">     387 </span>            :  * @param uppercase 1 for uppercase hex (A-F), 0 for lowercase (a-f)</a>
+<a name="388"><span class="lineNum">     388 </span>            :  * @param is_signed 1 if value should be treated as signed</a>
+<a name="389"><span class="lineNum">     389 </span>            :  * @param buf Output buffer</a>
+<a name="390"><span class="lineNum">     390 </span>            :  * @param bufsize Size of output buffer</a>
+<a name="391"><span class="lineNum">     391 </span>            :  * @return Number of characters written</a>
+<a name="392"><span class="lineNum">     392 </span>            :  */</a>
+<a name="393"><span class="lineNum">     393 </span>            : static int pt_format_int(long value, int base, int width, int zero_pad,</a>
+<a name="394"><span class="lineNum">     394 </span>            :                          int uppercase, int is_signed, char *buf,</a>
+<a name="395"><span class="lineNum">     395 </span>            :                          size_t bufsize) {</a>
+<a name="396"><span class="lineNum">     396 </span>            :     char temp[32];</a>
+<a name="397"><span class="lineNum">     397 </span>            :     int len = 0;</a>
+<a name="398"><span class="lineNum">     398 </span>            :     int negative = 0;</a>
+<a name="399"><span class="lineNum">     399 </span>            :     unsigned long uvalue;</a>
+<a name="400"><span class="lineNum">     400 </span>            :     const char *digits = uppercase ? &quot;0123456789ABCDEF&quot; : &quot;0123456789abcdef&quot;;</a>
+<a name="401"><span class="lineNum">     401 </span>            : </a>
+<a name="402"><span class="lineNum">     402 </span>            :     if (bufsize == 0) return 0;</a>
+<a name="403"><span class="lineNum">     403 </span>            : </a>
+<a name="404"><span class="lineNum">     404 </span>            :     /* Handle signed values */</a>
+<a name="405"><span class="lineNum">     405 </span>            :     if (is_signed &amp;&amp; value &lt; 0) {</a>
+<a name="406"><span class="lineNum">     406 </span>            :         negative = 1;</a>
+<a name="407"><span class="lineNum">     407 </span>            :         uvalue = (unsigned long)(-value);</a>
+<a name="408"><span class="lineNum">     408 </span>            :     } else {</a>
+<a name="409"><span class="lineNum">     409 </span>            :         uvalue = (unsigned long)value;</a>
+<a name="410"><span class="lineNum">     410 </span>            :     }</a>
+<a name="411"><span class="lineNum">     411 </span>            : </a>
+<a name="412"><span class="lineNum">     412 </span>            :     /* Convert to string (reversed) */</a>
+<a name="413"><span class="lineNum">     413 </span>            :     if (uvalue == 0) {</a>
+<a name="414"><span class="lineNum">     414 </span>            :         temp[len++] = '0';</a>
+<a name="415"><span class="lineNum">     415 </span>            :     } else {</a>
+<a name="416"><span class="lineNum">     416 </span>            :         while (uvalue &gt; 0 &amp;&amp; len &lt; (int)sizeof(temp)) {</a>
+<a name="417"><span class="lineNum">     417 </span>            :             /* cppcheck-suppress zerodivcond ; base is always 10 or 16 from callers */</a>
+<a name="418"><span class="lineNum">     418 </span>            :             temp[len++] = digits[uvalue % base];</a>
+<a name="419"><span class="lineNum">     419 </span>            :             uvalue /= base;</a>
+<a name="420"><span class="lineNum">     420 </span>            :         }</a>
+<a name="421"><span class="lineNum">     421 </span>            :     }</a>
+<a name="422"><span class="lineNum">     422 </span>            : </a>
+<a name="423"><span class="lineNum">     423 </span>            :     /* Add sign if negative */</a>
+<a name="424"><span class="lineNum">     424 </span>            :     if (negative) {</a>
+<a name="425"><span class="lineNum">     425 </span>            :         temp[len++] = '-';</a>
+<a name="426"><span class="lineNum">     426 </span>            :     }</a>
+<a name="427"><span class="lineNum">     427 </span>            : </a>
+<a name="428"><span class="lineNum">     428 </span>            :     /* Calculate padding */</a>
+<a name="429"><span class="lineNum">     429 </span>            :     int pad = width - len;</a>
+<a name="430"><span class="lineNum">     430 </span>            :     if (pad &lt; 0) pad = 0;</a>
+<a name="431"><span class="lineNum">     431 </span>            : </a>
+<a name="432"><span class="lineNum">     432 </span>            :     int pos = 0;</a>
+<a name="433"><span class="lineNum">     433 </span>            : </a>
+<a name="434"><span class="lineNum">     434 </span>            :     /* Pad with spaces (if not zero-padding) */</a>
+<a name="435"><span class="lineNum">     435 </span>            :     if (!zero_pad) {</a>
+<a name="436"><span class="lineNum">     436 </span>            :         while (pad &gt; 0 &amp;&amp; pos &lt; (int)bufsize - 1) {</a>
+<a name="437"><span class="lineNum">     437 </span>            :             buf[pos++] = ' ';</a>
+<a name="438"><span class="lineNum">     438 </span>            :             pad--;</a>
+<a name="439"><span class="lineNum">     439 </span>            :         }</a>
+<a name="440"><span class="lineNum">     440 </span>            :     }</a>
+<a name="441"><span class="lineNum">     441 </span>            : </a>
+<a name="442"><span class="lineNum">     442 </span>            :     /* If zero-padding and negative, write sign first */</a>
+<a name="443"><span class="lineNum">     443 </span>            :     if (zero_pad &amp;&amp; negative &amp;&amp; pos &lt; (int)bufsize - 1) {</a>
+<a name="444"><span class="lineNum">     444 </span>            :         buf[pos++] = '-';</a>
+<a name="445"><span class="lineNum">     445 </span>            :         len--; /* Sign already written */</a>
+<a name="446"><span class="lineNum">     446 </span>            :     }</a>
+<a name="447"><span class="lineNum">     447 </span>            : </a>
+<a name="448"><span class="lineNum">     448 </span>            :     /* Pad with zeros */</a>
+<a name="449"><span class="lineNum">     449 </span>            :     if (zero_pad) {</a>
+<a name="450"><span class="lineNum">     450 </span>            :         while (pad &gt; 0 &amp;&amp; pos &lt; (int)bufsize - 1) {</a>
+<a name="451"><span class="lineNum">     451 </span>            :             buf[pos++] = '0';</a>
+<a name="452"><span class="lineNum">     452 </span>            :             pad--;</a>
+<a name="453"><span class="lineNum">     453 </span>            :         }</a>
+<a name="454"><span class="lineNum">     454 </span>            :     }</a>
+<a name="455"><span class="lineNum">     455 </span>            : </a>
+<a name="456"><span class="lineNum">     456 </span>            :     /* Write digits (reversed) */</a>
+<a name="457"><span class="lineNum">     457 </span>            :     int start = negative &amp;&amp; zero_pad ? 1 : (negative ? 1 : 0);</a>
+<a name="458"><span class="lineNum">     458 </span>            :     for (int i = len - 1; i &gt;= start &amp;&amp; pos &lt; (int)bufsize - 1; i--) {</a>
+<a name="459"><span class="lineNum">     459 </span>            :         buf[pos++] = temp[i];</a>
+<a name="460"><span class="lineNum">     460 </span>            :     }</a>
+<a name="461"><span class="lineNum">     461 </span>            : </a>
+<a name="462"><span class="lineNum">     462 </span>            :     buf[pos] = '\0';</a>
+<a name="463"><span class="lineNum">     463 </span>            :     return pos;</a>
+<a name="464"><span class="lineNum">     464 </span>            : }</a>
+<a name="465"><span class="lineNum">     465 </span>            : </a>
+<a name="466"><span class="lineNum">     466 </span>            : int pt_vsnprintf(char *buf, size_t size, const char *fmt, va_list args) {</a>
+<a name="467"><span class="lineNum">     467 </span>            :     size_t pos = 0;</a>
+<a name="468"><span class="lineNum">     468 </span>            :     const char *p = fmt;</a>
+<a name="469"><span class="lineNum">     469 </span>            : </a>
+<a name="470"><span class="lineNum">     470 </span>            :     if (size == 0) return 0;</a>
 <a name="471"><span class="lineNum">     471 </span>            : </a>
-<a name="472"><span class="lineNum">     472 </span>            :         /* Parse format specifier */</a>
-<a name="473"><span class="lineNum">     473 </span>            :         switch (*p) {</a>
-<a name="474"><span class="lineNum">     474 </span>            :             case 'd': {</a>
-<a name="475"><span class="lineNum">     475 </span>            :                 long val = is_long ? va_arg(args, long) : va_arg(args, int);</a>
-<a name="476"><span class="lineNum">     476 </span>            :                 int written = pt_format_int(val, 10, width, zero_pad, 0, 1,</a>
-<a name="477"><span class="lineNum">     477 </span>            :                                            buf + pos, size - pos);</a>
-<a name="478"><span class="lineNum">     478 </span>            :                 pos += written;</a>
-<a name="479"><span class="lineNum">     479 </span>            :                 break;</a>
-<a name="480"><span class="lineNum">     480 </span>            :             }</a>
-<a name="481"><span class="lineNum">     481 </span>            :             case 'u': {</a>
-<a name="482"><span class="lineNum">     482 </span>            :                 unsigned long val = is_long ? va_arg(args, unsigned long)</a>
-<a name="483"><span class="lineNum">     483 </span>            :                                             : va_arg(args, unsigned int);</a>
-<a name="484"><span class="lineNum">     484 </span>            :                 int written = pt_format_int((long)val, 10, width, zero_pad,</a>
-<a name="485"><span class="lineNum">     485 </span>            :                                            0, 0, buf + pos, size - pos);</a>
-<a name="486"><span class="lineNum">     486 </span>            :                 pos += written;</a>
-<a name="487"><span class="lineNum">     487 </span>            :                 break;</a>
-<a name="488"><span class="lineNum">     488 </span>            :             }</a>
-<a name="489"><span class="lineNum">     489 </span>            :             case 'x': {</a>
-<a name="490"><span class="lineNum">     490 </span>            :                 unsigned long val = is_long ? va_arg(args, unsigned long)</a>
-<a name="491"><span class="lineNum">     491 </span>            :                                             : va_arg(args, unsigned int);</a>
-<a name="492"><span class="lineNum">     492 </span>            :                 int written = pt_format_int((long)val, 16, width, zero_pad,</a>
-<a name="493"><span class="lineNum">     493 </span>            :                                            0, 0, buf + pos, size - pos);</a>
-<a name="494"><span class="lineNum">     494 </span>            :                 pos += written;</a>
-<a name="495"><span class="lineNum">     495 </span>            :                 break;</a>
-<a name="496"><span class="lineNum">     496 </span>            :             }</a>
-<a name="497"><span class="lineNum">     497 </span>            :             case 'X': {</a>
-<a name="498"><span class="lineNum">     498 </span>            :                 unsigned long val = is_long ? va_arg(args, unsigned long)</a>
-<a name="499"><span class="lineNum">     499 </span>            :                                             : va_arg(args, unsigned int);</a>
-<a name="500"><span class="lineNum">     500 </span>            :                 int written = pt_format_int((long)val, 16, width, zero_pad,</a>
-<a name="501"><span class="lineNum">     501 </span>            :                                            1, 0, buf + pos, size - pos);</a>
-<a name="502"><span class="lineNum">     502 </span>            :                 pos += written;</a>
-<a name="503"><span class="lineNum">     503 </span>            :                 break;</a>
-<a name="504"><span class="lineNum">     504 </span>            :             }</a>
-<a name="505"><span class="lineNum">     505 </span>            :             case 'p': {</a>
-<a name="506"><span class="lineNum">     506 </span>            :                 void *ptr = va_arg(args, void *);</a>
-<a name="507"><span class="lineNum">     507 </span>            :                 if (pos &lt; size - 3) {</a>
-<a name="508"><span class="lineNum">     508 </span>            :                     buf[pos++] = '0';</a>
-<a name="509"><span class="lineNum">     509 </span>            :                     buf[pos++] = 'x';</a>
-<a name="510"><span class="lineNum">     510 </span>            :                 }</a>
-<a name="511"><span class="lineNum">     511 </span>            :                 int written = pt_format_int((long)ptr, 16, 8, 1, 0, 0,</a>
-<a name="512"><span class="lineNum">     512 </span>            :                                            buf + pos, size - pos);</a>
-<a name="513"><span class="lineNum">     513 </span>            :                 pos += written;</a>
-<a name="514"><span class="lineNum">     514 </span>            :                 break;</a>
-<a name="515"><span class="lineNum">     515 </span>            :             }</a>
-<a name="516"><span class="lineNum">     516 </span>            :             case 's': {</a>
-<a name="517"><span class="lineNum">     517 </span>            :                 const char *str = va_arg(args, const char *);</a>
-<a name="518"><span class="lineNum">     518 </span>            :                 if (str == NULL) str = &quot;(null)&quot;;</a>
-<a name="519"><span class="lineNum">     519 </span>            :                 while (*str &amp;&amp; pos &lt; size - 1) {</a>
-<a name="520"><span class="lineNum">     520 </span>            :                     buf[pos++] = *str++;</a>
-<a name="521"><span class="lineNum">     521 </span>            :                 }</a>
-<a name="522"><span class="lineNum">     522 </span>            :                 break;</a>
-<a name="523"><span class="lineNum">     523 </span>            :             }</a>
-<a name="524"><span class="lineNum">     524 </span>            :             case 'c': {</a>
-<a name="525"><span class="lineNum">     525 </span>            :                 char c = (char)va_arg(args, int);</a>
-<a name="526"><span class="lineNum">     526 </span>            :                 if (pos &lt; size - 1) {</a>
-<a name="527"><span class="lineNum">     527 </span>            :                     buf[pos++] = c;</a>
-<a name="528"><span class="lineNum">     528 </span>            :                 }</a>
-<a name="529"><span class="lineNum">     529 </span>            :                 break;</a>
-<a name="530"><span class="lineNum">     530 </span>            :             }</a>
-<a name="531"><span class="lineNum">     531 </span>            :             case '%': {</a>
-<a name="532"><span class="lineNum">     532 </span>            :                 if (pos &lt; size - 1) {</a>
-<a name="533"><span class="lineNum">     533 </span>            :                     buf[pos++] = '%';</a>
-<a name="534"><span class="lineNum">     534 </span>            :                 }</a>
-<a name="535"><span class="lineNum">     535 </span>            :                 break;</a>
-<a name="536"><span class="lineNum">     536 </span>            :             }</a>
-<a name="537"><span class="lineNum">     537 </span>            :             default:</a>
-<a name="538"><span class="lineNum">     538 </span>            :                 /* Unknown format - just copy it */</a>
-<a name="539"><span class="lineNum">     539 </span>            :                 if (pos &lt; size - 1) {</a>
-<a name="540"><span class="lineNum">     540 </span>            :                     buf[pos++] = '%';</a>
-<a name="541"><span class="lineNum">     541 </span>            :                 }</a>
-<a name="542"><span class="lineNum">     542 </span>            :                 if (pos &lt; size - 1 &amp;&amp; *p) {</a>
-<a name="543"><span class="lineNum">     543 </span>            :                     buf[pos++] = *p;</a>
-<a name="544"><span class="lineNum">     544 </span>            :                 }</a>
-<a name="545"><span class="lineNum">     545 </span>            :                 break;</a>
-<a name="546"><span class="lineNum">     546 </span>            :         }</a>
-<a name="547"><span class="lineNum">     547 </span>            : </a>
-<a name="548"><span class="lineNum">     548 </span>            :         if (*p) p++;</a>
-<a name="549"><span class="lineNum">     549 </span>            :     }</a>
-<a name="550"><span class="lineNum">     550 </span>            : </a>
-<a name="551"><span class="lineNum">     551 </span>            :     buf[pos] = '\0';</a>
-<a name="552"><span class="lineNum">     552 </span>            :     return (int)pos;</a>
-<a name="553"><span class="lineNum">     553 </span>            : }</a>
-<a name="554"><span class="lineNum">     554 </span>            : </a>
-<a name="555"><span class="lineNum">     555 </span>            : int pt_snprintf(char *buf, size_t size, const char *fmt, ...) {</a>
-<a name="556"><span class="lineNum">     556 </span>            :     va_list args;</a>
-<a name="557"><span class="lineNum">     557 </span>            :     int result;</a>
-<a name="558"><span class="lineNum">     558 </span>            :     va_start(args, fmt);</a>
-<a name="559"><span class="lineNum">     559 </span>            :     result = pt_vsnprintf(buf, size, fmt, args);</a>
-<a name="560"><span class="lineNum">     560 </span>            :     va_end(args);</a>
-<a name="561"><span class="lineNum">     561 </span>            :     return result;</a>
-<a name="562"><span class="lineNum">     562 </span>            : }</a>
-<a name="563"><span class="lineNum">     563 </span>            : </a>
-<a name="564"><span class="lineNum">     564 </span>            : #endif /* PT_PLATFORM_MACTCP || PT_PLATFORM_OT */</a>
-<a name="565"><span class="lineNum">     565 </span>            : </a>
-<a name="566"><span class="lineNum">     566 </span>            : /* ========================================================================== */</a>
-<a name="567"><span class="lineNum">     567 </span>            : /* Platform-Portable Tick Getter (Phase 3)                                   */</a>
-<a name="568"><span class="lineNum">     568 </span>            : /* ========================================================================== */</a>
-<a name="569"><span class="lineNum">     569 </span>            : </a>
-<a name="570"><span class="lineNum">     570 </span>            : /*</a>
-<a name="571"><span class="lineNum">     571 </span>            :  * Platform-portable tick getter</a>
-<a name="572"><span class="lineNum">     572 </span>            :  *</a>
-<a name="573"><span class="lineNum">     573 </span>            :  * Returns monotonically increasing tick count.</a>
-<a name="574"><span class="lineNum">     574 </span>            :  * Resolution varies by platform but sufficient for coalescing/priority.</a>
-<a name="575"><span class="lineNum">     575 </span>            :  */</a>
-<a name="576"><span class="lineNum">     576 </span>            : #if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)</a>
-<a name="577"><span class="lineNum">     577 </span>            :     /* Classic Mac - use TickCount() directly (60 ticks/sec)</a>
-<a name="578"><span class="lineNum">     578 </span>            :      * TickCount() is declared in OSUtils.h, NOT Timer.h</a>
-<a name="579"><span class="lineNum">     579 </span>            :      * NOTE: TickCount() is NOT documented as interrupt-safe in Inside Macintosh</a>
-<a name="580"><span class="lineNum">     580 </span>            :      * Table B-3. Do NOT call from ASR/notifier - use timestamp=0 instead.</a>
-<a name="581"><span class="lineNum">     581 </span>            :      */</a>
-<a name="582"><span class="lineNum">     582 </span>            :     #include &lt;OSUtils.h&gt;</a>
-<a name="583"><span class="lineNum">     583 </span>            :     uint32_t pt_get_ticks(void) {</a>
-<a name="584"><span class="lineNum">     584 </span>            :         return (uint32_t)TickCount();</a>
-<a name="585"><span class="lineNum">     585 </span>            :     }</a>
-<a name="586"><span class="lineNum">     586 </span>            : #else</a>
-<a name="587"><span class="lineNum">     587 </span>            :     /* POSIX - use milliseconds */</a>
-<a name="588"><span class="lineNum">     588 </span><span class="lineCov">         83 :     uint32_t pt_get_ticks(void) {</span></a>
-<a name="589"><span class="lineNum">     589 </span>            :         struct timespec ts;</a>
-<a name="590"><span class="lineNum">     590 </span><span class="lineCov">         83 :         clock_gettime(CLOCK_MONOTONIC, &amp;ts);</span></a>
-<a name="591"><span class="lineNum">     591 </span><span class="lineCov">         83 :         return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);</span></a>
-<a name="592"><span class="lineNum">     592 </span>            :     }</a>
-<a name="593"><span class="lineNum">     593 </span>            : #endif</a>
+<a name="472"><span class="lineNum">     472 </span>            :     while (*p &amp;&amp; pos &lt; size - 1) {</a>
+<a name="473"><span class="lineNum">     473 </span>            :         if (*p != '%') {</a>
+<a name="474"><span class="lineNum">     474 </span>            :             buf[pos++] = *p++;</a>
+<a name="475"><span class="lineNum">     475 </span>            :             continue;</a>
+<a name="476"><span class="lineNum">     476 </span>            :         }</a>
+<a name="477"><span class="lineNum">     477 </span>            : </a>
+<a name="478"><span class="lineNum">     478 </span>            :         p++; /* Skip '%' */</a>
+<a name="479"><span class="lineNum">     479 </span>            : </a>
+<a name="480"><span class="lineNum">     480 </span>            :         /* Parse flags and width */</a>
+<a name="481"><span class="lineNum">     481 </span>            :         int zero_pad = 0;</a>
+<a name="482"><span class="lineNum">     482 </span>            :         int width = 0;</a>
+<a name="483"><span class="lineNum">     483 </span>            : </a>
+<a name="484"><span class="lineNum">     484 </span>            :         if (*p == '0') {</a>
+<a name="485"><span class="lineNum">     485 </span>            :             zero_pad = 1;</a>
+<a name="486"><span class="lineNum">     486 </span>            :             p++;</a>
+<a name="487"><span class="lineNum">     487 </span>            :         }</a>
+<a name="488"><span class="lineNum">     488 </span>            : </a>
+<a name="489"><span class="lineNum">     489 </span>            :         while (*p &gt;= '0' &amp;&amp; *p &lt;= '9') {</a>
+<a name="490"><span class="lineNum">     490 </span>            :             width = width * 10 + (*p - '0');</a>
+<a name="491"><span class="lineNum">     491 </span>            :             p++;</a>
+<a name="492"><span class="lineNum">     492 </span>            :         }</a>
+<a name="493"><span class="lineNum">     493 </span>            : </a>
+<a name="494"><span class="lineNum">     494 </span>            :         /* Parse length modifier */</a>
+<a name="495"><span class="lineNum">     495 </span>            :         int is_long = 0;</a>
+<a name="496"><span class="lineNum">     496 </span>            :         if (*p == 'l') {</a>
+<a name="497"><span class="lineNum">     497 </span>            :             is_long = 1;</a>
+<a name="498"><span class="lineNum">     498 </span>            :             p++;</a>
+<a name="499"><span class="lineNum">     499 </span>            :         }</a>
+<a name="500"><span class="lineNum">     500 </span>            : </a>
+<a name="501"><span class="lineNum">     501 </span>            :         /* Parse format specifier */</a>
+<a name="502"><span class="lineNum">     502 </span>            :         switch (*p) {</a>
+<a name="503"><span class="lineNum">     503 </span>            :             case 'd': {</a>
+<a name="504"><span class="lineNum">     504 </span>            :                 long val = is_long ? va_arg(args, long) : va_arg(args, int);</a>
+<a name="505"><span class="lineNum">     505 </span>            :                 int written = pt_format_int(val, 10, width, zero_pad, 0, 1,</a>
+<a name="506"><span class="lineNum">     506 </span>            :                                            buf + pos, size - pos);</a>
+<a name="507"><span class="lineNum">     507 </span>            :                 pos += written;</a>
+<a name="508"><span class="lineNum">     508 </span>            :                 break;</a>
+<a name="509"><span class="lineNum">     509 </span>            :             }</a>
+<a name="510"><span class="lineNum">     510 </span>            :             case 'u': {</a>
+<a name="511"><span class="lineNum">     511 </span>            :                 unsigned long val = is_long ? va_arg(args, unsigned long)</a>
+<a name="512"><span class="lineNum">     512 </span>            :                                             : va_arg(args, unsigned int);</a>
+<a name="513"><span class="lineNum">     513 </span>            :                 int written = pt_format_int((long)val, 10, width, zero_pad,</a>
+<a name="514"><span class="lineNum">     514 </span>            :                                            0, 0, buf + pos, size - pos);</a>
+<a name="515"><span class="lineNum">     515 </span>            :                 pos += written;</a>
+<a name="516"><span class="lineNum">     516 </span>            :                 break;</a>
+<a name="517"><span class="lineNum">     517 </span>            :             }</a>
+<a name="518"><span class="lineNum">     518 </span>            :             case 'x': {</a>
+<a name="519"><span class="lineNum">     519 </span>            :                 unsigned long val = is_long ? va_arg(args, unsigned long)</a>
+<a name="520"><span class="lineNum">     520 </span>            :                                             : va_arg(args, unsigned int);</a>
+<a name="521"><span class="lineNum">     521 </span>            :                 int written = pt_format_int((long)val, 16, width, zero_pad,</a>
+<a name="522"><span class="lineNum">     522 </span>            :                                            0, 0, buf + pos, size - pos);</a>
+<a name="523"><span class="lineNum">     523 </span>            :                 pos += written;</a>
+<a name="524"><span class="lineNum">     524 </span>            :                 break;</a>
+<a name="525"><span class="lineNum">     525 </span>            :             }</a>
+<a name="526"><span class="lineNum">     526 </span>            :             case 'X': {</a>
+<a name="527"><span class="lineNum">     527 </span>            :                 unsigned long val = is_long ? va_arg(args, unsigned long)</a>
+<a name="528"><span class="lineNum">     528 </span>            :                                             : va_arg(args, unsigned int);</a>
+<a name="529"><span class="lineNum">     529 </span>            :                 int written = pt_format_int((long)val, 16, width, zero_pad,</a>
+<a name="530"><span class="lineNum">     530 </span>            :                                            1, 0, buf + pos, size - pos);</a>
+<a name="531"><span class="lineNum">     531 </span>            :                 pos += written;</a>
+<a name="532"><span class="lineNum">     532 </span>            :                 break;</a>
+<a name="533"><span class="lineNum">     533 </span>            :             }</a>
+<a name="534"><span class="lineNum">     534 </span>            :             case 'p': {</a>
+<a name="535"><span class="lineNum">     535 </span>            :                 void *ptr = va_arg(args, void *);</a>
+<a name="536"><span class="lineNum">     536 </span>            :                 if (pos &lt; size - 3) {</a>
+<a name="537"><span class="lineNum">     537 </span>            :                     buf[pos++] = '0';</a>
+<a name="538"><span class="lineNum">     538 </span>            :                     buf[pos++] = 'x';</a>
+<a name="539"><span class="lineNum">     539 </span>            :                 }</a>
+<a name="540"><span class="lineNum">     540 </span>            :                 int written = pt_format_int((long)ptr, 16, 8, 1, 0, 0,</a>
+<a name="541"><span class="lineNum">     541 </span>            :                                            buf + pos, size - pos);</a>
+<a name="542"><span class="lineNum">     542 </span>            :                 pos += written;</a>
+<a name="543"><span class="lineNum">     543 </span>            :                 break;</a>
+<a name="544"><span class="lineNum">     544 </span>            :             }</a>
+<a name="545"><span class="lineNum">     545 </span>            :             case 's': {</a>
+<a name="546"><span class="lineNum">     546 </span>            :                 const char *str = va_arg(args, const char *);</a>
+<a name="547"><span class="lineNum">     547 </span>            :                 if (str == NULL) str = &quot;(null)&quot;;</a>
+<a name="548"><span class="lineNum">     548 </span>            :                 while (*str &amp;&amp; pos &lt; size - 1) {</a>
+<a name="549"><span class="lineNum">     549 </span>            :                     buf[pos++] = *str++;</a>
+<a name="550"><span class="lineNum">     550 </span>            :                 }</a>
+<a name="551"><span class="lineNum">     551 </span>            :                 break;</a>
+<a name="552"><span class="lineNum">     552 </span>            :             }</a>
+<a name="553"><span class="lineNum">     553 </span>            :             case 'c': {</a>
+<a name="554"><span class="lineNum">     554 </span>            :                 char c = (char)va_arg(args, int);</a>
+<a name="555"><span class="lineNum">     555 </span>            :                 if (pos &lt; size - 1) {</a>
+<a name="556"><span class="lineNum">     556 </span>            :                     buf[pos++] = c;</a>
+<a name="557"><span class="lineNum">     557 </span>            :                 }</a>
+<a name="558"><span class="lineNum">     558 </span>            :                 break;</a>
+<a name="559"><span class="lineNum">     559 </span>            :             }</a>
+<a name="560"><span class="lineNum">     560 </span>            :             case '%': {</a>
+<a name="561"><span class="lineNum">     561 </span>            :                 if (pos &lt; size - 1) {</a>
+<a name="562"><span class="lineNum">     562 </span>            :                     buf[pos++] = '%';</a>
+<a name="563"><span class="lineNum">     563 </span>            :                 }</a>
+<a name="564"><span class="lineNum">     564 </span>            :                 break;</a>
+<a name="565"><span class="lineNum">     565 </span>            :             }</a>
+<a name="566"><span class="lineNum">     566 </span>            :             default:</a>
+<a name="567"><span class="lineNum">     567 </span>            :                 /* Unknown format - just copy it */</a>
+<a name="568"><span class="lineNum">     568 </span>            :                 if (pos &lt; size - 1) {</a>
+<a name="569"><span class="lineNum">     569 </span>            :                     buf[pos++] = '%';</a>
+<a name="570"><span class="lineNum">     570 </span>            :                 }</a>
+<a name="571"><span class="lineNum">     571 </span>            :                 if (pos &lt; size - 1 &amp;&amp; *p) {</a>
+<a name="572"><span class="lineNum">     572 </span>            :                     buf[pos++] = *p;</a>
+<a name="573"><span class="lineNum">     573 </span>            :                 }</a>
+<a name="574"><span class="lineNum">     574 </span>            :                 break;</a>
+<a name="575"><span class="lineNum">     575 </span>            :         }</a>
+<a name="576"><span class="lineNum">     576 </span>            : </a>
+<a name="577"><span class="lineNum">     577 </span>            :         if (*p) p++;</a>
+<a name="578"><span class="lineNum">     578 </span>            :     }</a>
+<a name="579"><span class="lineNum">     579 </span>            : </a>
+<a name="580"><span class="lineNum">     580 </span>            :     buf[pos] = '\0';</a>
+<a name="581"><span class="lineNum">     581 </span>            :     return (int)pos;</a>
+<a name="582"><span class="lineNum">     582 </span>            : }</a>
+<a name="583"><span class="lineNum">     583 </span>            : </a>
+<a name="584"><span class="lineNum">     584 </span>            : int pt_snprintf(char *buf, size_t size, const char *fmt, ...) {</a>
+<a name="585"><span class="lineNum">     585 </span>            :     va_list args;</a>
+<a name="586"><span class="lineNum">     586 </span>            :     int result;</a>
+<a name="587"><span class="lineNum">     587 </span>            :     va_start(args, fmt);</a>
+<a name="588"><span class="lineNum">     588 </span>            :     result = pt_vsnprintf(buf, size, fmt, args);</a>
+<a name="589"><span class="lineNum">     589 </span>            :     va_end(args);</a>
+<a name="590"><span class="lineNum">     590 </span>            :     return result;</a>
+<a name="591"><span class="lineNum">     591 </span>            : }</a>
+<a name="592"><span class="lineNum">     592 </span>            : </a>
+<a name="593"><span class="lineNum">     593 </span>            : #endif /* PT_PLATFORM_MACTCP || PT_PLATFORM_OT */</a>
+<a name="594"><span class="lineNum">     594 </span>            : </a>
+<a name="595"><span class="lineNum">     595 </span>            : /* ========================================================================== */</a>
+<a name="596"><span class="lineNum">     596 </span>            : /* Platform-Portable Tick Getter (Phase 3)                                   */</a>
+<a name="597"><span class="lineNum">     597 </span>            : /* ========================================================================== */</a>
+<a name="598"><span class="lineNum">     598 </span>            : </a>
+<a name="599"><span class="lineNum">     599 </span>            : /*</a>
+<a name="600"><span class="lineNum">     600 </span>            :  * Platform-portable tick getter</a>
+<a name="601"><span class="lineNum">     601 </span>            :  *</a>
+<a name="602"><span class="lineNum">     602 </span>            :  * Returns monotonically increasing tick count.</a>
+<a name="603"><span class="lineNum">     603 </span>            :  * Resolution varies by platform but sufficient for coalescing/priority.</a>
+<a name="604"><span class="lineNum">     604 </span>            :  */</a>
+<a name="605"><span class="lineNum">     605 </span>            : #if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)</a>
+<a name="606"><span class="lineNum">     606 </span>            :     /* Classic Mac - use TickCount() directly (60 ticks/sec)</a>
+<a name="607"><span class="lineNum">     607 </span>            :      * TickCount() is declared in OSUtils.h, NOT Timer.h</a>
+<a name="608"><span class="lineNum">     608 </span>            :      * NOTE: TickCount() is NOT documented as interrupt-safe in Inside Macintosh</a>
+<a name="609"><span class="lineNum">     609 </span>            :      * Table B-3. Do NOT call from ASR/notifier - use timestamp=0 instead.</a>
+<a name="610"><span class="lineNum">     610 </span>            :      */</a>
+<a name="611"><span class="lineNum">     611 </span>            :     #include &lt;OSUtils.h&gt;</a>
+<a name="612"><span class="lineNum">     612 </span>            :     uint32_t pt_get_ticks(void) {</a>
+<a name="613"><span class="lineNum">     613 </span>            :         return (uint32_t)TickCount();</a>
+<a name="614"><span class="lineNum">     614 </span>            :     }</a>
+<a name="615"><span class="lineNum">     615 </span>            : #else</a>
+<a name="616"><span class="lineNum">     616 </span>            :     /* POSIX - use milliseconds */</a>
+<a name="617"><span class="lineNum">     617 </span><span class="lineCov">         83 :     uint32_t pt_get_ticks(void) {</span></a>
+<a name="618"><span class="lineNum">     618 </span>            :         struct timespec ts;</a>
+<a name="619"><span class="lineNum">     619 </span><span class="lineCov">         83 :         clock_gettime(CLOCK_MONOTONIC, &amp;ts);</span></a>
+<a name="620"><span class="lineNum">     620 </span><span class="lineCov">         83 :         return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);</span></a>
+<a name="621"><span class="lineNum">     621 </span>            :     }</a>
+<a name="622"><span class="lineNum">     622 </span>            : #endif</a>
 </pre>
       </td>
     </tr>
