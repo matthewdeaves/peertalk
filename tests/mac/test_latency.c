@@ -31,6 +31,10 @@
 #include "peertalk.h"
 #include "pt_log.h"
 
+/* Log streaming helper - implementation in this file */
+#define LOG_STREAM_IMPLEMENTATION
+#include "log_stream.h"
+
 /* ========================================================================== */
 /* Configuration                                                               */
 /* ========================================================================== */
@@ -402,6 +406,9 @@ int main(void)
         PT_LogSetLevel(g_log, PT_LOG_DEBUG);
         PT_LogSetCategories(g_log, 0xFFFF);
         PT_LogSetFile(g_log, "PT_Latency");
+
+        /* Initialize log streaming (captures logs for sending to partner) */
+        log_stream_init(g_log);
     }
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
@@ -483,13 +490,33 @@ int main(void)
         }
 
         /* Check for overall test completion */
-        if (g_test.test_complete) {
+        if (g_test.test_complete && !g_log_stream.streaming && !g_log_stream.complete) {
             print_results();
+
+            /* Stream logs to partner before exiting */
+            if (g_connected_peer) {
+                PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+                    "Streaming %lu bytes of logs to partner...",
+                    (unsigned long)g_log_stream.length);
+                log_stream_send(g_ctx, g_connected_peer);
+            } else {
+                g_running = 0;
+            }
+        }
+
+        /* Wait for log streaming to complete */
+        if (g_log_stream.complete && g_test.test_complete) {
+            if (log_stream_bytes_sent() > 0) {
+                PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+                    "Log streaming complete: %lu bytes sent",
+                    (unsigned long)log_stream_bytes_sent());
+            }
             g_running = 0;
         }
     }
 
 cleanup:
+    log_stream_cleanup();
     if (g_ctx) {
         PeerTalk_Shutdown(g_ctx);
     }

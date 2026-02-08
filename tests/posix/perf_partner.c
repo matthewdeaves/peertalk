@@ -38,6 +38,7 @@
 #include <sys/time.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <sys/stat.h>
 
 #include "peertalk.h"
 
@@ -92,6 +93,25 @@ typedef struct {
 } TestStats;
 
 /* ========================================================================== */
+/* Log Reception State                                                         */
+/* ========================================================================== */
+
+/* Protocol header from Mac - must match log_stream.h */
+#define LOG_STREAM_MARKER       "LOG:"
+#define LOG_STREAM_MARKER_LEN   4
+#define LOG_STREAM_HEADER_SIZE  8
+#define LOG_RECEIVE_BUFFER_SIZE 65536
+
+typedef struct {
+    uint8_t        *buffer;           /* Reception buffer */
+    uint32_t        expected_length;  /* Total bytes expected */
+    uint32_t        received_length;  /* Bytes received so far */
+    PeerTalk_PeerID peer_id;          /* Peer sending logs */
+    int             active;           /* 1 if receiving logs */
+    char            peer_name[64];    /* For filename */
+} LogReceiver;
+
+/* ========================================================================== */
 /* Globals                                                                     */
 /* ========================================================================== */
 
@@ -102,6 +122,7 @@ static TestStats g_stats;
 static PeerTalk_PeerID g_connected_peer = 0;
 static int g_streaming = 0;
 static uint8_t *g_stream_buffer = NULL;
+static LogReceiver g_log_receiver = {0};
 
 /* ========================================================================== */
 /* Utility Functions                                                           */
@@ -228,6 +249,149 @@ static void stream_tick(void)
 }
 
 /* ========================================================================== */
+/* Log Reception                                                               */
+/* ========================================================================== */
+
+/**
+ * Initialize log receiver for a peer
+ */
+static int log_receiver_start(PeerTalk_PeerID peer_id, const void *header_data,
+                               uint16_t header_len, const char *peer_name)
+{
+    uint32_t total_length;
+
+    if (header_len < LOG_STREAM_HEADER_SIZE) {
+        return -1;
+    }
+
+    /* Extract total length from header */
+    memcpy(&total_length, (const uint8_t *)header_data + LOG_STREAM_MARKER_LEN,
+           sizeof(total_length));
+
+    if (total_length > LOG_RECEIVE_BUFFER_SIZE || total_length < LOG_STREAM_HEADER_SIZE) {
+        printf("[LOG] Invalid log stream length: %u\n", total_length);
+        return -1;
+    }
+
+    /* Allocate buffer if needed */
+    if (!g_log_receiver.buffer) {
+        g_log_receiver.buffer = malloc(LOG_RECEIVE_BUFFER_SIZE);
+        if (!g_log_receiver.buffer) {
+            printf("[LOG] Failed to allocate receive buffer\n");
+            return -1;
+        }
+    }
+
+    g_log_receiver.expected_length = total_length;
+    g_log_receiver.received_length = 0;
+    g_log_receiver.peer_id = peer_id;
+    g_log_receiver.active = 1;
+    strncpy(g_log_receiver.peer_name, peer_name ? peer_name : "unknown", 63);
+    g_log_receiver.peer_name[63] = '\0';
+
+    /* Store the first chunk (includes header) */
+    memcpy(g_log_receiver.buffer, header_data, header_len);
+    g_log_receiver.received_length = header_len;
+
+    printf("[LOG] Started receiving logs from %s (%u bytes expected)\n",
+           g_log_receiver.peer_name, total_length);
+
+    return 0;
+}
+
+/**
+ * Append data to log receiver buffer
+ */
+static void log_receiver_append(const void *data, uint16_t len)
+{
+    uint32_t remaining;
+
+    if (!g_log_receiver.active) return;
+
+    remaining = g_log_receiver.expected_length - g_log_receiver.received_length;
+    if (len > remaining) len = remaining;
+
+    memcpy(g_log_receiver.buffer + g_log_receiver.received_length, data, len);
+    g_log_receiver.received_length += len;
+
+    if (g_config.verbose) {
+        printf("[LOG] Received %u/%u bytes\n",
+               g_log_receiver.received_length, g_log_receiver.expected_length);
+    }
+}
+
+/**
+ * Check if log reception is complete and save to file
+ */
+static void log_receiver_check_complete(void)
+{
+    FILE *fp;
+    char filename[128];
+    time_t now;
+    struct tm *tm_info;
+
+    if (!g_log_receiver.active) return;
+    if (g_log_receiver.received_length < g_log_receiver.expected_length) return;
+
+    /* Generate filename with timestamp */
+    now = time(NULL);
+    tm_info = localtime(&now);
+    snprintf(filename, sizeof(filename), "logs/%s_%04d%02d%02d_%02d%02d%02d.log",
+             g_log_receiver.peer_name,
+             tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday,
+             tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec);
+
+    /* Create logs directory if needed */
+    mkdir("logs", 0755);
+
+    /* Write log data (skip header) */
+    fp = fopen(filename, "w");
+    if (fp) {
+        uint32_t log_len = g_log_receiver.received_length - LOG_STREAM_HEADER_SIZE;
+        fwrite(g_log_receiver.buffer + LOG_STREAM_HEADER_SIZE, 1, log_len, fp);
+        fclose(fp);
+        printf("[LOG] Saved %u bytes to %s\n", log_len, filename);
+    } else {
+        printf("[LOG] Failed to create %s: %s\n", filename, strerror(errno));
+    }
+
+    g_log_receiver.active = 0;
+}
+
+/**
+ * Handle potential log stream message
+ * Returns 1 if message was handled as log data, 0 otherwise
+ */
+static int log_receiver_handle(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
+                                const void *data, uint16_t len)
+{
+    /* Check for LOG: marker at start of message */
+    if (len >= LOG_STREAM_HEADER_SIZE &&
+        memcmp(data, LOG_STREAM_MARKER, LOG_STREAM_MARKER_LEN) == 0) {
+
+        const char *name = "unknown";
+        const PeerTalk_PeerInfo *info = PeerTalk_GetPeerByID(ctx, peer_id);
+        if (info) {
+            name = PeerTalk_GetPeerName(ctx, info->name_idx);
+            if (!name) name = "unknown";
+        }
+
+        log_receiver_start(peer_id, data, len, name);
+        log_receiver_check_complete();
+        return 1;
+    }
+
+    /* Check if we're receiving continuation data */
+    if (g_log_receiver.active && g_log_receiver.peer_id == peer_id) {
+        log_receiver_append(data, len);
+        log_receiver_check_complete();
+        return 1;
+    }
+
+    return 0;
+}
+
+/* ========================================================================== */
 /* Callbacks                                                                   */
 /* ========================================================================== */
 
@@ -314,6 +478,11 @@ static void on_message_received(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
 
     if (g_config.verbose) {
         printf("[MESSAGE] From peer %u: %u bytes\n", peer_id, len);
+    }
+
+    /* Check for log stream data (all modes) */
+    if (log_receiver_handle(ctx, peer_id, data, len)) {
+        return;  /* Message was log data, don't process further */
     }
 
     switch (g_config.mode) {
@@ -564,6 +733,9 @@ int main(int argc, char *argv[])
     /* Cleanup */
     if (g_stream_buffer) {
         free(g_stream_buffer);
+    }
+    if (g_log_receiver.buffer) {
+        free(g_log_receiver.buffer);
     }
     PeerTalk_Shutdown(g_ctx);
 

@@ -41,7 +41,8 @@ TEST_BINS = $(BIN_DIR)/test_log $(BIN_DIR)/test_log_perf $(BIN_DIR)/test_log_thr
             $(BIN_DIR)/test_discovery_recv $(BIN_DIR)/test_error_strings \
             $(BIN_DIR)/test_perf_benchmarks $(BIN_DIR)/test_protocol_fuzz \
             $(BIN_DIR)/test_queue_threads $(BIN_DIR)/test_direct_buffer \
-            $(BIN_DIR)/test_two_tier_queue
+            $(BIN_DIR)/test_two_tier_queue \
+            $(BIN_DIR)/test_streaming
 
 # Unity-based tests (optional - requires Unity framework)
 TEST_UNITY_BINS = $(BIN_DIR)/test_queue_unity
@@ -165,6 +166,9 @@ $(BIN_DIR)/test_direct_buffer: tests/test_direct_buffer.c $(LIBPEERTALK) $(LIBPT
 $(BIN_DIR)/test_two_tier_queue: tests/test_two_tier_queue.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -D_DEFAULT_SOURCE -I./src/posix -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
 
+$(BIN_DIR)/test_streaming: tests/test_streaming.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -I./src/posix -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
+
 # Mac hardware test partners (POSIX side)
 $(BIN_DIR)/test_partner: tests/posix/test_partner.c $(LIBPEERTALK) $(LIBPTLOG) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ $< -L$(LIB_DIR) -lpeertalk -lptlog $(LDFLAGS)
@@ -247,6 +251,10 @@ test-two-tier-queue: $(BIN_DIR)/test_two_tier_queue
 	@echo "Running two-tier queue integration tests..."
 	@$(BIN_DIR)/test_two_tier_queue
 
+test-streaming: $(BIN_DIR)/test_streaming
+	@echo "Running streaming API tests..."
+	@$(BIN_DIR)/test_streaming
+
 test-unity: $(BIN_DIR)/test_queue_unity
 	@echo "Running Unity-based queue tests..."
 	@$(BIN_DIR)/test_queue_unity
@@ -303,7 +311,7 @@ docker-coverage:
 # Local targets (run inside container or on host with dependencies)
 # Note: test-queue-threads is excluded from test-local due to MPMC hangs in Docker containers
 # Run 'make test-queue-threads' separately on bare metal if needed
-test-local: test-log test-compat test-foundation test-protocol test-peer test-queue test-queue-advanced test-backpressure test-discovery test-messaging test-udp test-stats test-integration-posix test-sendex test-api-errors test-queue-extended test-batch-send test-connection test-loopback-messaging test-protocol-messaging test-bidirectional test-tcp-send-recv test-discovery-recv test-error-strings test-fuzz test-direct-buffer test-two-tier-queue
+test-local: test-log test-compat test-foundation test-protocol test-peer test-queue test-queue-advanced test-backpressure test-discovery test-messaging test-udp test-stats test-integration-posix test-sendex test-api-errors test-queue-extended test-batch-send test-connection test-loopback-messaging test-protocol-messaging test-bidirectional test-tcp-send-recv test-discovery-recv test-error-strings test-fuzz test-direct-buffer test-two-tier-queue test-streaming
 	@echo ""
 	@echo "All tests passed!"
 
