@@ -736,11 +736,15 @@ int pt_mactcp_send_capability(struct pt_context *ctx, struct pt_peer *peer)
     caps.preferred_chunk = ctx->local_preferred_chunk;
     caps.capability_flags = 0;
 
-    /* Calculate current buffer pressure from recv queue */
-    if (peer->recv_queue) {
-        caps.buffer_pressure = pt_queue_pressure(peer->recv_queue);
-    } else {
-        caps.buffer_pressure = 0;
+    /* Calculate current buffer pressure from BOTH queues - report the worse one.
+     * On MacTCP, recv uses zero-copy so recv_queue is often empty.
+     * The real bottleneck shows up in send_queue when echoing back.
+     * By reporting MAX, we capture whichever is the actual constraint.
+     */
+    {
+        uint8_t send_pressure = peer->send_queue ? pt_queue_pressure(peer->send_queue) : 0;
+        uint8_t recv_pressure = peer->recv_queue ? pt_queue_pressure(peer->recv_queue) : 0;
+        caps.buffer_pressure = (send_pressure > recv_pressure) ? send_pressure : recv_pressure;
     }
 
     /* Track what we reported for flow control threshold detection */

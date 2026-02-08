@@ -1015,6 +1015,131 @@ static void test_flow_control(void) {
 }
 
 /* ========================================================================
+ * Max Pressure Reporting Test
+ *
+ * Tests that pt_peer_check_pressure_update() reports MAX(send, recv) pressure.
+ * This is critical for MacTCP where recv uses zero-copy (recv_queue empty)
+ * but send_queue fills up when echoing back.
+ * ======================================================================== */
+
+static void test_max_pressure_reporting(void) {
+    PeerTalk_Context *ctx = NULL;
+    PeerTalk_Config config;
+    struct pt_context *ictx;
+    struct pt_peer *peer;
+
+    TEST("test_max_pressure_reporting");
+
+    /* Initialize context */
+    memset(&config, 0, sizeof(config));
+    strncpy(config.local_name, "MaxPressure", PT_MAX_PEER_NAME);
+    config.tcp_port = 18507;
+
+    ctx = PeerTalk_Init(&config);
+    if (!ctx) {
+        FAIL("PeerTalk_Init failed");
+        return;
+    }
+
+    ictx = (struct pt_context *)ctx;
+
+    /* Create a fake peer with queues */
+    peer = pt_peer_create(ictx, "TestPeer", 0x7F000001, 5000);
+    if (!peer) {
+        FAIL("Failed to create peer");
+        PeerTalk_Shutdown(ctx);
+        return;
+    }
+
+    /* Allocate queues for the peer */
+    peer->send_queue = (pt_queue *)pt_alloc(sizeof(pt_queue));
+    peer->recv_queue = (pt_queue *)pt_alloc(sizeof(pt_queue));
+    if (!peer->send_queue || !peer->recv_queue) {
+        FAIL("Failed to allocate queues");
+        PeerTalk_Shutdown(ctx);
+        return;
+    }
+
+    pt_queue_init(ictx, peer->send_queue, 16);
+    pt_queue_init(ictx, peer->recv_queue, 16);
+
+    /* Set peer to connected state for pressure checking */
+    peer->hot.state = PT_PEER_STATE_CONNECTED;
+    peer->cold.caps.last_reported_pressure = 0;
+
+    /* Test 1: Both queues empty - no pressure update */
+    if (pt_peer_check_pressure_update(ictx, peer) != 0) {
+        FAIL("Should not trigger update when both queues empty");
+        goto cleanup;
+    }
+
+    /* Test 2: Fill send_queue to 50% (8 of 16 slots) */
+    {
+        uint8_t dummy[64];
+        int i;
+        memset(dummy, 0xAA, sizeof(dummy));
+        for (i = 0; i < 8; i++) {
+            pt_queue_push(ictx, peer->send_queue, dummy, 64, PT_PRIORITY_NORMAL, 0);
+        }
+    }
+
+    /* Reset last reported to force threshold crossing */
+    peer->cold.caps.last_reported_pressure = 0;
+
+    /* Should trigger update (crossed 25% and 50% thresholds) */
+    if (pt_peer_check_pressure_update(ictx, peer) != 1) {
+        FAIL("Should trigger update when send_queue at 50%%");
+        goto cleanup;
+    }
+
+    /* Verify pressure_update_pending is set */
+    if (!peer->cold.caps.pressure_update_pending) {
+        FAIL("pressure_update_pending should be set");
+        goto cleanup;
+    }
+
+    /* Test 3: recv_queue empty, send_queue full - should report send pressure */
+    /* Already have 8 in send_queue, add more to get to 75% */
+    {
+        uint8_t dummy[64];
+        int i;
+        memset(dummy, 0xBB, sizeof(dummy));
+        for (i = 0; i < 4; i++) {
+            pt_queue_push(ictx, peer->send_queue, dummy, 64, PT_PRIORITY_NORMAL, 0);
+        }
+    }
+
+    /* Reset for next check */
+    peer->cold.caps.last_reported_pressure = 50;
+    peer->cold.caps.pressure_update_pending = 0;
+
+    /* Should trigger update (crossed 75% threshold) */
+    if (pt_peer_check_pressure_update(ictx, peer) != 1) {
+        FAIL("Should trigger update when send_queue at 75%%");
+        goto cleanup;
+    }
+
+    /* Verify last_reported_pressure reflects send_queue pressure (75%) */
+    if (peer->cold.caps.last_reported_pressure != 75) {
+        FAIL("last_reported_pressure should be 75, got %u",
+             peer->cold.caps.last_reported_pressure);
+        goto cleanup;
+    }
+
+    printf("  (max pressure correctly reports send_queue when recv_queue empty) ");
+
+cleanup:
+    pt_queue_free(peer->send_queue);
+    pt_queue_free(peer->recv_queue);
+    pt_free(peer->send_queue);
+    pt_free(peer->recv_queue);
+    peer->send_queue = NULL;
+    peer->recv_queue = NULL;
+    PeerTalk_Shutdown(ctx);
+    PASS();
+}
+
+/* ========================================================================
  * Main
  * ======================================================================== */
 
@@ -1036,6 +1161,7 @@ int main(void) {
 
     /* Flow control tests */
     test_flow_control();
+    test_max_pressure_reporting();
 
     /* Summary */
     printf("\n=== Results ===\n");

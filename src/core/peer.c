@@ -565,6 +565,8 @@ static uint8_t pt_pressure_level(uint8_t pressure)
 
 int pt_peer_check_pressure_update(struct pt_context *ctx, struct pt_peer *peer)
 {
+    uint8_t send_pressure;
+    uint8_t recv_pressure;
     uint8_t current_pressure;
     uint8_t current_level;
     uint8_t last_level;
@@ -578,12 +580,19 @@ int pt_peer_check_pressure_update(struct pt_context *ctx, struct pt_peer *peer)
         return 0;
     }
 
-    /* Get current recv queue pressure */
-    if (peer->recv_queue) {
-        current_pressure = pt_queue_pressure(peer->recv_queue);
-    } else {
-        current_pressure = 0;
-    }
+    /* Get pressure from BOTH queues - report the worse one.
+     *
+     * This captures the actual constraint regardless of where it is:
+     * - High send_pressure: "I can't transmit fast enough" (echo backlog)
+     * - High recv_pressure: "I can't receive fast enough" (processing backlog)
+     *
+     * On MacTCP, recv uses zero-copy so recv_queue is often empty.
+     * The real bottleneck shows up in send_queue when echoing back.
+     * By reporting MAX, we capture whichever is the actual constraint.
+     */
+    send_pressure = peer->send_queue ? pt_queue_pressure(peer->send_queue) : 0;
+    recv_pressure = peer->recv_queue ? pt_queue_pressure(peer->recv_queue) : 0;
+    current_pressure = (send_pressure > recv_pressure) ? send_pressure : recv_pressure;
 
     /* Quantize to threshold levels for hysteresis */
     current_level = pt_pressure_level(current_pressure);

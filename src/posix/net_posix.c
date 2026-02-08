@@ -1402,11 +1402,15 @@ int pt_posix_send_capability(struct pt_context *ctx, struct pt_peer *peer) {
     caps.preferred_chunk = ctx->local_preferred_chunk;
     caps.capability_flags = ctx->local_capability_flags;
 
-    /* Calculate current buffer pressure from recv queue */
-    if (peer->recv_queue) {
-        caps.buffer_pressure = pt_queue_pressure(peer->recv_queue);
-    } else {
-        caps.buffer_pressure = 0;  /* No recv queue = no pressure */
+    /* Calculate current buffer pressure from BOTH queues - report the worse one.
+     * This captures the actual constraint regardless of where it is:
+     * - High send_pressure: "I can't transmit fast enough"
+     * - High recv_pressure: "I can't receive fast enough"
+     */
+    {
+        uint8_t send_pressure = peer->send_queue ? pt_queue_pressure(peer->send_queue) : 0;
+        uint8_t recv_pressure = peer->recv_queue ? pt_queue_pressure(peer->recv_queue) : 0;
+        caps.buffer_pressure = (send_pressure > recv_pressure) ? send_pressure : recv_pressure;
     }
     caps.reserved = 0;
 
