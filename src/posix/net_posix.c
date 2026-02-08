@@ -234,7 +234,7 @@ int pt_posix_net_init(struct pt_context *ctx) {
     /* Initialize receive buffer states */
     for (i = 0; i < PT_MAX_PEERS; i++) {
         pd->recv_bufs[i].hot.state = PT_RECV_HEADER;
-        pd->recv_bufs[i].hot.bytes_needed = PT_MESSAGE_HEADER_SIZE;
+        pd->recv_bufs[i].hot.bytes_needed = PT_COMPACT_HEADER_SIZE;
         pd->recv_bufs[i].hot.bytes_received = 0;
     }
 
@@ -890,7 +890,7 @@ int pt_posix_listen_poll(struct pt_context *ctx) {
     int peer_idx = peer->hot.id - 1;
     pd->tcp_socks[peer_idx] = client_sock;
     pd->recv_bufs[peer_idx].hot.state = PT_RECV_HEADER;
-    pd->recv_bufs[peer_idx].hot.bytes_needed = PT_MESSAGE_HEADER_SIZE;
+    pd->recv_bufs[peer_idx].hot.bytes_needed = PT_COMPACT_HEADER_SIZE;
     pd->recv_bufs[peer_idx].hot.bytes_received = 0;
 
     /* Add to active peers list and mark fd_sets dirty */
@@ -990,7 +990,7 @@ int pt_posix_connect(struct pt_context *ctx, struct pt_peer *peer) {
             int peer_idx = peer->hot.id - 1;
             pd->tcp_socks[peer_idx] = sock;
             pd->recv_bufs[peer_idx].hot.state = PT_RECV_HEADER;
-            pd->recv_bufs[peer_idx].hot.bytes_needed = PT_MESSAGE_HEADER_SIZE;
+            pd->recv_bufs[peer_idx].hot.bytes_needed = PT_COMPACT_HEADER_SIZE;
             pd->recv_bufs[peer_idx].hot.bytes_received = 0;
 
             /* Add to active peers list and mark fd_sets dirty */
@@ -1013,7 +1013,7 @@ int pt_posix_connect(struct pt_context *ctx, struct pt_peer *peer) {
     int peer_idx = peer->hot.id - 1;
     pd->tcp_socks[peer_idx] = sock;
     pd->recv_bufs[peer_idx].hot.state = PT_RECV_HEADER;
-    pd->recv_bufs[peer_idx].hot.bytes_needed = PT_MESSAGE_HEADER_SIZE;
+    pd->recv_bufs[peer_idx].hot.bytes_needed = PT_COMPACT_HEADER_SIZE;
     pd->recv_bufs[peer_idx].hot.bytes_received = 0;
 
     /* Add to active peers list and mark fd_sets dirty */
@@ -1115,7 +1115,8 @@ int pt_posix_disconnect(struct pt_context *ctx, struct pt_peer *peer) {
     peer->send_queue = NULL;
     peer->recv_queue = NULL;
 
-    pt_peer_set_state(ctx, peer, PT_PEER_UNUSED);
+    /* Back to DISCOVERED so reconnection is possible */
+    pt_peer_set_state(ctx, peer, PT_PEER_DISCOVERED);
 
     return PT_OK;
 }
@@ -1147,7 +1148,8 @@ static int pt_posix_send_with_flags(struct pt_context *ctx, struct pt_peer *peer
                                     const void *data, size_t len, uint8_t msg_flags) {
     pt_posix_data *pd = pt_posix_get(ctx);
     pt_message_header hdr;
-    uint8_t header_buf[PT_MESSAGE_HEADER_SIZE];
+    pt_compact_header compact_hdr;
+    uint8_t header_buf[PT_MESSAGE_HEADER_SIZE];  /* Large enough for either format */
     uint8_t crc_buf[2];
     struct iovec iov[3];
     ssize_t total_len;
@@ -1155,6 +1157,8 @@ static int pt_posix_send_with_flags(struct pt_context *ctx, struct pt_peer *peer
     int peer_idx;
     int sock;
     uint16_t crc;
+    int use_compact;
+    uint16_t header_size;
 
     /* Validation */
     if (!peer || peer->hot.magic != PT_PEER_MAGIC) {
@@ -1199,32 +1203,57 @@ static int pt_posix_send_with_flags(struct pt_context *ctx, struct pt_peer *peer
         }
     }
 
-    /* Encode header */
-    hdr.version = PT_PROTOCOL_VERSION;
-    hdr.type = PT_MSG_TYPE_DATA;
-    hdr.flags = msg_flags;
-    hdr.sequence = peer->hot.send_seq++;
-    hdr.payload_len = (uint16_t)len;
-    pt_message_encode_header(&hdr, header_buf);
+    /* Check if compact headers are negotiated with this peer.
+     * IMPORTANT: Don't use compact headers for fragments because
+     * PT_MSG_FLAG_FRAGMENT (0x10) doesn't fit in the 4-bit flags field.
+     * The compact header format only supports flags 0x00-0x0F. */
+    use_compact = peer->cold.caps.compact_mode &&
+                  !(msg_flags & PT_MSG_FLAG_FRAGMENT);
 
-    /* Calculate CRC over header + payload */
-    crc = pt_crc16(header_buf, PT_MESSAGE_HEADER_SIZE);
-    crc = pt_crc16_update(crc, data, len);
-    crc_buf[0] = (crc >> 8) & 0xFF;
-    crc_buf[1] = crc & 0xFF;
+    if (use_compact) {
+        /* Encode compact header (4 bytes, no CRC) */
+        compact_hdr.type = PT_MSG_TYPE_DATA;
+        compact_hdr.flags = msg_flags;
+        compact_hdr.payload_len = (uint16_t)len;
+        pt_message_encode_compact(&compact_hdr, header_buf);
+        header_size = PT_COMPACT_HEADER_SIZE;
 
-    /* Prepare iovec for atomic send */
-    iov[0].iov_base = header_buf;
-    iov[0].iov_len = PT_MESSAGE_HEADER_SIZE;
-    iov[1].iov_base = (void *)data;
-    iov[1].iov_len = len;
-    iov[2].iov_base = crc_buf;
-    iov[2].iov_len = 2;
+        /* Prepare iovec for atomic send - no CRC */
+        iov[0].iov_base = header_buf;
+        iov[0].iov_len = header_size;
+        iov[1].iov_base = (void *)data;
+        iov[1].iov_len = len;
 
-    total_len = PT_MESSAGE_HEADER_SIZE + len + 2;
+        total_len = header_size + len;
+    } else {
+        /* Encode full header (10 bytes + 2 CRC) */
+        hdr.version = PT_PROTOCOL_VERSION;
+        hdr.type = PT_MSG_TYPE_DATA;
+        hdr.flags = msg_flags;
+        hdr.sequence = peer->hot.send_seq++;
+        hdr.payload_len = (uint16_t)len;
+        pt_message_encode_header(&hdr, header_buf);
+        header_size = PT_MESSAGE_HEADER_SIZE;
+
+        /* Calculate CRC over header + payload */
+        crc = pt_crc16(header_buf, header_size);
+        crc = pt_crc16_update(crc, data, len);
+        crc_buf[0] = (crc >> 8) & 0xFF;
+        crc_buf[1] = crc & 0xFF;
+
+        /* Prepare iovec for atomic send */
+        iov[0].iov_base = header_buf;
+        iov[0].iov_len = header_size;
+        iov[1].iov_base = (void *)data;
+        iov[1].iov_len = len;
+        iov[2].iov_base = crc_buf;
+        iov[2].iov_len = 2;
+
+        total_len = header_size + len + 2;
+    }
 
     /* Send with writev - handles partial writes */
-    sent = writev(sock, iov, 3);
+    sent = writev(sock, iov, use_compact ? 2 : 3);
 
     if (sent < 0) {
         if (errno == EWOULDBLOCK || errno == EAGAIN) {
@@ -1252,10 +1281,12 @@ static int pt_posix_send_with_flags(struct pt_context *ctx, struct pt_peer *peer
             return PT_ERR_NO_MEMORY;
         }
 
-        /* Copy header + payload + crc into buffer */
-        memcpy(sendbuf, header_buf, PT_MESSAGE_HEADER_SIZE);
-        memcpy(sendbuf + PT_MESSAGE_HEADER_SIZE, data, len);
-        memcpy(sendbuf + PT_MESSAGE_HEADER_SIZE + len, crc_buf, 2);
+        /* Copy header + payload (+ crc if not compact) into buffer */
+        memcpy(sendbuf, header_buf, header_size);
+        memcpy(sendbuf + header_size, data, len);
+        if (!use_compact) {
+            memcpy(sendbuf + header_size + len, crc_buf, 2);
+        }
 
         /* Continue sending from where we left off */
         while (offset < buflen && retry_count < max_retries) {
@@ -1562,8 +1593,9 @@ static void update_peer_latency(struct pt_context *ctx, struct pt_peer *peer) {
  */
 static void pt_recv_reset(pt_recv_buffer *buf) {
     buf->hot.state = PT_RECV_HEADER;
-    buf->hot.bytes_needed = PT_MESSAGE_HEADER_SIZE;
+    buf->hot.bytes_needed = PT_COMPACT_HEADER_SIZE;  /* Start with minimum for format detection */
     buf->hot.bytes_received = 0;
+    buf->hot.is_compact = 0;
 }
 
 /**
@@ -1604,7 +1636,69 @@ static int pt_recv_header(struct pt_context *ctx, struct pt_peer *peer,
     buf->hot.bytes_received += ret;
 
     if (buf->hot.bytes_received >= buf->hot.bytes_needed) {
-        /* Header complete - decode it */
+        /* Check if we've received enough to detect header format */
+        if (buf->hot.bytes_needed == PT_COMPACT_HEADER_SIZE) {
+            /* First 4 bytes received - detect format */
+            PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,
+                "Header bytes [%02X %02X %02X %02X], received=%u",
+                buf->cold.header_buf[0], buf->cold.header_buf[1],
+                buf->cold.header_buf[2], buf->cold.header_buf[3],
+                buf->hot.bytes_received);
+
+            if (pt_message_is_compact(buf->cold.header_buf, buf->hot.bytes_received)) {
+                /* Compact header (4 bytes, no CRC) */
+                pt_compact_header compact_hdr;
+                if (pt_message_decode_compact(buf->cold.header_buf,
+                                              buf->hot.bytes_received,
+                                              &compact_hdr) != PT_OK) {
+                    PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,
+                        "Invalid compact header from peer %u", peer->hot.id);
+                    return -1;
+                }
+
+                /* Convert to standard header struct */
+                buf->cold.hdr.version = PT_PROTOCOL_VERSION;
+                buf->cold.hdr.type = compact_hdr.type;
+                buf->cold.hdr.flags = compact_hdr.flags;
+                buf->cold.hdr.sequence = 0;  /* Compact has no sequence */
+                buf->cold.hdr.payload_len = compact_hdr.payload_len;
+                buf->hot.is_compact = 1;
+
+                /* Validate payload size */
+                if (buf->cold.hdr.payload_len > PT_MAX_MESSAGE_SIZE) {
+                    PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,
+                        "Payload too large from peer %u: %u bytes (max %d)",
+                        peer->hot.id, buf->cold.hdr.payload_len, PT_MAX_MESSAGE_SIZE);
+                    return -1;
+                }
+
+                /* Transition to payload (skip CRC for compact) */
+                if (buf->cold.hdr.payload_len > 0) {
+                    buf->hot.state = PT_RECV_PAYLOAD;
+                    buf->hot.bytes_needed = buf->cold.hdr.payload_len;
+                    buf->hot.bytes_received = 0;
+                } else {
+                    /* No payload and no CRC - message complete */
+                    return 2;  /* Signal message complete (no CRC needed) */
+                }
+
+                return 1;  /* Header complete */
+            } else {
+                /* Full header - need 6 more bytes total (10 bytes header) */
+                buf->hot.bytes_needed = PT_MESSAGE_HEADER_SIZE;
+                buf->hot.is_compact = 0;
+
+                /* Check if we already received enough bytes in first recv.
+                 * This can happen when all header bytes arrive together.
+                 * If so, fall through to decode. Otherwise continue receiving. */
+                if (buf->hot.bytes_received < PT_MESSAGE_HEADER_SIZE) {
+                    return 0;  /* Continue receiving more header bytes */
+                }
+                /* Fall through to decode full header */
+            }
+        }
+
+        /* Full header (10 bytes) - decode it */
         if (pt_message_decode_header(ctx, buf->cold.header_buf,
                                       PT_MESSAGE_HEADER_SIZE,
                                       &buf->cold.hdr) != PT_OK) {
@@ -1671,7 +1765,11 @@ static int pt_recv_payload(struct pt_context *ctx, struct pt_peer *peer,
     buf->hot.bytes_received += ret;
 
     if (buf->hot.bytes_received >= buf->hot.bytes_needed) {
-        /* Payload complete - move to CRC */
+        if (buf->hot.is_compact) {
+            /* Compact header - no CRC, message complete */
+            return 2;  /* Signal message complete (no CRC needed) */
+        }
+        /* Full header - move to CRC */
         buf->hot.state = PT_RECV_CRC;
         buf->hot.bytes_needed = 2;
         buf->hot.bytes_received = 0;
@@ -1723,38 +1821,53 @@ static int pt_recv_crc(struct pt_context *ctx, struct pt_peer *peer,
 /**
  * Process complete message after CRC validation
  *
- * Verifies CRC, updates statistics, and dispatches by message type.
+ * Verifies CRC (for full headers only), updates statistics, and dispatches by message type.
+ * Compact headers have no CRC - skip validation for those.
  *
  * @return 0 on success, -1 on error or disconnect
  */
 static int pt_recv_process_message(struct pt_context *ctx, struct pt_peer *peer,
                                      pt_recv_buffer *buf) {
-    uint16_t expected_crc;
-    uint16_t received_crc;
+    uint16_t header_size;
 
-    /* Calculate expected CRC */
-    expected_crc = pt_crc16(buf->cold.header_buf, PT_MESSAGE_HEADER_SIZE);
-    if (buf->cold.hdr.payload_len > 0) {
-        expected_crc = pt_crc16_update(expected_crc, buf->cold.payload_buf,
-                                        buf->cold.hdr.payload_len);
+    /* Compact headers have no CRC - skip validation */
+    if (!buf->hot.is_compact) {
+        uint16_t expected_crc;
+        uint16_t received_crc;
+
+        /* Calculate expected CRC */
+        expected_crc = pt_crc16(buf->cold.header_buf, PT_MESSAGE_HEADER_SIZE);
+        if (buf->cold.hdr.payload_len > 0) {
+            expected_crc = pt_crc16_update(expected_crc, buf->cold.payload_buf,
+                                            buf->cold.hdr.payload_len);
+        }
+
+        /* Extract received CRC */
+        received_crc = ((uint16_t)buf->cold.crc_buf[0] << 8) | buf->cold.crc_buf[1];
+
+        if (expected_crc != received_crc) {
+            PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,
+                "CRC mismatch from peer %u: expected 0x%04X, got 0x%04X",
+                peer->hot.id, expected_crc, received_crc);
+            return -1;
+        }
     }
 
-    /* Extract received CRC */
-    received_crc = ((uint16_t)buf->cold.crc_buf[0] << 8) | buf->cold.crc_buf[1];
+    /* Debug: Log what we're processing */
+    PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,
+        "Processing msg from peer %u: type=%u flags=0x%02X len=%u compact=%u",
+        peer->hot.id, buf->cold.hdr.type, buf->cold.hdr.flags,
+        buf->cold.hdr.payload_len, buf->hot.is_compact);
 
-    if (expected_crc != received_crc) {
-        PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,
-            "CRC mismatch from peer %u: expected 0x%04X, got 0x%04X",
-            peer->hot.id, expected_crc, received_crc);
-        return -1;
-    }
-
-    /* Update statistics */
-    peer->cold.stats.bytes_received += PT_MESSAGE_HEADER_SIZE +
-                                        buf->cold.hdr.payload_len + 2;
+    /* Update statistics - use correct header size */
+    header_size = buf->hot.is_compact ? PT_COMPACT_HEADER_SIZE : PT_MESSAGE_HEADER_SIZE;
+    peer->cold.stats.bytes_received += header_size +
+                                        buf->cold.hdr.payload_len +
+                                        (buf->hot.is_compact ? 0 : 2);
     peer->cold.stats.messages_received++;
-    ctx->global_stats.total_bytes_received += PT_MESSAGE_HEADER_SIZE +
-                                               buf->cold.hdr.payload_len + 2;
+    ctx->global_stats.total_bytes_received += header_size +
+                                               buf->cold.hdr.payload_len +
+                                               (buf->hot.is_compact ? 0 : 2);
     ctx->global_stats.total_messages_received++;
 
     /* Dispatch by message type */
@@ -1915,11 +2028,23 @@ int pt_posix_recv(struct pt_context *ctx, struct pt_peer *peer) {
             case PT_RECV_HEADER:
                 ret = pt_recv_header(ctx, peer, buf, sock);
                 if (ret <= 0) return ret;
+                if (ret == 2) {
+                    /* Compact header with no payload - message complete */
+                    ret = pt_recv_process_message(ctx, peer, buf);
+                    pt_recv_reset(buf);
+                    return ret;
+                }
                 break;
 
             case PT_RECV_PAYLOAD:
                 ret = pt_recv_payload(ctx, peer, buf, sock);
                 if (ret <= 0) return ret;
+                if (ret == 2) {
+                    /* Compact header - skip CRC, message complete */
+                    ret = pt_recv_process_message(ctx, peer, buf);
+                    pt_recv_reset(buf);
+                    return ret;
+                }
                 break;
 
             case PT_RECV_CRC:

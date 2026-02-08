@@ -44,7 +44,7 @@ typedef uint8_t pt_recv_state;
  */
 typedef struct {
     pt_recv_state state;           /* 1 byte at offset 0 */
-    uint8_t       _pad0;           /* 1 byte at offset 1: CRITICAL for 68k alignment */
+    uint8_t       is_compact;      /* 1 byte at offset 1: 1 if current msg is compact header */
     uint16_t      bytes_needed;    /* 2 bytes at offset 2 */
     uint16_t      bytes_received;  /* 2 bytes at offset 4 */
     uint16_t      _pad1;           /* 2 bytes at offset 6: align to 8 bytes */
