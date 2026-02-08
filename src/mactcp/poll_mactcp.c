@@ -440,7 +440,8 @@ static void pt_mactcp_poll_closing(struct pt_context *ctx,
                                                 ctx->callbacks.user_data);
         }
 
-        pt_peer_set_state(ctx, peer, PT_PEER_STATE_UNUSED);
+        /* Back to DISCOVERED so reconnection is possible */
+        pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCOVERED);
     }
 }
 

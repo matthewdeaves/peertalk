@@ -404,14 +404,14 @@ int pt_mactcp_disconnect(struct pt_context *ctx, struct pt_peer *peer)
     pt_mactcp_tcp_release(ctx, idx);
     peer->hot.connection = NULL;
 
-    /* Update peer state */
+    /* Update peer state - back to DISCOVERED so reconnection is possible */
     if (ctx->callbacks.on_peer_disconnected != NULL) {
         ctx->callbacks.on_peer_disconnected((PeerTalk_Context *)ctx,
                                             peer->hot.id, 0,
                                             ctx->callbacks.user_data);
     }
 
-    pt_peer_set_state(ctx, peer, PT_PEER_STATE_UNUSED);
+    pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCOVERED);
 
     return 0;
 }
@@ -489,7 +489,8 @@ int pt_mactcp_close_poll(struct pt_context *ctx)
                                                     ctx->callbacks.user_data);
             }
 
-            pt_peer_set_state(ctx, peer, PT_PEER_STATE_UNUSED);
+            /* Back to DISCOVERED so reconnection is possible */
+            pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCOVERED);
         }
 
         processed++;
