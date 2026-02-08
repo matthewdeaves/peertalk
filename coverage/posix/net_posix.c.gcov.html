@@ -31,13 +31,13 @@
             <td class="headerValue">coverage.info</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntry">677</td>
-            <td class="headerCovTableEntry">1124</td>
-            <td class="headerCovTableEntryLo">60.2 %</td>
+            <td class="headerCovTableEntry">693</td>
+            <td class="headerCovTableEntry">1128</td>
+            <td class="headerCovTableEntryLo">61.4 %</td>
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2026-02-08 13:31:11</td>
+            <td class="headerValue">2026-02-08 14:17:06</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">38</td>
@@ -1202,9 +1202,9 @@
 <a name="1140"><span class="lineNum">    1140 </span>            :  * Internal function that allows setting message flags (e.g., for fragments).</a>
 <a name="1141"><span class="lineNum">    1141 </span>            :  * Regular data messages use flags=0, fragments use PT_MSG_FLAG_FRAGMENT.</a>
 <a name="1142"><span class="lineNum">    1142 </span>            :  */</a>
-<a name="1143"><span class="lineNum">    1143 </span><span class="lineCov">         12 : static int pt_posix_send_with_flags(struct pt_context *ctx, struct pt_peer *peer,</span></a>
+<a name="1143"><span class="lineNum">    1143 </span><span class="lineCov">         20 : static int pt_posix_send_with_flags(struct pt_context *ctx, struct pt_peer *peer,</span></a>
 <a name="1144"><span class="lineNum">    1144 </span>            :                                     const void *data, size_t len, uint8_t msg_flags) {</a>
-<a name="1145"><span class="lineNum">    1145 </span><span class="lineCov">         12 :     pt_posix_data *pd = pt_posix_get(ctx);</span></a>
+<a name="1145"><span class="lineNum">    1145 </span><span class="lineCov">         20 :     pt_posix_data *pd = pt_posix_get(ctx);</span></a>
 <a name="1146"><span class="lineNum">    1146 </span>            :     pt_message_header hdr;</a>
 <a name="1147"><span class="lineNum">    1147 </span>            :     uint8_t header_buf[PT_MESSAGE_HEADER_SIZE];</a>
 <a name="1148"><span class="lineNum">    1148 </span>            :     uint8_t crc_buf[2];</a>
@@ -1216,61 +1216,61 @@
 <a name="1154"><span class="lineNum">    1154 </span>            :     uint16_t crc;</a>
 <a name="1155"><span class="lineNum">    1155 </span>            : </a>
 <a name="1156"><span class="lineNum">    1156 </span>            :     /* Validation */</a>
-<a name="1157"><span class="lineNum">    1157 </span><span class="lineCov">         12 :     if (!peer || peer-&gt;hot.magic != PT_PEER_MAGIC) {</span></a>
+<a name="1157"><span class="lineNum">    1157 </span><span class="lineCov">         20 :     if (!peer || peer-&gt;hot.magic != PT_PEER_MAGIC) {</span></a>
 <a name="1158"><span class="lineNum">    1158 </span><span class="lineNoCov">          0 :         PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL, &quot;Invalid peer&quot;);</span></a>
 <a name="1159"><span class="lineNum">    1159 </span><span class="lineNoCov">          0 :         return PT_ERR_INVALID_PARAM;</span></a>
 <a name="1160"><span class="lineNum">    1160 </span>            :     }</a>
 <a name="1161"><span class="lineNum">    1161 </span>            : </a>
-<a name="1162"><span class="lineNum">    1162 </span><span class="lineCov">         12 :     if (peer-&gt;hot.state != PT_PEER_CONNECTED) {</span></a>
+<a name="1162"><span class="lineNum">    1162 </span><span class="lineCov">         20 :     if (peer-&gt;hot.state != PT_PEER_CONNECTED) {</span></a>
 <a name="1163"><span class="lineNum">    1163 </span><span class="lineNoCov">          0 :         PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="1164"><span class="lineNum">    1164 </span>            :             &quot;Cannot send to peer %u: not connected (state=%d)&quot;,</a>
 <a name="1165"><span class="lineNum">    1165 </span>            :             peer-&gt;hot.id, peer-&gt;hot.state);</a>
 <a name="1166"><span class="lineNum">    1166 </span><span class="lineNoCov">          0 :         return PT_ERR_INVALID_STATE;</span></a>
 <a name="1167"><span class="lineNum">    1167 </span>            :     }</a>
 <a name="1168"><span class="lineNum">    1168 </span>            : </a>
-<a name="1169"><span class="lineNum">    1169 </span><span class="lineCov">         12 :     if (len &gt; PT_MAX_MESSAGE_SIZE) {</span></a>
+<a name="1169"><span class="lineNum">    1169 </span><span class="lineCov">         20 :     if (len &gt; PT_MAX_MESSAGE_SIZE) {</span></a>
 <a name="1170"><span class="lineNum">    1170 </span><span class="lineNoCov">          0 :         PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="1171"><span class="lineNum">    1171 </span>            :             &quot;Message too large: %zu bytes (max %d)&quot;,</a>
 <a name="1172"><span class="lineNum">    1172 </span>            :             len, PT_MAX_MESSAGE_SIZE);</a>
 <a name="1173"><span class="lineNum">    1173 </span><span class="lineNoCov">          0 :         return PT_ERR_MESSAGE_TOO_LARGE;</span></a>
 <a name="1174"><span class="lineNum">    1174 </span>            :     }</a>
 <a name="1175"><span class="lineNum">    1175 </span>            : </a>
-<a name="1176"><span class="lineNum">    1176 </span><span class="lineCov">         12 :     peer_idx = peer-&gt;hot.id - 1;</span></a>
-<a name="1177"><span class="lineNum">    1177 </span><span class="lineCov">         12 :     sock = pd-&gt;tcp_socks[peer_idx];</span></a>
+<a name="1176"><span class="lineNum">    1176 </span><span class="lineCov">         20 :     peer_idx = peer-&gt;hot.id - 1;</span></a>
+<a name="1177"><span class="lineNum">    1177 </span><span class="lineCov">         20 :     sock = pd-&gt;tcp_socks[peer_idx];</span></a>
 <a name="1178"><span class="lineNum">    1178 </span>            : </a>
-<a name="1179"><span class="lineNum">    1179 </span><span class="lineCov">         12 :     if (sock &lt; 0) {</span></a>
+<a name="1179"><span class="lineNum">    1179 </span><span class="lineCov">         20 :     if (sock &lt; 0) {</span></a>
 <a name="1180"><span class="lineNum">    1180 </span><span class="lineNoCov">          0 :         PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL, &quot;Invalid socket for peer %u&quot;, peer-&gt;hot.id);</span></a>
 <a name="1181"><span class="lineNum">    1181 </span><span class="lineNoCov">          0 :         return PT_ERR_INVALID_STATE;</span></a>
 <a name="1182"><span class="lineNum">    1182 </span>            :     }</a>
 <a name="1183"><span class="lineNum">    1183 </span>            : </a>
 <a name="1184"><span class="lineNum">    1184 </span>            :     /* Encode header */</a>
-<a name="1185"><span class="lineNum">    1185 </span><span class="lineCov">         12 :     hdr.version = PT_PROTOCOL_VERSION;</span></a>
-<a name="1186"><span class="lineNum">    1186 </span><span class="lineCov">         12 :     hdr.type = PT_MSG_TYPE_DATA;</span></a>
-<a name="1187"><span class="lineNum">    1187 </span><span class="lineCov">         12 :     hdr.flags = msg_flags;</span></a>
-<a name="1188"><span class="lineNum">    1188 </span><span class="lineCov">         12 :     hdr.sequence = peer-&gt;hot.send_seq++;</span></a>
-<a name="1189"><span class="lineNum">    1189 </span><span class="lineCov">         12 :     hdr.payload_len = (uint16_t)len;</span></a>
-<a name="1190"><span class="lineNum">    1190 </span><span class="lineCov">         12 :     pt_message_encode_header(&amp;hdr, header_buf);</span></a>
+<a name="1185"><span class="lineNum">    1185 </span><span class="lineCov">         20 :     hdr.version = PT_PROTOCOL_VERSION;</span></a>
+<a name="1186"><span class="lineNum">    1186 </span><span class="lineCov">         20 :     hdr.type = PT_MSG_TYPE_DATA;</span></a>
+<a name="1187"><span class="lineNum">    1187 </span><span class="lineCov">         20 :     hdr.flags = msg_flags;</span></a>
+<a name="1188"><span class="lineNum">    1188 </span><span class="lineCov">         20 :     hdr.sequence = peer-&gt;hot.send_seq++;</span></a>
+<a name="1189"><span class="lineNum">    1189 </span><span class="lineCov">         20 :     hdr.payload_len = (uint16_t)len;</span></a>
+<a name="1190"><span class="lineNum">    1190 </span><span class="lineCov">         20 :     pt_message_encode_header(&amp;hdr, header_buf);</span></a>
 <a name="1191"><span class="lineNum">    1191 </span>            : </a>
 <a name="1192"><span class="lineNum">    1192 </span>            :     /* Calculate CRC over header + payload */</a>
-<a name="1193"><span class="lineNum">    1193 </span><span class="lineCov">         12 :     crc = pt_crc16(header_buf, PT_MESSAGE_HEADER_SIZE);</span></a>
-<a name="1194"><span class="lineNum">    1194 </span><span class="lineCov">         12 :     crc = pt_crc16_update(crc, data, len);</span></a>
-<a name="1195"><span class="lineNum">    1195 </span><span class="lineCov">         12 :     crc_buf[0] = (crc &gt;&gt; 8) &amp; 0xFF;</span></a>
-<a name="1196"><span class="lineNum">    1196 </span><span class="lineCov">         12 :     crc_buf[1] = crc &amp; 0xFF;</span></a>
+<a name="1193"><span class="lineNum">    1193 </span><span class="lineCov">         20 :     crc = pt_crc16(header_buf, PT_MESSAGE_HEADER_SIZE);</span></a>
+<a name="1194"><span class="lineNum">    1194 </span><span class="lineCov">         20 :     crc = pt_crc16_update(crc, data, len);</span></a>
+<a name="1195"><span class="lineNum">    1195 </span><span class="lineCov">         20 :     crc_buf[0] = (crc &gt;&gt; 8) &amp; 0xFF;</span></a>
+<a name="1196"><span class="lineNum">    1196 </span><span class="lineCov">         20 :     crc_buf[1] = crc &amp; 0xFF;</span></a>
 <a name="1197"><span class="lineNum">    1197 </span>            : </a>
 <a name="1198"><span class="lineNum">    1198 </span>            :     /* Prepare iovec for atomic send */</a>
-<a name="1199"><span class="lineNum">    1199 </span><span class="lineCov">         12 :     iov[0].iov_base = header_buf;</span></a>
-<a name="1200"><span class="lineNum">    1200 </span><span class="lineCov">         12 :     iov[0].iov_len = PT_MESSAGE_HEADER_SIZE;</span></a>
-<a name="1201"><span class="lineNum">    1201 </span><span class="lineCov">         12 :     iov[1].iov_base = (void *)data;</span></a>
-<a name="1202"><span class="lineNum">    1202 </span><span class="lineCov">         12 :     iov[1].iov_len = len;</span></a>
-<a name="1203"><span class="lineNum">    1203 </span><span class="lineCov">         12 :     iov[2].iov_base = crc_buf;</span></a>
-<a name="1204"><span class="lineNum">    1204 </span><span class="lineCov">         12 :     iov[2].iov_len = 2;</span></a>
+<a name="1199"><span class="lineNum">    1199 </span><span class="lineCov">         20 :     iov[0].iov_base = header_buf;</span></a>
+<a name="1200"><span class="lineNum">    1200 </span><span class="lineCov">         20 :     iov[0].iov_len = PT_MESSAGE_HEADER_SIZE;</span></a>
+<a name="1201"><span class="lineNum">    1201 </span><span class="lineCov">         20 :     iov[1].iov_base = (void *)data;</span></a>
+<a name="1202"><span class="lineNum">    1202 </span><span class="lineCov">         20 :     iov[1].iov_len = len;</span></a>
+<a name="1203"><span class="lineNum">    1203 </span><span class="lineCov">         20 :     iov[2].iov_base = crc_buf;</span></a>
+<a name="1204"><span class="lineNum">    1204 </span><span class="lineCov">         20 :     iov[2].iov_len = 2;</span></a>
 <a name="1205"><span class="lineNum">    1205 </span>            : </a>
-<a name="1206"><span class="lineNum">    1206 </span><span class="lineCov">         12 :     total_len = PT_MESSAGE_HEADER_SIZE + len + 2;</span></a>
+<a name="1206"><span class="lineNum">    1206 </span><span class="lineCov">         20 :     total_len = PT_MESSAGE_HEADER_SIZE + len + 2;</span></a>
 <a name="1207"><span class="lineNum">    1207 </span>            : </a>
 <a name="1208"><span class="lineNum">    1208 </span>            :     /* Send with writev - handles partial writes */</a>
-<a name="1209"><span class="lineNum">    1209 </span><span class="lineCov">         12 :     sent = writev(sock, iov, 3);</span></a>
+<a name="1209"><span class="lineNum">    1209 </span><span class="lineCov">         20 :     sent = writev(sock, iov, 3);</span></a>
 <a name="1210"><span class="lineNum">    1210 </span>            : </a>
-<a name="1211"><span class="lineNum">    1211 </span><span class="lineCov">         12 :     if (sent &lt; 0) {</span></a>
+<a name="1211"><span class="lineNum">    1211 </span><span class="lineCov">         20 :     if (sent &lt; 0) {</span></a>
 <a name="1212"><span class="lineNum">    1212 </span><span class="lineNoCov">          0 :         if (errno == EWOULDBLOCK || errno == EAGAIN) {</span></a>
 <a name="1213"><span class="lineNum">    1213 </span><span class="lineNoCov">          0 :             PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="1214"><span class="lineNum">    1214 </span>            :                 &quot;Send would block for peer %u&quot;, peer-&gt;hot.id);</a>
@@ -1282,7 +1282,7 @@
 <a name="1220"><span class="lineNum">    1220 </span>            :     }</a>
 <a name="1221"><span class="lineNum">    1221 </span>            : </a>
 <a name="1222"><span class="lineNum">    1222 </span>            :     /* Handle partial writes by continuing with write() */</a>
-<a name="1223"><span class="lineNum">    1223 </span><span class="lineCov">         12 :     if (sent &lt; total_len) {</span></a>
+<a name="1223"><span class="lineNum">    1223 </span><span class="lineCov">         20 :     if (sent &lt; total_len) {</span></a>
 <a name="1224"><span class="lineNum">    1224 </span>            :         /* Build combined buffer for remaining data */</a>
 <a name="1225"><span class="lineNum">    1225 </span>            :         uint8_t *sendbuf;</a>
 <a name="1226"><span class="lineNum">    1226 </span><span class="lineNoCov">          0 :         size_t buflen = (size_t)total_len;</span></a>
@@ -1340,16 +1340,16 @@
 <a name="1278"><span class="lineNum">    1278 </span>            :     }</a>
 <a name="1279"><span class="lineNum">    1279 </span>            : </a>
 <a name="1280"><span class="lineNum">    1280 </span>            :     /* Update statistics */</a>
-<a name="1281"><span class="lineNum">    1281 </span><span class="lineCov">         12 :     peer-&gt;cold.stats.bytes_sent += sent;</span></a>
-<a name="1282"><span class="lineNum">    1282 </span><span class="lineCov">         12 :     peer-&gt;cold.stats.messages_sent++;</span></a>
-<a name="1283"><span class="lineNum">    1283 </span><span class="lineCov">         12 :     ctx-&gt;global_stats.total_bytes_sent += sent;</span></a>
-<a name="1284"><span class="lineNum">    1284 </span><span class="lineCov">         12 :     ctx-&gt;global_stats.total_messages_sent++;</span></a>
+<a name="1281"><span class="lineNum">    1281 </span><span class="lineCov">         20 :     peer-&gt;cold.stats.bytes_sent += sent;</span></a>
+<a name="1282"><span class="lineNum">    1282 </span><span class="lineCov">         20 :     peer-&gt;cold.stats.messages_sent++;</span></a>
+<a name="1283"><span class="lineNum">    1283 </span><span class="lineCov">         20 :     ctx-&gt;global_stats.total_bytes_sent += sent;</span></a>
+<a name="1284"><span class="lineNum">    1284 </span><span class="lineCov">         20 :     ctx-&gt;global_stats.total_messages_sent++;</span></a>
 <a name="1285"><span class="lineNum">    1285 </span>            : </a>
-<a name="1286"><span class="lineNum">    1286 </span><span class="lineCov">         12 :     PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
+<a name="1286"><span class="lineNum">    1286 </span><span class="lineCov">         20 :     PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="1287"><span class="lineNum">    1287 </span>            :         &quot;Sent %zd bytes to peer %u (seq=%u, flags=0x%02X)&quot;,</a>
 <a name="1288"><span class="lineNum">    1288 </span>            :         sent, peer-&gt;hot.id, hdr.sequence, msg_flags);</a>
 <a name="1289"><span class="lineNum">    1289 </span>            : </a>
-<a name="1290"><span class="lineNum">    1290 </span><span class="lineCov">         12 :     return PT_OK;</span></a>
+<a name="1290"><span class="lineNum">    1290 </span><span class="lineCov">         20 :     return PT_OK;</span></a>
 <a name="1291"><span class="lineNum">    1291 </span>            : }</a>
 <a name="1292"><span class="lineNum">    1292 </span>            : </a>
 <a name="1293"><span class="lineNum">    1293 </span>            : /**</a>
@@ -1433,8 +1433,8 @@
 <a name="1371"><span class="lineNum">    1371 </span>            :  * @param peer Target peer</a>
 <a name="1372"><span class="lineNum">    1372 </span>            :  * @return PT_OK on success, error code on failure</a>
 <a name="1373"><span class="lineNum">    1373 </span>            :  */</a>
-<a name="1374"><span class="lineNum">    1374 </span><span class="lineCov">         30 : int pt_posix_send_capability(struct pt_context *ctx, struct pt_peer *peer) {</span></a>
-<a name="1375"><span class="lineNum">    1375 </span><span class="lineCov">         30 :     pt_posix_data *pd = pt_posix_get(ctx);</span></a>
+<a name="1374"><span class="lineNum">    1374 </span><span class="lineCov">         33 : int pt_posix_send_capability(struct pt_context *ctx, struct pt_peer *peer) {</span></a>
+<a name="1375"><span class="lineNum">    1375 </span><span class="lineCov">         33 :     pt_posix_data *pd = pt_posix_get(ctx);</span></a>
 <a name="1376"><span class="lineNum">    1376 </span>            :     pt_message_header hdr;</a>
 <a name="1377"><span class="lineNum">    1377 </span>            :     pt_capability_msg caps;</a>
 <a name="1378"><span class="lineNum">    1378 </span>            :     uint8_t header_buf[PT_MESSAGE_HEADER_SIZE];</a>
@@ -1447,22 +1447,22 @@
 <a name="1385"><span class="lineNum">    1385 </span>            :     int peer_idx;</a>
 <a name="1386"><span class="lineNum">    1386 </span>            :     int sock;</a>
 <a name="1387"><span class="lineNum">    1387 </span>            : </a>
-<a name="1388"><span class="lineNum">    1388 </span><span class="lineCov">         30 :     if (!peer || peer-&gt;hot.magic != PT_PEER_MAGIC)</span></a>
+<a name="1388"><span class="lineNum">    1388 </span><span class="lineCov">         33 :     if (!peer || peer-&gt;hot.magic != PT_PEER_MAGIC)</span></a>
 <a name="1389"><span class="lineNum">    1389 </span><span class="lineNoCov">          0 :         return PT_ERR_INVALID_PARAM;</span></a>
 <a name="1390"><span class="lineNum">    1390 </span>            : </a>
-<a name="1391"><span class="lineNum">    1391 </span><span class="lineCov">         30 :     if (peer-&gt;hot.state != PT_PEER_CONNECTED)</span></a>
+<a name="1391"><span class="lineNum">    1391 </span><span class="lineCov">         33 :     if (peer-&gt;hot.state != PT_PEER_CONNECTED)</span></a>
 <a name="1392"><span class="lineNum">    1392 </span><span class="lineNoCov">          0 :         return PT_ERR_INVALID_STATE;</span></a>
 <a name="1393"><span class="lineNum">    1393 </span>            : </a>
-<a name="1394"><span class="lineNum">    1394 </span><span class="lineCov">         30 :     peer_idx = peer-&gt;hot.id - 1;</span></a>
-<a name="1395"><span class="lineNum">    1395 </span><span class="lineCov">         30 :     sock = pd-&gt;tcp_socks[peer_idx];</span></a>
+<a name="1394"><span class="lineNum">    1394 </span><span class="lineCov">         33 :     peer_idx = peer-&gt;hot.id - 1;</span></a>
+<a name="1395"><span class="lineNum">    1395 </span><span class="lineCov">         33 :     sock = pd-&gt;tcp_socks[peer_idx];</span></a>
 <a name="1396"><span class="lineNum">    1396 </span>            : </a>
-<a name="1397"><span class="lineNum">    1397 </span><span class="lineCov">         30 :     if (sock &lt; 0)</span></a>
+<a name="1397"><span class="lineNum">    1397 </span><span class="lineCov">         33 :     if (sock &lt; 0)</span></a>
 <a name="1398"><span class="lineNum">    1398 </span><span class="lineNoCov">          0 :         return PT_ERR_INVALID_STATE;</span></a>
 <a name="1399"><span class="lineNum">    1399 </span>            : </a>
 <a name="1400"><span class="lineNum">    1400 </span>            :     /* Fill in our capabilities */</a>
-<a name="1401"><span class="lineNum">    1401 </span><span class="lineCov">         30 :     caps.max_message_size = ctx-&gt;local_max_message;</span></a>
-<a name="1402"><span class="lineNum">    1402 </span><span class="lineCov">         30 :     caps.preferred_chunk = ctx-&gt;local_preferred_chunk;</span></a>
-<a name="1403"><span class="lineNum">    1403 </span><span class="lineCov">         30 :     caps.capability_flags = ctx-&gt;local_capability_flags;</span></a>
+<a name="1401"><span class="lineNum">    1401 </span><span class="lineCov">         33 :     caps.max_message_size = ctx-&gt;local_max_message;</span></a>
+<a name="1402"><span class="lineNum">    1402 </span><span class="lineCov">         33 :     caps.preferred_chunk = ctx-&gt;local_preferred_chunk;</span></a>
+<a name="1403"><span class="lineNum">    1403 </span><span class="lineCov">         33 :     caps.capability_flags = ctx-&gt;local_capability_flags;</span></a>
 <a name="1404"><span class="lineNum">    1404 </span>            : </a>
 <a name="1405"><span class="lineNum">    1405 </span>            :     /* Calculate current buffer pressure from BOTH queues - report the worse one.</a>
 <a name="1406"><span class="lineNum">    1406 </span>            :      * This captures the actual constraint regardless of where it is:</a>
@@ -1470,60 +1470,60 @@
 <a name="1408"><span class="lineNum">    1408 </span>            :      * - High recv_pressure: &quot;I can't receive fast enough&quot;</a>
 <a name="1409"><span class="lineNum">    1409 </span>            :      */</a>
 <a name="1410"><span class="lineNum">    1410 </span>            :     {</a>
-<a name="1411"><span class="lineNum">    1411 </span><span class="lineCov">         30 :         uint8_t send_pressure = peer-&gt;send_queue ? pt_queue_pressure(peer-&gt;send_queue) : 0;</span></a>
-<a name="1412"><span class="lineNum">    1412 </span><span class="lineCov">         30 :         uint8_t recv_pressure = peer-&gt;recv_queue ? pt_queue_pressure(peer-&gt;recv_queue) : 0;</span></a>
-<a name="1413"><span class="lineNum">    1413 </span><span class="lineCov">         30 :         caps.buffer_pressure = (send_pressure &gt; recv_pressure) ? send_pressure : recv_pressure;</span></a>
+<a name="1411"><span class="lineNum">    1411 </span><span class="lineCov">         33 :         uint8_t send_pressure = peer-&gt;send_queue ? pt_queue_pressure(peer-&gt;send_queue) : 0;</span></a>
+<a name="1412"><span class="lineNum">    1412 </span><span class="lineCov">         33 :         uint8_t recv_pressure = peer-&gt;recv_queue ? pt_queue_pressure(peer-&gt;recv_queue) : 0;</span></a>
+<a name="1413"><span class="lineNum">    1413 </span><span class="lineCov">         33 :         caps.buffer_pressure = (send_pressure &gt; recv_pressure) ? send_pressure : recv_pressure;</span></a>
 <a name="1414"><span class="lineNum">    1414 </span>            :     }</a>
-<a name="1415"><span class="lineNum">    1415 </span><span class="lineCov">         30 :     caps.reserved = 0;</span></a>
+<a name="1415"><span class="lineNum">    1415 </span><span class="lineCov">         33 :     caps.reserved = 0;</span></a>
 <a name="1416"><span class="lineNum">    1416 </span>            : </a>
 <a name="1417"><span class="lineNum">    1417 </span>            :     /* Track what we reported for flow control threshold detection */</a>
-<a name="1418"><span class="lineNum">    1418 </span><span class="lineCov">         30 :     peer-&gt;cold.caps.last_reported_pressure = caps.buffer_pressure;</span></a>
-<a name="1419"><span class="lineNum">    1419 </span><span class="lineCov">         30 :     peer-&gt;cold.caps.pressure_update_pending = 0;</span></a>
+<a name="1418"><span class="lineNum">    1418 </span><span class="lineCov">         33 :     peer-&gt;cold.caps.last_reported_pressure = caps.buffer_pressure;</span></a>
+<a name="1419"><span class="lineNum">    1419 </span><span class="lineCov">         33 :     peer-&gt;cold.caps.pressure_update_pending = 0;</span></a>
 <a name="1420"><span class="lineNum">    1420 </span>            : </a>
 <a name="1421"><span class="lineNum">    1421 </span>            :     /* Encode capability TLV payload */</a>
-<a name="1422"><span class="lineNum">    1422 </span><span class="lineCov">         30 :     payload_len = pt_capability_encode(&amp;caps, payload_buf, sizeof(payload_buf));</span></a>
-<a name="1423"><span class="lineNum">    1423 </span><span class="lineCov">         30 :     if (payload_len &lt; 0) {</span></a>
+<a name="1422"><span class="lineNum">    1422 </span><span class="lineCov">         33 :     payload_len = pt_capability_encode(&amp;caps, payload_buf, sizeof(payload_buf));</span></a>
+<a name="1423"><span class="lineNum">    1423 </span><span class="lineCov">         33 :     if (payload_len &lt; 0) {</span></a>
 <a name="1424"><span class="lineNum">    1424 </span><span class="lineNoCov">          0 :         PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="1425"><span class="lineNum">    1425 </span>            :             &quot;Failed to encode capabilities for peer %u&quot;, peer-&gt;hot.id);</a>
 <a name="1426"><span class="lineNum">    1426 </span><span class="lineNoCov">          0 :         return PT_ERR_INTERNAL;</span></a>
 <a name="1427"><span class="lineNum">    1427 </span>            :     }</a>
 <a name="1428"><span class="lineNum">    1428 </span>            : </a>
 <a name="1429"><span class="lineNum">    1429 </span>            :     /* Encode header */</a>
-<a name="1430"><span class="lineNum">    1430 </span><span class="lineCov">         30 :     hdr.version = PT_PROTOCOL_VERSION;</span></a>
-<a name="1431"><span class="lineNum">    1431 </span><span class="lineCov">         30 :     hdr.type = PT_MSG_TYPE_CAPABILITY;</span></a>
-<a name="1432"><span class="lineNum">    1432 </span><span class="lineCov">         30 :     hdr.flags = 0;</span></a>
-<a name="1433"><span class="lineNum">    1433 </span><span class="lineCov">         30 :     hdr.sequence = 0;  /* Capability messages use seq=0 */</span></a>
-<a name="1434"><span class="lineNum">    1434 </span><span class="lineCov">         30 :     hdr.payload_len = (uint16_t)payload_len;</span></a>
-<a name="1435"><span class="lineNum">    1435 </span><span class="lineCov">         30 :     pt_message_encode_header(&amp;hdr, header_buf);</span></a>
+<a name="1430"><span class="lineNum">    1430 </span><span class="lineCov">         33 :     hdr.version = PT_PROTOCOL_VERSION;</span></a>
+<a name="1431"><span class="lineNum">    1431 </span><span class="lineCov">         33 :     hdr.type = PT_MSG_TYPE_CAPABILITY;</span></a>
+<a name="1432"><span class="lineNum">    1432 </span><span class="lineCov">         33 :     hdr.flags = 0;</span></a>
+<a name="1433"><span class="lineNum">    1433 </span><span class="lineCov">         33 :     hdr.sequence = 0;  /* Capability messages use seq=0 */</span></a>
+<a name="1434"><span class="lineNum">    1434 </span><span class="lineCov">         33 :     hdr.payload_len = (uint16_t)payload_len;</span></a>
+<a name="1435"><span class="lineNum">    1435 </span><span class="lineCov">         33 :     pt_message_encode_header(&amp;hdr, header_buf);</span></a>
 <a name="1436"><span class="lineNum">    1436 </span>            : </a>
 <a name="1437"><span class="lineNum">    1437 </span>            :     /* Calculate CRC over header + payload */</a>
-<a name="1438"><span class="lineNum">    1438 </span><span class="lineCov">         30 :     crc = pt_crc16(header_buf, PT_MESSAGE_HEADER_SIZE);</span></a>
-<a name="1439"><span class="lineNum">    1439 </span><span class="lineCov">         30 :     crc = pt_crc16_update(crc, payload_buf, (size_t)payload_len);</span></a>
-<a name="1440"><span class="lineNum">    1440 </span><span class="lineCov">         30 :     crc_buf[0] = (crc &gt;&gt; 8) &amp; 0xFF;</span></a>
-<a name="1441"><span class="lineNum">    1441 </span><span class="lineCov">         30 :     crc_buf[1] = crc &amp; 0xFF;</span></a>
+<a name="1438"><span class="lineNum">    1438 </span><span class="lineCov">         33 :     crc = pt_crc16(header_buf, PT_MESSAGE_HEADER_SIZE);</span></a>
+<a name="1439"><span class="lineNum">    1439 </span><span class="lineCov">         33 :     crc = pt_crc16_update(crc, payload_buf, (size_t)payload_len);</span></a>
+<a name="1440"><span class="lineNum">    1440 </span><span class="lineCov">         33 :     crc_buf[0] = (crc &gt;&gt; 8) &amp; 0xFF;</span></a>
+<a name="1441"><span class="lineNum">    1441 </span><span class="lineCov">         33 :     crc_buf[1] = crc &amp; 0xFF;</span></a>
 <a name="1442"><span class="lineNum">    1442 </span>            : </a>
 <a name="1443"><span class="lineNum">    1443 </span>            :     /* Prepare iovec for atomic send */</a>
-<a name="1444"><span class="lineNum">    1444 </span><span class="lineCov">         30 :     iov[0].iov_base = header_buf;</span></a>
-<a name="1445"><span class="lineNum">    1445 </span><span class="lineCov">         30 :     iov[0].iov_len = PT_MESSAGE_HEADER_SIZE;</span></a>
-<a name="1446"><span class="lineNum">    1446 </span><span class="lineCov">         30 :     iov[1].iov_base = payload_buf;</span></a>
-<a name="1447"><span class="lineNum">    1447 </span><span class="lineCov">         30 :     iov[1].iov_len = (size_t)payload_len;</span></a>
-<a name="1448"><span class="lineNum">    1448 </span><span class="lineCov">         30 :     iov[2].iov_base = crc_buf;</span></a>
-<a name="1449"><span class="lineNum">    1449 </span><span class="lineCov">         30 :     iov[2].iov_len = 2;</span></a>
+<a name="1444"><span class="lineNum">    1444 </span><span class="lineCov">         33 :     iov[0].iov_base = header_buf;</span></a>
+<a name="1445"><span class="lineNum">    1445 </span><span class="lineCov">         33 :     iov[0].iov_len = PT_MESSAGE_HEADER_SIZE;</span></a>
+<a name="1446"><span class="lineNum">    1446 </span><span class="lineCov">         33 :     iov[1].iov_base = payload_buf;</span></a>
+<a name="1447"><span class="lineNum">    1447 </span><span class="lineCov">         33 :     iov[1].iov_len = (size_t)payload_len;</span></a>
+<a name="1448"><span class="lineNum">    1448 </span><span class="lineCov">         33 :     iov[2].iov_base = crc_buf;</span></a>
+<a name="1449"><span class="lineNum">    1449 </span><span class="lineCov">         33 :     iov[2].iov_len = 2;</span></a>
 <a name="1450"><span class="lineNum">    1450 </span>            : </a>
 <a name="1451"><span class="lineNum">    1451 </span>            :     /* Send with writev */</a>
-<a name="1452"><span class="lineNum">    1452 </span><span class="lineCov">         30 :     sent = writev(sock, iov, 3);</span></a>
+<a name="1452"><span class="lineNum">    1452 </span><span class="lineCov">         33 :     sent = writev(sock, iov, 3);</span></a>
 <a name="1453"><span class="lineNum">    1453 </span>            : </a>
-<a name="1454"><span class="lineNum">    1454 </span><span class="lineCov">         30 :     if (sent &lt; 0) {</span></a>
+<a name="1454"><span class="lineNum">    1454 </span><span class="lineCov">         33 :     if (sent &lt; 0) {</span></a>
 <a name="1455"><span class="lineNum">    1455 </span><span class="lineNoCov">          0 :         if (errno == EWOULDBLOCK || errno == EAGAIN)</span></a>
 <a name="1456"><span class="lineNum">    1456 </span><span class="lineNoCov">          0 :             return PT_ERR_WOULD_BLOCK;</span></a>
 <a name="1457"><span class="lineNum">    1457 </span><span class="lineNoCov">          0 :         return PT_ERR_NETWORK;</span></a>
 <a name="1458"><span class="lineNum">    1458 </span>            :     }</a>
 <a name="1459"><span class="lineNum">    1459 </span>            : </a>
-<a name="1460"><span class="lineNum">    1460 </span><span class="lineCov">         30 :     PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
+<a name="1460"><span class="lineNum">    1460 </span><span class="lineCov">         33 :     PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="1461"><span class="lineNum">    1461 </span>            :         &quot;Sent capabilities to peer %u: max=%u chunk=%u&quot;,</a>
 <a name="1462"><span class="lineNum">    1462 </span>            :         peer-&gt;hot.id, caps.max_message_size, caps.preferred_chunk);</a>
 <a name="1463"><span class="lineNum">    1463 </span>            : </a>
-<a name="1464"><span class="lineNum">    1464 </span><span class="lineCov">         30 :     return PT_OK;</span></a>
+<a name="1464"><span class="lineNum">    1464 </span><span class="lineCov">         33 :     return PT_OK;</span></a>
 <a name="1465"><span class="lineNum">    1465 </span>            : }</a>
 <a name="1466"><span class="lineNum">    1466 </span>            : </a>
 <a name="1467"><span class="lineNum">    1467 </span>            : /* ========================================================================== */</a>
@@ -1598,11 +1598,11 @@
 <a name="1536"><span class="lineNum">    1536 </span>            :  *</a>
 <a name="1537"><span class="lineNum">    1537 </span>            :  * @param buf Receive buffer to reset</a>
 <a name="1538"><span class="lineNum">    1538 </span>            :  */</a>
-<a name="1539"><span class="lineNum">    1539 </span><span class="lineCov">         38 : static void pt_recv_reset(pt_recv_buffer *buf) {</span></a>
-<a name="1540"><span class="lineNum">    1540 </span><span class="lineCov">         38 :     buf-&gt;hot.state = PT_RECV_HEADER;</span></a>
-<a name="1541"><span class="lineNum">    1541 </span><span class="lineCov">         38 :     buf-&gt;hot.bytes_needed = PT_MESSAGE_HEADER_SIZE;</span></a>
-<a name="1542"><span class="lineNum">    1542 </span><span class="lineCov">         38 :     buf-&gt;hot.bytes_received = 0;</span></a>
-<a name="1543"><span class="lineNum">    1543 </span><span class="lineCov">         38 : }</span></a>
+<a name="1539"><span class="lineNum">    1539 </span><span class="lineCov">         49 : static void pt_recv_reset(pt_recv_buffer *buf) {</span></a>
+<a name="1540"><span class="lineNum">    1540 </span><span class="lineCov">         49 :     buf-&gt;hot.state = PT_RECV_HEADER;</span></a>
+<a name="1541"><span class="lineNum">    1541 </span><span class="lineCov">         49 :     buf-&gt;hot.bytes_needed = PT_MESSAGE_HEADER_SIZE;</span></a>
+<a name="1542"><span class="lineNum">    1542 </span><span class="lineCov">         49 :     buf-&gt;hot.bytes_received = 0;</span></a>
+<a name="1543"><span class="lineNum">    1543 </span><span class="lineCov">         49 : }</span></a>
 <a name="1544"><span class="lineNum">    1544 </span>            : </a>
 <a name="1545"><span class="lineNum">    1545 </span>            : /**</a>
 <a name="1546"><span class="lineNum">    1546 </span>            :  * Receive header bytes</a>
@@ -1615,17 +1615,17 @@
 <a name="1553"><span class="lineNum">    1553 </span>            :  * @param sock TCP socket</a>
 <a name="1554"><span class="lineNum">    1554 </span>            :  * @return 1 = header complete, 0 = waiting for more data, -1 = error</a>
 <a name="1555"><span class="lineNum">    1555 </span>            :  */</a>
-<a name="1556"><span class="lineNum">    1556 </span><span class="lineCov">         46 : static int pt_recv_header(struct pt_context *ctx, struct pt_peer *peer,</span></a>
+<a name="1556"><span class="lineNum">    1556 </span><span class="lineCov">         57 : static int pt_recv_header(struct pt_context *ctx, struct pt_peer *peer,</span></a>
 <a name="1557"><span class="lineNum">    1557 </span>            :                            pt_recv_buffer *buf, int sock) {</a>
 <a name="1558"><span class="lineNum">    1558 </span>            :     ssize_t ret;</a>
 <a name="1559"><span class="lineNum">    1559 </span>            :     size_t remaining;</a>
 <a name="1560"><span class="lineNum">    1560 </span>            : </a>
-<a name="1561"><span class="lineNum">    1561 </span><span class="lineCov">         46 :     remaining = buf-&gt;hot.bytes_needed - buf-&gt;hot.bytes_received;</span></a>
+<a name="1561"><span class="lineNum">    1561 </span><span class="lineCov">         57 :     remaining = buf-&gt;hot.bytes_needed - buf-&gt;hot.bytes_received;</span></a>
 <a name="1562"><span class="lineNum">    1562 </span>            : </a>
-<a name="1563"><span class="lineNum">    1563 </span><span class="lineCov">         46 :     ret = recv(sock, buf-&gt;cold.header_buf + buf-&gt;hot.bytes_received,</span></a>
+<a name="1563"><span class="lineNum">    1563 </span><span class="lineCov">         57 :     ret = recv(sock, buf-&gt;cold.header_buf + buf-&gt;hot.bytes_received,</span></a>
 <a name="1564"><span class="lineNum">    1564 </span>            :                remaining, 0);</a>
 <a name="1565"><span class="lineNum">    1565 </span>            : </a>
-<a name="1566"><span class="lineNum">    1566 </span><span class="lineCov">         46 :     if (ret &lt; 0) {</span></a>
+<a name="1566"><span class="lineNum">    1566 </span><span class="lineCov">         57 :     if (ret &lt; 0) {</span></a>
 <a name="1567"><span class="lineNum">    1567 </span><span class="lineCov">          7 :         if (errno == EWOULDBLOCK || errno == EAGAIN)</span></a>
 <a name="1568"><span class="lineNum">    1568 </span><span class="lineNoCov">          0 :             return 0;  /* No data yet */</span></a>
 <a name="1569"><span class="lineNum">    1569 </span><span class="lineCov">          7 :         PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
@@ -1633,17 +1633,17 @@
 <a name="1571"><span class="lineNum">    1571 </span><span class="lineCov">          7 :         return -1;</span></a>
 <a name="1572"><span class="lineNum">    1572 </span>            :     }</a>
 <a name="1573"><span class="lineNum">    1573 </span>            : </a>
-<a name="1574"><span class="lineNum">    1574 </span><span class="lineCov">         39 :     if (ret == 0) {</span></a>
+<a name="1574"><span class="lineNum">    1574 </span><span class="lineCov">         50 :     if (ret == 0) {</span></a>
 <a name="1575"><span class="lineNum">    1575 </span><span class="lineNoCov">          0 :         PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="1576"><span class="lineNum">    1576 </span>            :             &quot;Peer %u closed connection during header&quot;, peer-&gt;hot.id);</a>
 <a name="1577"><span class="lineNum">    1577 </span><span class="lineNoCov">          0 :         return -1;</span></a>
 <a name="1578"><span class="lineNum">    1578 </span>            :     }</a>
 <a name="1579"><span class="lineNum">    1579 </span>            : </a>
-<a name="1580"><span class="lineNum">    1580 </span><span class="lineCov">         39 :     buf-&gt;hot.bytes_received += ret;</span></a>
+<a name="1580"><span class="lineNum">    1580 </span><span class="lineCov">         50 :     buf-&gt;hot.bytes_received += ret;</span></a>
 <a name="1581"><span class="lineNum">    1581 </span>            : </a>
-<a name="1582"><span class="lineNum">    1582 </span><span class="lineCov">         39 :     if (buf-&gt;hot.bytes_received &gt;= buf-&gt;hot.bytes_needed) {</span></a>
+<a name="1582"><span class="lineNum">    1582 </span><span class="lineCov">         50 :     if (buf-&gt;hot.bytes_received &gt;= buf-&gt;hot.bytes_needed) {</span></a>
 <a name="1583"><span class="lineNum">    1583 </span>            :         /* Header complete - decode it */</a>
-<a name="1584"><span class="lineNum">    1584 </span><span class="lineCov">         39 :         if (pt_message_decode_header(ctx, buf-&gt;cold.header_buf,</span></a>
+<a name="1584"><span class="lineNum">    1584 </span><span class="lineCov">         50 :         if (pt_message_decode_header(ctx, buf-&gt;cold.header_buf,</span></a>
 <a name="1585"><span class="lineNum">    1585 </span>            :                                       PT_MESSAGE_HEADER_SIZE,</a>
 <a name="1586"><span class="lineNum">    1586 </span>            :                                       &amp;buf-&gt;cold.hdr) != PT_OK) {</a>
 <a name="1587"><span class="lineNum">    1587 </span><span class="lineCov">          1 :             PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
@@ -1652,7 +1652,7 @@
 <a name="1590"><span class="lineNum">    1590 </span>            :         }</a>
 <a name="1591"><span class="lineNum">    1591 </span>            : </a>
 <a name="1592"><span class="lineNum">    1592 </span>            :         /* Validate payload size */</a>
-<a name="1593"><span class="lineNum">    1593 </span><span class="lineCov">         38 :         if (buf-&gt;cold.hdr.payload_len &gt; PT_MAX_MESSAGE_SIZE) {</span></a>
+<a name="1593"><span class="lineNum">    1593 </span><span class="lineCov">         49 :         if (buf-&gt;cold.hdr.payload_len &gt; PT_MAX_MESSAGE_SIZE) {</span></a>
 <a name="1594"><span class="lineNum">    1594 </span><span class="lineNoCov">          0 :             PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="1595"><span class="lineNum">    1595 </span>            :                 &quot;Payload too large from peer %u: %u bytes (max %d)&quot;,</a>
 <a name="1596"><span class="lineNum">    1596 </span>            :                 peer-&gt;hot.id, buf-&gt;cold.hdr.payload_len, PT_MAX_MESSAGE_SIZE);</a>
@@ -1660,10 +1660,10 @@
 <a name="1598"><span class="lineNum">    1598 </span>            :         }</a>
 <a name="1599"><span class="lineNum">    1599 </span>            : </a>
 <a name="1600"><span class="lineNum">    1600 </span>            :         /* Transition to next state */</a>
-<a name="1601"><span class="lineNum">    1601 </span><span class="lineCov">         38 :         if (buf-&gt;cold.hdr.payload_len &gt; 0) {</span></a>
-<a name="1602"><span class="lineNum">    1602 </span><span class="lineCov">         38 :             buf-&gt;hot.state = PT_RECV_PAYLOAD;</span></a>
-<a name="1603"><span class="lineNum">    1603 </span><span class="lineCov">         38 :             buf-&gt;hot.bytes_needed = buf-&gt;cold.hdr.payload_len;</span></a>
-<a name="1604"><span class="lineNum">    1604 </span><span class="lineCov">         38 :             buf-&gt;hot.bytes_received = 0;</span></a>
+<a name="1601"><span class="lineNum">    1601 </span><span class="lineCov">         49 :         if (buf-&gt;cold.hdr.payload_len &gt; 0) {</span></a>
+<a name="1602"><span class="lineNum">    1602 </span><span class="lineCov">         49 :             buf-&gt;hot.state = PT_RECV_PAYLOAD;</span></a>
+<a name="1603"><span class="lineNum">    1603 </span><span class="lineCov">         49 :             buf-&gt;hot.bytes_needed = buf-&gt;cold.hdr.payload_len;</span></a>
+<a name="1604"><span class="lineNum">    1604 </span><span class="lineCov">         49 :             buf-&gt;hot.bytes_received = 0;</span></a>
 <a name="1605"><span class="lineNum">    1605 </span>            :         } else {</a>
 <a name="1606"><span class="lineNum">    1606 </span>            :             /* No payload - go straight to CRC */</a>
 <a name="1607"><span class="lineNum">    1607 </span><span class="lineNoCov">          0 :             buf-&gt;hot.state = PT_RECV_CRC;</span></a>
@@ -1671,7 +1671,7 @@
 <a name="1609"><span class="lineNum">    1609 </span><span class="lineNoCov">          0 :             buf-&gt;hot.bytes_received = 0;</span></a>
 <a name="1610"><span class="lineNum">    1610 </span>            :         }</a>
 <a name="1611"><span class="lineNum">    1611 </span>            : </a>
-<a name="1612"><span class="lineNum">    1612 </span><span class="lineCov">         38 :         return 1;  /* Header complete */</span></a>
+<a name="1612"><span class="lineNum">    1612 </span><span class="lineCov">         49 :         return 1;  /* Header complete */</span></a>
 <a name="1613"><span class="lineNum">    1613 </span>            :     }</a>
 <a name="1614"><span class="lineNum">    1614 </span>            : </a>
 <a name="1615"><span class="lineNum">    1615 </span><span class="lineNoCov">          0 :     return 0;  /* Waiting for more header bytes */</span></a>
@@ -1682,17 +1682,17 @@
 <a name="1620"><span class="lineNum">    1620 </span>            :  *</a>
 <a name="1621"><span class="lineNum">    1621 </span>            :  * @return 1 = payload complete, 0 = waiting for more data, -1 = error</a>
 <a name="1622"><span class="lineNum">    1622 </span>            :  */</a>
-<a name="1623"><span class="lineNum">    1623 </span><span class="lineCov">         39 : static int pt_recv_payload(struct pt_context *ctx, struct pt_peer *peer,</span></a>
+<a name="1623"><span class="lineNum">    1623 </span><span class="lineCov">         50 : static int pt_recv_payload(struct pt_context *ctx, struct pt_peer *peer,</span></a>
 <a name="1624"><span class="lineNum">    1624 </span>            :                              pt_recv_buffer *buf, int sock) {</a>
 <a name="1625"><span class="lineNum">    1625 </span>            :     ssize_t ret;</a>
 <a name="1626"><span class="lineNum">    1626 </span>            :     size_t remaining;</a>
 <a name="1627"><span class="lineNum">    1627 </span>            : </a>
-<a name="1628"><span class="lineNum">    1628 </span><span class="lineCov">         39 :     remaining = buf-&gt;hot.bytes_needed - buf-&gt;hot.bytes_received;</span></a>
+<a name="1628"><span class="lineNum">    1628 </span><span class="lineCov">         50 :     remaining = buf-&gt;hot.bytes_needed - buf-&gt;hot.bytes_received;</span></a>
 <a name="1629"><span class="lineNum">    1629 </span>            : </a>
-<a name="1630"><span class="lineNum">    1630 </span><span class="lineCov">         39 :     ret = recv(sock, buf-&gt;cold.payload_buf + buf-&gt;hot.bytes_received,</span></a>
+<a name="1630"><span class="lineNum">    1630 </span><span class="lineCov">         50 :     ret = recv(sock, buf-&gt;cold.payload_buf + buf-&gt;hot.bytes_received,</span></a>
 <a name="1631"><span class="lineNum">    1631 </span>            :                remaining, 0);</a>
 <a name="1632"><span class="lineNum">    1632 </span>            : </a>
-<a name="1633"><span class="lineNum">    1633 </span><span class="lineCov">         39 :     if (ret &lt; 0) {</span></a>
+<a name="1633"><span class="lineNum">    1633 </span><span class="lineCov">         50 :     if (ret &lt; 0) {</span></a>
 <a name="1634"><span class="lineNum">    1634 </span><span class="lineNoCov">          0 :         if (errno == EWOULDBLOCK || errno == EAGAIN)</span></a>
 <a name="1635"><span class="lineNum">    1635 </span><span class="lineNoCov">          0 :             return 0;</span></a>
 <a name="1636"><span class="lineNum">    1636 </span><span class="lineNoCov">          0 :         PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
@@ -1700,20 +1700,20 @@
 <a name="1638"><span class="lineNum">    1638 </span><span class="lineNoCov">          0 :         return -1;</span></a>
 <a name="1639"><span class="lineNum">    1639 </span>            :     }</a>
 <a name="1640"><span class="lineNum">    1640 </span>            : </a>
-<a name="1641"><span class="lineNum">    1641 </span><span class="lineCov">         39 :     if (ret == 0) {</span></a>
+<a name="1641"><span class="lineNum">    1641 </span><span class="lineCov">         50 :     if (ret == 0) {</span></a>
 <a name="1642"><span class="lineNum">    1642 </span><span class="lineNoCov">          0 :         PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="1643"><span class="lineNum">    1643 </span>            :             &quot;Peer %u closed connection during payload&quot;, peer-&gt;hot.id);</a>
 <a name="1644"><span class="lineNum">    1644 </span><span class="lineNoCov">          0 :         return -1;</span></a>
 <a name="1645"><span class="lineNum">    1645 </span>            :     }</a>
 <a name="1646"><span class="lineNum">    1646 </span>            : </a>
-<a name="1647"><span class="lineNum">    1647 </span><span class="lineCov">         39 :     buf-&gt;hot.bytes_received += ret;</span></a>
+<a name="1647"><span class="lineNum">    1647 </span><span class="lineCov">         50 :     buf-&gt;hot.bytes_received += ret;</span></a>
 <a name="1648"><span class="lineNum">    1648 </span>            : </a>
-<a name="1649"><span class="lineNum">    1649 </span><span class="lineCov">         39 :     if (buf-&gt;hot.bytes_received &gt;= buf-&gt;hot.bytes_needed) {</span></a>
+<a name="1649"><span class="lineNum">    1649 </span><span class="lineCov">         50 :     if (buf-&gt;hot.bytes_received &gt;= buf-&gt;hot.bytes_needed) {</span></a>
 <a name="1650"><span class="lineNum">    1650 </span>            :         /* Payload complete - move to CRC */</a>
-<a name="1651"><span class="lineNum">    1651 </span><span class="lineCov">         38 :         buf-&gt;hot.state = PT_RECV_CRC;</span></a>
-<a name="1652"><span class="lineNum">    1652 </span><span class="lineCov">         38 :         buf-&gt;hot.bytes_needed = 2;</span></a>
-<a name="1653"><span class="lineNum">    1653 </span><span class="lineCov">         38 :         buf-&gt;hot.bytes_received = 0;</span></a>
-<a name="1654"><span class="lineNum">    1654 </span><span class="lineCov">         38 :         return 1;</span></a>
+<a name="1651"><span class="lineNum">    1651 </span><span class="lineCov">         49 :         buf-&gt;hot.state = PT_RECV_CRC;</span></a>
+<a name="1652"><span class="lineNum">    1652 </span><span class="lineCov">         49 :         buf-&gt;hot.bytes_needed = 2;</span></a>
+<a name="1653"><span class="lineNum">    1653 </span><span class="lineCov">         49 :         buf-&gt;hot.bytes_received = 0;</span></a>
+<a name="1654"><span class="lineNum">    1654 </span><span class="lineCov">         49 :         return 1;</span></a>
 <a name="1655"><span class="lineNum">    1655 </span>            :     }</a>
 <a name="1656"><span class="lineNum">    1656 </span>            : </a>
 <a name="1657"><span class="lineNum">    1657 </span><span class="lineCov">          1 :     return 0;  /* Waiting for more payload bytes */</span></a>
@@ -1724,17 +1724,17 @@
 <a name="1662"><span class="lineNum">    1662 </span>            :  *</a>
 <a name="1663"><span class="lineNum">    1663 </span>            :  * @return 1 = CRC complete, 0 = waiting for more data, -1 = error</a>
 <a name="1664"><span class="lineNum">    1664 </span>            :  */</a>
-<a name="1665"><span class="lineNum">    1665 </span><span class="lineCov">         38 : static int pt_recv_crc(struct pt_context *ctx, struct pt_peer *peer,</span></a>
+<a name="1665"><span class="lineNum">    1665 </span><span class="lineCov">         49 : static int pt_recv_crc(struct pt_context *ctx, struct pt_peer *peer,</span></a>
 <a name="1666"><span class="lineNum">    1666 </span>            :                         pt_recv_buffer *buf, int sock) {</a>
 <a name="1667"><span class="lineNum">    1667 </span>            :     ssize_t ret;</a>
 <a name="1668"><span class="lineNum">    1668 </span>            :     size_t remaining;</a>
 <a name="1669"><span class="lineNum">    1669 </span>            : </a>
-<a name="1670"><span class="lineNum">    1670 </span><span class="lineCov">         38 :     remaining = buf-&gt;hot.bytes_needed - buf-&gt;hot.bytes_received;</span></a>
+<a name="1670"><span class="lineNum">    1670 </span><span class="lineCov">         49 :     remaining = buf-&gt;hot.bytes_needed - buf-&gt;hot.bytes_received;</span></a>
 <a name="1671"><span class="lineNum">    1671 </span>            : </a>
-<a name="1672"><span class="lineNum">    1672 </span><span class="lineCov">         38 :     ret = recv(sock, buf-&gt;cold.crc_buf + buf-&gt;hot.bytes_received,</span></a>
+<a name="1672"><span class="lineNum">    1672 </span><span class="lineCov">         49 :     ret = recv(sock, buf-&gt;cold.crc_buf + buf-&gt;hot.bytes_received,</span></a>
 <a name="1673"><span class="lineNum">    1673 </span>            :                remaining, 0);</a>
 <a name="1674"><span class="lineNum">    1674 </span>            : </a>
-<a name="1675"><span class="lineNum">    1675 </span><span class="lineCov">         38 :     if (ret &lt; 0) {</span></a>
+<a name="1675"><span class="lineNum">    1675 </span><span class="lineCov">         49 :     if (ret &lt; 0) {</span></a>
 <a name="1676"><span class="lineNum">    1676 </span><span class="lineNoCov">          0 :         if (errno == EWOULDBLOCK || errno == EAGAIN)</span></a>
 <a name="1677"><span class="lineNum">    1677 </span><span class="lineNoCov">          0 :             return 0;</span></a>
 <a name="1678"><span class="lineNum">    1678 </span><span class="lineNoCov">          0 :         PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
@@ -1742,17 +1742,17 @@
 <a name="1680"><span class="lineNum">    1680 </span><span class="lineNoCov">          0 :         return -1;</span></a>
 <a name="1681"><span class="lineNum">    1681 </span>            :     }</a>
 <a name="1682"><span class="lineNum">    1682 </span>            : </a>
-<a name="1683"><span class="lineNum">    1683 </span><span class="lineCov">         38 :     if (ret == 0) {</span></a>
+<a name="1683"><span class="lineNum">    1683 </span><span class="lineCov">         49 :     if (ret == 0) {</span></a>
 <a name="1684"><span class="lineNum">    1684 </span><span class="lineNoCov">          0 :         PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="1685"><span class="lineNum">    1685 </span>            :             &quot;Peer %u closed connection during CRC&quot;, peer-&gt;hot.id);</a>
 <a name="1686"><span class="lineNum">    1686 </span><span class="lineNoCov">          0 :         return -1;</span></a>
 <a name="1687"><span class="lineNum">    1687 </span>            :     }</a>
 <a name="1688"><span class="lineNum">    1688 </span>            : </a>
-<a name="1689"><span class="lineNum">    1689 </span><span class="lineCov">         38 :     buf-&gt;hot.bytes_received += ret;</span></a>
+<a name="1689"><span class="lineNum">    1689 </span><span class="lineCov">         49 :     buf-&gt;hot.bytes_received += ret;</span></a>
 <a name="1690"><span class="lineNum">    1690 </span>            : </a>
-<a name="1691"><span class="lineNum">    1691 </span><span class="lineCov">         38 :     if (buf-&gt;hot.bytes_received &gt;= buf-&gt;hot.bytes_needed) {</span></a>
+<a name="1691"><span class="lineNum">    1691 </span><span class="lineCov">         49 :     if (buf-&gt;hot.bytes_received &gt;= buf-&gt;hot.bytes_needed) {</span></a>
 <a name="1692"><span class="lineNum">    1692 </span>            :         /* CRC complete - message fully received */</a>
-<a name="1693"><span class="lineNum">    1693 </span><span class="lineCov">         38 :         return 1;</span></a>
+<a name="1693"><span class="lineNum">    1693 </span><span class="lineCov">         49 :         return 1;</span></a>
 <a name="1694"><span class="lineNum">    1694 </span>            :     }</a>
 <a name="1695"><span class="lineNum">    1695 </span>            : </a>
 <a name="1696"><span class="lineNum">    1696 </span><span class="lineNoCov">          0 :     return 0;  /* Waiting for more CRC bytes */</span></a>
@@ -1765,22 +1765,22 @@
 <a name="1703"><span class="lineNum">    1703 </span>            :  *</a>
 <a name="1704"><span class="lineNum">    1704 </span>            :  * @return 0 on success, -1 on error or disconnect</a>
 <a name="1705"><span class="lineNum">    1705 </span>            :  */</a>
-<a name="1706"><span class="lineNum">    1706 </span><span class="lineCov">         38 : static int pt_recv_process_message(struct pt_context *ctx, struct pt_peer *peer,</span></a>
+<a name="1706"><span class="lineNum">    1706 </span><span class="lineCov">         49 : static int pt_recv_process_message(struct pt_context *ctx, struct pt_peer *peer,</span></a>
 <a name="1707"><span class="lineNum">    1707 </span>            :                                      pt_recv_buffer *buf) {</a>
 <a name="1708"><span class="lineNum">    1708 </span>            :     uint16_t expected_crc;</a>
 <a name="1709"><span class="lineNum">    1709 </span>            :     uint16_t received_crc;</a>
 <a name="1710"><span class="lineNum">    1710 </span>            : </a>
 <a name="1711"><span class="lineNum">    1711 </span>            :     /* Calculate expected CRC */</a>
-<a name="1712"><span class="lineNum">    1712 </span><span class="lineCov">         38 :     expected_crc = pt_crc16(buf-&gt;cold.header_buf, PT_MESSAGE_HEADER_SIZE);</span></a>
-<a name="1713"><span class="lineNum">    1713 </span><span class="lineCov">         38 :     if (buf-&gt;cold.hdr.payload_len &gt; 0) {</span></a>
-<a name="1714"><span class="lineNum">    1714 </span><span class="lineCov">         38 :         expected_crc = pt_crc16_update(expected_crc, buf-&gt;cold.payload_buf,</span></a>
-<a name="1715"><span class="lineNum">    1715 </span><span class="lineCov">         38 :                                         buf-&gt;cold.hdr.payload_len);</span></a>
+<a name="1712"><span class="lineNum">    1712 </span><span class="lineCov">         49 :     expected_crc = pt_crc16(buf-&gt;cold.header_buf, PT_MESSAGE_HEADER_SIZE);</span></a>
+<a name="1713"><span class="lineNum">    1713 </span><span class="lineCov">         49 :     if (buf-&gt;cold.hdr.payload_len &gt; 0) {</span></a>
+<a name="1714"><span class="lineNum">    1714 </span><span class="lineCov">         49 :         expected_crc = pt_crc16_update(expected_crc, buf-&gt;cold.payload_buf,</span></a>
+<a name="1715"><span class="lineNum">    1715 </span><span class="lineCov">         49 :                                         buf-&gt;cold.hdr.payload_len);</span></a>
 <a name="1716"><span class="lineNum">    1716 </span>            :     }</a>
 <a name="1717"><span class="lineNum">    1717 </span>            : </a>
 <a name="1718"><span class="lineNum">    1718 </span>            :     /* Extract received CRC */</a>
-<a name="1719"><span class="lineNum">    1719 </span><span class="lineCov">         38 :     received_crc = ((uint16_t)buf-&gt;cold.crc_buf[0] &lt;&lt; 8) | buf-&gt;cold.crc_buf[1];</span></a>
+<a name="1719"><span class="lineNum">    1719 </span><span class="lineCov">         49 :     received_crc = ((uint16_t)buf-&gt;cold.crc_buf[0] &lt;&lt; 8) | buf-&gt;cold.crc_buf[1];</span></a>
 <a name="1720"><span class="lineNum">    1720 </span>            : </a>
-<a name="1721"><span class="lineNum">    1721 </span><span class="lineCov">         38 :     if (expected_crc != received_crc) {</span></a>
+<a name="1721"><span class="lineNum">    1721 </span><span class="lineCov">         49 :     if (expected_crc != received_crc) {</span></a>
 <a name="1722"><span class="lineNum">    1722 </span><span class="lineCov">          1 :         PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="1723"><span class="lineNum">    1723 </span>            :             &quot;CRC mismatch from peer %u: expected 0x%04X, got 0x%04X&quot;,</a>
 <a name="1724"><span class="lineNum">    1724 </span>            :             peer-&gt;hot.id, expected_crc, received_crc);</a>
@@ -1788,27 +1788,27 @@
 <a name="1726"><span class="lineNum">    1726 </span>            :     }</a>
 <a name="1727"><span class="lineNum">    1727 </span>            : </a>
 <a name="1728"><span class="lineNum">    1728 </span>            :     /* Update statistics */</a>
-<a name="1729"><span class="lineNum">    1729 </span><span class="lineCov">         37 :     peer-&gt;cold.stats.bytes_received += PT_MESSAGE_HEADER_SIZE +</span></a>
-<a name="1730"><span class="lineNum">    1730 </span><span class="lineCov">         37 :                                         buf-&gt;cold.hdr.payload_len + 2;</span></a>
-<a name="1731"><span class="lineNum">    1731 </span><span class="lineCov">         37 :     peer-&gt;cold.stats.messages_received++;</span></a>
-<a name="1732"><span class="lineNum">    1732 </span><span class="lineCov">         37 :     ctx-&gt;global_stats.total_bytes_received += PT_MESSAGE_HEADER_SIZE +</span></a>
-<a name="1733"><span class="lineNum">    1733 </span><span class="lineCov">         37 :                                                buf-&gt;cold.hdr.payload_len + 2;</span></a>
-<a name="1734"><span class="lineNum">    1734 </span><span class="lineCov">         37 :     ctx-&gt;global_stats.total_messages_received++;</span></a>
+<a name="1729"><span class="lineNum">    1729 </span><span class="lineCov">         48 :     peer-&gt;cold.stats.bytes_received += PT_MESSAGE_HEADER_SIZE +</span></a>
+<a name="1730"><span class="lineNum">    1730 </span><span class="lineCov">         48 :                                         buf-&gt;cold.hdr.payload_len + 2;</span></a>
+<a name="1731"><span class="lineNum">    1731 </span><span class="lineCov">         48 :     peer-&gt;cold.stats.messages_received++;</span></a>
+<a name="1732"><span class="lineNum">    1732 </span><span class="lineCov">         48 :     ctx-&gt;global_stats.total_bytes_received += PT_MESSAGE_HEADER_SIZE +</span></a>
+<a name="1733"><span class="lineNum">    1733 </span><span class="lineCov">         48 :                                                buf-&gt;cold.hdr.payload_len + 2;</span></a>
+<a name="1734"><span class="lineNum">    1734 </span><span class="lineCov">         48 :     ctx-&gt;global_stats.total_messages_received++;</span></a>
 <a name="1735"><span class="lineNum">    1735 </span>            : </a>
 <a name="1736"><span class="lineNum">    1736 </span>            :     /* Dispatch by message type */</a>
-<a name="1737"><span class="lineNum">    1737 </span><span class="lineCov">         37 :     switch (buf-&gt;cold.hdr.type) {</span></a>
-<a name="1738"><span class="lineNum">    1738 </span><span class="lineCov">         18 :         case PT_MSG_TYPE_DATA:</span></a>
+<a name="1737"><span class="lineNum">    1737 </span><span class="lineCov">         48 :     switch (buf-&gt;cold.hdr.type) {</span></a>
+<a name="1738"><span class="lineNum">    1738 </span><span class="lineCov">         26 :         case PT_MSG_TYPE_DATA:</span></a>
 <a name="1739"><span class="lineNum">    1739 </span>            :             /* Check for fragmented message */</a>
-<a name="1740"><span class="lineNum">    1740 </span><span class="lineCov">         18 :             if (buf-&gt;cold.hdr.flags &amp; PT_MSG_FLAG_FRAGMENT) {</span></a>
+<a name="1740"><span class="lineNum">    1740 </span><span class="lineCov">         26 :             if (buf-&gt;cold.hdr.flags &amp; PT_MSG_FLAG_FRAGMENT) {</span></a>
 <a name="1741"><span class="lineNum">    1741 </span>            :                 /* Fragment - process through reassembly */</a>
 <a name="1742"><span class="lineNum">    1742 </span>            :                 pt_fragment_header frag_hdr;</a>
-<a name="1743"><span class="lineNum">    1743 </span><span class="lineNoCov">          0 :                 const uint8_t *complete_data = NULL;</span></a>
-<a name="1744"><span class="lineNum">    1744 </span><span class="lineNoCov">          0 :                 uint16_t complete_len = 0;</span></a>
+<a name="1743"><span class="lineNum">    1743 </span><span class="lineCov">          9 :                 const uint8_t *complete_data = NULL;</span></a>
+<a name="1744"><span class="lineNum">    1744 </span><span class="lineCov">          9 :                 uint16_t complete_len = 0;</span></a>
 <a name="1745"><span class="lineNum">    1745 </span>            :                 int reassembly_result;</a>
 <a name="1746"><span class="lineNum">    1746 </span>            : </a>
 <a name="1747"><span class="lineNum">    1747 </span>            :                 /* Decode fragment header from payload */</a>
-<a name="1748"><span class="lineNum">    1748 </span><span class="lineNoCov">          0 :                 if (pt_fragment_decode(buf-&gt;cold.payload_buf,</span></a>
-<a name="1749"><span class="lineNum">    1749 </span><span class="lineNoCov">          0 :                                        buf-&gt;cold.hdr.payload_len,</span></a>
+<a name="1748"><span class="lineNum">    1748 </span><span class="lineCov">          9 :                 if (pt_fragment_decode(buf-&gt;cold.payload_buf,</span></a>
+<a name="1749"><span class="lineNum">    1749 </span><span class="lineCov">          9 :                                        buf-&gt;cold.hdr.payload_len,</span></a>
 <a name="1750"><span class="lineNum">    1750 </span>            :                                        &amp;frag_hdr) != 0) {</a>
 <a name="1751"><span class="lineNum">    1751 </span><span class="lineNoCov">          0 :                     PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="1752"><span class="lineNum">    1752 </span>            :                         &quot;Failed to decode fragment header from peer %u&quot;,</a>
@@ -1817,35 +1817,35 @@
 <a name="1755"><span class="lineNum">    1755 </span>            :                 }</a>
 <a name="1756"><span class="lineNum">    1756 </span>            : </a>
 <a name="1757"><span class="lineNum">    1757 </span>            :                 /* Process fragment through reassembly */</a>
-<a name="1758"><span class="lineNum">    1758 </span><span class="lineNoCov">          0 :                 reassembly_result = pt_reassembly_process(ctx, peer,</span></a>
-<a name="1759"><span class="lineNum">    1759 </span><span class="lineNoCov">          0 :                     buf-&gt;cold.payload_buf, buf-&gt;cold.hdr.payload_len,</span></a>
+<a name="1758"><span class="lineNum">    1758 </span><span class="lineCov">          9 :                 reassembly_result = pt_reassembly_process(ctx, peer,</span></a>
+<a name="1759"><span class="lineNum">    1759 </span><span class="lineCov">          9 :                     buf-&gt;cold.payload_buf, buf-&gt;cold.hdr.payload_len,</span></a>
 <a name="1760"><span class="lineNum">    1760 </span>            :                     &amp;frag_hdr, &amp;complete_data, &amp;complete_len);</a>
 <a name="1761"><span class="lineNum">    1761 </span>            : </a>
-<a name="1762"><span class="lineNum">    1762 </span><span class="lineNoCov">          0 :                 if (reassembly_result == 1 &amp;&amp; complete_data != NULL) {</span></a>
+<a name="1762"><span class="lineNum">    1762 </span><span class="lineCov">          9 :                 if (reassembly_result == 1 &amp;&amp; complete_data != NULL) {</span></a>
 <a name="1763"><span class="lineNum">    1763 </span>            :                     /* Complete message reassembled - deliver to app callback */</a>
-<a name="1764"><span class="lineNum">    1764 </span><span class="lineNoCov">          0 :                     if (ctx-&gt;callbacks.on_message_received) {</span></a>
-<a name="1765"><span class="lineNum">    1765 </span><span class="lineNoCov">          0 :                         ctx-&gt;callbacks.on_message_received((PeerTalk_Context *)ctx,</span></a>
-<a name="1766"><span class="lineNum">    1766 </span><span class="lineNoCov">          0 :                             peer-&gt;hot.id,</span></a>
+<a name="1764"><span class="lineNum">    1764 </span><span class="lineCov">          1 :                     if (ctx-&gt;callbacks.on_message_received) {</span></a>
+<a name="1765"><span class="lineNum">    1765 </span><span class="lineCov">          1 :                         ctx-&gt;callbacks.on_message_received((PeerTalk_Context *)ctx,</span></a>
+<a name="1766"><span class="lineNum">    1766 </span><span class="lineCov">          1 :                             peer-&gt;hot.id,</span></a>
 <a name="1767"><span class="lineNum">    1767 </span>            :                             complete_data,</a>
 <a name="1768"><span class="lineNum">    1768 </span>            :                             complete_len,</a>
 <a name="1769"><span class="lineNum">    1769 </span>            :                             ctx-&gt;callbacks.user_data);</a>
 <a name="1770"><span class="lineNum">    1770 </span>            :                     }</a>
-<a name="1771"><span class="lineNum">    1771 </span><span class="lineNoCov">          0 :                 } else if (reassembly_result &lt; 0) {</span></a>
+<a name="1771"><span class="lineNum">    1771 </span><span class="lineCov">          8 :                 } else if (reassembly_result &lt; 0) {</span></a>
 <a name="1772"><span class="lineNum">    1772 </span><span class="lineNoCov">          0 :                     PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="1773"><span class="lineNum">    1773 </span>            :                         &quot;Fragment reassembly error: %d&quot;, reassembly_result);</a>
 <a name="1774"><span class="lineNum">    1774 </span>            :                 }</a>
 <a name="1775"><span class="lineNum">    1775 </span>            :                 /* If 0, more fragments expected - nothing to do yet */</a>
 <a name="1776"><span class="lineNum">    1776 </span>            :             } else {</a>
 <a name="1777"><span class="lineNum">    1777 </span>            :                 /* Non-fragmented - fire callback directly */</a>
-<a name="1778"><span class="lineNum">    1778 </span><span class="lineCov">         18 :                 if (ctx-&gt;callbacks.on_message_received) {</span></a>
-<a name="1779"><span class="lineNum">    1779 </span><span class="lineCov">         17 :                     ctx-&gt;callbacks.on_message_received((PeerTalk_Context *)ctx,</span></a>
-<a name="1780"><span class="lineNum">    1780 </span><span class="lineCov">         17 :                         peer-&gt;hot.id,</span></a>
-<a name="1781"><span class="lineNum">    1781 </span><span class="lineCov">         17 :                         buf-&gt;cold.payload_buf,</span></a>
-<a name="1782"><span class="lineNum">    1782 </span><span class="lineCov">         17 :                         buf-&gt;cold.hdr.payload_len,</span></a>
+<a name="1778"><span class="lineNum">    1778 </span><span class="lineCov">         17 :                 if (ctx-&gt;callbacks.on_message_received) {</span></a>
+<a name="1779"><span class="lineNum">    1779 </span><span class="lineCov">         16 :                     ctx-&gt;callbacks.on_message_received((PeerTalk_Context *)ctx,</span></a>
+<a name="1780"><span class="lineNum">    1780 </span><span class="lineCov">         16 :                         peer-&gt;hot.id,</span></a>
+<a name="1781"><span class="lineNum">    1781 </span><span class="lineCov">         16 :                         buf-&gt;cold.payload_buf,</span></a>
+<a name="1782"><span class="lineNum">    1782 </span><span class="lineCov">         16 :                         buf-&gt;cold.hdr.payload_len,</span></a>
 <a name="1783"><span class="lineNum">    1783 </span>            :                         ctx-&gt;callbacks.user_data);</a>
 <a name="1784"><span class="lineNum">    1784 </span>            :                 }</a>
 <a name="1785"><span class="lineNum">    1785 </span>            :             }</a>
-<a name="1786"><span class="lineNum">    1786 </span><span class="lineCov">         18 :             break;</span></a>
+<a name="1786"><span class="lineNum">    1786 </span><span class="lineCov">         26 :             break;</span></a>
 <a name="1787"><span class="lineNum">    1787 </span>            : </a>
 <a name="1788"><span class="lineNum">    1788 </span><span class="lineNoCov">          0 :         case PT_MSG_TYPE_PING:</span></a>
 <a name="1789"><span class="lineNum">    1789 </span>            :             /* Send PONG response */</a>
@@ -1870,29 +1870,29 @@
 <a name="1808"><span class="lineNum">    1808 </span>            :                 &quot;Received ACK from peer %u&quot;, peer-&gt;hot.id);</a>
 <a name="1809"><span class="lineNum">    1809 </span><span class="lineNoCov">          0 :             break;</span></a>
 <a name="1810"><span class="lineNum">    1810 </span>            : </a>
-<a name="1811"><span class="lineNum">    1811 </span><span class="lineCov">         19 :         case PT_MSG_TYPE_CAPABILITY:</span></a>
+<a name="1811"><span class="lineNum">    1811 </span><span class="lineCov">         22 :         case PT_MSG_TYPE_CAPABILITY:</span></a>
 <a name="1812"><span class="lineNum">    1812 </span>            :             /* Process capability message */</a>
 <a name="1813"><span class="lineNum">    1813 </span>            :             {</a>
 <a name="1814"><span class="lineNum">    1814 </span>            :                 pt_capability_msg caps;</a>
 <a name="1815"><span class="lineNum">    1815 </span>            :                 uint16_t effective_max;</a>
 <a name="1816"><span class="lineNum">    1816 </span>            : </a>
-<a name="1817"><span class="lineNum">    1817 </span><span class="lineCov">         19 :                 if (pt_capability_decode(ctx, buf-&gt;cold.payload_buf,</span></a>
-<a name="1818"><span class="lineNum">    1818 </span><span class="lineCov">         19 :                                          buf-&gt;cold.hdr.payload_len, &amp;caps) == 0) {</span></a>
+<a name="1817"><span class="lineNum">    1817 </span><span class="lineCov">         22 :                 if (pt_capability_decode(ctx, buf-&gt;cold.payload_buf,</span></a>
+<a name="1818"><span class="lineNum">    1818 </span><span class="lineCov">         22 :                                          buf-&gt;cold.hdr.payload_len, &amp;caps) == 0) {</span></a>
 <a name="1819"><span class="lineNum">    1819 </span>            :                     /* Store peer capabilities */</a>
-<a name="1820"><span class="lineNum">    1820 </span><span class="lineCov">         19 :                     peer-&gt;cold.caps.max_message_size = caps.max_message_size;</span></a>
-<a name="1821"><span class="lineNum">    1821 </span><span class="lineCov">         19 :                     peer-&gt;cold.caps.preferred_chunk = caps.preferred_chunk;</span></a>
-<a name="1822"><span class="lineNum">    1822 </span><span class="lineCov">         19 :                     peer-&gt;cold.caps.capability_flags = caps.capability_flags;</span></a>
-<a name="1823"><span class="lineNum">    1823 </span><span class="lineCov">         19 :                     peer-&gt;cold.caps.buffer_pressure = caps.buffer_pressure;</span></a>
-<a name="1824"><span class="lineNum">    1824 </span><span class="lineCov">         19 :                     peer-&gt;cold.caps.caps_exchanged = 1;</span></a>
+<a name="1820"><span class="lineNum">    1820 </span><span class="lineCov">         22 :                     peer-&gt;cold.caps.max_message_size = caps.max_message_size;</span></a>
+<a name="1821"><span class="lineNum">    1821 </span><span class="lineCov">         22 :                     peer-&gt;cold.caps.preferred_chunk = caps.preferred_chunk;</span></a>
+<a name="1822"><span class="lineNum">    1822 </span><span class="lineCov">         22 :                     peer-&gt;cold.caps.capability_flags = caps.capability_flags;</span></a>
+<a name="1823"><span class="lineNum">    1823 </span><span class="lineCov">         22 :                     peer-&gt;cold.caps.buffer_pressure = caps.buffer_pressure;</span></a>
+<a name="1824"><span class="lineNum">    1824 </span><span class="lineCov">         22 :                     peer-&gt;cold.caps.caps_exchanged = 1;</span></a>
 <a name="1825"><span class="lineNum">    1825 </span>            : </a>
 <a name="1826"><span class="lineNum">    1826 </span>            :                     /* Calculate effective max = min(ours, theirs) */</a>
-<a name="1827"><span class="lineNum">    1827 </span><span class="lineCov">         19 :                     effective_max = ctx-&gt;local_max_message;</span></a>
-<a name="1828"><span class="lineNum">    1828 </span><span class="lineCov">         19 :                     if (caps.max_message_size &lt; effective_max) {</span></a>
+<a name="1827"><span class="lineNum">    1827 </span><span class="lineCov">         22 :                     effective_max = ctx-&gt;local_max_message;</span></a>
+<a name="1828"><span class="lineNum">    1828 </span><span class="lineCov">         22 :                     if (caps.max_message_size &lt; effective_max) {</span></a>
 <a name="1829"><span class="lineNum">    1829 </span><span class="lineCov">          1 :                         effective_max = caps.max_message_size;</span></a>
 <a name="1830"><span class="lineNum">    1830 </span>            :                     }</a>
-<a name="1831"><span class="lineNum">    1831 </span><span class="lineCov">         19 :                     peer-&gt;hot.effective_max_msg = effective_max;</span></a>
+<a name="1831"><span class="lineNum">    1831 </span><span class="lineCov">         22 :                     peer-&gt;hot.effective_max_msg = effective_max;</span></a>
 <a name="1832"><span class="lineNum">    1832 </span>            : </a>
-<a name="1833"><span class="lineNum">    1833 </span><span class="lineCov">         19 :                     PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
+<a name="1833"><span class="lineNum">    1833 </span><span class="lineCov">         22 :                     PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
 <a name="1834"><span class="lineNum">    1834 </span>            :                         &quot;Received capabilities from peer %u: max=%u chunk=%u pressure=%u&quot;,</a>
 <a name="1835"><span class="lineNum">    1835 </span>            :                         peer-&gt;hot.id, caps.max_message_size, caps.preferred_chunk,</a>
 <a name="1836"><span class="lineNum">    1836 </span>            :                         caps.buffer_pressure);</a>
@@ -1901,7 +1901,7 @@
 <a name="1839"><span class="lineNum">    1839 </span>            :                         &quot;Failed to decode capabilities from peer %u&quot;, peer-&gt;hot.id);</a>
 <a name="1840"><span class="lineNum">    1840 </span>            :                 }</a>
 <a name="1841"><span class="lineNum">    1841 </span>            :             }</a>
-<a name="1842"><span class="lineNum">    1842 </span><span class="lineCov">         19 :             break;</span></a>
+<a name="1842"><span class="lineNum">    1842 </span><span class="lineCov">         22 :             break;</span></a>
 <a name="1843"><span class="lineNum">    1843 </span>            : </a>
 <a name="1844"><span class="lineNum">    1844 </span><span class="lineNoCov">          0 :         default:</span></a>
 <a name="1845"><span class="lineNum">    1845 </span><span class="lineNoCov">          0 :             PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
@@ -1910,7 +1910,7 @@
 <a name="1848"><span class="lineNum">    1848 </span><span class="lineNoCov">          0 :             break;</span></a>
 <a name="1849"><span class="lineNum">    1849 </span>            :     }</a>
 <a name="1850"><span class="lineNum">    1850 </span>            : </a>
-<a name="1851"><span class="lineNum">    1851 </span><span class="lineCov">         37 :     return 0;</span></a>
+<a name="1851"><span class="lineNum">    1851 </span><span class="lineCov">         48 :     return 0;</span></a>
 <a name="1852"><span class="lineNum">    1852 </span>            : }</a>
 <a name="1853"><span class="lineNum">    1853 </span>            : </a>
 <a name="1854"><span class="lineNum">    1854 </span>            : /**</a>
@@ -1922,44 +1922,44 @@
 <a name="1860"><span class="lineNum">    1860 </span>            :  * @param peer Target peer</a>
 <a name="1861"><span class="lineNum">    1861 </span>            :  * @return 0 on success, -1 on error or disconnect</a>
 <a name="1862"><span class="lineNum">    1862 </span>            :  */</a>
-<a name="1863"><span class="lineNum">    1863 </span><span class="lineCov">         47 : int pt_posix_recv(struct pt_context *ctx, struct pt_peer *peer) {</span></a>
-<a name="1864"><span class="lineNum">    1864 </span><span class="lineCov">         47 :     pt_posix_data *pd = pt_posix_get(ctx);</span></a>
+<a name="1863"><span class="lineNum">    1863 </span><span class="lineCov">         58 : int pt_posix_recv(struct pt_context *ctx, struct pt_peer *peer) {</span></a>
+<a name="1864"><span class="lineNum">    1864 </span><span class="lineCov">         58 :     pt_posix_data *pd = pt_posix_get(ctx);</span></a>
 <a name="1865"><span class="lineNum">    1865 </span>            :     pt_recv_buffer *buf;</a>
 <a name="1866"><span class="lineNum">    1866 </span>            :     int peer_idx;</a>
 <a name="1867"><span class="lineNum">    1867 </span>            :     int sock;</a>
 <a name="1868"><span class="lineNum">    1868 </span>            :     int ret;</a>
 <a name="1869"><span class="lineNum">    1869 </span>            : </a>
-<a name="1870"><span class="lineNum">    1870 </span><span class="lineCov">         47 :     if (!peer || peer-&gt;hot.magic != PT_PEER_MAGIC)</span></a>
+<a name="1870"><span class="lineNum">    1870 </span><span class="lineCov">         58 :     if (!peer || peer-&gt;hot.magic != PT_PEER_MAGIC)</span></a>
 <a name="1871"><span class="lineNum">    1871 </span><span class="lineNoCov">          0 :         return -1;</span></a>
 <a name="1872"><span class="lineNum">    1872 </span>            : </a>
-<a name="1873"><span class="lineNum">    1873 </span><span class="lineCov">         47 :     peer_idx = peer-&gt;hot.id - 1;</span></a>
-<a name="1874"><span class="lineNum">    1874 </span><span class="lineCov">         47 :     sock = pd-&gt;tcp_socks[peer_idx];</span></a>
-<a name="1875"><span class="lineNum">    1875 </span><span class="lineCov">         47 :     buf = &amp;pd-&gt;recv_bufs[peer_idx];</span></a>
+<a name="1873"><span class="lineNum">    1873 </span><span class="lineCov">         58 :     peer_idx = peer-&gt;hot.id - 1;</span></a>
+<a name="1874"><span class="lineNum">    1874 </span><span class="lineCov">         58 :     sock = pd-&gt;tcp_socks[peer_idx];</span></a>
+<a name="1875"><span class="lineNum">    1875 </span><span class="lineCov">         58 :     buf = &amp;pd-&gt;recv_bufs[peer_idx];</span></a>
 <a name="1876"><span class="lineNum">    1876 </span>            : </a>
-<a name="1877"><span class="lineNum">    1877 </span><span class="lineCov">         47 :     if (sock &lt; 0)</span></a>
+<a name="1877"><span class="lineNum">    1877 </span><span class="lineCov">         58 :     if (sock &lt; 0)</span></a>
 <a name="1878"><span class="lineNum">    1878 </span><span class="lineNoCov">          0 :         return -1;</span></a>
 <a name="1879"><span class="lineNum">    1879 </span>            : </a>
 <a name="1880"><span class="lineNum">    1880 </span>            :     /* Drive state machine */</a>
 <a name="1881"><span class="lineNum">    1881 </span>            :     while (1) {</a>
-<a name="1882"><span class="lineNum">    1882 </span><span class="lineCov">        123 :         switch (buf-&gt;hot.state) {</span></a>
-<a name="1883"><span class="lineNum">    1883 </span><span class="lineCov">         46 :             case PT_RECV_HEADER:</span></a>
-<a name="1884"><span class="lineNum">    1884 </span><span class="lineCov">         46 :                 ret = pt_recv_header(ctx, peer, buf, sock);</span></a>
-<a name="1885"><span class="lineNum">    1885 </span><span class="lineCov">         46 :                 if (ret &lt;= 0) return ret;</span></a>
-<a name="1886"><span class="lineNum">    1886 </span><span class="lineCov">         38 :                 break;</span></a>
+<a name="1882"><span class="lineNum">    1882 </span><span class="lineCov">        156 :         switch (buf-&gt;hot.state) {</span></a>
+<a name="1883"><span class="lineNum">    1883 </span><span class="lineCov">         57 :             case PT_RECV_HEADER:</span></a>
+<a name="1884"><span class="lineNum">    1884 </span><span class="lineCov">         57 :                 ret = pt_recv_header(ctx, peer, buf, sock);</span></a>
+<a name="1885"><span class="lineNum">    1885 </span><span class="lineCov">         57 :                 if (ret &lt;= 0) return ret;</span></a>
+<a name="1886"><span class="lineNum">    1886 </span><span class="lineCov">         49 :                 break;</span></a>
 <a name="1887"><span class="lineNum">    1887 </span>            : </a>
-<a name="1888"><span class="lineNum">    1888 </span><span class="lineCov">         39 :             case PT_RECV_PAYLOAD:</span></a>
-<a name="1889"><span class="lineNum">    1889 </span><span class="lineCov">         39 :                 ret = pt_recv_payload(ctx, peer, buf, sock);</span></a>
-<a name="1890"><span class="lineNum">    1890 </span><span class="lineCov">         39 :                 if (ret &lt;= 0) return ret;</span></a>
-<a name="1891"><span class="lineNum">    1891 </span><span class="lineCov">         38 :                 break;</span></a>
+<a name="1888"><span class="lineNum">    1888 </span><span class="lineCov">         50 :             case PT_RECV_PAYLOAD:</span></a>
+<a name="1889"><span class="lineNum">    1889 </span><span class="lineCov">         50 :                 ret = pt_recv_payload(ctx, peer, buf, sock);</span></a>
+<a name="1890"><span class="lineNum">    1890 </span><span class="lineCov">         50 :                 if (ret &lt;= 0) return ret;</span></a>
+<a name="1891"><span class="lineNum">    1891 </span><span class="lineCov">         49 :                 break;</span></a>
 <a name="1892"><span class="lineNum">    1892 </span>            : </a>
-<a name="1893"><span class="lineNum">    1893 </span><span class="lineCov">         38 :             case PT_RECV_CRC:</span></a>
-<a name="1894"><span class="lineNum">    1894 </span><span class="lineCov">         38 :                 ret = pt_recv_crc(ctx, peer, buf, sock);</span></a>
-<a name="1895"><span class="lineNum">    1895 </span><span class="lineCov">         38 :                 if (ret &lt;= 0) return ret;</span></a>
+<a name="1893"><span class="lineNum">    1893 </span><span class="lineCov">         49 :             case PT_RECV_CRC:</span></a>
+<a name="1894"><span class="lineNum">    1894 </span><span class="lineCov">         49 :                 ret = pt_recv_crc(ctx, peer, buf, sock);</span></a>
+<a name="1895"><span class="lineNum">    1895 </span><span class="lineCov">         49 :                 if (ret &lt;= 0) return ret;</span></a>
 <a name="1896"><span class="lineNum">    1896 </span>            : </a>
 <a name="1897"><span class="lineNum">    1897 </span>            :                 /* Message complete - process it */</a>
-<a name="1898"><span class="lineNum">    1898 </span><span class="lineCov">         38 :                 ret = pt_recv_process_message(ctx, peer, buf);</span></a>
-<a name="1899"><span class="lineNum">    1899 </span><span class="lineCov">         38 :                 pt_recv_reset(buf);  /* Reset for next message */</span></a>
-<a name="1900"><span class="lineNum">    1900 </span><span class="lineCov">         38 :                 return ret;</span></a>
+<a name="1898"><span class="lineNum">    1898 </span><span class="lineCov">         49 :                 ret = pt_recv_process_message(ctx, peer, buf);</span></a>
+<a name="1899"><span class="lineNum">    1899 </span><span class="lineCov">         49 :                 pt_recv_reset(buf);  /* Reset for next message */</span></a>
+<a name="1900"><span class="lineNum">    1900 </span><span class="lineCov">         49 :                 return ret;</span></a>
 <a name="1901"><span class="lineNum">    1901 </span>            : </a>
 <a name="1902"><span class="lineNum">    1902 </span><span class="lineNoCov">          0 :             default:</span></a>
 <a name="1903"><span class="lineNum">    1903 </span><span class="lineNoCov">          0 :                 PT_CTX_ERR(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
@@ -2338,42 +2338,42 @@
 <a name="2276"><span class="lineNum">    2276 </span>            : /* Main Poll (Session 4.6 - Integration)                                     */</a>
 <a name="2277"><span class="lineNum">    2277 </span>            : /* ========================================================================== */</a>
 <a name="2278"><span class="lineNum">    2278 </span>            : </a>
-<a name="2279"><span class="lineNum">    2279 </span><span class="lineCov">       1102 : int pt_posix_poll(struct pt_context *ctx) {</span></a>
+<a name="2279"><span class="lineNum">    2279 </span><span class="lineCov">       1124 : int pt_posix_poll(struct pt_context *ctx) {</span></a>
 <a name="2280"><span class="lineNum">    2280 </span>            :     pt_posix_data *pd;</a>
 <a name="2281"><span class="lineNum">    2281 </span>            :     pt_tick_t poll_time;</a>
 <a name="2282"><span class="lineNum">    2282 </span>            :     fd_set read_fds, write_fds;</a>
 <a name="2283"><span class="lineNum">    2283 </span>            :     struct timeval tv;</a>
 <a name="2284"><span class="lineNum">    2284 </span>            :     int select_result;</a>
 <a name="2285"><span class="lineNum">    2285 </span>            : </a>
-<a name="2286"><span class="lineNum">    2286 </span><span class="lineCov">       1102 :     if (!ctx) {</span></a>
+<a name="2286"><span class="lineNum">    2286 </span><span class="lineCov">       1124 :     if (!ctx) {</span></a>
 <a name="2287"><span class="lineNum">    2287 </span><span class="lineNoCov">          0 :         return -1;</span></a>
 <a name="2288"><span class="lineNum">    2288 </span>            :     }</a>
 <a name="2289"><span class="lineNum">    2289 </span>            : </a>
-<a name="2290"><span class="lineNum">    2290 </span><span class="lineCov">       1102 :     pd = pt_posix_get(ctx);</span></a>
+<a name="2290"><span class="lineNum">    2290 </span><span class="lineCov">       1124 :     pd = pt_posix_get(ctx);</span></a>
 <a name="2291"><span class="lineNum">    2291 </span>            : </a>
 <a name="2292"><span class="lineNum">    2292 </span>            :     /* Cache poll time at start (avoids repeated trap calls on Classic Mac) */</a>
-<a name="2293"><span class="lineNum">    2293 </span><span class="lineCov">       1102 :     poll_time = ctx-&gt;plat-&gt;get_ticks();</span></a>
+<a name="2293"><span class="lineNum">    2293 </span><span class="lineCov">       1124 :     poll_time = ctx-&gt;plat-&gt;get_ticks();</span></a>
 <a name="2294"><span class="lineNum">    2294 </span>            : </a>
 <a name="2295"><span class="lineNum">    2295 </span>            :     /* Reset batch count for this poll cycle */</a>
-<a name="2296"><span class="lineNum">    2296 </span><span class="lineCov">       1102 :     pd-&gt;batch_count = 0;</span></a>
+<a name="2296"><span class="lineNum">    2296 </span><span class="lineCov">       1124 :     pd-&gt;batch_count = 0;</span></a>
 <a name="2297"><span class="lineNum">    2297 </span>            : </a>
 <a name="2298"><span class="lineNum">    2298 </span>            :     /* Rebuild fd_sets only if dirty flag set (connections changed) */</a>
-<a name="2299"><span class="lineNum">    2299 </span><span class="lineCov">       1102 :     if (pd-&gt;fd_dirty) {</span></a>
+<a name="2299"><span class="lineNum">    2299 </span><span class="lineCov">       1124 :     if (pd-&gt;fd_dirty) {</span></a>
 <a name="2300"><span class="lineNum">    2300 </span><span class="lineCov">         85 :         pt_posix_rebuild_fd_sets(ctx);</span></a>
 <a name="2301"><span class="lineNum">    2301 </span>            :     }</a>
 <a name="2302"><span class="lineNum">    2302 </span>            : </a>
 <a name="2303"><span class="lineNum">    2303 </span>            :     /* Copy cached fd_sets (select modifies them) */</a>
-<a name="2304"><span class="lineNum">    2304 </span><span class="lineCov">       1102 :     read_fds = pd-&gt;cached_read_fds;</span></a>
-<a name="2305"><span class="lineNum">    2305 </span><span class="lineCov">       1102 :     write_fds = pd-&gt;cached_write_fds;</span></a>
+<a name="2304"><span class="lineNum">    2304 </span><span class="lineCov">       1124 :     read_fds = pd-&gt;cached_read_fds;</span></a>
+<a name="2305"><span class="lineNum">    2305 </span><span class="lineCov">       1124 :     write_fds = pd-&gt;cached_write_fds;</span></a>
 <a name="2306"><span class="lineNum">    2306 </span>            : </a>
 <a name="2307"><span class="lineNum">    2307 </span>            :     /* Set timeout to 10ms for responsive polling */</a>
-<a name="2308"><span class="lineNum">    2308 </span><span class="lineCov">       1102 :     tv.tv_sec = 0;</span></a>
-<a name="2309"><span class="lineNum">    2309 </span><span class="lineCov">       1102 :     tv.tv_usec = 10000;</span></a>
+<a name="2308"><span class="lineNum">    2308 </span><span class="lineCov">       1124 :     tv.tv_sec = 0;</span></a>
+<a name="2309"><span class="lineNum">    2309 </span><span class="lineCov">       1124 :     tv.tv_usec = 10000;</span></a>
 <a name="2310"><span class="lineNum">    2310 </span>            : </a>
 <a name="2311"><span class="lineNum">    2311 </span>            :     /* Call select() with all sockets */</a>
-<a name="2312"><span class="lineNum">    2312 </span><span class="lineCov">       1102 :     select_result = select(pd-&gt;max_fd + 1, &amp;read_fds, &amp;write_fds, NULL, &amp;tv);</span></a>
+<a name="2312"><span class="lineNum">    2312 </span><span class="lineCov">       1124 :     select_result = select(pd-&gt;max_fd + 1, &amp;read_fds, &amp;write_fds, NULL, &amp;tv);</span></a>
 <a name="2313"><span class="lineNum">    2313 </span>            : </a>
-<a name="2314"><span class="lineNum">    2314 </span><span class="lineCov">       1102 :     if (select_result &lt; 0) {</span></a>
+<a name="2314"><span class="lineNum">    2314 </span><span class="lineCov">       1124 :     if (select_result &lt; 0) {</span></a>
 <a name="2315"><span class="lineNum">    2315 </span><span class="lineNoCov">          0 :         if (errno != EINTR) {</span></a>
 <a name="2316"><span class="lineNum">    2316 </span><span class="lineNoCov">          0 :             PT_CTX_WARN(ctx, PT_LOG_CAT_NETWORK,</span></a>
 <a name="2317"><span class="lineNum">    2317 </span>            :                 &quot;Select failed in main poll: %s&quot;, strerror(errno));</a>
@@ -2381,43 +2381,43 @@
 <a name="2319"><span class="lineNum">    2319 </span><span class="lineNoCov">          0 :         return 0;</span></a>
 <a name="2320"><span class="lineNum">    2320 </span>            :     }</a>
 <a name="2321"><span class="lineNum">    2321 </span>            : </a>
-<a name="2322"><span class="lineNum">    2322 </span><span class="lineCov">       1102 :     if (select_result == 0) {</span></a>
+<a name="2322"><span class="lineNum">    2322 </span><span class="lineCov">       1124 :     if (select_result == 0) {</span></a>
 <a name="2323"><span class="lineNum">    2323 </span>            :         /* Hot path: no events - just periodic work */</a>
-<a name="2324"><span class="lineNum">    2324 </span><span class="lineCov">       1008 :         goto periodic_work;</span></a>
+<a name="2324"><span class="lineNum">    2324 </span><span class="lineCov">       1019 :         goto periodic_work;</span></a>
 <a name="2325"><span class="lineNum">    2325 </span>            :     }</a>
 <a name="2326"><span class="lineNum">    2326 </span>            : </a>
 <a name="2327"><span class="lineNum">    2327 </span>            :     /* Process discovery packets if discovery_sock readable */</a>
-<a name="2328"><span class="lineNum">    2328 </span><span class="lineCov">         94 :     if (pd-&gt;discovery_sock &gt;= 0 &amp;&amp; FD_ISSET(pd-&gt;discovery_sock, &amp;read_fds)) {</span></a>
+<a name="2328"><span class="lineNum">    2328 </span><span class="lineCov">        105 :     if (pd-&gt;discovery_sock &gt;= 0 &amp;&amp; FD_ISSET(pd-&gt;discovery_sock, &amp;read_fds)) {</span></a>
 <a name="2329"><span class="lineNum">    2329 </span><span class="lineCov">         29 :         while (pt_posix_discovery_poll(ctx) &gt; 0) {</span></a>
 <a name="2330"><span class="lineNum">    2330 </span>            :             /* Process all pending discovery packets */</a>
 <a name="2331"><span class="lineNum">    2331 </span>            :         }</a>
 <a name="2332"><span class="lineNum">    2332 </span>            :     }</a>
 <a name="2333"><span class="lineNum">    2333 </span>            : </a>
 <a name="2334"><span class="lineNum">    2334 </span>            :     /* Process UDP messages if udp_msg_sock readable */</a>
-<a name="2335"><span class="lineNum">    2335 </span><span class="lineCov">         94 :     if (pd-&gt;udp_msg_sock &gt;= 0 &amp;&amp; FD_ISSET(pd-&gt;udp_msg_sock, &amp;read_fds)) {</span></a>
+<a name="2335"><span class="lineNum">    2335 </span><span class="lineCov">        105 :     if (pd-&gt;udp_msg_sock &gt;= 0 &amp;&amp; FD_ISSET(pd-&gt;udp_msg_sock, &amp;read_fds)) {</span></a>
 <a name="2336"><span class="lineNum">    2336 </span><span class="lineCov">          1 :         while (pt_posix_recv_udp(ctx) &gt; 0) {</span></a>
 <a name="2337"><span class="lineNum">    2337 </span>            :             /* Process all pending UDP messages */</a>
 <a name="2338"><span class="lineNum">    2338 </span>            :         }</a>
 <a name="2339"><span class="lineNum">    2339 </span>            :     }</a>
 <a name="2340"><span class="lineNum">    2340 </span>            : </a>
 <a name="2341"><span class="lineNum">    2341 </span>            :     /* Process incoming connections if listen_sock readable */</a>
-<a name="2342"><span class="lineNum">    2342 </span><span class="lineCov">         94 :     if (pd-&gt;listen_sock &gt;= 0 &amp;&amp; FD_ISSET(pd-&gt;listen_sock, &amp;read_fds)) {</span></a>
+<a name="2342"><span class="lineNum">    2342 </span><span class="lineCov">        105 :     if (pd-&gt;listen_sock &gt;= 0 &amp;&amp; FD_ISSET(pd-&gt;listen_sock, &amp;read_fds)) {</span></a>
 <a name="2343"><span class="lineNum">    2343 </span><span class="lineCov">         38 :         while (pt_posix_listen_poll(ctx) &gt; 0) {</span></a>
 <a name="2344"><span class="lineNum">    2344 </span>            :             /* Process all pending incoming connections */</a>
 <a name="2345"><span class="lineNum">    2345 </span>            :         }</a>
 <a name="2346"><span class="lineNum">    2346 </span>            :     }</a>
 <a name="2347"><span class="lineNum">    2347 </span>            : </a>
 <a name="2348"><span class="lineNum">    2348 </span>            :     /* For each active peer socket, check for events */</a>
-<a name="2349"><span class="lineNum">    2349 </span><span class="lineCov">        161 :     for (uint8_t i = 0; i &lt; pd-&gt;active_count; i++) {</span></a>
-<a name="2350"><span class="lineNum">    2350 </span><span class="lineCov">         67 :         uint8_t peer_idx = pd-&gt;active_peers[i];</span></a>
-<a name="2351"><span class="lineNum">    2351 </span><span class="lineCov">         67 :         struct pt_peer *peer = &amp;ctx-&gt;peers[peer_idx];</span></a>
-<a name="2352"><span class="lineNum">    2352 </span><span class="lineCov">         67 :         int sock = pd-&gt;tcp_socks[peer_idx];</span></a>
+<a name="2349"><span class="lineNum">    2349 </span><span class="lineCov">        183 :     for (uint8_t i = 0; i &lt; pd-&gt;active_count; i++) {</span></a>
+<a name="2350"><span class="lineNum">    2350 </span><span class="lineCov">         78 :         uint8_t peer_idx = pd-&gt;active_peers[i];</span></a>
+<a name="2351"><span class="lineNum">    2351 </span><span class="lineCov">         78 :         struct pt_peer *peer = &amp;ctx-&gt;peers[peer_idx];</span></a>
+<a name="2352"><span class="lineNum">    2352 </span><span class="lineCov">         78 :         int sock = pd-&gt;tcp_socks[peer_idx];</span></a>
 <a name="2353"><span class="lineNum">    2353 </span>            : </a>
-<a name="2354"><span class="lineNum">    2354 </span><span class="lineCov">         67 :         if (sock &lt; 0)</span></a>
+<a name="2354"><span class="lineNum">    2354 </span><span class="lineCov">         78 :         if (sock &lt; 0)</span></a>
 <a name="2355"><span class="lineNum">    2355 </span><span class="lineNoCov">          0 :             continue;</span></a>
 <a name="2356"><span class="lineNum">    2356 </span>            : </a>
 <a name="2357"><span class="lineNum">    2357 </span>            :         /* Check connect completion (if state is CONNECTING and socket is writable) */</a>
-<a name="2358"><span class="lineNum">    2358 </span><span class="lineCov">         67 :         if (peer-&gt;hot.state == PT_PEER_CONNECTING &amp;&amp; FD_ISSET(sock, &amp;write_fds)) {</span></a>
+<a name="2358"><span class="lineNum">    2358 </span><span class="lineCov">         78 :         if (peer-&gt;hot.state == PT_PEER_CONNECTING &amp;&amp; FD_ISSET(sock, &amp;write_fds)) {</span></a>
 <a name="2359"><span class="lineNum">    2359 </span><span class="lineCov">         10 :             int error = 0;</span></a>
 <a name="2360"><span class="lineNum">    2360 </span><span class="lineCov">         10 :             socklen_t len = sizeof(error);</span></a>
 <a name="2361"><span class="lineNum">    2361 </span>            : </a>
@@ -2488,21 +2488,21 @@
 <a name="2426"><span class="lineNum">    2426 </span>            :         }</a>
 <a name="2427"><span class="lineNum">    2427 </span>            : </a>
 <a name="2428"><span class="lineNum">    2428 </span>            :         /* Check for incoming data (if socket readable) */</a>
-<a name="2429"><span class="lineNum">    2429 </span><span class="lineCov">         67 :         if (FD_ISSET(sock, &amp;read_fds)) {</span></a>
+<a name="2429"><span class="lineNum">    2429 </span><span class="lineCov">         78 :         if (FD_ISSET(sock, &amp;read_fds)) {</span></a>
 <a name="2430"><span class="lineNum">    2430 </span>            :             /* Process messages via pt_posix_recv() loop */</a>
 <a name="2431"><span class="lineNum">    2431 </span>            :             int recv_ret;</a>
-<a name="2432"><span class="lineNum">    2432 </span><span class="lineCov">         47 :             while ((recv_ret = pt_posix_recv(ctx, peer)) &gt; 0) {</span></a>
+<a name="2432"><span class="lineNum">    2432 </span><span class="lineCov">         58 :             while ((recv_ret = pt_posix_recv(ctx, peer)) &gt; 0) {</span></a>
 <a name="2433"><span class="lineNum">    2433 </span>            :                 /* Keep receiving until no more complete messages */</a>
 <a name="2434"><span class="lineNum">    2434 </span>            :             }</a>
 <a name="2435"><span class="lineNum">    2435 </span>            : </a>
 <a name="2436"><span class="lineNum">    2436 </span>            :             /* If recv returned -1 (error/close), mark peer for disconnection */</a>
-<a name="2437"><span class="lineNum">    2437 </span><span class="lineCov">         47 :             if (recv_ret &lt; 0 &amp;&amp; peer-&gt;hot.state == PT_PEER_CONNECTED) {</span></a>
+<a name="2437"><span class="lineNum">    2437 </span><span class="lineCov">         58 :             if (recv_ret &lt; 0 &amp;&amp; peer-&gt;hot.state == PT_PEER_CONNECTED) {</span></a>
 <a name="2438"><span class="lineNum">    2438 </span><span class="lineCov">          9 :                 peer-&gt;hot.state = PT_PEER_DISCONNECTING;</span></a>
 <a name="2439"><span class="lineNum">    2439 </span>            :             }</a>
 <a name="2440"><span class="lineNum">    2440 </span>            : </a>
 <a name="2441"><span class="lineNum">    2441 </span>            :             /* On connection error, close socket and remove from active */</a>
-<a name="2442"><span class="lineNum">    2442 </span><span class="lineCov">         47 :             if (peer-&gt;hot.state == PT_PEER_DISCONNECTING ||</span></a>
-<a name="2443"><span class="lineNum">    2443 </span><span class="lineCov">         38 :                 peer-&gt;hot.state == PT_PEER_FAILED) {</span></a>
+<a name="2442"><span class="lineNum">    2442 </span><span class="lineCov">         58 :             if (peer-&gt;hot.state == PT_PEER_DISCONNECTING ||</span></a>
+<a name="2443"><span class="lineNum">    2443 </span><span class="lineCov">         49 :                 peer-&gt;hot.state == PT_PEER_FAILED) {</span></a>
 <a name="2444"><span class="lineNum">    2444 </span><span class="lineCov">          9 :                 PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT,</span></a>
 <a name="2445"><span class="lineNum">    2445 </span>            :                     &quot;Closing connection to peer %u&quot;, peer-&gt;hot.id);</a>
 <a name="2446"><span class="lineNum">    2446 </span>            : </a>
@@ -2530,32 +2530,32 @@
 <a name="2468"><span class="lineNum">    2468 </span>            :         }</a>
 <a name="2469"><span class="lineNum">    2469 </span>            :     }</a>
 <a name="2470"><span class="lineNum">    2470 </span>            : </a>
-<a name="2471"><span class="lineNum">    2471 </span><span class="lineCov">         94 : periodic_work:</span></a>
+<a name="2471"><span class="lineNum">    2471 </span><span class="lineCov">        105 : periodic_work:</span></a>
 <a name="2472"><span class="lineNum">    2472 </span>            :     /* Drain send buffers for all connected peers</a>
 <a name="2473"><span class="lineNum">    2473 </span>            :      * Two-tier system: Tier 2 (large messages) first, then Tier 1 (small messages)</a>
 <a name="2474"><span class="lineNum">    2474 </span>            :      */</a>
-<a name="2475"><span class="lineNum">    2475 </span><span class="lineCov">      18734 :     for (uint8_t i = 0; i &lt; ctx-&gt;max_peers; i++) {</span></a>
-<a name="2476"><span class="lineNum">    2476 </span><span class="lineCov">      17632 :         struct pt_peer *peer = &amp;ctx-&gt;peers[i];</span></a>
+<a name="2475"><span class="lineNum">    2475 </span><span class="lineCov">      19108 :     for (uint8_t i = 0; i &lt; ctx-&gt;max_peers; i++) {</span></a>
+<a name="2476"><span class="lineNum">    2476 </span><span class="lineCov">      17984 :         struct pt_peer *peer = &amp;ctx-&gt;peers[i];</span></a>
 <a name="2477"><span class="lineNum">    2477 </span>            : </a>
-<a name="2478"><span class="lineNum">    2478 </span><span class="lineCov">      17632 :         if (peer-&gt;hot.state != PT_PEER_CONNECTED) {</span></a>
-<a name="2479"><span class="lineNum">    2479 </span><span class="lineCov">      16956 :             continue;</span></a>
+<a name="2478"><span class="lineNum">    2478 </span><span class="lineCov">      17984 :         if (peer-&gt;hot.state != PT_PEER_CONNECTED) {</span></a>
+<a name="2479"><span class="lineNum">    2479 </span><span class="lineCov">      17286 :             continue;</span></a>
 <a name="2480"><span class="lineNum">    2480 </span>            :         }</a>
 <a name="2481"><span class="lineNum">    2481 </span>            : </a>
 <a name="2482"><span class="lineNum">    2482 </span>            :         /* Tier 2: Send large message from direct buffer first (priority) */</a>
-<a name="2483"><span class="lineNum">    2483 </span><span class="lineCov">        676 :         if (pt_direct_buffer_ready(&amp;peer-&gt;send_direct)) {</span></a>
-<a name="2484"><span class="lineNum">    2484 </span><span class="lineCov">          2 :             pt_direct_buffer *buf = &amp;peer-&gt;send_direct;</span></a>
+<a name="2483"><span class="lineNum">    2483 </span><span class="lineCov">        698 :         if (pt_direct_buffer_ready(&amp;peer-&gt;send_direct)) {</span></a>
+<a name="2484"><span class="lineNum">    2484 </span><span class="lineCov">          1 :             pt_direct_buffer *buf = &amp;peer-&gt;send_direct;</span></a>
 <a name="2485"><span class="lineNum">    2485 </span>            : </a>
 <a name="2486"><span class="lineNum">    2486 </span>            :             /* Mark as sending */</a>
-<a name="2487"><span class="lineNum">    2487 </span><span class="lineCov">          2 :             pt_direct_buffer_mark_sending(buf);</span></a>
+<a name="2487"><span class="lineNum">    2487 </span><span class="lineCov">          1 :             pt_direct_buffer_mark_sending(buf);</span></a>
 <a name="2488"><span class="lineNum">    2488 </span>            : </a>
 <a name="2489"><span class="lineNum">    2489 </span>            :             /* Send via TCP with message flags (supports fragmentation) */</a>
-<a name="2490"><span class="lineNum">    2490 </span><span class="lineCov">          2 :             int result = pt_posix_send_with_flags(ctx, peer, buf-&gt;data, buf-&gt;length, buf-&gt;msg_flags);</span></a>
+<a name="2490"><span class="lineNum">    2490 </span><span class="lineCov">          1 :             int result = pt_posix_send_with_flags(ctx, peer, buf-&gt;data, buf-&gt;length, buf-&gt;msg_flags);</span></a>
 <a name="2491"><span class="lineNum">    2491 </span>            : </a>
 <a name="2492"><span class="lineNum">    2492 </span>            :             /* Complete the send (success or fail, buffer becomes available) */</a>
-<a name="2493"><span class="lineNum">    2493 </span><span class="lineCov">          2 :             pt_direct_buffer_complete(buf);</span></a>
+<a name="2493"><span class="lineNum">    2493 </span><span class="lineCov">          1 :             pt_direct_buffer_complete(buf);</span></a>
 <a name="2494"><span class="lineNum">    2494 </span>            : </a>
-<a name="2495"><span class="lineNum">    2495 </span><span class="lineCov">          2 :             if (result == PT_OK) {</span></a>
-<a name="2496"><span class="lineNum">    2496 </span><span class="lineCov">          2 :                 PT_CTX_DEBUG(ctx, PT_LOG_CAT_SEND,</span></a>
+<a name="2495"><span class="lineNum">    2495 </span><span class="lineCov">          1 :             if (result == PT_OK) {</span></a>
+<a name="2496"><span class="lineNum">    2496 </span><span class="lineCov">          1 :                 PT_CTX_DEBUG(ctx, PT_LOG_CAT_SEND,</span></a>
 <a name="2497"><span class="lineNum">    2497 </span>            :                     &quot;Tier 2: Sent %u bytes to peer %u&quot;, buf-&gt;length, peer-&gt;hot.id);</a>
 <a name="2498"><span class="lineNum">    2498 </span><span class="lineNoCov">          0 :             } else if (result != PT_ERR_WOULD_BLOCK) {</span></a>
 <a name="2499"><span class="lineNum">    2499 </span><span class="lineNoCov">          0 :                 PT_CTX_WARN(ctx, PT_LOG_CAT_SEND,</span></a>
@@ -2564,253 +2564,262 @@
 <a name="2502"><span class="lineNum">    2502 </span>            :             }</a>
 <a name="2503"><span class="lineNum">    2503 </span>            :         }</a>
 <a name="2504"><span class="lineNum">    2504 </span>            : </a>
-<a name="2505"><span class="lineNum">    2505 </span>            :         /* Tier 1: Drain queue (small messages) */</a>
-<a name="2506"><span class="lineNum">    2506 </span><span class="lineCov">        676 :         if (peer-&gt;send_queue) {</span></a>
+<a name="2505"><span class="lineNum">    2505 </span>            :         /* Tier 1: Drain queue (small messages and fragments) */</a>
+<a name="2506"><span class="lineNum">    2506 </span><span class="lineCov">        698 :         if (peer-&gt;send_queue) {</span></a>
 <a name="2507"><span class="lineNum">    2507 </span>            :             const void *data;</a>
 <a name="2508"><span class="lineNum">    2508 </span>            :             uint16_t len;</a>
-<a name="2509"><span class="lineNum">    2509 </span>            : </a>
-<a name="2510"><span class="lineNum">    2510 </span><span class="lineCov">        676 :             if (pt_queue_pop_priority_direct(peer-&gt;send_queue, &amp;data, &amp;len) == 0) {</span></a>
-<a name="2511"><span class="lineNum">    2511 </span>            :                 /* Got a message - send it */</a>
-<a name="2512"><span class="lineNum">    2512 </span><span class="lineCov">         10 :                 int result = pt_posix_send(ctx, peer, data, len);</span></a>
-<a name="2513"><span class="lineNum">    2513 </span>            : </a>
-<a name="2514"><span class="lineNum">    2514 </span>            :                 /* Commit the pop to remove message from queue */</a>
-<a name="2515"><span class="lineNum">    2515 </span><span class="lineCov">         10 :                 pt_queue_pop_priority_commit(peer-&gt;send_queue);</span></a>
-<a name="2516"><span class="lineNum">    2516 </span>            : </a>
-<a name="2517"><span class="lineNum">    2517 </span><span class="lineCov">         10 :                 if (result != PT_OK &amp;&amp; result != PT_ERR_WOULD_BLOCK) {</span></a>
-<a name="2518"><span class="lineNum">    2518 </span>            :                     /* Send failed - message lost */</a>
-<a name="2519"><span class="lineNum">    2519 </span><span class="lineNoCov">          0 :                     PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
-<a name="2520"><span class="lineNum">    2520 </span>            :                         &quot;Failed to drain message for peer %u: error %d&quot;,</a>
-<a name="2521"><span class="lineNum">    2521 </span>            :                         peer-&gt;hot.id, result);</a>
-<a name="2522"><span class="lineNum">    2522 </span>            :                 }</a>
-<a name="2523"><span class="lineNum">    2523 </span>            :             }</a>
-<a name="2524"><span class="lineNum">    2524 </span>            :         }</a>
+<a name="2509"><span class="lineNum">    2509 </span><span class="lineCov">        698 :             pt_queue *q = peer-&gt;send_queue;</span></a>
+<a name="2510"><span class="lineNum">    2510 </span>            : </a>
+<a name="2511"><span class="lineNum">    2511 </span><span class="lineCov">        698 :             if (pt_queue_pop_priority_direct(q, &amp;data, &amp;len) == 0) {</span></a>
+<a name="2512"><span class="lineNum">    2512 </span>            :                 int result;</a>
+<a name="2513"><span class="lineNum">    2513 </span><span class="lineCov">         19 :                 uint8_t slot_flags = q-&gt;slots[q-&gt;pending_pop_slot].flags;</span></a>
+<a name="2514"><span class="lineNum">    2514 </span>            : </a>
+<a name="2515"><span class="lineNum">    2515 </span>            :                 /* Check if this is a fragment - needs PT_MSG_FLAG_FRAGMENT */</a>
+<a name="2516"><span class="lineNum">    2516 </span><span class="lineCov">         19 :                 if (slot_flags &amp; PT_SLOT_FRAGMENT) {</span></a>
+<a name="2517"><span class="lineNum">    2517 </span><span class="lineCov">          9 :                     result = pt_posix_send_with_flags(ctx, peer, data, len,</span></a>
+<a name="2518"><span class="lineNum">    2518 </span>            :                                                        PT_MSG_FLAG_FRAGMENT);</a>
+<a name="2519"><span class="lineNum">    2519 </span>            :                 } else {</a>
+<a name="2520"><span class="lineNum">    2520 </span><span class="lineCov">         10 :                     result = pt_posix_send(ctx, peer, data, len);</span></a>
+<a name="2521"><span class="lineNum">    2521 </span>            :                 }</a>
+<a name="2522"><span class="lineNum">    2522 </span>            : </a>
+<a name="2523"><span class="lineNum">    2523 </span>            :                 /* Commit the pop to remove message from queue */</a>
+<a name="2524"><span class="lineNum">    2524 </span><span class="lineCov">         19 :                 pt_queue_pop_priority_commit(q);</span></a>
 <a name="2525"><span class="lineNum">    2525 </span>            : </a>
-<a name="2526"><span class="lineNum">    2526 </span>            :         /* Flow control: Check for pressure updates to send</a>
-<a name="2527"><span class="lineNum">    2527 </span>            :          *</a>
-<a name="2528"><span class="lineNum">    2528 </span>            :          * When our recv queue pressure crosses a threshold (25%, 50%, 75%),</a>
-<a name="2529"><span class="lineNum">    2529 </span>            :          * we need to inform the peer so they can throttle their sends.</a>
-<a name="2530"><span class="lineNum">    2530 </span>            :          * This implements receiver-driven flow control - SDK handles it</a>
-<a name="2531"><span class="lineNum">    2531 </span>            :          * transparently so app developers don't need to manage it.</a>
-<a name="2532"><span class="lineNum">    2532 </span>            :          */</a>
-<a name="2533"><span class="lineNum">    2533 </span><span class="lineCov">       1352 :         if (peer-&gt;cold.caps.pressure_update_pending ||</span></a>
-<a name="2534"><span class="lineNum">    2534 </span><span class="lineCov">        676 :             pt_peer_check_pressure_update(ctx, peer)) {</span></a>
-<a name="2535"><span class="lineNum">    2535 </span>            :             /* Send updated capabilities with new pressure value */</a>
-<a name="2536"><span class="lineNum">    2536 </span><span class="lineNoCov">          0 :             pt_posix_send_capability(ctx, peer);</span></a>
-<a name="2537"><span class="lineNum">    2537 </span>            :         }</a>
-<a name="2538"><span class="lineNum">    2538 </span>            :     }</a>
-<a name="2539"><span class="lineNum">    2539 </span>            : </a>
-<a name="2540"><span class="lineNum">    2540 </span>            :     /* Periodic discovery announce every 10 seconds */</a>
-<a name="2541"><span class="lineNum">    2541 </span><span class="lineCov">       1102 :     if (pd-&gt;discovery_sock &gt;= 0 &amp;&amp; (poll_time - pd-&gt;last_announce &gt;= 10000)) {</span></a>
-<a name="2542"><span class="lineNum">    2542 </span><span class="lineCov">          2 :         pt_posix_discovery_send(ctx, PT_DISC_TYPE_ANNOUNCE);</span></a>
-<a name="2543"><span class="lineNum">    2543 </span><span class="lineCov">          2 :         pd-&gt;last_announce = poll_time;</span></a>
-<a name="2544"><span class="lineNum">    2544 </span>            :     }</a>
-<a name="2545"><span class="lineNum">    2545 </span>            : </a>
-<a name="2546"><span class="lineNum">    2546 </span>            :     /* Check for peer timeouts (30 second discovery timeout) */</a>
-<a name="2547"><span class="lineNum">    2547 </span><span class="lineCov">      18734 :     for (uint8_t i = 0; i &lt; ctx-&gt;max_peers; i++) {</span></a>
-<a name="2548"><span class="lineNum">    2548 </span><span class="lineCov">      17632 :         struct pt_peer *peer = &amp;ctx-&gt;peers[i];</span></a>
-<a name="2549"><span class="lineNum">    2549 </span>            : </a>
-<a name="2550"><span class="lineNum">    2550 </span><span class="lineCov">      17632 :         if (peer-&gt;hot.state == PT_PEER_DISCOVERED &amp;&amp;</span></a>
-<a name="2551"><span class="lineNum">    2551 </span><span class="lineCov">         10 :             (poll_time - peer-&gt;hot.last_seen &gt;= 30000)) {</span></a>
-<a name="2552"><span class="lineNum">    2552 </span><span class="lineNoCov">          0 :             PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY,</span></a>
-<a name="2553"><span class="lineNum">    2553 </span>            :                 &quot;Peer %u (%s) timed out after 30 seconds&quot;,</a>
-<a name="2554"><span class="lineNum">    2554 </span>            :                 peer-&gt;hot.id, peer-&gt;cold.name);</a>
-<a name="2555"><span class="lineNum">    2555 </span>            : </a>
-<a name="2556"><span class="lineNum">    2556 </span>            :             /* Fire on_peer_lost callback before destroying */</a>
-<a name="2557"><span class="lineNum">    2557 </span><span class="lineNoCov">          0 :             if (ctx-&gt;callbacks.on_peer_lost) {</span></a>
-<a name="2558"><span class="lineNum">    2558 </span><span class="lineNoCov">          0 :                 ctx-&gt;callbacks.on_peer_lost((PeerTalk_Context *)ctx,</span></a>
-<a name="2559"><span class="lineNum">    2559 </span><span class="lineNoCov">          0 :                                            peer-&gt;hot.id,</span></a>
-<a name="2560"><span class="lineNum">    2560 </span>            :                                            ctx-&gt;callbacks.user_data);</a>
-<a name="2561"><span class="lineNum">    2561 </span>            :             }</a>
-<a name="2562"><span class="lineNum">    2562 </span>            : </a>
-<a name="2563"><span class="lineNum">    2563 </span><span class="lineNoCov">          0 :             pt_peer_destroy(ctx, peer);</span></a>
-<a name="2564"><span class="lineNum">    2564 </span>            :         }</a>
-<a name="2565"><span class="lineNum">    2565 </span>            :     }</a>
-<a name="2566"><span class="lineNum">    2566 </span>            : </a>
-<a name="2567"><span class="lineNum">    2567 </span><span class="lineCov">       1102 :     return 0;</span></a>
-<a name="2568"><span class="lineNum">    2568 </span>            : }</a>
-<a name="2569"><span class="lineNum">    2569 </span>            : </a>
-<a name="2570"><span class="lineNum">    2570 </span>            : /* ========================================================================== */</a>
-<a name="2571"><span class="lineNum">    2571 </span>            : /* Public API (Session 4.4)                                                  */</a>
-<a name="2572"><span class="lineNum">    2572 </span>            : /* ========================================================================== */</a>
-<a name="2573"><span class="lineNum">    2573 </span>            : </a>
-<a name="2574"><span class="lineNum">    2574 </span>            : /**</a>
-<a name="2575"><span class="lineNum">    2575 </span>            :  * Send unreliable UDP message to peer</a>
-<a name="2576"><span class="lineNum">    2576 </span>            :  *</a>
-<a name="2577"><span class="lineNum">    2577 </span>            :  * Public API wrapper for pt_posix_send_udp(). Validates context and peer ID,</a>
-<a name="2578"><span class="lineNum">    2578 </span>            :  * then sends UDP datagram with 8-byte header (no CRC).</a>
-<a name="2579"><span class="lineNum">    2579 </span>            :  *</a>
-<a name="2580"><span class="lineNum">    2580 </span>            :  * Returns: PT_OK on success, PT_ERR_* on failure</a>
-<a name="2581"><span class="lineNum">    2581 </span>            :  */</a>
-<a name="2582"><span class="lineNum">    2582 </span><span class="lineCov">          1 : PeerTalk_Error PeerTalk_SendUDP(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,</span></a>
-<a name="2583"><span class="lineNum">    2583 </span>            :                                 const void *data, uint16_t length) {</a>
-<a name="2584"><span class="lineNum">    2584 </span><span class="lineCov">          1 :     struct pt_context *ictx = (struct pt_context *)ctx;</span></a>
-<a name="2585"><span class="lineNum">    2585 </span>            :     struct pt_peer *peer;</a>
-<a name="2586"><span class="lineNum">    2586 </span>            : </a>
-<a name="2587"><span class="lineNum">    2587 </span>            :     /* Validate context */</a>
-<a name="2588"><span class="lineNum">    2588 </span><span class="lineCov">          1 :     if (!ictx || ictx-&gt;magic != PT_CONTEXT_MAGIC) {</span></a>
-<a name="2589"><span class="lineNum">    2589 </span><span class="lineNoCov">          0 :         return PT_ERR_INVALID_STATE;</span></a>
-<a name="2590"><span class="lineNum">    2590 </span>            :     }</a>
-<a name="2591"><span class="lineNum">    2591 </span>            : </a>
-<a name="2592"><span class="lineNum">    2592 </span>            :     /* Validate data and length */</a>
-<a name="2593"><span class="lineNum">    2593 </span><span class="lineCov">          1 :     if (!data &amp;&amp; length &gt; 0) {</span></a>
-<a name="2594"><span class="lineNum">    2594 </span><span class="lineNoCov">          0 :         return PT_ERR_INVALID_PARAM;</span></a>
-<a name="2595"><span class="lineNum">    2595 </span>            :     }</a>
-<a name="2596"><span class="lineNum">    2596 </span>            : </a>
-<a name="2597"><span class="lineNum">    2597 </span>            :     /* Find peer by ID */</a>
-<a name="2598"><span class="lineNum">    2598 </span><span class="lineCov">          1 :     peer = pt_peer_find_by_id(ictx, peer_id);</span></a>
-<a name="2599"><span class="lineNum">    2599 </span><span class="lineCov">          1 :     if (!peer) {</span></a>
-<a name="2600"><span class="lineNum">    2600 </span><span class="lineCov">          1 :         return PT_ERR_PEER_NOT_FOUND;</span></a>
-<a name="2601"><span class="lineNum">    2601 </span>            :     }</a>
-<a name="2602"><span class="lineNum">    2602 </span>            : </a>
-<a name="2603"><span class="lineNum">    2603 </span>            :     /* Call internal send function */</a>
-<a name="2604"><span class="lineNum">    2604 </span><span class="lineNoCov">          0 :     return pt_posix_send_udp(ictx, peer, data, length);</span></a>
-<a name="2605"><span class="lineNum">    2605 </span>            : }</a>
-<a name="2606"><span class="lineNum">    2606 </span>            : </a>
-<a name="2607"><span class="lineNum">    2607 </span>            : /* ========================================================================== */</a>
-<a name="2608"><span class="lineNum">    2608 </span>            : /* Statistics API (Session 4.5)                                              */</a>
-<a name="2609"><span class="lineNum">    2609 </span>            : /* ========================================================================== */</a>
-<a name="2610"><span class="lineNum">    2610 </span>            : </a>
-<a name="2611"><span class="lineNum">    2611 </span>            : /**</a>
-<a name="2612"><span class="lineNum">    2612 </span>            :  * Get global network statistics</a>
-<a name="2613"><span class="lineNum">    2613 </span>            :  *</a>
-<a name="2614"><span class="lineNum">    2614 </span>            :  * Returns aggregate statistics for all network activity including bytes sent/received,</a>
-<a name="2615"><span class="lineNum">    2615 </span>            :  * message counts, peer counts, and connection statistics.</a>
-<a name="2616"><span class="lineNum">    2616 </span>            :  *</a>
-<a name="2617"><span class="lineNum">    2617 </span>            :  * Returns: PT_OK on success, PT_ERR_* on failure</a>
-<a name="2618"><span class="lineNum">    2618 </span>            :  */</a>
-<a name="2619"><span class="lineNum">    2619 </span><span class="lineCov">          5 : PeerTalk_Error PeerTalk_GetGlobalStats(PeerTalk_Context *ctx, PeerTalk_GlobalStats *stats) {</span></a>
-<a name="2620"><span class="lineNum">    2620 </span><span class="lineCov">          5 :     struct pt_context *ictx = (struct pt_context *)ctx;</span></a>
-<a name="2621"><span class="lineNum">    2621 </span><span class="lineCov">          5 :     uint16_t connected_count = 0;</span></a>
-<a name="2622"><span class="lineNum">    2622 </span>            : </a>
-<a name="2623"><span class="lineNum">    2623 </span>            :     /* Validate parameters */</a>
-<a name="2624"><span class="lineNum">    2624 </span><span class="lineCov">          5 :     if (!ictx || ictx-&gt;magic != PT_CONTEXT_MAGIC) {</span></a>
-<a name="2625"><span class="lineNum">    2625 </span><span class="lineCov">          1 :         return PT_ERR_INVALID_STATE;</span></a>
-<a name="2626"><span class="lineNum">    2626 </span>            :     }</a>
-<a name="2627"><span class="lineNum">    2627 </span><span class="lineCov">          4 :     if (!stats) {</span></a>
-<a name="2628"><span class="lineNum">    2628 </span><span class="lineCov">          1 :         return PT_ERR_INVALID_PARAM;</span></a>
-<a name="2629"><span class="lineNum">    2629 </span>            :     }</a>
-<a name="2630"><span class="lineNum">    2630 </span>            : </a>
-<a name="2631"><span class="lineNum">    2631 </span>            :     /* Copy global statistics */</a>
-<a name="2632"><span class="lineNum">    2632 </span><span class="lineCov">          3 :     stats-&gt;total_bytes_sent = ictx-&gt;global_stats.total_bytes_sent;</span></a>
-<a name="2633"><span class="lineNum">    2633 </span><span class="lineCov">          3 :     stats-&gt;total_bytes_received = ictx-&gt;global_stats.total_bytes_received;</span></a>
-<a name="2634"><span class="lineNum">    2634 </span><span class="lineCov">          3 :     stats-&gt;total_messages_sent = ictx-&gt;global_stats.total_messages_sent;</span></a>
-<a name="2635"><span class="lineNum">    2635 </span><span class="lineCov">          3 :     stats-&gt;total_messages_received = ictx-&gt;global_stats.total_messages_received;</span></a>
-<a name="2636"><span class="lineNum">    2636 </span><span class="lineCov">          3 :     stats-&gt;discovery_packets_sent = ictx-&gt;global_stats.discovery_packets_sent;</span></a>
-<a name="2637"><span class="lineNum">    2637 </span><span class="lineCov">          3 :     stats-&gt;discovery_packets_received = ictx-&gt;global_stats.discovery_packets_received;</span></a>
-<a name="2638"><span class="lineNum">    2638 </span><span class="lineCov">          3 :     stats-&gt;connections_accepted = ictx-&gt;global_stats.connections_accepted;</span></a>
-<a name="2639"><span class="lineNum">    2639 </span><span class="lineCov">          3 :     stats-&gt;connections_rejected = ictx-&gt;global_stats.connections_rejected;</span></a>
-<a name="2640"><span class="lineNum">    2640 </span>            : </a>
-<a name="2641"><span class="lineNum">    2641 </span>            :     /* Count peers by state */</a>
-<a name="2642"><span class="lineNum">    2642 </span><span class="lineCov">          3 :     stats-&gt;peers_discovered = 0;</span></a>
-<a name="2643"><span class="lineNum">    2643 </span><span class="lineCov">         51 :     for (uint8_t i = 0; i &lt; ictx-&gt;max_peers; i++) {</span></a>
-<a name="2644"><span class="lineNum">    2644 </span><span class="lineCov">         48 :         if (ictx-&gt;peers[i].hot.state != PT_PEER_UNUSED) {</span></a>
-<a name="2645"><span class="lineNum">    2645 </span><span class="lineNoCov">          0 :             stats-&gt;peers_discovered++;</span></a>
-<a name="2646"><span class="lineNum">    2646 </span><span class="lineNoCov">          0 :             if (ictx-&gt;peers[i].hot.state == PT_PEER_CONNECTED) {</span></a>
-<a name="2647"><span class="lineNum">    2647 </span><span class="lineNoCov">          0 :                 connected_count++;</span></a>
-<a name="2648"><span class="lineNum">    2648 </span>            :             }</a>
-<a name="2649"><span class="lineNum">    2649 </span>            :         }</a>
-<a name="2650"><span class="lineNum">    2650 </span>            :     }</a>
-<a name="2651"><span class="lineNum">    2651 </span><span class="lineCov">          3 :     stats-&gt;peers_connected = connected_count;</span></a>
-<a name="2652"><span class="lineNum">    2652 </span>            : </a>
-<a name="2653"><span class="lineNum">    2653 </span>            :     /* Memory and streams (not yet tracked - set to 0) */</a>
-<a name="2654"><span class="lineNum">    2654 </span><span class="lineCov">          3 :     stats-&gt;memory_used = 0;</span></a>
-<a name="2655"><span class="lineNum">    2655 </span><span class="lineCov">          3 :     stats-&gt;streams_active = connected_count;</span></a>
-<a name="2656"><span class="lineNum">    2656 </span><span class="lineCov">          3 :     stats-&gt;reserved = 0;</span></a>
-<a name="2657"><span class="lineNum">    2657 </span>            : </a>
-<a name="2658"><span class="lineNum">    2658 </span><span class="lineCov">          3 :     return PT_OK;</span></a>
-<a name="2659"><span class="lineNum">    2659 </span>            : }</a>
-<a name="2660"><span class="lineNum">    2660 </span>            : </a>
-<a name="2661"><span class="lineNum">    2661 </span>            : /**</a>
-<a name="2662"><span class="lineNum">    2662 </span>            :  * Get per-peer statistics</a>
-<a name="2663"><span class="lineNum">    2663 </span>            :  *</a>
-<a name="2664"><span class="lineNum">    2664 </span>            :  * Returns statistics for a specific peer including bytes sent/received,</a>
-<a name="2665"><span class="lineNum">    2665 </span>            :  * message counts, latency, and connection quality.</a>
-<a name="2666"><span class="lineNum">    2666 </span>            :  *</a>
-<a name="2667"><span class="lineNum">    2667 </span>            :  * Returns: PT_OK on success, PT_ERR_* on failure</a>
-<a name="2668"><span class="lineNum">    2668 </span>            :  */</a>
-<a name="2669"><span class="lineNum">    2669 </span><span class="lineCov">          1 : PeerTalk_Error PeerTalk_GetPeerStats(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,</span></a>
-<a name="2670"><span class="lineNum">    2670 </span>            :                                      PeerTalk_PeerStats *stats) {</a>
-<a name="2671"><span class="lineNum">    2671 </span><span class="lineCov">          1 :     struct pt_context *ictx = (struct pt_context *)ctx;</span></a>
-<a name="2672"><span class="lineNum">    2672 </span>            :     struct pt_peer *peer;</a>
-<a name="2673"><span class="lineNum">    2673 </span>            : </a>
-<a name="2674"><span class="lineNum">    2674 </span>            :     /* Validate parameters */</a>
-<a name="2675"><span class="lineNum">    2675 </span><span class="lineCov">          1 :     if (!ictx || ictx-&gt;magic != PT_CONTEXT_MAGIC) {</span></a>
-<a name="2676"><span class="lineNum">    2676 </span><span class="lineNoCov">          0 :         return PT_ERR_INVALID_STATE;</span></a>
-<a name="2677"><span class="lineNum">    2677 </span>            :     }</a>
-<a name="2678"><span class="lineNum">    2678 </span><span class="lineCov">          1 :     if (!stats) {</span></a>
-<a name="2679"><span class="lineNum">    2679 </span><span class="lineNoCov">          0 :         return PT_ERR_INVALID_PARAM;</span></a>
-<a name="2680"><span class="lineNum">    2680 </span>            :     }</a>
-<a name="2681"><span class="lineNum">    2681 </span>            : </a>
-<a name="2682"><span class="lineNum">    2682 </span>            :     /* Find peer by ID */</a>
-<a name="2683"><span class="lineNum">    2683 </span><span class="lineCov">          1 :     peer = pt_peer_find_by_id(ictx, peer_id);</span></a>
-<a name="2684"><span class="lineNum">    2684 </span><span class="lineCov">          1 :     if (!peer) {</span></a>
-<a name="2685"><span class="lineNum">    2685 </span><span class="lineCov">          1 :         return PT_ERR_PEER_NOT_FOUND;</span></a>
+<a name="2526"><span class="lineNum">    2526 </span><span class="lineCov">         19 :                 if (result != PT_OK &amp;&amp; result != PT_ERR_WOULD_BLOCK) {</span></a>
+<a name="2527"><span class="lineNum">    2527 </span>            :                     /* Send failed - message lost */</a>
+<a name="2528"><span class="lineNum">    2528 </span><span class="lineNoCov">          0 :                     PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,</span></a>
+<a name="2529"><span class="lineNum">    2529 </span>            :                         &quot;Failed to drain message for peer %u: error %d&quot;,</a>
+<a name="2530"><span class="lineNum">    2530 </span>            :                         peer-&gt;hot.id, result);</a>
+<a name="2531"><span class="lineNum">    2531 </span>            :                 }</a>
+<a name="2532"><span class="lineNum">    2532 </span>            :             }</a>
+<a name="2533"><span class="lineNum">    2533 </span>            :         }</a>
+<a name="2534"><span class="lineNum">    2534 </span>            : </a>
+<a name="2535"><span class="lineNum">    2535 </span>            :         /* Flow control: Check for pressure updates to send</a>
+<a name="2536"><span class="lineNum">    2536 </span>            :          *</a>
+<a name="2537"><span class="lineNum">    2537 </span>            :          * When our recv queue pressure crosses a threshold (25%, 50%, 75%),</a>
+<a name="2538"><span class="lineNum">    2538 </span>            :          * we need to inform the peer so they can throttle their sends.</a>
+<a name="2539"><span class="lineNum">    2539 </span>            :          * This implements receiver-driven flow control - SDK handles it</a>
+<a name="2540"><span class="lineNum">    2540 </span>            :          * transparently so app developers don't need to manage it.</a>
+<a name="2541"><span class="lineNum">    2541 </span>            :          */</a>
+<a name="2542"><span class="lineNum">    2542 </span><span class="lineCov">       1396 :         if (peer-&gt;cold.caps.pressure_update_pending ||</span></a>
+<a name="2543"><span class="lineNum">    2543 </span><span class="lineCov">        698 :             pt_peer_check_pressure_update(ctx, peer)) {</span></a>
+<a name="2544"><span class="lineNum">    2544 </span>            :             /* Send updated capabilities with new pressure value */</a>
+<a name="2545"><span class="lineNum">    2545 </span><span class="lineCov">          3 :             pt_posix_send_capability(ctx, peer);</span></a>
+<a name="2546"><span class="lineNum">    2546 </span>            :         }</a>
+<a name="2547"><span class="lineNum">    2547 </span>            :     }</a>
+<a name="2548"><span class="lineNum">    2548 </span>            : </a>
+<a name="2549"><span class="lineNum">    2549 </span>            :     /* Periodic discovery announce every 10 seconds */</a>
+<a name="2550"><span class="lineNum">    2550 </span><span class="lineCov">       1124 :     if (pd-&gt;discovery_sock &gt;= 0 &amp;&amp; (poll_time - pd-&gt;last_announce &gt;= 10000)) {</span></a>
+<a name="2551"><span class="lineNum">    2551 </span><span class="lineCov">          2 :         pt_posix_discovery_send(ctx, PT_DISC_TYPE_ANNOUNCE);</span></a>
+<a name="2552"><span class="lineNum">    2552 </span><span class="lineCov">          2 :         pd-&gt;last_announce = poll_time;</span></a>
+<a name="2553"><span class="lineNum">    2553 </span>            :     }</a>
+<a name="2554"><span class="lineNum">    2554 </span>            : </a>
+<a name="2555"><span class="lineNum">    2555 </span>            :     /* Check for peer timeouts (30 second discovery timeout) */</a>
+<a name="2556"><span class="lineNum">    2556 </span><span class="lineCov">      19108 :     for (uint8_t i = 0; i &lt; ctx-&gt;max_peers; i++) {</span></a>
+<a name="2557"><span class="lineNum">    2557 </span><span class="lineCov">      17984 :         struct pt_peer *peer = &amp;ctx-&gt;peers[i];</span></a>
+<a name="2558"><span class="lineNum">    2558 </span>            : </a>
+<a name="2559"><span class="lineNum">    2559 </span><span class="lineCov">      17984 :         if (peer-&gt;hot.state == PT_PEER_DISCOVERED &amp;&amp;</span></a>
+<a name="2560"><span class="lineNum">    2560 </span><span class="lineCov">         10 :             (poll_time - peer-&gt;hot.last_seen &gt;= 30000)) {</span></a>
+<a name="2561"><span class="lineNum">    2561 </span><span class="lineNoCov">          0 :             PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY,</span></a>
+<a name="2562"><span class="lineNum">    2562 </span>            :                 &quot;Peer %u (%s) timed out after 30 seconds&quot;,</a>
+<a name="2563"><span class="lineNum">    2563 </span>            :                 peer-&gt;hot.id, peer-&gt;cold.name);</a>
+<a name="2564"><span class="lineNum">    2564 </span>            : </a>
+<a name="2565"><span class="lineNum">    2565 </span>            :             /* Fire on_peer_lost callback before destroying */</a>
+<a name="2566"><span class="lineNum">    2566 </span><span class="lineNoCov">          0 :             if (ctx-&gt;callbacks.on_peer_lost) {</span></a>
+<a name="2567"><span class="lineNum">    2567 </span><span class="lineNoCov">          0 :                 ctx-&gt;callbacks.on_peer_lost((PeerTalk_Context *)ctx,</span></a>
+<a name="2568"><span class="lineNum">    2568 </span><span class="lineNoCov">          0 :                                            peer-&gt;hot.id,</span></a>
+<a name="2569"><span class="lineNum">    2569 </span>            :                                            ctx-&gt;callbacks.user_data);</a>
+<a name="2570"><span class="lineNum">    2570 </span>            :             }</a>
+<a name="2571"><span class="lineNum">    2571 </span>            : </a>
+<a name="2572"><span class="lineNum">    2572 </span><span class="lineNoCov">          0 :             pt_peer_destroy(ctx, peer);</span></a>
+<a name="2573"><span class="lineNum">    2573 </span>            :         }</a>
+<a name="2574"><span class="lineNum">    2574 </span>            :     }</a>
+<a name="2575"><span class="lineNum">    2575 </span>            : </a>
+<a name="2576"><span class="lineNum">    2576 </span><span class="lineCov">       1124 :     return 0;</span></a>
+<a name="2577"><span class="lineNum">    2577 </span>            : }</a>
+<a name="2578"><span class="lineNum">    2578 </span>            : </a>
+<a name="2579"><span class="lineNum">    2579 </span>            : /* ========================================================================== */</a>
+<a name="2580"><span class="lineNum">    2580 </span>            : /* Public API (Session 4.4)                                                  */</a>
+<a name="2581"><span class="lineNum">    2581 </span>            : /* ========================================================================== */</a>
+<a name="2582"><span class="lineNum">    2582 </span>            : </a>
+<a name="2583"><span class="lineNum">    2583 </span>            : /**</a>
+<a name="2584"><span class="lineNum">    2584 </span>            :  * Send unreliable UDP message to peer</a>
+<a name="2585"><span class="lineNum">    2585 </span>            :  *</a>
+<a name="2586"><span class="lineNum">    2586 </span>            :  * Public API wrapper for pt_posix_send_udp(). Validates context and peer ID,</a>
+<a name="2587"><span class="lineNum">    2587 </span>            :  * then sends UDP datagram with 8-byte header (no CRC).</a>
+<a name="2588"><span class="lineNum">    2588 </span>            :  *</a>
+<a name="2589"><span class="lineNum">    2589 </span>            :  * Returns: PT_OK on success, PT_ERR_* on failure</a>
+<a name="2590"><span class="lineNum">    2590 </span>            :  */</a>
+<a name="2591"><span class="lineNum">    2591 </span><span class="lineCov">          1 : PeerTalk_Error PeerTalk_SendUDP(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,</span></a>
+<a name="2592"><span class="lineNum">    2592 </span>            :                                 const void *data, uint16_t length) {</a>
+<a name="2593"><span class="lineNum">    2593 </span><span class="lineCov">          1 :     struct pt_context *ictx = (struct pt_context *)ctx;</span></a>
+<a name="2594"><span class="lineNum">    2594 </span>            :     struct pt_peer *peer;</a>
+<a name="2595"><span class="lineNum">    2595 </span>            : </a>
+<a name="2596"><span class="lineNum">    2596 </span>            :     /* Validate context */</a>
+<a name="2597"><span class="lineNum">    2597 </span><span class="lineCov">          1 :     if (!ictx || ictx-&gt;magic != PT_CONTEXT_MAGIC) {</span></a>
+<a name="2598"><span class="lineNum">    2598 </span><span class="lineNoCov">          0 :         return PT_ERR_INVALID_STATE;</span></a>
+<a name="2599"><span class="lineNum">    2599 </span>            :     }</a>
+<a name="2600"><span class="lineNum">    2600 </span>            : </a>
+<a name="2601"><span class="lineNum">    2601 </span>            :     /* Validate data and length */</a>
+<a name="2602"><span class="lineNum">    2602 </span><span class="lineCov">          1 :     if (!data &amp;&amp; length &gt; 0) {</span></a>
+<a name="2603"><span class="lineNum">    2603 </span><span class="lineNoCov">          0 :         return PT_ERR_INVALID_PARAM;</span></a>
+<a name="2604"><span class="lineNum">    2604 </span>            :     }</a>
+<a name="2605"><span class="lineNum">    2605 </span>            : </a>
+<a name="2606"><span class="lineNum">    2606 </span>            :     /* Find peer by ID */</a>
+<a name="2607"><span class="lineNum">    2607 </span><span class="lineCov">          1 :     peer = pt_peer_find_by_id(ictx, peer_id);</span></a>
+<a name="2608"><span class="lineNum">    2608 </span><span class="lineCov">          1 :     if (!peer) {</span></a>
+<a name="2609"><span class="lineNum">    2609 </span><span class="lineCov">          1 :         return PT_ERR_PEER_NOT_FOUND;</span></a>
+<a name="2610"><span class="lineNum">    2610 </span>            :     }</a>
+<a name="2611"><span class="lineNum">    2611 </span>            : </a>
+<a name="2612"><span class="lineNum">    2612 </span>            :     /* Call internal send function */</a>
+<a name="2613"><span class="lineNum">    2613 </span><span class="lineNoCov">          0 :     return pt_posix_send_udp(ictx, peer, data, length);</span></a>
+<a name="2614"><span class="lineNum">    2614 </span>            : }</a>
+<a name="2615"><span class="lineNum">    2615 </span>            : </a>
+<a name="2616"><span class="lineNum">    2616 </span>            : /* ========================================================================== */</a>
+<a name="2617"><span class="lineNum">    2617 </span>            : /* Statistics API (Session 4.5)                                              */</a>
+<a name="2618"><span class="lineNum">    2618 </span>            : /* ========================================================================== */</a>
+<a name="2619"><span class="lineNum">    2619 </span>            : </a>
+<a name="2620"><span class="lineNum">    2620 </span>            : /**</a>
+<a name="2621"><span class="lineNum">    2621 </span>            :  * Get global network statistics</a>
+<a name="2622"><span class="lineNum">    2622 </span>            :  *</a>
+<a name="2623"><span class="lineNum">    2623 </span>            :  * Returns aggregate statistics for all network activity including bytes sent/received,</a>
+<a name="2624"><span class="lineNum">    2624 </span>            :  * message counts, peer counts, and connection statistics.</a>
+<a name="2625"><span class="lineNum">    2625 </span>            :  *</a>
+<a name="2626"><span class="lineNum">    2626 </span>            :  * Returns: PT_OK on success, PT_ERR_* on failure</a>
+<a name="2627"><span class="lineNum">    2627 </span>            :  */</a>
+<a name="2628"><span class="lineNum">    2628 </span><span class="lineCov">          5 : PeerTalk_Error PeerTalk_GetGlobalStats(PeerTalk_Context *ctx, PeerTalk_GlobalStats *stats) {</span></a>
+<a name="2629"><span class="lineNum">    2629 </span><span class="lineCov">          5 :     struct pt_context *ictx = (struct pt_context *)ctx;</span></a>
+<a name="2630"><span class="lineNum">    2630 </span><span class="lineCov">          5 :     uint16_t connected_count = 0;</span></a>
+<a name="2631"><span class="lineNum">    2631 </span>            : </a>
+<a name="2632"><span class="lineNum">    2632 </span>            :     /* Validate parameters */</a>
+<a name="2633"><span class="lineNum">    2633 </span><span class="lineCov">          5 :     if (!ictx || ictx-&gt;magic != PT_CONTEXT_MAGIC) {</span></a>
+<a name="2634"><span class="lineNum">    2634 </span><span class="lineCov">          1 :         return PT_ERR_INVALID_STATE;</span></a>
+<a name="2635"><span class="lineNum">    2635 </span>            :     }</a>
+<a name="2636"><span class="lineNum">    2636 </span><span class="lineCov">          4 :     if (!stats) {</span></a>
+<a name="2637"><span class="lineNum">    2637 </span><span class="lineCov">          1 :         return PT_ERR_INVALID_PARAM;</span></a>
+<a name="2638"><span class="lineNum">    2638 </span>            :     }</a>
+<a name="2639"><span class="lineNum">    2639 </span>            : </a>
+<a name="2640"><span class="lineNum">    2640 </span>            :     /* Copy global statistics */</a>
+<a name="2641"><span class="lineNum">    2641 </span><span class="lineCov">          3 :     stats-&gt;total_bytes_sent = ictx-&gt;global_stats.total_bytes_sent;</span></a>
+<a name="2642"><span class="lineNum">    2642 </span><span class="lineCov">          3 :     stats-&gt;total_bytes_received = ictx-&gt;global_stats.total_bytes_received;</span></a>
+<a name="2643"><span class="lineNum">    2643 </span><span class="lineCov">          3 :     stats-&gt;total_messages_sent = ictx-&gt;global_stats.total_messages_sent;</span></a>
+<a name="2644"><span class="lineNum">    2644 </span><span class="lineCov">          3 :     stats-&gt;total_messages_received = ictx-&gt;global_stats.total_messages_received;</span></a>
+<a name="2645"><span class="lineNum">    2645 </span><span class="lineCov">          3 :     stats-&gt;discovery_packets_sent = ictx-&gt;global_stats.discovery_packets_sent;</span></a>
+<a name="2646"><span class="lineNum">    2646 </span><span class="lineCov">          3 :     stats-&gt;discovery_packets_received = ictx-&gt;global_stats.discovery_packets_received;</span></a>
+<a name="2647"><span class="lineNum">    2647 </span><span class="lineCov">          3 :     stats-&gt;connections_accepted = ictx-&gt;global_stats.connections_accepted;</span></a>
+<a name="2648"><span class="lineNum">    2648 </span><span class="lineCov">          3 :     stats-&gt;connections_rejected = ictx-&gt;global_stats.connections_rejected;</span></a>
+<a name="2649"><span class="lineNum">    2649 </span>            : </a>
+<a name="2650"><span class="lineNum">    2650 </span>            :     /* Count peers by state */</a>
+<a name="2651"><span class="lineNum">    2651 </span><span class="lineCov">          3 :     stats-&gt;peers_discovered = 0;</span></a>
+<a name="2652"><span class="lineNum">    2652 </span><span class="lineCov">         51 :     for (uint8_t i = 0; i &lt; ictx-&gt;max_peers; i++) {</span></a>
+<a name="2653"><span class="lineNum">    2653 </span><span class="lineCov">         48 :         if (ictx-&gt;peers[i].hot.state != PT_PEER_UNUSED) {</span></a>
+<a name="2654"><span class="lineNum">    2654 </span><span class="lineNoCov">          0 :             stats-&gt;peers_discovered++;</span></a>
+<a name="2655"><span class="lineNum">    2655 </span><span class="lineNoCov">          0 :             if (ictx-&gt;peers[i].hot.state == PT_PEER_CONNECTED) {</span></a>
+<a name="2656"><span class="lineNum">    2656 </span><span class="lineNoCov">          0 :                 connected_count++;</span></a>
+<a name="2657"><span class="lineNum">    2657 </span>            :             }</a>
+<a name="2658"><span class="lineNum">    2658 </span>            :         }</a>
+<a name="2659"><span class="lineNum">    2659 </span>            :     }</a>
+<a name="2660"><span class="lineNum">    2660 </span><span class="lineCov">          3 :     stats-&gt;peers_connected = connected_count;</span></a>
+<a name="2661"><span class="lineNum">    2661 </span>            : </a>
+<a name="2662"><span class="lineNum">    2662 </span>            :     /* Memory and streams (not yet tracked - set to 0) */</a>
+<a name="2663"><span class="lineNum">    2663 </span><span class="lineCov">          3 :     stats-&gt;memory_used = 0;</span></a>
+<a name="2664"><span class="lineNum">    2664 </span><span class="lineCov">          3 :     stats-&gt;streams_active = connected_count;</span></a>
+<a name="2665"><span class="lineNum">    2665 </span><span class="lineCov">          3 :     stats-&gt;reserved = 0;</span></a>
+<a name="2666"><span class="lineNum">    2666 </span>            : </a>
+<a name="2667"><span class="lineNum">    2667 </span><span class="lineCov">          3 :     return PT_OK;</span></a>
+<a name="2668"><span class="lineNum">    2668 </span>            : }</a>
+<a name="2669"><span class="lineNum">    2669 </span>            : </a>
+<a name="2670"><span class="lineNum">    2670 </span>            : /**</a>
+<a name="2671"><span class="lineNum">    2671 </span>            :  * Get per-peer statistics</a>
+<a name="2672"><span class="lineNum">    2672 </span>            :  *</a>
+<a name="2673"><span class="lineNum">    2673 </span>            :  * Returns statistics for a specific peer including bytes sent/received,</a>
+<a name="2674"><span class="lineNum">    2674 </span>            :  * message counts, latency, and connection quality.</a>
+<a name="2675"><span class="lineNum">    2675 </span>            :  *</a>
+<a name="2676"><span class="lineNum">    2676 </span>            :  * Returns: PT_OK on success, PT_ERR_* on failure</a>
+<a name="2677"><span class="lineNum">    2677 </span>            :  */</a>
+<a name="2678"><span class="lineNum">    2678 </span><span class="lineCov">          1 : PeerTalk_Error PeerTalk_GetPeerStats(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,</span></a>
+<a name="2679"><span class="lineNum">    2679 </span>            :                                      PeerTalk_PeerStats *stats) {</a>
+<a name="2680"><span class="lineNum">    2680 </span><span class="lineCov">          1 :     struct pt_context *ictx = (struct pt_context *)ctx;</span></a>
+<a name="2681"><span class="lineNum">    2681 </span>            :     struct pt_peer *peer;</a>
+<a name="2682"><span class="lineNum">    2682 </span>            : </a>
+<a name="2683"><span class="lineNum">    2683 </span>            :     /* Validate parameters */</a>
+<a name="2684"><span class="lineNum">    2684 </span><span class="lineCov">          1 :     if (!ictx || ictx-&gt;magic != PT_CONTEXT_MAGIC) {</span></a>
+<a name="2685"><span class="lineNum">    2685 </span><span class="lineNoCov">          0 :         return PT_ERR_INVALID_STATE;</span></a>
 <a name="2686"><span class="lineNum">    2686 </span>            :     }</a>
-<a name="2687"><span class="lineNum">    2687 </span>            : </a>
-<a name="2688"><span class="lineNum">    2688 </span>            :     /* Copy peer statistics */</a>
-<a name="2689"><span class="lineNum">    2689 </span><span class="lineNoCov">          0 :     *stats = peer-&gt;cold.stats;</span></a>
+<a name="2687"><span class="lineNum">    2687 </span><span class="lineCov">          1 :     if (!stats) {</span></a>
+<a name="2688"><span class="lineNum">    2688 </span><span class="lineNoCov">          0 :         return PT_ERR_INVALID_PARAM;</span></a>
+<a name="2689"><span class="lineNum">    2689 </span>            :     }</a>
 <a name="2690"><span class="lineNum">    2690 </span>            : </a>
-<a name="2691"><span class="lineNum">    2691 </span><span class="lineNoCov">          0 :     return PT_OK;</span></a>
-<a name="2692"><span class="lineNum">    2692 </span>            : }</a>
-<a name="2693"><span class="lineNum">    2693 </span>            : </a>
-<a name="2694"><span class="lineNum">    2694 </span>            : /**</a>
-<a name="2695"><span class="lineNum">    2695 </span>            :  * Reset statistics for peer (or all peers if peer_id == 0)</a>
-<a name="2696"><span class="lineNum">    2696 </span>            :  *</a>
-<a name="2697"><span class="lineNum">    2697 </span>            :  * Clears all counters for the specified peer, or for all peers and global</a>
-<a name="2698"><span class="lineNum">    2698 </span>            :  * stats if peer_id is 0.</a>
-<a name="2699"><span class="lineNum">    2699 </span>            :  *</a>
-<a name="2700"><span class="lineNum">    2700 </span>            :  * Returns: PT_OK on success, PT_ERR_* on failure</a>
-<a name="2701"><span class="lineNum">    2701 </span>            :  */</a>
-<a name="2702"><span class="lineNum">    2702 </span><span class="lineCov">          3 : PeerTalk_Error PeerTalk_ResetStats(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id) {</span></a>
-<a name="2703"><span class="lineNum">    2703 </span><span class="lineCov">          3 :     struct pt_context *ictx = (struct pt_context *)ctx;</span></a>
-<a name="2704"><span class="lineNum">    2704 </span>            :     struct pt_peer *peer;</a>
-<a name="2705"><span class="lineNum">    2705 </span>            :     /* cppcheck-suppress variableScope ; C89 style for cross-platform consistency */</a>
-<a name="2706"><span class="lineNum">    2706 </span>            :     uint16_t i;</a>
-<a name="2707"><span class="lineNum">    2707 </span>            : </a>
-<a name="2708"><span class="lineNum">    2708 </span>            :     /* Validate parameters */</a>
-<a name="2709"><span class="lineNum">    2709 </span><span class="lineCov">          3 :     if (!ictx || ictx-&gt;magic != PT_CONTEXT_MAGIC) {</span></a>
-<a name="2710"><span class="lineNum">    2710 </span><span class="lineCov">          1 :         return PT_ERR_INVALID_STATE;</span></a>
-<a name="2711"><span class="lineNum">    2711 </span>            :     }</a>
-<a name="2712"><span class="lineNum">    2712 </span>            : </a>
-<a name="2713"><span class="lineNum">    2713 </span><span class="lineCov">          2 :     if (peer_id == 0) {</span></a>
-<a name="2714"><span class="lineNum">    2714 </span>            :         /* Reset global statistics */</a>
-<a name="2715"><span class="lineNum">    2715 </span><span class="lineNoCov">          0 :         pt_memset(&amp;ictx-&gt;global_stats, 0, sizeof(PeerTalk_GlobalStats));</span></a>
+<a name="2691"><span class="lineNum">    2691 </span>            :     /* Find peer by ID */</a>
+<a name="2692"><span class="lineNum">    2692 </span><span class="lineCov">          1 :     peer = pt_peer_find_by_id(ictx, peer_id);</span></a>
+<a name="2693"><span class="lineNum">    2693 </span><span class="lineCov">          1 :     if (!peer) {</span></a>
+<a name="2694"><span class="lineNum">    2694 </span><span class="lineCov">          1 :         return PT_ERR_PEER_NOT_FOUND;</span></a>
+<a name="2695"><span class="lineNum">    2695 </span>            :     }</a>
+<a name="2696"><span class="lineNum">    2696 </span>            : </a>
+<a name="2697"><span class="lineNum">    2697 </span>            :     /* Copy peer statistics */</a>
+<a name="2698"><span class="lineNum">    2698 </span><span class="lineNoCov">          0 :     *stats = peer-&gt;cold.stats;</span></a>
+<a name="2699"><span class="lineNum">    2699 </span>            : </a>
+<a name="2700"><span class="lineNum">    2700 </span><span class="lineNoCov">          0 :     return PT_OK;</span></a>
+<a name="2701"><span class="lineNum">    2701 </span>            : }</a>
+<a name="2702"><span class="lineNum">    2702 </span>            : </a>
+<a name="2703"><span class="lineNum">    2703 </span>            : /**</a>
+<a name="2704"><span class="lineNum">    2704 </span>            :  * Reset statistics for peer (or all peers if peer_id == 0)</a>
+<a name="2705"><span class="lineNum">    2705 </span>            :  *</a>
+<a name="2706"><span class="lineNum">    2706 </span>            :  * Clears all counters for the specified peer, or for all peers and global</a>
+<a name="2707"><span class="lineNum">    2707 </span>            :  * stats if peer_id is 0.</a>
+<a name="2708"><span class="lineNum">    2708 </span>            :  *</a>
+<a name="2709"><span class="lineNum">    2709 </span>            :  * Returns: PT_OK on success, PT_ERR_* on failure</a>
+<a name="2710"><span class="lineNum">    2710 </span>            :  */</a>
+<a name="2711"><span class="lineNum">    2711 </span><span class="lineCov">          3 : PeerTalk_Error PeerTalk_ResetStats(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id) {</span></a>
+<a name="2712"><span class="lineNum">    2712 </span><span class="lineCov">          3 :     struct pt_context *ictx = (struct pt_context *)ctx;</span></a>
+<a name="2713"><span class="lineNum">    2713 </span>            :     struct pt_peer *peer;</a>
+<a name="2714"><span class="lineNum">    2714 </span>            :     /* cppcheck-suppress variableScope ; C89 style for cross-platform consistency */</a>
+<a name="2715"><span class="lineNum">    2715 </span>            :     uint16_t i;</a>
 <a name="2716"><span class="lineNum">    2716 </span>            : </a>
-<a name="2717"><span class="lineNum">    2717 </span>            :         /* Reset all peer statistics */</a>
-<a name="2718"><span class="lineNum">    2718 </span><span class="lineNoCov">          0 :         for (i = 0; i &lt; ictx-&gt;max_peers; i++) {</span></a>
-<a name="2719"><span class="lineNum">    2719 </span><span class="lineNoCov">          0 :             peer = &amp;ictx-&gt;peers[i];</span></a>
-<a name="2720"><span class="lineNum">    2720 </span><span class="lineNoCov">          0 :             if (peer-&gt;hot.state != PT_PEER_UNUSED) {</span></a>
-<a name="2721"><span class="lineNum">    2721 </span><span class="lineNoCov">          0 :                 pt_memset(&amp;peer-&gt;cold.stats, 0, sizeof(PeerTalk_PeerStats));</span></a>
-<a name="2722"><span class="lineNum">    2722 </span>            :                 /* Reset latency tracking */</a>
-<a name="2723"><span class="lineNum">    2723 </span><span class="lineNoCov">          0 :                 peer-&gt;hot.latency_ms = 0;</span></a>
-<a name="2724"><span class="lineNum">    2724 </span><span class="lineNoCov">          0 :                 peer-&gt;cold.rtt_index = 0;</span></a>
-<a name="2725"><span class="lineNum">    2725 </span><span class="lineNoCov">          0 :                 peer-&gt;cold.rtt_count = 0;</span></a>
-<a name="2726"><span class="lineNum">    2726 </span><span class="lineNoCov">          0 :                 pt_memset(peer-&gt;cold.rtt_samples, 0, sizeof(peer-&gt;cold.rtt_samples));</span></a>
-<a name="2727"><span class="lineNum">    2727 </span>            :             }</a>
-<a name="2728"><span class="lineNum">    2728 </span>            :         }</a>
-<a name="2729"><span class="lineNum">    2729 </span>            : </a>
-<a name="2730"><span class="lineNum">    2730 </span><span class="lineNoCov">          0 :         PT_CTX_INFO(ictx, PT_LOG_CAT_PERF, &quot;Reset all statistics&quot;);</span></a>
-<a name="2731"><span class="lineNum">    2731 </span>            :     } else {</a>
-<a name="2732"><span class="lineNum">    2732 </span>            :         /* Reset single peer statistics */</a>
-<a name="2733"><span class="lineNum">    2733 </span><span class="lineCov">          2 :         peer = pt_peer_find_by_id(ictx, peer_id);</span></a>
-<a name="2734"><span class="lineNum">    2734 </span><span class="lineCov">          2 :         if (!peer) {</span></a>
-<a name="2735"><span class="lineNum">    2735 </span><span class="lineCov">          1 :             return PT_ERR_PEER_NOT_FOUND;</span></a>
-<a name="2736"><span class="lineNum">    2736 </span>            :         }</a>
-<a name="2737"><span class="lineNum">    2737 </span>            : </a>
-<a name="2738"><span class="lineNum">    2738 </span><span class="lineCov">          1 :         pt_memset(&amp;peer-&gt;cold.stats, 0, sizeof(PeerTalk_PeerStats));</span></a>
-<a name="2739"><span class="lineNum">    2739 </span>            :         /* Reset latency tracking */</a>
-<a name="2740"><span class="lineNum">    2740 </span><span class="lineCov">          1 :         peer-&gt;hot.latency_ms = 0;</span></a>
-<a name="2741"><span class="lineNum">    2741 </span><span class="lineCov">          1 :         peer-&gt;cold.rtt_index = 0;</span></a>
-<a name="2742"><span class="lineNum">    2742 </span><span class="lineCov">          1 :         peer-&gt;cold.rtt_count = 0;</span></a>
-<a name="2743"><span class="lineNum">    2743 </span><span class="lineCov">          1 :         pt_memset(peer-&gt;cold.rtt_samples, 0, sizeof(peer-&gt;cold.rtt_samples));</span></a>
-<a name="2744"><span class="lineNum">    2744 </span>            : </a>
-<a name="2745"><span class="lineNum">    2745 </span><span class="lineCov">          1 :         PT_CTX_INFO(ictx, PT_LOG_CAT_PERF,</span></a>
-<a name="2746"><span class="lineNum">    2746 </span>            :                    &quot;Reset statistics for peer %u&quot;, peer_id);</a>
-<a name="2747"><span class="lineNum">    2747 </span>            :     }</a>
-<a name="2748"><span class="lineNum">    2748 </span>            : </a>
-<a name="2749"><span class="lineNum">    2749 </span><span class="lineCov">          1 :     return PT_OK;</span></a>
-<a name="2750"><span class="lineNum">    2750 </span>            : }</a>
-<a name="2751"><span class="lineNum">    2751 </span>            : </a>
+<a name="2717"><span class="lineNum">    2717 </span>            :     /* Validate parameters */</a>
+<a name="2718"><span class="lineNum">    2718 </span><span class="lineCov">          3 :     if (!ictx || ictx-&gt;magic != PT_CONTEXT_MAGIC) {</span></a>
+<a name="2719"><span class="lineNum">    2719 </span><span class="lineCov">          1 :         return PT_ERR_INVALID_STATE;</span></a>
+<a name="2720"><span class="lineNum">    2720 </span>            :     }</a>
+<a name="2721"><span class="lineNum">    2721 </span>            : </a>
+<a name="2722"><span class="lineNum">    2722 </span><span class="lineCov">          2 :     if (peer_id == 0) {</span></a>
+<a name="2723"><span class="lineNum">    2723 </span>            :         /* Reset global statistics */</a>
+<a name="2724"><span class="lineNum">    2724 </span><span class="lineNoCov">          0 :         pt_memset(&amp;ictx-&gt;global_stats, 0, sizeof(PeerTalk_GlobalStats));</span></a>
+<a name="2725"><span class="lineNum">    2725 </span>            : </a>
+<a name="2726"><span class="lineNum">    2726 </span>            :         /* Reset all peer statistics */</a>
+<a name="2727"><span class="lineNum">    2727 </span><span class="lineNoCov">          0 :         for (i = 0; i &lt; ictx-&gt;max_peers; i++) {</span></a>
+<a name="2728"><span class="lineNum">    2728 </span><span class="lineNoCov">          0 :             peer = &amp;ictx-&gt;peers[i];</span></a>
+<a name="2729"><span class="lineNum">    2729 </span><span class="lineNoCov">          0 :             if (peer-&gt;hot.state != PT_PEER_UNUSED) {</span></a>
+<a name="2730"><span class="lineNum">    2730 </span><span class="lineNoCov">          0 :                 pt_memset(&amp;peer-&gt;cold.stats, 0, sizeof(PeerTalk_PeerStats));</span></a>
+<a name="2731"><span class="lineNum">    2731 </span>            :                 /* Reset latency tracking */</a>
+<a name="2732"><span class="lineNum">    2732 </span><span class="lineNoCov">          0 :                 peer-&gt;hot.latency_ms = 0;</span></a>
+<a name="2733"><span class="lineNum">    2733 </span><span class="lineNoCov">          0 :                 peer-&gt;cold.rtt_index = 0;</span></a>
+<a name="2734"><span class="lineNum">    2734 </span><span class="lineNoCov">          0 :                 peer-&gt;cold.rtt_count = 0;</span></a>
+<a name="2735"><span class="lineNum">    2735 </span><span class="lineNoCov">          0 :                 pt_memset(peer-&gt;cold.rtt_samples, 0, sizeof(peer-&gt;cold.rtt_samples));</span></a>
+<a name="2736"><span class="lineNum">    2736 </span>            :             }</a>
+<a name="2737"><span class="lineNum">    2737 </span>            :         }</a>
+<a name="2738"><span class="lineNum">    2738 </span>            : </a>
+<a name="2739"><span class="lineNum">    2739 </span><span class="lineNoCov">          0 :         PT_CTX_INFO(ictx, PT_LOG_CAT_PERF, &quot;Reset all statistics&quot;);</span></a>
+<a name="2740"><span class="lineNum">    2740 </span>            :     } else {</a>
+<a name="2741"><span class="lineNum">    2741 </span>            :         /* Reset single peer statistics */</a>
+<a name="2742"><span class="lineNum">    2742 </span><span class="lineCov">          2 :         peer = pt_peer_find_by_id(ictx, peer_id);</span></a>
+<a name="2743"><span class="lineNum">    2743 </span><span class="lineCov">          2 :         if (!peer) {</span></a>
+<a name="2744"><span class="lineNum">    2744 </span><span class="lineCov">          1 :             return PT_ERR_PEER_NOT_FOUND;</span></a>
+<a name="2745"><span class="lineNum">    2745 </span>            :         }</a>
+<a name="2746"><span class="lineNum">    2746 </span>            : </a>
+<a name="2747"><span class="lineNum">    2747 </span><span class="lineCov">          1 :         pt_memset(&amp;peer-&gt;cold.stats, 0, sizeof(PeerTalk_PeerStats));</span></a>
+<a name="2748"><span class="lineNum">    2748 </span>            :         /* Reset latency tracking */</a>
+<a name="2749"><span class="lineNum">    2749 </span><span class="lineCov">          1 :         peer-&gt;hot.latency_ms = 0;</span></a>
+<a name="2750"><span class="lineNum">    2750 </span><span class="lineCov">          1 :         peer-&gt;cold.rtt_index = 0;</span></a>
+<a name="2751"><span class="lineNum">    2751 </span><span class="lineCov">          1 :         peer-&gt;cold.rtt_count = 0;</span></a>
+<a name="2752"><span class="lineNum">    2752 </span><span class="lineCov">          1 :         pt_memset(peer-&gt;cold.rtt_samples, 0, sizeof(peer-&gt;cold.rtt_samples));</span></a>
+<a name="2753"><span class="lineNum">    2753 </span>            : </a>
+<a name="2754"><span class="lineNum">    2754 </span><span class="lineCov">          1 :         PT_CTX_INFO(ictx, PT_LOG_CAT_PERF,</span></a>
+<a name="2755"><span class="lineNum">    2755 </span>            :                    &quot;Reset statistics for peer %u&quot;, peer_id);</a>
+<a name="2756"><span class="lineNum">    2756 </span>            :     }</a>
+<a name="2757"><span class="lineNum">    2757 </span>            : </a>
+<a name="2758"><span class="lineNum">    2758 </span><span class="lineCov">          1 :     return PT_OK;</span></a>
+<a name="2759"><span class="lineNum">    2759 </span>            : }</a>
+<a name="2760"><span class="lineNum">    2760 </span>            : </a>
 </pre>
       </td>
     </tr>
