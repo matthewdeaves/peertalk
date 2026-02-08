@@ -22,6 +22,8 @@
 #include <string.h>
 #include <ifaddrs.h>
 #include <stdlib.h>
+#include <poll.h>
+#include <sys/uio.h>
 
 /* ========================================================================== */
 /* Port Configuration                                                         */
@@ -1181,6 +1183,21 @@ static int pt_posix_send_with_flags(struct pt_context *ctx, struct pt_peer *peer
         return PT_ERR_INVALID_STATE;
     }
 
+    /* Check if socket is writable BEFORE attempting send.
+     * This avoids starting a partial write that requires blocking to complete.
+     * If socket buffer is full, return WOULD_BLOCK so caller can retry later.
+     */
+    {
+        struct pollfd pfd;
+        pfd.fd = sock;
+        pfd.events = POLLOUT;
+        pfd.revents = 0;
+        if (poll(&pfd, 1, 0) <= 0 || !(pfd.revents & POLLOUT)) {
+            /* Socket not ready for writing - avoid partial write */
+            return PT_ERR_WOULD_BLOCK;
+        }
+    }
+
     /* Encode header */
     hdr.version = PT_PROTOCOL_VERSION;
     hdr.type = PT_MSG_TYPE_DATA;
@@ -1225,7 +1242,7 @@ static int pt_posix_send_with_flags(struct pt_context *ctx, struct pt_peer *peer
         uint8_t *sendbuf;
         size_t buflen = (size_t)total_len;
         size_t offset = (size_t)sent;
-        int max_retries = 100;
+        int max_retries = 20;  /* 200ms max block (down from 1s) */
         int retry_count = 0;
 
         sendbuf = (uint8_t *)malloc(buflen);
@@ -2502,13 +2519,22 @@ periodic_work:
             }
         }
 
-        /* Tier 1: Drain queue (small messages and fragments) */
+        /* Tier 1: Drain queue (small messages and fragments)
+         *
+         * CRITICAL: Drain MULTIPLE messages per poll iteration, not just one!
+         * At 60Hz poll rate, draining one message = 60 msg/sec max.
+         * With fragmentation (17 chunks per 4KB message), this causes queue
+         * overflow. Drain up to 16 messages or until WOULD_BLOCK.
+         */
         if (peer->send_queue) {
             const void *data;
             uint16_t len;
             pt_queue *q = peer->send_queue;
+            int drain_count = 0;
+            const int max_drain = 16;  /* Drain up to 16 messages per poll */
 
-            if (pt_queue_pop_priority_direct(q, &data, &len) == 0) {
+            while (drain_count < max_drain &&
+                   pt_queue_pop_priority_direct(q, &data, &len) == 0) {
                 int result;
                 uint8_t slot_flags = q->slots[q->pending_pop_slot].flags;
 
@@ -2520,11 +2546,18 @@ periodic_work:
                     result = pt_posix_send(ctx, peer, data, len);
                 }
 
+                if (result == PT_ERR_WOULD_BLOCK) {
+                    /* Socket buffer full - DON'T commit, retry next poll */
+                    pt_queue_pop_priority_rollback(q);
+                    break;
+                }
+
                 /* Commit the pop to remove message from queue */
                 pt_queue_pop_priority_commit(q);
+                drain_count++;
 
-                if (result != PT_OK && result != PT_ERR_WOULD_BLOCK) {
-                    /* Send failed - message lost */
+                if (result != PT_OK) {
+                    /* Send failed (network error) - message lost, continue draining */
                     PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
                         "Failed to drain message for peer %u: error %d",
                         peer->hot.id, result);

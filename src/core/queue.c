@@ -705,6 +705,21 @@ void pt_queue_pop_priority_commit(pt_queue *q) {
 }
 
 /*
+ * Rollback a direct pop - cancel without removing from queue
+ *
+ * The pending slot remains in the queue and will be returned again
+ * on the next pt_queue_pop_priority_direct() call.
+ */
+void pt_queue_pop_priority_rollback(pt_queue *q) {
+    if (!q)
+        return;
+
+    /* Simply reset the pending pop state - slot stays in queue */
+    q->pending_pop_slot = PT_SLOT_NONE;
+    q->pending_pop_prio = 0;
+}
+
+/*
  * Push with coalescing - O(1) using hash table lookup
  */
 int pt_queue_push_coalesce(pt_queue *q, const void *data, uint16_t len,

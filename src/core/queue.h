@@ -466,6 +466,15 @@ int pt_queue_pop_priority_direct(pt_queue *q, const void **data_out,
 void pt_queue_pop_priority_commit(pt_queue *q);
 
 /*
+ * Rollback a direct pop - cancel without removing from queue
+ *
+ * Call this if processing the data failed (e.g., WOULD_BLOCK on send).
+ * The slot remains in the queue and will be returned again on the next
+ * pt_queue_pop_priority_direct() call.
+ */
+void pt_queue_pop_priority_rollback(pt_queue *q);
+
+/*
  * Push with coalescing - O(1) using hash table lookup
  *
  * If a message with the same coalesce_key exists, replace it

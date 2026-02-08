@@ -266,10 +266,20 @@ static void pt_mactcp_poll_connected(struct pt_context *ctx,
         }
     }
 
-    /* Tier 1: Drain send queue - send one message per poll iteration */
+    /* Tier 1: Drain send queue - drain MULTIPLE messages per poll
+     *
+     * CRITICAL: Drain up to 8 messages per poll, not just one!
+     * On 68k Mac, poll rate is ~60Hz. Draining one message = 60 msg/sec max.
+     * With fragmentation (17 chunks per 4KB message), this causes queue
+     * overflow. Drain multiple messages, stopping on WOULD_BLOCK or errors.
+     */
     if (peer->send_queue) {
         pt_queue *q = peer->send_queue;
-        if (pt_queue_pop_priority_direct(q, &data, &len) == 0) {
+        int drain_count = 0;
+        const int max_drain = 8;  /* Fewer than POSIX due to slower CPU */
+
+        while (drain_count < max_drain &&
+               pt_queue_pop_priority_direct(q, &data, &len) == 0) {
             uint8_t slot_flags = q->slots[q->pending_pop_slot].flags;
 
             /* Check if this is a fragment - needs PT_MSG_FLAG_FRAGMENT */
@@ -280,16 +290,27 @@ static void pt_mactcp_poll_connected(struct pt_context *ctx,
                 result = pt_mactcp_tcp_send(ctx, peer, data, len);
             }
 
+            if (result == PT_ERR_WOULD_BLOCK) {
+                /* MacTCP buffer full - rollback and retry next poll */
+                pt_queue_pop_priority_rollback(q);
+                break;
+            }
+
+            /* Commit the pop (success or hard error) */
+            pt_queue_pop_priority_commit(q);
+            drain_count++;
+
             if (result == 0) {
-                pt_queue_pop_priority_commit(q);
                 PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
                     "Sent %u bytes (Tier 1%s) to peer %u",
                     (unsigned)len,
                     (slot_flags & PT_SLOT_FRAGMENT) ? " frag" : "",
                     (unsigned)peer->hot.id);
             } else {
+                /* Network error - message lost, continue draining */
                 PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
-                    "Tier 1 send to peer %u failed: %d", (unsigned)peer->hot.id, result);
+                    "Tier 1 send to peer %u failed: %d",
+                    (unsigned)peer->hot.id, result);
             }
         }
     }
