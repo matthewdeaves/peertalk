@@ -94,32 +94,48 @@ See `.claude/rules/build-requirements.md` for complete Docker command reference.
 ## File Structure
 
 ```
-include/
-  peertalk.h          # Public API
-  pt_log.h            # Logging API
+include/                    # Public API headers
+  peertalk.h                  # Main PeerTalk API
+  pt_log.h                    # Logging API
 src/
-  core/               # Platform-independent
-  posix/              # Linux/macOS
-  mactcp/             # MacTCP (68k)
-  opentransport/      # Open Transport (PPC)
-  appletalk/          # AppleTalk (all Macs)
-  log/                # PT_Log implementation
+  core/                       # Platform-independent code
+  posix/                      # Linux/macOS implementation
+  mactcp/                     # MacTCP (68k) implementation
+  opentransport/              # Open Transport (PPC) implementation
+  appletalk/                  # AppleTalk implementation
+  log/                        # PT_Log (POSIX + Mac)
 tests/
-  test_*.c            # POSIX tests
-plan/
-  PHASE-*.md          # Implementation plans
+  test_*.c                    # POSIX unit tests
+  posix/                      # POSIX test partners (perf_partner, test_partner)
+  mac/                        # Mac hardware test apps (test_throughput, etc.)
+  hw/                         # Hardware test plans
+plan/                         # Implementation phase plans
+  PHASE-*.md
+books/                        # Reference documentation (Inside Macintosh, etc.)
+docker/                       # Docker configurations
+  Dockerfile                  # Full dev image (Retro68 + tools)
+  Dockerfile.posix            # Lightweight POSIX-only image
+  docker-compose.yml          # Development container
+  docker-compose.test.yml     # 3-peer integration test
+tools/
+  build/                      # Build scripts and quality gates
+  validators/                 # ISR safety checker, etc.
+  metrics/                    # Code metrics extraction
+scripts/                      # Utility scripts
 .claude/
-  skills/             # Custom Claude Code skills
-  rules/              # Platform-specific coding rules
-  mcp-servers/        # MCP server configurations
+  skills/                     # Custom Claude Code skills
+  rules/                      # Platform-specific coding rules
+  mcp-servers/                # MCP server for Classic Mac hardware
     classic-mac-hardware/
-      machines.json   # Classic Mac machine registry
-      SETUP.md        # MCP server setup guide
-scripts/
-  build-launcher.sh   # Build LaunchAPPLServer for Mac platforms
-docker/
-  docker-compose.yml  # Retro68 development container
+      machines.json           # Machine registry (gitignored - user config)
+      machines.example.json   # Example configuration
 ```
+
+**Generated directories (gitignored):**
+- `build/` - Compiled libraries and test binaries
+- `downloads/` - Logs fetched from Classic Mac hardware
+- `packages/` - Mac binaries packaged for transfer
+- `LaunchAPPL-build/` - Built LaunchAPPLServer binaries
 
 **LaunchAPPL Architecture:**
 - **Client** at `/opt/Retro68-build/toolchain/bin/LaunchAPPL` (in Docker container)

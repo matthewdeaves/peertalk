@@ -1,3 +1,11 @@
+# =============================================================================
+# PeerTalk .gitignore
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Build Artifacts
+# -----------------------------------------------------------------------------
+
 # Object files
 *.o
 *.obj
@@ -10,13 +18,6 @@
 *.out
 *.app
 a.out
-
-# Mac build artifacts
-*.bin
-*.sit
-*.rsrc
-*.dsk
-*.img
 
 # Libraries
 *.lib
@@ -34,55 +35,26 @@ a.out
 *.pdb
 *.gdb
 
-# Coverage and profiling
-*.gcda
-*.gcno
-*.gcov
-coverage/
-*.lcov
-htmlcov/
-
 # Build directories
 /build/
-!.claude/skills/build/
-!tools/build/
 bin/
 obj/
 dist/
 out/
 
-# Temporary build artifacts (samples, LaunchAPPL builds)
-/HelloWorld/
-/LaunchAPPL/
+# Preserve build skill directory
+!.claude/skills/build/
+!tools/build/
 
-# IDE and editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
-*.orig
+# -----------------------------------------------------------------------------
+# Classic Mac Build Artifacts (Retro68)
+# -----------------------------------------------------------------------------
 
-# Temporary files
-*.tmp
-*.temp
-*.log
-*.bak
-*.old
-
-# CMake
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-compile_commands.json
-
-# Make
-*.d
-.deps/
-
-# Retro68 specific
+*.bin
+*.sit
+*.rsrc
+*.dsk
+*.img
 *.APPL
 *.CODE
 *.DATA
@@ -94,12 +66,85 @@ compile_commands.json
 *.ad
 %*.ad
 
-# Test binaries
+# Mac resource fork directories (created by file transfers)
+.finf/
+.rsrc/
+
+# LaunchAPPL build output
+LaunchAPPL-build/
+
+# Temporary Retro68 sample builds
+/HelloWorld/
+/LaunchAPPL/
+
+# -----------------------------------------------------------------------------
+# Coverage and Profiling
+# -----------------------------------------------------------------------------
+
+*.gcda
+*.gcno
+*.gcov
+coverage/
+*.lcov
+htmlcov/
+coverage.info
+
+# -----------------------------------------------------------------------------
+# IDE and Editor Files
+# -----------------------------------------------------------------------------
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.orig
+
+# -----------------------------------------------------------------------------
+# Temporary Files
+# -----------------------------------------------------------------------------
+
+*.tmp
+*.temp
+*.log
+*.bak
+*.old
+*.pid
+*.dump
+.cache/
+
+# -----------------------------------------------------------------------------
+# CMake / Make
+# -----------------------------------------------------------------------------
+
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+*.d
+.deps/
+
+# -----------------------------------------------------------------------------
+# Test Artifacts
+# -----------------------------------------------------------------------------
+
+# Test binaries (but keep test source files)
 test_*
 !test_*.c
 !test_*.h
 
-# Python virtual environment
+# Test results
+tools/testing/results/
+
+# Downloaded logs from Classic Mac hardware
+downloads/
+
+# -----------------------------------------------------------------------------
+# Python
+# -----------------------------------------------------------------------------
+
 tools/.venv/
 .venv/
 venv/
@@ -109,7 +154,18 @@ __pycache__/
 *.egg-info/
 .python-version
 
-# Local secrets (if any)
+# -----------------------------------------------------------------------------
+# Node.js (Dashboard)
+# -----------------------------------------------------------------------------
+
+node_modules/
+_site/
+package-lock.json
+
+# -----------------------------------------------------------------------------
+# Secrets and Local Config
+# -----------------------------------------------------------------------------
+
 .env
 .env.local
 .env.*.local
@@ -120,24 +176,15 @@ __pycache__/
 # MCP server configuration (user-specific, contains FTP credentials)
 .claude/mcp-servers/*/machines.json
 
-# Test results (generated)
-tools/testing/results/
+# MCP config (auto-generated)
+.mcp.json
 
-# Package output
+# -----------------------------------------------------------------------------
+# Package Output
+# -----------------------------------------------------------------------------
+
 packages/
 
-# Coverage info
-coverage.info
-
+# -----------------------------------------------------------------------------
 # Misc
-*.pid
-*.dump
-.cache/
-.mcp.json
-LaunchAPPL-build/
-
-# Dashboard build artifacts (gh-pages only)
-node_modules/
-_site/
-package-lock.json
-downloads/
+# -----------------------------------------------------------------------------
