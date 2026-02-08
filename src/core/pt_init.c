@@ -10,6 +10,7 @@
 #include "peer.h"
 #include "queue.h"
 #include "direct_buffer.h"
+#include "protocol.h"
 #include <string.h>
 
 /* ========================================================================== */
@@ -79,6 +80,22 @@ PeerTalk_Context *PeerTalk_Init(const PeerTalk_Config *config) {
     /* Apply two-tier queue configuration */
     ctx->direct_threshold = PT_DIRECT_THRESHOLD;
     ctx->direct_buffer_size = ctx->config.direct_buffer_size;
+
+    /* Apply capability negotiation defaults */
+    if (ctx->config.max_message_size == 0) {
+        ctx->config.max_message_size = PT_CAP_MAX_MAX_MSG;  /* 8192 */
+    }
+    if (ctx->config.preferred_chunk == 0) {
+        ctx->config.preferred_chunk = 1024;
+    }
+    /* enable_fragmentation defaults to 0, but treat 0xFF as unset and enable */
+    if (ctx->config.enable_fragmentation == 0xFF) {
+        ctx->config.enable_fragmentation = 1;
+    }
+    ctx->local_max_message = ctx->config.max_message_size;
+    ctx->local_preferred_chunk = ctx->config.preferred_chunk;
+    ctx->local_capability_flags = PT_CAPFLAG_FRAGMENTATION;  /* We support fragmentation */
+    ctx->enable_fragmentation = ctx->config.enable_fragmentation ? 1 : 0;
 
     /* Initialize PT_Log from Phase 0 */
     ctx->log = PT_LogCreate();
@@ -766,4 +783,70 @@ PT_Log *PeerTalk_GetLog(PeerTalk_Context *ctx_handle) {
         return NULL;
     }
     return ctx->log;
+}
+
+/* ========================================================================== */
+/* Capability Negotiation (Phase 6+)                                          */
+/* ========================================================================== */
+
+/**
+ * Get negotiated capabilities for a peer
+ *
+ * Returns information about peer's constraints and negotiated parameters.
+ * Useful for adapting message sizes to peer capabilities.
+ */
+PeerTalk_Error PeerTalk_GetPeerCapabilities(PeerTalk_Context *ctx_pub,
+                                             PeerTalk_PeerID peer_id,
+                                             PeerTalk_Capabilities *caps) {
+    struct pt_context *ctx = (struct pt_context *)ctx_pub;
+    struct pt_peer *peer;
+
+    /* Validate parameters */
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_STATE;
+    }
+    if (!caps) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Find peer */
+    peer = pt_peer_find_by_id(ctx, peer_id);
+    if (!peer) {
+        return PT_ERR_PEER_NOT_FOUND;
+    }
+
+    /* Fill in capabilities */
+    caps->max_message_size = peer->hot.effective_max_msg;
+    caps->preferred_chunk = peer->cold.caps.preferred_chunk;
+    caps->capability_flags = peer->cold.caps.capability_flags;
+    caps->buffer_pressure = peer->cold.caps.buffer_pressure;
+    caps->fragmentation_active = (ctx->enable_fragmentation &&
+                                  peer->hot.effective_max_msg < ctx->local_max_message) ? 1 : 0;
+
+    return PT_OK;
+}
+
+/**
+ * Get effective max message size for a peer
+ *
+ * Quick accessor for the negotiated maximum message size.
+ * Returns min(our_max, peer_max) for connected peers.
+ */
+uint16_t PeerTalk_GetPeerMaxMessage(PeerTalk_Context *ctx_pub,
+                                     PeerTalk_PeerID peer_id) {
+    struct pt_context *ctx = (struct pt_context *)ctx_pub;
+    struct pt_peer *peer;
+
+    /* Validate parameters */
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return 0;
+    }
+
+    /* Find peer */
+    peer = pt_peer_find_by_id(ctx, peer_id);
+    if (!peer) {
+        return 0;
+    }
+
+    return peer->hot.effective_max_msg;
 }

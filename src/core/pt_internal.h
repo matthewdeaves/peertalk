@@ -73,6 +73,42 @@ extern pt_platform_ops pt_appletalk_ops;
 #endif
 
 /* ========================================================================== */
+/* Peer Capability Structure                                                  */
+/* ========================================================================== */
+
+/**
+ * Per-peer capability storage
+ *
+ * Stored in pt_peer_cold (rarely accessed after negotiation).
+ * Effective max is cached in pt_peer_hot for fast send-path access.
+ */
+typedef struct {
+    uint16_t max_message_size;   /* Peer's max (256-8192), 0=unknown */
+    uint16_t preferred_chunk;    /* Optimal chunk size */
+    uint16_t capability_flags;   /* PT_CAPFLAG_* */
+    uint8_t  buffer_pressure;    /* 0-100 constraint level */
+    uint8_t  caps_exchanged;     /* 1 after exchange complete */
+} pt_peer_caps;
+
+/* ========================================================================== */
+/* Fragment Reassembly State                                                  */
+/* ========================================================================== */
+
+/**
+ * Per-peer fragment reassembly state
+ *
+ * Uses existing recv_direct buffer for storage. Only one message
+ * can be reassembled at a time per peer.
+ */
+typedef struct {
+    uint16_t message_id;         /* Current message being reassembled */
+    uint16_t total_length;       /* Expected total message size */
+    uint16_t received_length;    /* Bytes received so far */
+    uint8_t  active;             /* 1 if reassembly in progress */
+    uint8_t  reserved;
+} pt_reassembly_state;
+
+/* ========================================================================== */
 /* Internal Peer Address Structure                                           */
 /* ========================================================================== */
 
@@ -102,13 +138,14 @@ typedef struct {
     PeerTalk_PeerID     id;
     uint16_t            peer_flags;     /* PT_PEER_FLAG_* from discovery */
     uint16_t            latency_ms;     /* Estimated RTT */
+    uint16_t            effective_max_msg; /* min(ours, theirs) - cached for send path */
     pt_peer_state       state;
     uint8_t             address_count;
     uint8_t             preferred_transport;
     uint8_t             send_seq;       /* Send sequence number (Phase 2) */
     uint8_t             recv_seq;       /* Receive sequence number (Phase 2) */
     uint8_t             name_idx;       /* Index into context name table */
-    uint8_t             reserved[3];    /* Padding for alignment */
+    uint8_t             reserved;       /* Padding for alignment */
 } pt_peer_hot;
 
 /**
@@ -124,6 +161,8 @@ typedef struct {
     uint16_t            rtt_samples[8];     /* Rolling RTT samples */
     uint8_t             rtt_index;
     uint8_t             rtt_count;
+    pt_peer_caps        caps;               /* Peer capability info */
+    pt_reassembly_state reassembly;         /* Fragment reassembly state */
     uint8_t             obuf[PT_FRAME_BUF_SIZE];  /* Output framing buffer */
     uint8_t             ibuf[PT_FRAME_BUF_SIZE];  /* Input framing buffer */
     uint16_t            obuflen;
@@ -192,6 +231,13 @@ struct pt_context {
     /* Two-tier message queue configuration */
     uint16_t            direct_threshold;   /* Messages > this go to Tier 2 (default 256) */
     uint16_t            direct_buffer_size; /* Tier 2 buffer size (default 4096) */
+
+    /* Capability negotiation configuration */
+    uint16_t            local_max_message;      /* Our max message size (0=8192) */
+    uint16_t            local_preferred_chunk;  /* Our preferred chunk (0=1024) */
+    uint16_t            local_capability_flags; /* Our PT_CAPFLAG_* */
+    uint8_t             enable_fragmentation;   /* 1=auto-fragment (default 1) */
+    uint8_t             reserved_cap;
 
     /* Platform-specific data follows (allocated via pt_plat_extra_size) */
 };

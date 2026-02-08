@@ -346,8 +346,8 @@ static void test_message_bad_type(void)
     };
     pt_message_encode_header(&valid, buf);
 
-    /* Set invalid type */
-    uint8_t invalid_types[] = {0x00, 0x07, 0x08, 0x10, 0x80, 0xFF};
+    /* Set invalid type (0x07 is PT_MSG_TYPE_CAPABILITY, so it's valid now) */
+    uint8_t invalid_types[] = {0x00, 0x08, 0x10, 0x80, 0xFF};
     size_t i;
 
     for (i = 0; i < sizeof(invalid_types); i++) {

@@ -3,6 +3,7 @@
 #include "peer.h"
 #include "pt_compat.h"
 #include "direct_buffer.h"
+#include "protocol.h"
 #include "../../include/peertalk.h"
 
 /* ========================================================================
@@ -278,6 +279,21 @@ struct pt_peer *pt_peer_create(struct pt_context *ctx,
     peer->cold.ping_sent_time = 0;
     peer->hot.send_seq = 0;
     peer->hot.recv_seq = 0;
+
+    /* Initialize capabilities (defaults for unknown peer) */
+    peer->cold.caps.max_message_size = 0;  /* Unknown until exchanged */
+    peer->cold.caps.preferred_chunk = 0;
+    peer->cold.caps.capability_flags = 0;
+    peer->cold.caps.buffer_pressure = 0;
+    peer->cold.caps.caps_exchanged = 0;
+    peer->hot.effective_max_msg = PT_CAP_DEFAULT_MAX_MSG;  /* Conservative default */
+
+    /* Initialize reassembly state */
+    peer->cold.reassembly.message_id = 0;
+    peer->cold.reassembly.total_length = 0;
+    peer->cold.reassembly.received_length = 0;
+    peer->cold.reassembly.active = 0;
+    peer->cold.reassembly.reserved = 0;
 
     /* Clear connection handle */
     peer->hot.connection = NULL;

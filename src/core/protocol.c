@@ -301,7 +301,7 @@ int pt_message_decode_header(struct pt_context *ctx, const uint8_t *buf,
 
     /* Extract type */
     hdr->type = buf[5];
-    if (hdr->type < PT_MSG_TYPE_DATA || hdr->type > PT_MSG_TYPE_REJECT) {
+    if (hdr->type < PT_MSG_TYPE_DATA || hdr->type > PT_MSG_TYPE_CAPABILITY) {
         if (ctx) {
             PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
                     "Invalid message type: 0x%02X", hdr->type);
@@ -412,6 +412,182 @@ int pt_udp_decode(struct pt_context *ctx, const uint8_t *buf, size_t len,
                      "UDP message decoded: port=%u, len=%u",
                      *sender_port_out, payload_len);
     }
+
+    return 0;
+}
+
+/* ========================================================================
+ * Capability Message Functions
+ * ======================================================================== */
+
+int pt_capability_encode(const pt_capability_msg *caps, uint8_t *buf, size_t buf_len)
+{
+    size_t offset = 0;
+
+    /* Calculate required size: 4 TLVs
+     * - MAX_MESSAGE: 1 + 1 + 2 = 4
+     * - PREFERRED_CHUNK: 1 + 1 + 2 = 4
+     * - BUFFER_PRESSURE: 1 + 1 + 1 = 3
+     * - FLAGS: 1 + 1 + 2 = 4
+     * Total: 15 bytes
+     */
+    if (buf_len < 15) {
+        return PT_ERR_BUFFER_FULL;
+    }
+
+    /* TLV 1: Max message size (2 bytes) */
+    buf[offset++] = PT_CAP_MAX_MESSAGE;
+    buf[offset++] = 2;
+    buf[offset++] = (caps->max_message_size >> 8) & 0xFF;
+    buf[offset++] = caps->max_message_size & 0xFF;
+
+    /* TLV 2: Preferred chunk (2 bytes) */
+    buf[offset++] = PT_CAP_PREFERRED_CHUNK;
+    buf[offset++] = 2;
+    buf[offset++] = (caps->preferred_chunk >> 8) & 0xFF;
+    buf[offset++] = caps->preferred_chunk & 0xFF;
+
+    /* TLV 3: Buffer pressure (1 byte) */
+    buf[offset++] = PT_CAP_BUFFER_PRESSURE;
+    buf[offset++] = 1;
+    buf[offset++] = caps->buffer_pressure;
+
+    /* TLV 4: Capability flags (2 bytes) */
+    buf[offset++] = PT_CAP_FLAGS;
+    buf[offset++] = 2;
+    buf[offset++] = (caps->capability_flags >> 8) & 0xFF;
+    buf[offset++] = caps->capability_flags & 0xFF;
+
+    return (int)offset;
+}
+
+int pt_capability_decode(struct pt_context *ctx, const uint8_t *buf, size_t len,
+                         pt_capability_msg *caps)
+{
+    size_t offset = 0;
+
+    /* Initialize with defaults (for missing TLVs) */
+    caps->max_message_size = PT_CAP_DEFAULT_MAX_MSG;
+    caps->preferred_chunk = PT_CAP_DEFAULT_CHUNK;
+    caps->buffer_pressure = PT_CAP_DEFAULT_PRESSURE;
+    caps->capability_flags = 0;
+    caps->reserved = 0;
+
+    /* Parse TLVs */
+    while (offset + 2 <= len) {
+        uint8_t type = buf[offset++];
+        uint8_t tlv_len = buf[offset++];
+
+        /* Check TLV fits in buffer */
+        if (offset + tlv_len > len) {
+            if (ctx) {
+                PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+                    "Capability TLV truncated: type=%u, len=%u, remaining=%zu",
+                    type, tlv_len, len - offset);
+            }
+            return PT_ERR_TRUNCATED;
+        }
+
+        switch (type) {
+        case PT_CAP_MAX_MESSAGE:
+            if (tlv_len >= 2) {
+                caps->max_message_size = ((uint16_t)buf[offset] << 8) | buf[offset + 1];
+                /* Clamp to valid range */
+                if (caps->max_message_size < PT_CAP_MIN_MAX_MSG) {
+                    caps->max_message_size = PT_CAP_MIN_MAX_MSG;
+                }
+                if (caps->max_message_size > PT_CAP_MAX_MAX_MSG) {
+                    caps->max_message_size = PT_CAP_MAX_MAX_MSG;
+                }
+            }
+            break;
+
+        case PT_CAP_PREFERRED_CHUNK:
+            if (tlv_len >= 2) {
+                caps->preferred_chunk = ((uint16_t)buf[offset] << 8) | buf[offset + 1];
+            }
+            break;
+
+        case PT_CAP_BUFFER_PRESSURE:
+            if (tlv_len >= 1) {
+                caps->buffer_pressure = buf[offset];
+                if (caps->buffer_pressure > 100) {
+                    caps->buffer_pressure = 100;
+                }
+            }
+            break;
+
+        case PT_CAP_FLAGS:
+            if (tlv_len >= 2) {
+                caps->capability_flags = ((uint16_t)buf[offset] << 8) | buf[offset + 1];
+            }
+            break;
+
+        default:
+            /* Unknown TLV - skip it (forward compatibility) */
+            if (ctx) {
+                PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+                    "Unknown capability TLV: type=%u, len=%u", type, tlv_len);
+            }
+            break;
+        }
+
+        offset += tlv_len;
+    }
+
+    if (ctx) {
+        PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+            "Capability decoded: max=%u, chunk=%u, pressure=%u, flags=0x%04X",
+            caps->max_message_size, caps->preferred_chunk,
+            caps->buffer_pressure, caps->capability_flags);
+    }
+
+    return 0;
+}
+
+/* ========================================================================
+ * Fragment Header Functions
+ * ======================================================================== */
+
+int pt_fragment_encode(const pt_fragment_header *hdr, uint8_t *buf)
+{
+    /* Message ID (big-endian) */
+    buf[0] = (hdr->message_id >> 8) & 0xFF;
+    buf[1] = hdr->message_id & 0xFF;
+
+    /* Total length (big-endian) */
+    buf[2] = (hdr->total_length >> 8) & 0xFF;
+    buf[3] = hdr->total_length & 0xFF;
+
+    /* Fragment offset (big-endian) */
+    buf[4] = (hdr->fragment_offset >> 8) & 0xFF;
+    buf[5] = hdr->fragment_offset & 0xFF;
+
+    /* Flags and reserved */
+    buf[6] = hdr->fragment_flags;
+    buf[7] = 0;  /* Reserved */
+
+    return PT_FRAGMENT_HEADER_SIZE;
+}
+
+int pt_fragment_decode(const uint8_t *buf, size_t len, pt_fragment_header *hdr)
+{
+    if (len < PT_FRAGMENT_HEADER_SIZE) {
+        return PT_ERR_TRUNCATED;
+    }
+
+    /* Message ID (big-endian) */
+    hdr->message_id = ((uint16_t)buf[0] << 8) | buf[1];
+
+    /* Total length (big-endian) */
+    hdr->total_length = ((uint16_t)buf[2] << 8) | buf[3];
+
+    /* Fragment offset (big-endian) */
+    hdr->fragment_offset = ((uint16_t)buf[4] << 8) | buf[5];
+
+    /* Flags and reserved */
+    hdr->fragment_flags = buf[6];
+    hdr->reserved = buf[7];
 
     return 0;
 }

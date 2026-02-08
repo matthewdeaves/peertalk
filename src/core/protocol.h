@@ -45,6 +45,7 @@ struct pt_context;
 #define PT_MSG_TYPE_DISCONNECT  0x04
 #define PT_MSG_TYPE_ACK         0x05
 #define PT_MSG_TYPE_REJECT      0x06
+#define PT_MSG_TYPE_CAPABILITY  0x07
 
 /* Discovery transport flags (bitmask) */
 #define PT_DISC_TRANSPORT_TCP       0x01
@@ -56,16 +57,76 @@ struct pt_context;
 #define PT_DISC_FLAG_ACCEPTING  0x0002
 #define PT_DISC_FLAG_SPECTATOR  0x0004
 #define PT_DISC_FLAG_READY      0x0008
+#define PT_DISC_FLAG_HAS_CAPS   0x0010  /* Peer supports capability exchange */
 
 /* Message flags (match PT_SEND_* from peertalk.h) */
 #define PT_MSG_FLAG_UNRELIABLE  0x01
 #define PT_MSG_FLAG_COALESCABLE 0x02
 #define PT_MSG_FLAG_NO_DELAY    0x04
 #define PT_MSG_FLAG_BATCH       0x08
+#define PT_MSG_FLAG_FRAGMENT    0x10  /* Message is fragmented */
+
+/* ========================================================================
+ * Capability Negotiation Protocol
+ * ======================================================================== */
+
+/* Capability TLV types (for PT_MSG_TYPE_CAPABILITY payload) */
+#define PT_CAP_MAX_MESSAGE      0x01  /* 2 bytes: max efficient message size */
+#define PT_CAP_PREFERRED_CHUNK  0x02  /* 2 bytes: optimal streaming chunk */
+#define PT_CAP_BUFFER_PRESSURE  0x03  /* 1 byte: 0-100 constraint level */
+#define PT_CAP_FLAGS            0x04  /* 2 bytes: capability flags */
+
+/* Capability flags (sent in PT_CAP_FLAGS TLV) */
+#define PT_CAPFLAG_FRAGMENTATION 0x0001  /* Peer supports fragmentation */
+#define PT_CAPFLAG_STREAMING     0x0002  /* Peer supports streaming */
+
+/* Capability defaults (for legacy peers without PT_DISC_FLAG_HAS_CAPS) */
+#define PT_CAP_DEFAULT_MAX_MSG      512     /* Conservative for legacy */
+#define PT_CAP_DEFAULT_CHUNK        256     /* Conservative for legacy */
+#define PT_CAP_DEFAULT_PRESSURE     50      /* Moderate constraint */
+
+/* Capability limits */
+#define PT_CAP_MIN_MAX_MSG          256     /* Minimum supported */
+#define PT_CAP_MAX_MAX_MSG          8192    /* Maximum supported */
+
+/* Fragment header constants */
+#define PT_FRAGMENT_HEADER_SIZE     8       /* Size of fragment header */
+#define PT_FRAGMENT_FLAG_FIRST      0x01    /* First fragment */
+#define PT_FRAGMENT_FLAG_LAST       0x02    /* Last fragment */
 
 /* ========================================================================
  * Data Structures
  * ======================================================================== */
+
+/* Fragment header (prepended to each fragment)
+ *
+ * Wire format (8 bytes):
+ * - Message ID (2, big-endian): Links fragments together
+ * - Total Length (2, big-endian): Original message size
+ * - Fragment Offset (2, big-endian): Byte offset in original
+ * - Fragment Flags (1): FIRST=0x01, LAST=0x02
+ * - Reserved (1)
+ */
+typedef struct {
+    uint16_t message_id;        /* Links fragments together */
+    uint16_t total_length;      /* Original message size */
+    uint16_t fragment_offset;   /* Byte offset in original */
+    uint8_t  fragment_flags;    /* PT_FRAGMENT_FLAG_* */
+    uint8_t  reserved;
+} pt_fragment_header;
+
+/* Capability message (for parsing PT_MSG_TYPE_CAPABILITY)
+ *
+ * Sent after TCP connection established. Peers exchange capabilities
+ * and negotiate effective_max_msg = min(local, remote).
+ */
+typedef struct {
+    uint16_t max_message_size;   /* Max efficient message size (256-8192) */
+    uint16_t preferred_chunk;    /* Optimal streaming chunk size */
+    uint16_t capability_flags;   /* PT_CAPFLAG_* */
+    uint8_t  buffer_pressure;    /* 0-100 constraint level */
+    uint8_t  reserved;
+} pt_capability_msg;
 
 /* Parsed discovery packet
  *
@@ -280,5 +341,58 @@ int pt_udp_encode(const void *payload, uint16_t payload_len,
 int pt_udp_decode(struct pt_context *ctx, const uint8_t *buf, size_t len,
                   uint16_t *sender_port_out, const void **payload_out,
                   uint16_t *payload_len_out);
+
+/* ========================================================================
+ * Capability Message Functions
+ * ======================================================================== */
+
+/* Encode capability message to wire format (TLV encoding)
+ *
+ * Args:
+ *   caps    - Capability message to encode
+ *   buf     - Output buffer
+ *   buf_len - Buffer size
+ *
+ * Returns: Payload size on success, negative error code on failure
+ */
+int pt_capability_encode(const pt_capability_msg *caps, uint8_t *buf, size_t buf_len);
+
+/* Decode capability message from wire format (TLV decoding)
+ *
+ * Args:
+ *   ctx     - Context for logging (can be NULL)
+ *   buf     - Wire format data (payload only, no header)
+ *   len     - Data length
+ *   caps    - Output parsed capability message
+ *
+ * Returns: 0 on success, negative error code on failure
+ */
+int pt_capability_decode(struct pt_context *ctx, const uint8_t *buf, size_t len,
+                         pt_capability_msg *caps);
+
+/* ========================================================================
+ * Fragment Header Functions
+ * ======================================================================== */
+
+/* Encode fragment header to wire format
+ *
+ * Args:
+ *   hdr - Fragment header to encode
+ *   buf - Output buffer (at least PT_FRAGMENT_HEADER_SIZE bytes)
+ *
+ * Returns: PT_FRAGMENT_HEADER_SIZE on success
+ */
+int pt_fragment_encode(const pt_fragment_header *hdr, uint8_t *buf);
+
+/* Decode fragment header from wire format
+ *
+ * Args:
+ *   buf - Wire format data
+ *   len - Data length
+ *   hdr - Output parsed fragment header
+ *
+ * Returns: 0 on success, negative error code on failure
+ */
+int pt_fragment_decode(const uint8_t *buf, size_t len, pt_fragment_header *hdr);
 
 #endif /* PT_PROTOCOL_H */

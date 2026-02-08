@@ -348,11 +348,18 @@ typedef struct {
  *   - auto_accept: 1 (enabled)
  *   - auto_cleanup: 1 (enabled)
  *   - direct_buffer_size: 4096 (Tier 2 buffer)
+ *   - max_message_size: 8192 (max supported)
+ *   - preferred_chunk: 1024
+ *   - enable_fragmentation: 1 (enabled)
  *
  * Two-Tier Message Queue:
  *   Messages <= 256 bytes use Tier 1 (pre-allocated queue slots)
  *   Messages > 256 bytes use Tier 2 (direct buffer, one per peer)
  *   If Tier 2 buffer is busy, PeerTalk_Send returns PT_ERR_WOULD_BLOCK
+ *
+ * Capability Negotiation:
+ *   Peers exchange capabilities after TCP connection established.
+ *   For messages exceeding peer's max, auto-fragment if enabled.
  */
 typedef struct {
     /* Embedded name - eliminates pointer indirection */
@@ -369,12 +376,14 @@ typedef struct {
     uint16_t        discovery_interval;     /* ms, 0 = 5000 */
     uint16_t        peer_timeout;           /* ms, 0 = 15000 */
     uint16_t        direct_buffer_size;     /* Tier 2 buffer size, 0 = 4096 (max 8192) */
+    uint16_t        max_message_size;       /* Max message we can handle, 0 = 8192 */
+    uint16_t        preferred_chunk;        /* Optimal chunk for streaming, 0 = 1024 */
 
     /* 8-bit fields grouped together */
     uint8_t         auto_accept;            /* Auto-accept connections, default = 1 */
     uint8_t         auto_cleanup;           /* Auto-remove timed-out peers, default = 1 */
     uint8_t         log_level;              /* 0=off, 1=err, 2=warn, 3=info, 4=debug */
-    uint8_t         reserved;
+    uint8_t         enable_fragmentation;   /* Auto-fragment large messages, default = 1 */
 } PeerTalk_Config;
 
 /* ========================================================================== */
@@ -848,6 +857,56 @@ PeerTalk_Error PeerTalk_GetLocalInfo(
  * Returns NULL if logging not initialized.
  */
 PT_Log *PeerTalk_GetLog(PeerTalk_Context *ctx);
+
+/* ========================================================================== */
+/* Capability Negotiation                                                     */
+/* ========================================================================== */
+
+/**
+ * Negotiated peer capabilities
+ *
+ * Exchanged after TCP connection established. Use this to understand
+ * peer constraints (e.g., Mac SE with 4MB vs Performa with 8MB).
+ */
+typedef struct {
+    uint16_t        max_message_size;       /* Effective negotiated max */
+    uint16_t        preferred_chunk;        /* Peer's preferred chunk size */
+    uint16_t        capability_flags;       /* Peer's PT_CAPFLAG_* */
+    uint8_t         buffer_pressure;        /* Peer's constraint level 0-100 */
+    uint8_t         fragmentation_active;   /* 1 if auto-frag enabled for this peer */
+} PeerTalk_Capabilities;
+
+/**
+ * Get negotiated capabilities for a peer
+ *
+ * Returns information about peer's constraints and negotiated parameters.
+ * Useful for adapting message sizes to peer capabilities.
+ *
+ * Args:
+ *   ctx     - PeerTalk context
+ *   peer_id - Peer to query
+ *   caps    - Output capability structure
+ *
+ * Returns: PT_OK on success, PT_ERR_PEER_NOT_FOUND if peer doesn't exist
+ */
+PeerTalk_Error PeerTalk_GetPeerCapabilities(
+    PeerTalk_Context *ctx,
+    PeerTalk_PeerID peer_id,
+    PeerTalk_Capabilities *caps);
+
+/**
+ * Get effective max message size for a peer
+ *
+ * Quick accessor for the negotiated maximum message size.
+ * Returns min(our_max, peer_max) for connected peers.
+ *
+ * Args:
+ *   ctx     - PeerTalk context
+ *   peer_id - Peer to query
+ *
+ * Returns: Effective max message size, or 0 if peer not found
+ */
+uint16_t PeerTalk_GetPeerMaxMessage(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id);
 
 #ifdef __cplusplus
 }
