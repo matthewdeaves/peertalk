@@ -32,6 +32,7 @@ struct pt_peer;
 #define PT_PEER_NAME_MAX        31
 #define PT_MESSAGE_MAX_PAYLOAD  65535
 #define PT_MESSAGE_HEADER_SIZE  10
+#define PT_COMPACT_HEADER_SIZE  4   /* Compact header: [P][TypeFlags][Len16] */
 #define PT_UDP_HEADER_SIZE      8
 
 /* Discovery packet types */
@@ -78,8 +79,9 @@ struct pt_peer;
 #define PT_CAP_FLAGS            0x04  /* 2 bytes: capability flags */
 
 /* Capability flags (sent in PT_CAP_FLAGS TLV) */
-#define PT_CAPFLAG_FRAGMENTATION 0x0001  /* Peer supports fragmentation */
-#define PT_CAPFLAG_STREAMING     0x0002  /* Peer supports streaming */
+#define PT_CAPFLAG_FRAGMENTATION   0x0001  /* Peer supports fragmentation */
+#define PT_CAPFLAG_STREAMING       0x0002  /* Peer supports streaming */
+#define PT_CAPFLAG_COMPACT_HEADER  0x0004  /* Peer supports compact 4-byte headers */
 
 /* Capability defaults (for legacy peers without PT_DISC_FLAG_HAS_CAPS) */
 #define PT_CAP_DEFAULT_MAX_MSG      512     /* Conservative for legacy */
@@ -164,6 +166,25 @@ typedef struct {
     uint8_t  sequence;
     uint16_t payload_len;
 } pt_message_header;
+
+/* Compact message header (4 bytes, no magic/seq/CRC)
+ *
+ * Wire format (4 bytes):
+ * - Marker (1): 'P' (0x50) - distinguishes from full header 'PTMG'
+ * - TypeFlags (1): High nibble = type (0-15), Low nibble = flags (0-15)
+ * - Payload Length (2, big-endian)
+ *
+ * Used when both peers support PT_CAPFLAG_COMPACT_HEADER.
+ * Reduces overhead from 12 bytes (10 header + 2 CRC) to 4 bytes.
+ */
+typedef struct {
+    uint8_t  type;              /* PT_MSG_TYPE_* (from high nibble) */
+    uint8_t  flags;             /* PT_MSG_FLAG_* (from low nibble) */
+    uint16_t payload_len;
+} pt_compact_header;
+
+/* Compact header marker byte */
+#define PT_COMPACT_MARKER  0x50  /* 'P' - first byte, distinguishes from 'PTMG' */
 
 /* ========================================================================
  * CRC-16 Functions
@@ -293,6 +314,53 @@ int pt_message_encode_header(const pt_message_header *hdr, uint8_t *buf);
  */
 int pt_message_decode_header(struct pt_context *ctx, const uint8_t *buf,
                              size_t len, pt_message_header *hdr);
+
+/* ========================================================================
+ * Compact Header Functions
+ * ======================================================================== */
+
+/* Encode compact message header to wire format
+ *
+ * Note: Caller must append payload (no CRC needed for compact headers)
+ *
+ * Args:
+ *   hdr - Parsed compact header
+ *   buf - Output buffer (at least PT_COMPACT_HEADER_SIZE bytes)
+ *
+ * Returns: PT_COMPACT_HEADER_SIZE (4) on success
+ */
+int pt_message_encode_compact(const pt_compact_header *hdr, uint8_t *buf);
+
+/* Decode compact message header from wire format
+ *
+ * Validates:
+ * - Marker byte ('P')
+ * - Type is valid (0x01-0x07)
+ *
+ * Args:
+ *   buf - Wire format data
+ *   len - Data length
+ *   hdr - Output parsed compact header
+ *
+ * Returns: 0 on success, negative error code on failure
+ *   PT_ERR_MAGIC if marker is incorrect
+ *   PT_ERR_TRUNCATED if packet is too short
+ *   PT_ERR_INVALID if type is invalid
+ */
+int pt_message_decode_compact(const uint8_t *buf, size_t len, pt_compact_header *hdr);
+
+/* Check if buffer starts with compact header marker
+ *
+ * Used to distinguish between full headers (starts with 'PTMG') and
+ * compact headers (starts with 'P' followed by non-'T' byte).
+ *
+ * Args:
+ *   buf - Wire format data (at least 2 bytes)
+ *   len - Data length
+ *
+ * Returns: 1 if compact header, 0 if full header or unknown
+ */
+int pt_message_is_compact(const uint8_t *buf, size_t len);
 
 /* ========================================================================
  * UDP Message Functions

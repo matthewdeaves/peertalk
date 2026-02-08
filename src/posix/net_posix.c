@@ -1840,6 +1840,14 @@ static int pt_recv_process_message(struct pt_context *ctx, struct pt_peer *peer,
                     peer->cold.caps.buffer_pressure = caps.buffer_pressure;
                     peer->cold.caps.caps_exchanged = 1;
 
+                    /* Negotiate compact header mode - both must support it */
+                    if ((caps.capability_flags & PT_CAPFLAG_COMPACT_HEADER) &&
+                        (ctx->local_capability_flags & PT_CAPFLAG_COMPACT_HEADER)) {
+                        peer->cold.caps.compact_mode = 1;
+                    } else {
+                        peer->cold.caps.compact_mode = 0;
+                    }
+
                     /* Calculate effective max = min(ours, theirs) */
                     effective_max = ctx->local_max_message;
                     if (caps.max_message_size < effective_max) {
@@ -1848,9 +1856,9 @@ static int pt_recv_process_message(struct pt_context *ctx, struct pt_peer *peer,
                     peer->hot.effective_max_msg = effective_max;
 
                     PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,
-                        "Received capabilities from peer %u: max=%u chunk=%u pressure=%u",
+                        "Received capabilities from peer %u: max=%u chunk=%u pressure=%u compact=%u",
                         peer->hot.id, caps.max_message_size, caps.preferred_chunk,
-                        caps.buffer_pressure);
+                        caps.buffer_pressure, peer->cold.caps.compact_mode);
                 } else {
                     PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
                         "Failed to decode capabilities from peer %u", peer->hot.id);

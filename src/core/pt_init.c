@@ -95,7 +95,8 @@ PeerTalk_Context *PeerTalk_Init(const PeerTalk_Config *config) {
     }
     ctx->local_max_message = ctx->config.max_message_size;
     ctx->local_preferred_chunk = ctx->config.preferred_chunk;
-    ctx->local_capability_flags = PT_CAPFLAG_FRAGMENTATION;  /* We support fragmentation */
+    /* We support fragmentation and compact headers */
+    ctx->local_capability_flags = PT_CAPFLAG_FRAGMENTATION | PT_CAPFLAG_COMPACT_HEADER;
     ctx->enable_fragmentation = (ctx->config.enable_fragmentation == 1) ? 1 : 0;
 
     /* Initialize PT_Log from Phase 0 */

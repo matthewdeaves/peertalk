@@ -504,6 +504,14 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
                     peer->cold.caps.buffer_pressure = caps.buffer_pressure;
                     peer->cold.caps.caps_exchanged = 1;
 
+                    /* Negotiate compact header mode - both must support it */
+                    if ((caps.capability_flags & PT_CAPFLAG_COMPACT_HEADER) &&
+                        (ctx->local_capability_flags & PT_CAPFLAG_COMPACT_HEADER)) {
+                        peer->cold.caps.compact_mode = 1;
+                    } else {
+                        peer->cold.caps.compact_mode = 0;
+                    }
+
                     /* Calculate effective max = min(ours, theirs) */
                     effective_max = ctx->local_max_message;
                     if (caps.max_message_size < effective_max) {
@@ -512,11 +520,12 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
                     peer->hot.effective_max_msg = effective_max;
 
                     PT_LOG_INFO(ctx->log, PT_LOG_CAT_NETWORK,
-                        "Received capabilities from peer %u: max=%u chunk=%u pressure=%u",
+                        "Received capabilities from peer %u: max=%u chunk=%u pressure=%u compact=%u",
                         (unsigned)peer->hot.id,
                         (unsigned)caps.max_message_size,
                         (unsigned)caps.preferred_chunk,
-                        (unsigned)caps.buffer_pressure);
+                        (unsigned)caps.buffer_pressure,
+                        (unsigned)peer->cold.caps.compact_mode);
                 } else {
                     PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
                         "Failed to decode capabilities from peer %u",

@@ -97,6 +97,7 @@ typedef struct {
     uint8_t  last_reported_pressure; /* 0-100: what we last told peer */
     uint8_t  pressure_update_pending; /* 1 if need to send pressure update */
     uint8_t  first_send_logged;  /* 1 after logging first send effective_max */
+    uint8_t  compact_mode;       /* 1 if compact headers negotiated with peer */
 } pt_peer_caps;
 
 /* ========================================================================== */

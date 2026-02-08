@@ -326,6 +326,68 @@ int pt_message_decode_header(struct pt_context *ctx, const uint8_t *buf,
 }
 
 /* ========================================================================
+ * Compact Header Functions
+ * ======================================================================== */
+
+int pt_message_encode_compact(const pt_compact_header *hdr, uint8_t *buf)
+{
+    /* Marker byte: 'P' (0x50) */
+    buf[0] = PT_COMPACT_MARKER;
+
+    /* TypeFlags: high nibble = type (0-7), low nibble = flags (0-15) */
+    buf[1] = ((hdr->type & 0x0F) << 4) | (hdr->flags & 0x0F);
+
+    /* Payload Length (big-endian) */
+    buf[2] = (hdr->payload_len >> 8) & 0xFF;
+    buf[3] = hdr->payload_len & 0xFF;
+
+    return PT_COMPACT_HEADER_SIZE;
+}
+
+int pt_message_decode_compact(const uint8_t *buf, size_t len, pt_compact_header *hdr)
+{
+    /* Minimum size check */
+    if (len < PT_COMPACT_HEADER_SIZE) {
+        return PT_ERR_TRUNCATED;
+    }
+
+    /* Marker validation */
+    if (buf[0] != PT_COMPACT_MARKER) {
+        return PT_ERR_MAGIC;
+    }
+
+    /* Extract type and flags from TypeFlags byte */
+    hdr->type = (buf[1] >> 4) & 0x0F;
+    hdr->flags = buf[1] & 0x0F;
+
+    /* Validate type */
+    if (hdr->type < PT_MSG_TYPE_DATA || hdr->type > PT_MSG_TYPE_CAPABILITY) {
+        return PT_ERR_INVALID;
+    }
+
+    /* Extract payload length (big-endian) */
+    hdr->payload_len = ((uint16_t)buf[2] << 8) | buf[3];
+
+    return 0;
+}
+
+int pt_message_is_compact(const uint8_t *buf, size_t len)
+{
+    if (len < 2) {
+        return 0;
+    }
+
+    /* Compact header starts with 'P' (0x50) followed by TypeFlags byte.
+     * Full header starts with 'P' 'T' 'M' 'G'.
+     * If second byte is NOT 'T', it's a compact header. */
+    if (buf[0] == PT_COMPACT_MARKER && buf[1] != 'T') {
+        return 1;
+    }
+
+    return 0;
+}
+
+/* ========================================================================
  * UDP Message Functions
  * ======================================================================== */
 
