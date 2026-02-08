@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2026-02-08 09:29:28</td>
+            <td class="headerValue">2026-02-08 13:14:35</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">1</td>
@@ -197,8 +197,8 @@
 <a name="135"><span class="lineNum">     135 </span>            :  *</a>
 <a name="136"><span class="lineNum">     136 </span>            :  * The platform data is allocated immediately after the context structure.</a>
 <a name="137"><span class="lineNum">     137 </span>            :  */</a>
-<a name="138"><span class="lineNum">     138 </span><span class="lineCov">       2069 : static inline pt_posix_data *pt_posix_get(struct pt_context *ctx) {</span></a>
-<a name="139"><span class="lineNum">     139 </span><span class="lineCov">       2069 :     return (pt_posix_data *)((char *)ctx + sizeof(struct pt_context));</span></a>
+<a name="138"><span class="lineNum">     138 </span><span class="lineCov">       2148 : static inline pt_posix_data *pt_posix_get(struct pt_context *ctx) {</span></a>
+<a name="139"><span class="lineNum">     139 </span><span class="lineCov">       2148 :     return (pt_posix_data *)((char *)ctx + sizeof(struct pt_context));</span></a>
 <a name="140"><span class="lineNum">     140 </span>            : }</a>
 <a name="141"><span class="lineNum">     141 </span>            : </a>
 <a name="142"><span class="lineNum">     142 </span>            : /* ========================================================================== */</a>
@@ -351,54 +351,64 @@
 <a name="289"><span class="lineNum">     289 </span>            : int pt_posix_send_control(struct pt_context *ctx, struct pt_peer *peer,</a>
 <a name="290"><span class="lineNum">     290 </span>            :                           uint8_t msg_type);</a>
 <a name="291"><span class="lineNum">     291 </span>            : </a>
-<a name="292"><span class="lineNum">     292 </span>            : /* ========================================================================== */</a>
-<a name="293"><span class="lineNum">     293 </span>            : /* UDP Messaging (Session 4.4)                                               */</a>
-<a name="294"><span class="lineNum">     294 </span>            : /* ========================================================================== */</a>
-<a name="295"><span class="lineNum">     295 </span>            : </a>
-<a name="296"><span class="lineNum">     296 </span>            : /**</a>
-<a name="297"><span class="lineNum">     297 </span>            :  * Initialize UDP messaging socket (separate from discovery)</a>
-<a name="298"><span class="lineNum">     298 </span>            :  *</a>
-<a name="299"><span class="lineNum">     299 </span>            :  * Returns: 0 on success, -1 on failure</a>
-<a name="300"><span class="lineNum">     300 </span>            :  */</a>
-<a name="301"><span class="lineNum">     301 </span>            : int pt_posix_udp_init(struct pt_context *ctx);</a>
-<a name="302"><span class="lineNum">     302 </span>            : </a>
-<a name="303"><span class="lineNum">     303 </span>            : /**</a>
-<a name="304"><span class="lineNum">     304 </span>            :  * Shutdown UDP messaging socket</a>
-<a name="305"><span class="lineNum">     305 </span>            :  */</a>
-<a name="306"><span class="lineNum">     306 </span>            : void pt_posix_udp_shutdown(struct pt_context *ctx);</a>
-<a name="307"><span class="lineNum">     307 </span>            : </a>
-<a name="308"><span class="lineNum">     308 </span>            : /**</a>
-<a name="309"><span class="lineNum">     309 </span>            :  * Send unreliable UDP message to peer</a>
-<a name="310"><span class="lineNum">     310 </span>            :  *</a>
-<a name="311"><span class="lineNum">     311 </span>            :  * Returns: 0 on success, -1 on failure</a>
-<a name="312"><span class="lineNum">     312 </span>            :  */</a>
-<a name="313"><span class="lineNum">     313 </span>            : int pt_posix_send_udp(struct pt_context *ctx, struct pt_peer *peer,</a>
-<a name="314"><span class="lineNum">     314 </span>            :                       const void *data, uint16_t len);</a>
-<a name="315"><span class="lineNum">     315 </span>            : </a>
-<a name="316"><span class="lineNum">     316 </span>            : /**</a>
-<a name="317"><span class="lineNum">     317 </span>            :  * Receive UDP message</a>
-<a name="318"><span class="lineNum">     318 </span>            :  *</a>
-<a name="319"><span class="lineNum">     319 </span>            :  * Non-blocking receive of UDP messages (not discovery packets).</a>
+<a name="292"><span class="lineNum">     292 </span>            : /**</a>
+<a name="293"><span class="lineNum">     293 </span>            :  * Send capability message to peer</a>
+<a name="294"><span class="lineNum">     294 </span>            :  *</a>
+<a name="295"><span class="lineNum">     295 </span>            :  * Called after connection established to exchange capability information.</a>
+<a name="296"><span class="lineNum">     296 </span>            :  * Enables automatic fragmentation for constrained peers.</a>
+<a name="297"><span class="lineNum">     297 </span>            :  *</a>
+<a name="298"><span class="lineNum">     298 </span>            :  * Returns: PT_OK on success, error code on failure</a>
+<a name="299"><span class="lineNum">     299 </span>            :  */</a>
+<a name="300"><span class="lineNum">     300 </span>            : int pt_posix_send_capability(struct pt_context *ctx, struct pt_peer *peer);</a>
+<a name="301"><span class="lineNum">     301 </span>            : </a>
+<a name="302"><span class="lineNum">     302 </span>            : /* ========================================================================== */</a>
+<a name="303"><span class="lineNum">     303 </span>            : /* UDP Messaging (Session 4.4)                                               */</a>
+<a name="304"><span class="lineNum">     304 </span>            : /* ========================================================================== */</a>
+<a name="305"><span class="lineNum">     305 </span>            : </a>
+<a name="306"><span class="lineNum">     306 </span>            : /**</a>
+<a name="307"><span class="lineNum">     307 </span>            :  * Initialize UDP messaging socket (separate from discovery)</a>
+<a name="308"><span class="lineNum">     308 </span>            :  *</a>
+<a name="309"><span class="lineNum">     309 </span>            :  * Returns: 0 on success, -1 on failure</a>
+<a name="310"><span class="lineNum">     310 </span>            :  */</a>
+<a name="311"><span class="lineNum">     311 </span>            : int pt_posix_udp_init(struct pt_context *ctx);</a>
+<a name="312"><span class="lineNum">     312 </span>            : </a>
+<a name="313"><span class="lineNum">     313 </span>            : /**</a>
+<a name="314"><span class="lineNum">     314 </span>            :  * Shutdown UDP messaging socket</a>
+<a name="315"><span class="lineNum">     315 </span>            :  */</a>
+<a name="316"><span class="lineNum">     316 </span>            : void pt_posix_udp_shutdown(struct pt_context *ctx);</a>
+<a name="317"><span class="lineNum">     317 </span>            : </a>
+<a name="318"><span class="lineNum">     318 </span>            : /**</a>
+<a name="319"><span class="lineNum">     319 </span>            :  * Send unreliable UDP message to peer</a>
 <a name="320"><span class="lineNum">     320 </span>            :  *</a>
-<a name="321"><span class="lineNum">     321 </span>            :  * Returns: 1 if message received, 0 if no data, -1 on error</a>
+<a name="321"><span class="lineNum">     321 </span>            :  * Returns: 0 on success, -1 on failure</a>
 <a name="322"><span class="lineNum">     322 </span>            :  */</a>
-<a name="323"><span class="lineNum">     323 </span>            : int pt_posix_recv_udp(struct pt_context *ctx);</a>
-<a name="324"><span class="lineNum">     324 </span>            : </a>
-<a name="325"><span class="lineNum">     325 </span>            : /* ========================================================================== */</a>
-<a name="326"><span class="lineNum">     326 </span>            : /* Main Poll                                                                  */</a>
-<a name="327"><span class="lineNum">     327 </span>            : /* ========================================================================== */</a>
-<a name="328"><span class="lineNum">     328 </span>            : </a>
-<a name="329"><span class="lineNum">     329 </span>            : /**</a>
-<a name="330"><span class="lineNum">     330 </span>            :  * Main POSIX poll function</a>
-<a name="331"><span class="lineNum">     331 </span>            :  *</a>
-<a name="332"><span class="lineNum">     332 </span>            :  * Polls all sockets (discovery, listen, UDP, TCP peers) using select().</a>
-<a name="333"><span class="lineNum">     333 </span>            :  * Delegates to appropriate handlers based on ready sockets.</a>
-<a name="334"><span class="lineNum">     334 </span>            :  *</a>
-<a name="335"><span class="lineNum">     335 </span>            :  * Returns: 0 on success, -1 on error</a>
-<a name="336"><span class="lineNum">     336 </span>            :  */</a>
-<a name="337"><span class="lineNum">     337 </span>            : int pt_posix_poll(struct pt_context *ctx);</a>
+<a name="323"><span class="lineNum">     323 </span>            : int pt_posix_send_udp(struct pt_context *ctx, struct pt_peer *peer,</a>
+<a name="324"><span class="lineNum">     324 </span>            :                       const void *data, uint16_t len);</a>
+<a name="325"><span class="lineNum">     325 </span>            : </a>
+<a name="326"><span class="lineNum">     326 </span>            : /**</a>
+<a name="327"><span class="lineNum">     327 </span>            :  * Receive UDP message</a>
+<a name="328"><span class="lineNum">     328 </span>            :  *</a>
+<a name="329"><span class="lineNum">     329 </span>            :  * Non-blocking receive of UDP messages (not discovery packets).</a>
+<a name="330"><span class="lineNum">     330 </span>            :  *</a>
+<a name="331"><span class="lineNum">     331 </span>            :  * Returns: 1 if message received, 0 if no data, -1 on error</a>
+<a name="332"><span class="lineNum">     332 </span>            :  */</a>
+<a name="333"><span class="lineNum">     333 </span>            : int pt_posix_recv_udp(struct pt_context *ctx);</a>
+<a name="334"><span class="lineNum">     334 </span>            : </a>
+<a name="335"><span class="lineNum">     335 </span>            : /* ========================================================================== */</a>
+<a name="336"><span class="lineNum">     336 </span>            : /* Main Poll                                                                  */</a>
+<a name="337"><span class="lineNum">     337 </span>            : /* ========================================================================== */</a>
 <a name="338"><span class="lineNum">     338 </span>            : </a>
-<a name="339"><span class="lineNum">     339 </span>            : #endif /* PT_NET_POSIX_H */</a>
+<a name="339"><span class="lineNum">     339 </span>            : /**</a>
+<a name="340"><span class="lineNum">     340 </span>            :  * Main POSIX poll function</a>
+<a name="341"><span class="lineNum">     341 </span>            :  *</a>
+<a name="342"><span class="lineNum">     342 </span>            :  * Polls all sockets (discovery, listen, UDP, TCP peers) using select().</a>
+<a name="343"><span class="lineNum">     343 </span>            :  * Delegates to appropriate handlers based on ready sockets.</a>
+<a name="344"><span class="lineNum">     344 </span>            :  *</a>
+<a name="345"><span class="lineNum">     345 </span>            :  * Returns: 0 on success, -1 on error</a>
+<a name="346"><span class="lineNum">     346 </span>            :  */</a>
+<a name="347"><span class="lineNum">     347 </span>            : int pt_posix_poll(struct pt_context *ctx);</a>
+<a name="348"><span class="lineNum">     348 </span>            : </a>
+<a name="349"><span class="lineNum">     349 </span>            : #endif /* PT_NET_POSIX_H */</a>
 </pre>
       </td>
     </tr>
