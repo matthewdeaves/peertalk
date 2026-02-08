@@ -105,6 +105,68 @@ Machines may support FTP, LaunchAPPL, or both:
 - **LaunchAPPL port**: Always 1984 when configured
 - **Check capability**: Use `test_connection` with `test_launchappl=true`
 
+## LaunchAPPL Test Execution
+
+**CRITICAL: Run only ONE test at a time via LaunchAPPL. Wait for completion before starting another.**
+
+### Why Sequential Execution?
+
+Test apps bind to network ports (7353 discovery, 7354 TCP). Running multiple tests simultaneously causes:
+- Port conflicts (discovery fails with error -5)
+- Corrupted test results
+- Resource leaks on the Mac
+
+### Execution Pattern
+
+```python
+# 1. Execute test via LaunchAPPL
+result = mcp__classic-mac-hardware__execute_binary(
+    machine="performa6200",
+    platform="mactcp",
+    binary_path="build/mac/test_latency.bin"
+)
+
+# 2. If timeout (60s), the test is still running
+# WAIT - do not start another test!
+
+# 3. Monitor log file for completion markers
+mcp__classic-mac-hardware__download_file(
+    machine="performa6200",
+    remote_path="PT_Latency",
+    local_path="downloads/PT_Latency"
+)
+
+# 4. Look for these markers in the log:
+#    - "TEST EXITING - cleaning up..." = test completed normally
+#    - "RESULTS" section = test finished successfully
+#    - Log file stops growing = test finished
+
+# 5. Only then start the next test
+```
+
+### Test Completion Markers
+
+All test apps log these markers:
+- **Start**: `"======== PeerTalk <TestName> Test ========"`
+- **Results**: `"======== <TEST> RESULTS ========"`
+- **Exit**: `"TEST EXITING - cleaning up..."`
+
+### Test Durations
+
+| Test | Approximate Duration |
+|------|---------------------|
+| test_mactcp | 60 seconds |
+| test_latency | 2-3 minutes (500 pings across 5 sizes) |
+| test_throughput | 2+ minutes per chunk size |
+| test_stress | 50+ cycles × ~5 seconds each |
+| test_discovery | 2 minutes |
+
+### If a Test Gets Stuck
+
+1. Check log file for errors
+2. Reboot the Mac (cleanest solution)
+3. Wait for peer timeout (30 seconds) before retrying
+
 ## If MCP Doesn't Work
 
 If the MCP server has issues:
