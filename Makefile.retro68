@@ -49,7 +49,8 @@ CORE_SRCS = \
     src/core/peer.c \
     src/core/queue.c \
     src/core/send.c \
-    src/core/direct_buffer.c
+    src/core/direct_buffer.c \
+    src/core/stream.c
 
 # PT_Log sources (Mac version)
 LOG_SRCS = src/log/pt_log_mac.c

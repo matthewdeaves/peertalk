@@ -137,7 +137,7 @@ typedef struct {
     uint8_t             active;         /* 1 if stream in progress */
     uint8_t             cancelled;      /* 1 if cancel requested */
     uint8_t             reserved[2];
-} pt_stream_state;
+} pt_peer_stream;
 
 /* ========================================================================== */
 /* Internal Peer Address Structure                                           */
@@ -215,7 +215,7 @@ struct pt_peer {
     struct pt_queue    *recv_queue;     /* Tier 1: 256-byte slots for control messages */
     pt_direct_buffer    send_direct;    /* Tier 2: 4KB buffer for large outgoing messages */
     pt_direct_buffer    recv_direct;    /* Tier 2: 4KB buffer for large incoming messages */
-    pt_stream_state     stream;         /* Active stream transfer state */
+    pt_peer_stream      stream;         /* Active stream transfer state */
 };
 
 /* ========================================================================== */

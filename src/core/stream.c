@@ -158,7 +158,7 @@ int pt_stream_poll(struct pt_context *ctx, struct pt_peer *peer,
                    int (*send_func)(struct pt_context *, struct pt_peer *,
                                     const void *, size_t))
 {
-    pt_stream_state *stream = &peer->stream;
+    pt_peer_stream *stream = &peer->stream;
     PeerTalk_StreamCompleteCB on_complete;
     uint32_t chunk_size;
     uint32_t remaining;
