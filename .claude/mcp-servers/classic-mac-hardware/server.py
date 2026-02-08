@@ -113,9 +113,12 @@ class ClassicMacHardwareServer:
     def _connect_ftp(self, machine_id: str) -> FTP:
         """Create FTP connection with rate limiting."""
         self._validate_machine_id(machine_id)
-        self._rate_limit()
 
         machine = self.machines[machine_id]
+        if 'ftp' not in machine:
+            raise ValueError(f"FTP not configured for {machine['name']}. This machine uses LaunchAPPL only.")
+
+        self._rate_limit()
         ftp_config = machine['ftp']
 
         ftp = FTP()
@@ -435,7 +438,15 @@ class ClassicMacHardwareServer:
 
         lines = ["Configured machines:\n"]
         for mid, m in self.machines.items():
-            lines.append(f"  {mid}: {m['name']} ({m['platform']}) - {m['ftp']['host']}")
+            # Get host from ftp or launchappl config
+            host = m.get('ftp', {}).get('host') or m.get('launchappl', {}).get('host', 'unknown')
+            features = []
+            if 'ftp' in m:
+                features.append('FTP')
+            if 'launchappl' in m:
+                features.append('LaunchAPPL')
+            features_str = '+'.join(features) if features else 'no remote'
+            lines.append(f"  {mid}: {m['name']} ({m['platform']}) - {host} [{features_str}]")
 
         return [TextContent(type="text", text="\n".join(lines))]
 
@@ -453,35 +464,45 @@ class ClassicMacHardwareServer:
         )]
 
     def _tool_test_connection(self, args: dict) -> list[TextContent]:
-        """Test FTP connection."""
+        """Test FTP and/or LaunchAPPL connection."""
         machine_id = args["machine"]
         self._validate_machine_id(machine_id)
         machine = self.machines[machine_id]
 
         results = []
 
-        # Test FTP
-        try:
-            ftp = self._connect_ftp(machine_id)
-            pwd = ftp.pwd()
-            ftp.quit()
-            results.append(f"✓ FTP: Connected (root: {pwd})")
-        except Exception as e:
-            results.append(f"✗ FTP: {str(e)}")
+        # Test FTP only if configured
+        if 'ftp' in machine:
+            try:
+                ftp = self._connect_ftp(machine_id)
+                pwd = ftp.pwd()
+                ftp.quit()
+                results.append(f"✓ FTP: Connected (root: {pwd})")
+            except Exception as e:
+                results.append(f"✗ FTP: {str(e)}")
+        else:
+            results.append("- FTP: Not configured")
 
-        # Test LaunchAPPL if requested
-        if args.get("test_launchappl"):
+        # Test LaunchAPPL if configured or explicitly requested
+        if 'launchappl' in machine or args.get("test_launchappl"):
             import socket
             try:
-                port = 1984
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(2)
-                result = sock.connect_ex((machine['ftp']['host'], port))
-                sock.close()
-                if result == 0:
-                    results.append(f"✓ LaunchAPPL: Port {port} open")
+                # Get LaunchAPPL config or fall back to FTP host
+                la_config = machine.get('launchappl', {})
+                host = la_config.get('host') or machine.get('ftp', {}).get('host')
+                port = la_config.get('port', 1984)
+
+                if not host:
+                    results.append("✗ LaunchAPPL: No host configured")
                 else:
-                    results.append(f"✗ LaunchAPPL: Port {port} not responding")
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(2)
+                    result = sock.connect_ex((host, port))
+                    sock.close()
+                    if result == 0:
+                        results.append(f"✓ LaunchAPPL: Port {port} open")
+                    else:
+                        results.append(f"✗ LaunchAPPL: Port {port} not responding")
             except Exception as e:
                 results.append(f"✗ LaunchAPPL: {str(e)}")
 
@@ -719,8 +740,14 @@ class ClassicMacHardwareServer:
         if not binary_path or not Path(binary_path).exists():
             return [TextContent(type="text", text=f"❌ Binary not found: {binary_path}")]
 
+        # Get host from launchappl config first, fall back to ftp host
+        la_config = machine.get('launchappl', {})
+        machine_ip = la_config.get('host') or machine.get('ftp', {}).get('host')
+
+        if not machine_ip:
+            return [TextContent(type="text", text=f"❌ No host configured for {machine['name']}. Add 'launchappl.host' or 'ftp.host' to machines.json")]
+
         binary_path = str(Path(binary_path).resolve())
-        machine_ip = machine['ftp']['host']
 
         try:
             cmd = [launchappl, "-e", "tcp", "--tcp-address", machine_ip, binary_path]
