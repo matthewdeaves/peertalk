@@ -108,6 +108,19 @@ void log_stream_cleanup(void);
 
 #include <string.h>
 
+/* Network byte order conversion for cross-platform compatibility */
+#if defined(__BIG_ENDIAN__) || defined(PT_PLATFORM_MACTCP)
+/* Mac is big-endian - network order is native */
+#define LOG_STREAM_HTONL(x) (x)
+#else
+/* Little-endian - need to swap */
+#define LOG_STREAM_HTONL(x) \
+    ((((x) & 0xFF000000U) >> 24) | \
+     (((x) & 0x00FF0000U) >> 8) | \
+     (((x) & 0x0000FF00U) << 8) | \
+     (((x) & 0x000000FFU) << 24))
+#endif
+
 /* Global state */
 LogStreamState g_log_stream;
 
@@ -217,10 +230,13 @@ PeerTalk_Error log_stream_send(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id)
             g_log_stream.buffer,
             log_length);
 
-    /* Write header */
-    memcpy(g_log_stream.buffer, LOG_STREAM_MARKER, LOG_STREAM_MARKER_LEN);
+    /* Write header - use network byte order for cross-platform compatibility */
     total_length = log_length + LOG_STREAM_HEADER_SIZE;
-    memcpy(g_log_stream.buffer + LOG_STREAM_MARKER_LEN, &total_length, sizeof(total_length));
+    {
+        uint32_t net_length = LOG_STREAM_HTONL(total_length);
+        memcpy(g_log_stream.buffer, LOG_STREAM_MARKER, LOG_STREAM_MARKER_LEN);
+        memcpy(g_log_stream.buffer + LOG_STREAM_MARKER_LEN, &net_length, sizeof(net_length));
+    }
 
     g_log_stream.length = total_length;
     g_log_stream.streaming = 1;

@@ -264,9 +264,10 @@ static int log_receiver_start(PeerTalk_PeerID peer_id, const void *header_data,
         return -1;
     }
 
-    /* Extract total length from header */
+    /* Extract total length from header (big-endian from Mac) */
     memcpy(&total_length, (const uint8_t *)header_data + LOG_STREAM_MARKER_LEN,
            sizeof(total_length));
+    total_length = ntohl(total_length);  /* Convert from network to host order */
 
     if (total_length > LOG_RECEIVE_BUFFER_SIZE || total_length < LOG_STREAM_HEADER_SIZE) {
         printf("[LOG] Invalid log stream length: %u\n", total_length);
@@ -376,6 +377,9 @@ static int log_receiver_handle(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
             if (!name) name = "unknown";
         }
 
+        if (g_config.verbose) {
+            printf("[LOG] Detected log stream marker from peer %u\n", peer_id);
+        }
         log_receiver_start(peer_id, data, len, name);
         log_receiver_check_complete();
         return 1;
@@ -640,8 +644,9 @@ int main(int argc, char *argv[])
         }
     }
 
-    /* Signal handler */
+    /* Signal handlers for graceful shutdown */
     signal(SIGINT, sigint_handler);
+    signal(SIGTERM, sigint_handler);
 
     printf("========================================\n");
     printf("PeerTalk Performance Test Partner\n");
@@ -731,6 +736,10 @@ int main(int argc, char *argv[])
     print_stats();
 
     /* Cleanup */
+    printf("========================================\n");
+    printf("Shutting down gracefully...\n");
+    printf("========================================\n");
+
     if (g_stream_buffer) {
         free(g_stream_buffer);
     }
@@ -739,5 +748,6 @@ int main(int argc, char *argv[])
     }
     PeerTalk_Shutdown(g_ctx);
 
+    printf("Partner exited cleanly.\n");
     return 0;
 }

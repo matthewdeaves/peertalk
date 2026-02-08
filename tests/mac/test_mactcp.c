@@ -23,12 +23,18 @@
 #include "peertalk.h"
 #include "pt_log.h"
 
+/* Log streaming - sends logs to test partner at completion */
+#define LOG_STREAM_IMPLEMENTATION
+#include "log_stream.h"
+
 /* Test state */
 static PeerTalk_Context *g_ctx = NULL;
 static PT_Log *g_log = NULL;
 static int g_peers_found = 0;
 static int g_connected = 0;
 static unsigned long g_start_ticks = 0;
+static PeerTalk_PeerID g_connected_peer = 0;
+static PeerTalk_PeerID g_first_peer = 0;
 
 /* Callbacks */
 static void on_peer_discovered(PeerTalk_Context *ctx, const PeerTalk_PeerInfo *peer,
@@ -50,6 +56,11 @@ static void on_peer_discovered(PeerTalk_Context *ctx, const PeerTalk_PeerInfo *p
         (unsigned)peer->port);
 
     g_peers_found++;
+
+    /* Track first discovered peer for log streaming */
+    if (g_first_peer == 0) {
+        g_first_peer = peer->id;
+    }
 }
 
 static void on_peer_connected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
@@ -62,6 +73,7 @@ static void on_peer_connected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
         "CONNECTED to peer %u", (unsigned)peer_id);
 
     g_connected++;
+    g_connected_peer = peer_id;
 }
 
 static void on_peer_disconnected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
@@ -129,6 +141,9 @@ int main(void)
         PT_LogSetCategories(g_log, 0xFFFF);  /* All categories */
         PT_LogSetFile(g_log, "PT_Log");
     }
+
+    /* Initialize log streaming to capture logs for test partner */
+    log_stream_init(g_log);
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
         "========================================");
@@ -254,6 +269,57 @@ cleanup:
         "Result: %s", (g_peers_found > 0 || g_connected > 0) ? "PASS" : "NO PEERS FOUND");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
         "========================================");
+
+    /* Stream logs to test partner if connected or have a discovered peer */
+    if (g_ctx && (g_connected_peer != 0 || g_first_peer != 0)) {
+        PeerTalk_PeerID stream_peer = g_connected_peer ? g_connected_peer : g_first_peer;
+        PeerTalk_Error stream_err;
+
+        /* Connect if not already connected */
+        if (g_connected_peer == 0 && g_first_peer != 0) {
+            PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Connecting for log stream...");
+            if (PeerTalk_Connect(g_ctx, g_first_peer) == PT_OK) {
+                /* Wait for connection (up to 5 seconds) */
+                unsigned long connect_start = TickCount();
+                while (g_connected_peer == 0 && (TickCount() - connect_start) < 300) {
+                    PeerTalk_Poll(g_ctx);
+                }
+                if (g_connected_peer != 0) {
+                    stream_peer = g_connected_peer;
+                }
+            }
+        }
+
+        if (g_connected_peer != 0) {
+            PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Streaming logs to test partner...");
+
+            stream_err = log_stream_send(g_ctx, stream_peer);
+            if (stream_err == PT_OK) {
+                /* Poll until streaming complete */
+                while (!log_stream_complete()) {
+                    EventRecord evt;
+                    if (WaitNextEvent(everyEvent, &evt, 1, NULL)) {
+                        if (evt.what == keyDown) break;
+                    }
+                    PeerTalk_Poll(g_ctx);
+                }
+
+                if (log_stream_result() == PT_OK) {
+                    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+                        "Log stream complete: %lu bytes sent",
+                        (unsigned long)log_stream_bytes_sent());
+                } else {
+                    PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                        "Log stream failed: error %d", log_stream_result());
+                }
+            }
+        }
+        log_stream_cleanup();
+    }
+
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "TEST EXITING - cleaning up...");
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
 
     /* Shutdown */
     if (g_ctx) {

@@ -29,6 +29,10 @@
 #include "peertalk.h"
 #include "pt_log.h"
 
+/* Log streaming - sends logs to test partner at completion */
+#define LOG_STREAM_IMPLEMENTATION
+#include "log_stream.h"
+
 /* ========================================================================== */
 /* Configuration                                                               */
 /* ========================================================================== */
@@ -436,6 +440,9 @@ int main(void)
         PT_LogSetFile(g_log, "PT_Stress");
     }
 
+    /* Initialize log streaming to capture logs for test partner */
+    log_stream_init(g_log);
+
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "PeerTalk Stress Test");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Version: %s", PeerTalk_Version());
@@ -500,7 +507,55 @@ int main(void)
 
     print_results();
 
+    /* Stream logs to test partner if we have a connected peer */
+    if (g_ctx && g_test.target_peer != 0) {
+        PeerTalk_Error stream_err;
+
+        /* Reconnect if needed for log streaming */
+        if (g_test.state != STATE_CONNECTED) {
+            PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Reconnecting for log stream...");
+            if (PeerTalk_Connect(g_ctx, g_test.target_peer) == PT_OK) {
+                /* Wait for connection (up to 5 seconds) */
+                unsigned long connect_start = TickCount();
+                while (g_test.state != STATE_CONNECTED &&
+                       (TickCount() - connect_start) < 300) {
+                    PeerTalk_Poll(g_ctx);
+                }
+            }
+        }
+
+        if (g_test.state == STATE_CONNECTED) {
+            PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Streaming logs to test partner...");
+
+            stream_err = log_stream_send(g_ctx, g_test.target_peer);
+            if (stream_err == PT_OK) {
+                /* Poll until streaming complete */
+                while (!log_stream_complete()) {
+                    EventRecord evt;
+                    if (WaitNextEvent(everyEvent, &evt, 1, NULL)) {
+                        if (evt.what == keyDown) break;
+                    }
+                    PeerTalk_Poll(g_ctx);
+                }
+
+                if (log_stream_result() == PT_OK) {
+                    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+                        "Log stream complete: %lu bytes sent",
+                        (unsigned long)log_stream_bytes_sent());
+                } else {
+                    PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                        "Log stream failed: error %d", log_stream_result());
+                }
+            }
+        }
+        log_stream_cleanup();
+    }
+
 cleanup:
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "TEST EXITING - cleaning up...");
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
+
     if (g_ctx) {
         PeerTalk_Shutdown(g_ctx);
     }

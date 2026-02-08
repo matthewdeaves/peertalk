@@ -20,6 +20,7 @@
 #include "protocol.h"
 #include "queue.h"
 #include "direct_buffer.h"
+#include "stream.h"
 
 #if defined(PT_PLATFORM_MACTCP)
 
@@ -86,6 +87,17 @@ extern int pt_mactcp_tcp_send(struct pt_context *ctx, struct pt_peer *peer,
 extern int pt_mactcp_tcp_send_with_flags(struct pt_context *ctx, struct pt_peer *peer,
                                           const void *data, uint16_t len, uint8_t flags);
 extern int pt_mactcp_send_capability(struct pt_context *ctx, struct pt_peer *peer);
+
+/**
+ * Wrapper for pt_stream_poll send function.
+ * Matches the signature expected by pt_stream_poll.
+ */
+static int pt_mactcp_stream_send(struct pt_context *ctx, struct pt_peer *peer,
+                                  const void *data, size_t len)
+{
+    /* Stream data uses the message framing path */
+    return pt_mactcp_tcp_send(ctx, peer, data, (uint16_t)len);
+}
 
 /* From tcp_mactcp.c */
 extern int pt_mactcp_tcp_release(struct pt_context *ctx, int idx);
@@ -314,6 +326,9 @@ static void pt_mactcp_poll_connected(struct pt_context *ctx,
             }
         }
     }
+
+    /* Stream: Process active stream transfers (e.g., log streaming) */
+    pt_stream_poll(ctx, peer, pt_mactcp_stream_send);
 
     /* Receive data */
     result = pt_mactcp_tcp_recv(ctx, peer);
@@ -584,6 +599,9 @@ int pt_mactcp_poll_fast(struct pt_context *ctx)
                 drain_count++;
             }
         }
+
+        /* Stream: Process active stream transfers */
+        pt_stream_poll(ctx, peer, pt_mactcp_stream_send);
 
         /* Receive data */
         {

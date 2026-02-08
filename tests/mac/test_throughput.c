@@ -484,6 +484,10 @@ int main(void)
     }
 
 cleanup:
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "TEST EXITING - cleaning up...");
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
+
     log_stream_cleanup();
     if (g_ctx) {
         PeerTalk_Shutdown(g_ctx);

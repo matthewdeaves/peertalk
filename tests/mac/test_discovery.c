@@ -28,6 +28,10 @@
 #include "peertalk.h"
 #include "pt_log.h"
 
+/* Log streaming - sends logs to test partner at completion */
+#define LOG_STREAM_IMPLEMENTATION
+#include "log_stream.h"
+
 /* ========================================================================== */
 /* Configuration                                                               */
 /* ========================================================================== */
@@ -80,6 +84,8 @@ static PT_Log *g_log = NULL;
 static DiscoveryStats g_stats;
 static unsigned long g_last_report = 0;
 static int g_running = 1;
+static PeerTalk_PeerID g_first_peer = 0;
+static PeerTalk_PeerID g_connected_peer = 0;
 
 /* ========================================================================== */
 /* Utility Functions                                                           */
@@ -298,6 +304,11 @@ static void on_peer_discovered(PeerTalk_Context *ctx, const PeerTalk_PeerInfo *p
             ticks_to_ms(now - g_stats.test_start_ticks));
     }
 
+    /* Track first peer for log streaming */
+    if (g_first_peer == 0) {
+        g_first_peer = peer->id;
+    }
+
     /* Find or create tracked peer */
     tracked = find_tracked_peer(peer->id);
     if (tracked == NULL) {
@@ -353,8 +364,9 @@ static void on_peer_connected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
 {
     (void)ctx;
     (void)user_data;
+    g_connected_peer = peer_id;
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
-        "CONNECTED to peer %u (not expected in discovery test)",
+        "CONNECTED to peer %u",
         (unsigned)peer_id);
 }
 
@@ -442,7 +454,15 @@ int main(void)
         goto cleanup;
     }
 
-    /* Don't start listening - this is a discovery-only test */
+    /* Start listening for TCP connections (for log streaming at end) */
+    if (PeerTalk_StartListening(g_ctx) != 0) {
+        PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+            "Warning: Could not start TCP listener for log streaming");
+    }
+
+    /* Initialize log streaming to capture logs for test partner */
+    log_stream_init(g_log);
+
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
         "Discovery started. Listening for peers...");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Press any key to stop early.");
@@ -481,7 +501,62 @@ int main(void)
 
     print_results();
 
+    /* Stream logs to test partner if we have a discovered peer */
+    if (g_ctx && (g_connected_peer != 0 || g_first_peer != 0)) {
+        PeerTalk_PeerID stream_peer = g_connected_peer ? g_connected_peer : g_first_peer;
+        PeerTalk_Error stream_err;
+
+        /* Connect if not already connected */
+        if (g_connected_peer == 0 && g_first_peer != 0) {
+            PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Connecting for log stream...");
+            if (PeerTalk_Connect(g_ctx, g_first_peer) == PT_OK) {
+                /* Wait for connection (up to 5 seconds) */
+                unsigned long connect_start = TickCount();
+                while (g_connected_peer == 0 && (TickCount() - connect_start) < 300) {
+                    EventRecord evt;
+                    if (WaitNextEvent(everyEvent, &evt, 1, NULL)) {
+                        if (evt.what == keyDown) break;
+                    }
+                    PeerTalk_Poll(g_ctx);
+                }
+                if (g_connected_peer != 0) {
+                    stream_peer = g_connected_peer;
+                }
+            }
+        }
+
+        if (g_connected_peer != 0) {
+            PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Streaming logs to test partner...");
+
+            stream_err = log_stream_send(g_ctx, stream_peer);
+            if (stream_err == PT_OK) {
+                /* Poll until streaming complete */
+                while (!log_stream_complete()) {
+                    EventRecord evt;
+                    if (WaitNextEvent(everyEvent, &evt, 1, NULL)) {
+                        if (evt.what == keyDown) break;
+                    }
+                    PeerTalk_Poll(g_ctx);
+                }
+
+                if (log_stream_result() == PT_OK) {
+                    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+                        "Log stream complete: %lu bytes sent",
+                        (unsigned long)log_stream_bytes_sent());
+                } else {
+                    PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                        "Log stream failed: error %d", log_stream_result());
+                }
+            }
+        }
+        log_stream_cleanup();
+    }
+
 cleanup:
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "TEST EXITING - cleaning up...");
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
+
     if (g_ctx) {
         PeerTalk_Shutdown(g_ctx);
     }
