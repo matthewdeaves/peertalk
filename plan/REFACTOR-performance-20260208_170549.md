@@ -109,75 +109,80 @@ typedef struct {
 
 ---
 
-### 4. Streaming Mode for Bulk Transfers
-**Impact: MEDIUM-HIGH | Effort: MEDIUM | Expected Gain: 50%+ for file transfers**
+### 4. Streaming Mode for Bulk Transfers ✅ ALREADY IMPLEMENTED
+**Impact: N/A | Feature already exists and is wired into poll loops**
 
-Bypass the queue system for large sequential transfers:
+**Existing API** (include/peertalk.h, src/core/stream.c):
 ```c
-// Current: Fragment → Queue → Poll → Send (per fragment)
-// Streaming: Direct buffer → Send → Callback when done
-
-PeerTalk_StreamSend(ctx, peer, file_data, 64KB, on_complete);
+PeerTalk_Error PeerTalk_StreamSend(ctx, peer_id, data, length, on_complete, user_data);
+PeerTalk_Error PeerTalk_StreamCancel(ctx, peer_id);
+int PeerTalk_StreamActive(ctx, peer_id);
 ```
 
-**Benefits**:
-- No queue slot limitations
-- Fewer context switches
-- Better TCP window utilization
+**Implementation** (verified 2026-02-08):
+- `pt_stream_poll()` called in both MacTCP and POSIX poll loops
+- Uses `peer->hot.effective_chunk` for adaptive chunk sizing
+- Supports up to `PT_MAX_STREAM_SIZE` (64KB)
+- Used by test apps for log streaming to partner
 
 ---
 
-### 5. Reduce Protocol Overhead for Small Messages
-**Impact: MEDIUM | Effort: LOW | Expected Gain: 10-15% for chat apps**
+### 5. Reduce Protocol Overhead for Small Messages ✅ IMPLEMENTED
+**Impact: MEDIUM | Effort: MEDIUM | Expected Gain: 10-15% for chat apps**
 
 Current message frame: 10-byte header + 2-byte CRC = 12 bytes overhead
 
 For 256-byte messages: 4.7% overhead
 For 32-byte chat messages: 37.5% overhead
 
-**Options**:
-- Compact header mode for small messages (4 bytes)
-- Batch multiple small messages in one frame
-- Skip CRC for localhost/reliable networks (configurable)
+**Implementation** (2026-02-08):
+- POSIX send path (`net_posix.c`) uses compact headers when `peer->cold.caps.compact_mode` is set
+- POSIX receive path handles two-phase header detection (4 bytes initially, extend to 10 if full header)
+- MacTCP send path (`tcp_io.c`) uses compact headers when negotiated
+- `is_compact` flag in `pt_recv_hot` tracks current message format
+- CRC validation skipped for compact headers (no CRC in 4-byte format)
+
+**Critical edge case**: Fragment messages (PT_MSG_FLAG_FRAGMENT = 0x10) do NOT use compact headers because the flag doesn't fit in the 4-bit flags field. Only unfragmented messages use compact format.
+
+**Tests**: `tests/test_compact_header.c` - 16 tests covering encoding, decoding, format detection, roundtrip, and edge cases
 
 ---
 
-### 6. UDP Fast Path for Games
-**Impact: HIGH for games | Effort: HIGH | Expected Gain: 50% latency reduction**
+### 6. UDP Fast Path for Games ✅ ALREADY IMPLEMENTED
+**Impact: N/A | Feature already exists with explicit zero-queue semantics**
 
-Current UDP implementation is minimal. For games, need:
+**Existing API** (include/peertalk.h, src/posix/net_posix.c):
 ```c
-// Fire-and-forget game state updates
-PeerTalk_SendUnreliable(ctx, peer, player_state, 64, PT_UDP_NO_QUEUE);
+PeerTalk_Error PeerTalk_SendUDP(ctx, peer_id, data, length);      /* Standard UDP */
+PeerTalk_Error PeerTalk_SendUDPFast(ctx, peer_id, data, length);  /* Explicit fast path */
+#define PT_SEND_UDP_NO_QUEUE 0x08  /* Flag for zero-queue semantics */
+#define PT_MAX_UDP_MESSAGE_SIZE 1400  /* Larger payload limit */
 ```
 
-**Benefits**:
-- No TCP head-of-line blocking
-- No retransmission delays
-- Predictable latency
+**Implementation** (verified 2026-02-08):
+- UDP already has zero queuing - `SendUDPFast` makes this explicit
+- 1400 byte limit (vs old 576) for LAN usage
+- Tests in `tests/test_udp_posix.c` and `tests/test_streaming.c`
 
 ---
 
-### 7. Adaptive Performance Tuning
-**Impact: MEDIUM | Effort: MEDIUM | Expected Gain: Optimal for all link types**
+### 7. Adaptive Performance Tuning ✅ ALREADY IMPLEMENTED
+**Impact: N/A | Feature already exists and updates based on RTT**
 
-Auto-tune based on measured characteristics:
+**Existing Implementation** (src/core/peer.c, src/posix/net_posix.c):
 ```c
-// Measure RTT and bandwidth during capability exchange
-if (measured_rtt < 20ms && measured_bandwidth > 50KB/s) {
-    // Fast LAN: large chunks, aggressive pipelining
-    effective_chunk = 4096;
-    queue_depth = 32;
-} else if (measured_rtt > 100ms) {
-    // Slow link: smaller chunks, conservative
-    effective_chunk = 512;
-    queue_depth = 8;
-}
+void pt_peer_update_adaptive_params(struct pt_context *ctx, struct pt_peer *peer);
 ```
 
+**RTT-based tuning** (verified 2026-02-08):
+- Called after latency measurement in `net_posix.c:1544`
+- Updates `peer->hot.effective_chunk` and `peer->hot.pipeline_depth`
+- Stream uses `effective_chunk` for chunk sizing
+- Tuning logic: fast LAN → 4096 chunks, slow link → 512 chunks
+
 ---
 
-### 8. Poll Loop Optimization
+### 8. Poll Loop Optimization ✅ ALREADY IMPLEMENTED
 **Impact: LOW-MEDIUM | Effort: LOW | Expected Gain: 5-10%**
 
 Current poll does discovery + TCP + UDP every call. For high-throughput:
@@ -198,11 +203,12 @@ PeerTalk_Poll(ctx);
 | 1 | Fix capability exchange | N/A | N/A | - | ✅ Not a bug (test logging issue) |
 | 2 | Reduce reassembly copies | N/A | N/A | - | ✅ Already optimized (2 copies) |
 | 3 | Tunable message limits | N/A | N/A | - | ✅ Already implemented |
-| 4 | Streaming mode | MEDIUM-HIGH | MEDIUM | File transfer | ⏳ Planned |
-| 5 | Reduce small msg overhead | MEDIUM | LOW | Chat apps | ⏳ Planned |
-| 6 | UDP fast path | HIGH | HIGH | Games | ⏳ Planned |
-| 7 | Adaptive tuning | MEDIUM | MEDIUM | Mixed traffic | ⏳ Planned |
-| 8 | Poll loop optimization | LOW-MEDIUM | LOW | High throughput | ⏳ Planned |
+| **A** | **Async send pipelining** | **HIGH** | **HIGH** | **Throughput** | **✅ DONE - 112 KB/s (2.5x)** |
+| 4 | Streaming mode | N/A | N/A | File transfer | ✅ Already implemented |
+| 5 | Reduce small msg overhead | MEDIUM | MEDIUM | Chat apps | ✅ Compact headers wired up |
+| 6 | UDP fast path | N/A | N/A | Games | ✅ Already implemented |
+| 7 | Adaptive tuning | N/A | N/A | Mixed traffic | ✅ Already implemented |
+| 8 | Poll loop optimization | N/A | N/A | High throughput | ✅ Already implemented |
 
 **Key Finding**: The existing implementation is more optimized than initially assessed. The perceived capability exchange "bug" was a test app timing issue - the library handles capabilities correctly. Further performance gains require new features (streaming, UDP fast path) rather than fixes.
 
