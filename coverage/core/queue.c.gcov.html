@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2026-02-08 08:55:35</td>
+            <td class="headerValue">2026-02-08 09:29:28</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">22</td>
@@ -127,21 +127,21 @@
 <a name="65"><span class="lineNum">      65 </span><span class="lineCov">        100 :     return 0;</span></a>
 <a name="66"><span class="lineNum">      66 </span>            : }</a>
 <a name="67"><span class="lineNum">      67 </span>            : </a>
-<a name="68"><span class="lineNum">      68 </span><span class="lineCov">         46 : void pt_queue_free(pt_queue *q)</span></a>
+<a name="68"><span class="lineNum">      68 </span><span class="lineCov">         62 : void pt_queue_free(pt_queue *q)</span></a>
 <a name="69"><span class="lineNum">      69 </span>            : {</a>
-<a name="70"><span class="lineNum">      70 </span><span class="lineCov">         46 :     if (!q || !q-&gt;slots) {</span></a>
+<a name="70"><span class="lineNum">      70 </span><span class="lineCov">         62 :     if (!q || !q-&gt;slots) {</span></a>
 <a name="71"><span class="lineNum">      71 </span><span class="lineNoCov">          0 :         return;</span></a>
 <a name="72"><span class="lineNum">      72 </span>            :     }</a>
 <a name="73"><span class="lineNum">      73 </span>            : </a>
-<a name="74"><span class="lineNum">      74 </span><span class="lineCov">         46 :     pt_free(q-&gt;slots);</span></a>
-<a name="75"><span class="lineNum">      75 </span><span class="lineCov">         46 :     q-&gt;slots = NULL;</span></a>
-<a name="76"><span class="lineNum">      76 </span><span class="lineCov">         46 :     q-&gt;magic = 0;</span></a>
-<a name="77"><span class="lineNum">      77 </span><span class="lineCov">         46 :     q-&gt;capacity = 0;</span></a>
-<a name="78"><span class="lineNum">      78 </span><span class="lineCov">         46 :     q-&gt;capacity_mask = 0;</span></a>
-<a name="79"><span class="lineNum">      79 </span><span class="lineCov">         46 :     q-&gt;write_idx = 0;</span></a>
-<a name="80"><span class="lineNum">      80 </span><span class="lineCov">         46 :     q-&gt;read_idx = 0;</span></a>
-<a name="81"><span class="lineNum">      81 </span><span class="lineCov">         46 :     q-&gt;count = 0;</span></a>
-<a name="82"><span class="lineNum">      82 </span><span class="lineCov">         46 :     q-&gt;has_data = 0;</span></a>
+<a name="74"><span class="lineNum">      74 </span><span class="lineCov">         62 :     pt_free(q-&gt;slots);</span></a>
+<a name="75"><span class="lineNum">      75 </span><span class="lineCov">         62 :     q-&gt;slots = NULL;</span></a>
+<a name="76"><span class="lineNum">      76 </span><span class="lineCov">         62 :     q-&gt;magic = 0;</span></a>
+<a name="77"><span class="lineNum">      77 </span><span class="lineCov">         62 :     q-&gt;capacity = 0;</span></a>
+<a name="78"><span class="lineNum">      78 </span><span class="lineCov">         62 :     q-&gt;capacity_mask = 0;</span></a>
+<a name="79"><span class="lineNum">      79 </span><span class="lineCov">         62 :     q-&gt;write_idx = 0;</span></a>
+<a name="80"><span class="lineNum">      80 </span><span class="lineCov">         62 :     q-&gt;read_idx = 0;</span></a>
+<a name="81"><span class="lineNum">      81 </span><span class="lineCov">         62 :     q-&gt;count = 0;</span></a>
+<a name="82"><span class="lineNum">      82 </span><span class="lineCov">         62 :     q-&gt;has_data = 0;</span></a>
 <a name="83"><span class="lineNum">      83 </span>            : }</a>
 <a name="84"><span class="lineNum">      84 </span>            : </a>
 <a name="85"><span class="lineNum">      85 </span><span class="lineCov">          1 : void pt_queue_reset(pt_queue *q)</span></a>
@@ -691,15 +691,15 @@
 <a name="629"><span class="lineNum">     629 </span>            : /*</a>
 <a name="630"><span class="lineNum">     630 </span>            :  * Direct pop - returns pointer to slot data without copying (ZERO-COPY)</a>
 <a name="631"><span class="lineNum">     631 </span>            :  */</a>
-<a name="632"><span class="lineNum">     632 </span><span class="lineCov">        768 : int pt_queue_pop_priority_direct(pt_queue *q, const void **data_out,</span></a>
+<a name="632"><span class="lineNum">     632 </span><span class="lineCov">        674 : int pt_queue_pop_priority_direct(pt_queue *q, const void **data_out,</span></a>
 <a name="633"><span class="lineNum">     633 </span>            :                                   uint16_t *len_out) {</a>
 <a name="634"><span class="lineNum">     634 </span>            :     pt_queue_ext *ext;</a>
 <a name="635"><span class="lineNum">     635 </span>            :     pt_queue_slot *slot;</a>
 <a name="636"><span class="lineNum">     636 </span>            :     uint16_t slot_idx;</a>
 <a name="637"><span class="lineNum">     637 </span>            :     int prio;</a>
 <a name="638"><span class="lineNum">     638 </span>            : </a>
-<a name="639"><span class="lineNum">     639 </span><span class="lineCov">        768 :     if (!q || q-&gt;count == 0 || !data_out || !len_out)</span></a>
-<a name="640"><span class="lineNum">     640 </span><span class="lineCov">        751 :         return -1;</span></a>
+<a name="639"><span class="lineNum">     639 </span><span class="lineCov">        674 :     if (!q || q-&gt;count == 0 || !data_out || !len_out)</span></a>
+<a name="640"><span class="lineNum">     640 </span><span class="lineCov">        657 :         return -1;</span></a>
 <a name="641"><span class="lineNum">     641 </span>            : </a>
 <a name="642"><span class="lineNum">     642 </span><span class="lineCov">         17 :     ext = &amp;q-&gt;ext;</span></a>
 <a name="643"><span class="lineNum">     643 </span>            : </a>

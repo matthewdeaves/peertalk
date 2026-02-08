@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2026-02-08 08:55:35</td>
+            <td class="headerValue">2026-02-08 09:29:28</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">19</td>
@@ -475,13 +475,13 @@
 <a name="413"><span class="lineNum">     413 </span>            :     /* Find peer by ID */</a>
 <a name="414"><span class="lineNum">     414 </span><span class="lineCov">          5 :     peer = pt_peer_find_by_id(ctx, peer_id);</span></a>
 <a name="415"><span class="lineNum">     415 </span><span class="lineCov">          5 :     if (!peer) {</span></a>
-<a name="416"><span class="lineNum">     416 </span><span class="lineCov">          2 :         PT_CTX_WARN(ctx, PT_LOG_CAT_CONNECT,</span></a>
+<a name="416"><span class="lineNum">     416 </span><span class="lineCov">          3 :         PT_CTX_WARN(ctx, PT_LOG_CAT_CONNECT,</span></a>
 <a name="417"><span class="lineNum">     417 </span>            :                     &quot;Disconnect failed: Peer %u not found&quot;, peer_id);</a>
-<a name="418"><span class="lineNum">     418 </span><span class="lineCov">          2 :         return PT_ERR_PEER_NOT_FOUND;</span></a>
+<a name="418"><span class="lineNum">     418 </span><span class="lineCov">          3 :         return PT_ERR_PEER_NOT_FOUND;</span></a>
 <a name="419"><span class="lineNum">     419 </span>            :     }</a>
 <a name="420"><span class="lineNum">     420 </span>            : </a>
 <a name="421"><span class="lineNum">     421 </span>            : #if defined(PT_PLATFORM_POSIX)</a>
-<a name="422"><span class="lineNum">     422 </span><span class="lineCov">          3 :     return pt_posix_disconnect(ctx, peer);</span></a>
+<a name="422"><span class="lineNum">     422 </span><span class="lineCov">          2 :     return pt_posix_disconnect(ctx, peer);</span></a>
 <a name="423"><span class="lineNum">     423 </span>            : #elif defined(PT_PLATFORM_MACTCP)</a>
 <a name="424"><span class="lineNum">     424 </span>            :     return pt_mactcp_disconnect(ctx, peer);</a>
 <a name="425"><span class="lineNum">     425 </span>            : #else</a>
