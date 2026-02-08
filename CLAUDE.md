@@ -121,7 +121,9 @@ tools/
   build/                      # Build scripts and quality gates
   validators/                 # ISR safety checker, etc.
   metrics/                    # Code metrics extraction
-scripts/                      # Utility scripts
+scripts/                      # Build and utility scripts
+  build-mac-tests.sh            # Build Mac test apps for hardware testing
+  build-launcher.sh             # Build LaunchAPPLServer for remote execution
 .claude/
   skills/                     # Custom Claude Code skills
   rules/                      # Platform-specific coding rules
@@ -157,6 +159,10 @@ scripts/                      # Utility scripts
 
 **Build:**
 ```bash
+# Using the build script (recommended)
+./scripts/build-mac-tests.sh mactcp
+
+# Or manually with Docker
 docker-compose -f docker/docker-compose.yml run --rm peertalk-dev \
     make -f Makefile.retro68 PLATFORM=mactcp test perf_tests
 ```
@@ -199,10 +205,10 @@ docker run --rm --network host -v "$(pwd)":/workspace -w /workspace \
 
 **Complete end-to-end hardware test:**
 
-1. **Build Mac test apps** (in Docker):
+1. **Build Mac test apps** (using build script):
    ```bash
-   docker-compose -f docker/docker-compose.yml run --rm peertalk-dev \
-       make -f Makefile.retro68 PLATFORM=mactcp clean test perf_tests
+   ./scripts/build-mac-tests.sh mactcp
+   # Output: build/mac/test_*.bin
    ```
 
 2. **Build and start POSIX partner** (in named container):
@@ -258,6 +264,19 @@ docker run --rm --network host -v "$(pwd)":/workspace -w /workspace \
 4. **TCPPassiveOpen re-use** - It's one-shot. Need stream transfer pattern.
 5. **Testing only in emulator** - Real hardware behaves differently.
 6. **Large debug logs** - PT_LibDebug can grow to 1MB+. Use `tail` or `head` when reading.
+
+## Build Scripts
+
+| Script | Purpose | Output |
+|--------|---------|--------|
+| `./scripts/build-mac-tests.sh mactcp` | Build all Mac test apps | `build/mac/test_*.bin` |
+| `./scripts/build-mac-tests.sh mactcp perf` | Build perf tests only | `build/mac/test_{latency,throughput,stress,discovery}.bin` |
+| `./scripts/build-launcher.sh mactcp` | Build LaunchAPPLServer (68k) | `LaunchAPPL-build/LaunchAPPLServer-MacTCP.bin` |
+| `./scripts/build-launcher.sh ot` | Build LaunchAPPLServer (PPC) | `LaunchAPPL-build/LaunchAPPLServer-OpenTransport.bin` |
+| `./tools/build/build_all.sh all` | Build PeerTalk SDK for all platforms | `build/`, `packages/` |
+| `./tools/build/package.sh` | Package Mac binaries for transfer | `packages/PeerTalk-*.bin` |
+
+**Note:** All build scripts automatically use Docker - no host toolchain required.
 
 ## Development Resources
 

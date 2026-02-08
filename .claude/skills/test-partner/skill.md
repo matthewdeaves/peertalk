@@ -116,3 +116,34 @@ docker stop $(docker ps -q --filter "name!=perf-partner")
 ```
 
 ARGUMENTS: $1 = action (start|stop|status|logs), $2 = mode for start (echo|stream|stress)
+
+## Related Skills & Scripts
+
+| Task | Command |
+|------|---------|
+| Build test apps | `./scripts/build-mac-tests.sh mactcp` |
+| Deploy to Mac | MCP `upload_file` tool |
+| Fetch logs | `/fetch-logs <machine>` |
+| Start partner | `/test-partner start echo` |
+
+## Complete Testing Workflow
+
+```bash
+# 1. Build test apps
+./scripts/build-mac-tests.sh mactcp
+
+# 2. Start POSIX partner
+/test-partner start echo
+
+# 3. Deploy to Mac (via MCP)
+mcp__classic-mac-hardware__upload_file(machine="performa6200",
+    local_path="build/mac/test_throughput.bin", remote_path="test_throughput.bin")
+
+# 4. Run test on Mac (manual step)
+
+# 5. Fetch logs
+/fetch-logs performa6200
+
+# 6. Stop partner
+/test-partner stop
+```

@@ -183,10 +183,21 @@ Hardware testing is part of the complete session workflow:
 2. Verify (POSIX): /build test
 3. Validate (Mac): /check-isr
 4. Generate plan:  /hw-test generate X.Y
-5. Build for Mac:  /build package
-6. Transfer & Test: Copy to Mac, execute test plan manually
-7. Mark complete:  /session complete X.Y
+5. Build for Mac:  ./scripts/build-mac-tests.sh mactcp
+                   (or /build mac-tests)
+6. Start partner:  /test-partner start echo
+7. Deploy & Test:  Upload build/mac/test_*.bin to Mac via MCP
+8. Fetch logs:     /fetch-logs <machine>
+9. Mark complete:  /session complete X.Y
 ```
+
+## Build Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `./scripts/build-mac-tests.sh mactcp` | Build all test apps for MacTCP |
+| `./scripts/build-mac-tests.sh mactcp perf` | Build only perf tests |
+| `./scripts/build-launcher.sh mactcp` | Build LaunchAPPLServer |
 
 ## Notes
 

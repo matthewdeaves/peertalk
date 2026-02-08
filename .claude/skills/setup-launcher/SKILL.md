@@ -33,12 +33,13 @@ Build and deploy LaunchAPPLServer and Retro68 demo applications to a registered 
 - Verify MCP server is connected
 
 ### 2. Build LaunchAPPLServer
-- Build for the detected platform using Retro68 toolchain:
-  - **mactcp** → Build 68k version using m68k-apple-macos toolchain
-  - **opentransport** → Build PPC version using powerpc-apple-macos (retroppc) toolchain
-- Source location: `/opt/Retro68/LaunchAPPL/` in Docker container
+- Use the build script for the detected platform:
+  ```bash
+  ./scripts/build-launcher.sh mactcp    # For 68k Macs
+  ./scripts/build-launcher.sh ot        # For PPC Macs
+  ```
 - Output files: `.bin` (binary) and `.dsk` (disk image)
-- Build artifacts copied to `LaunchAPPL-build/` in workspace
+- Build artifacts: `LaunchAPPL-build/LaunchAPPLServer-{Platform}.bin`
 
 ### 3. Build Retro68 Demo Apps
 - Build Hello World application from Retro68 samples

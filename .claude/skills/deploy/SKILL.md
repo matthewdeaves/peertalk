@@ -44,6 +44,29 @@ Deploy compiled binaries to Classic Mac test machines via FTP.
 
 **For testing remote execution without PeerTalk:** Use `/execute` with Retro68 demo apps
 
+## Deploying Test Apps (Alternative)
+
+For hardware testing during development, deploy test apps directly via MCP:
+
+```bash
+# Build test apps first
+./scripts/build-mac-tests.sh mactcp
+
+# Deploy using MCP upload tool
+mcp__classic-mac-hardware__upload_file(
+    machine="performa6200",
+    local_path="build/mac/test_throughput.bin",
+    remote_path="test_throughput.bin"
+)
+```
+
+**Available test apps after build:**
+- `build/mac/test_mactcp.bin` - Basic discovery test
+- `build/mac/test_latency.bin` - RTT measurement
+- `build/mac/test_throughput.bin` - Streaming throughput
+- `build/mac/test_stress.bin` - Connect/disconnect cycles
+- `build/mac/test_discovery.bin` - Discovery packet counting
+
 ## Execution Notes
 
 **Before deploying, check if binaries exist:**
