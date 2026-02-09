@@ -477,8 +477,8 @@ int main(void)
     memset(&config, 0, sizeof(config));
     strncpy(config.local_name, "MacStress", PT_MAX_PEER_NAME);
     config.max_peers = 4;
-    config.discovery_port = 7363;  /* Different port to avoid duplicateSocket from previous test */
-    config.tcp_port = 7364;
+    config.discovery_port = 7353;
+    config.tcp_port = 7354;
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Initializing PeerTalk...");
     g_ctx = PeerTalk_Init(&config);
