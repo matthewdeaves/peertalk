@@ -11,7 +11,7 @@
 #include "../src/core/peer.h"
 #include "../src/core/protocol.h"
 #include "../src/core/queue.h"
-#include "../src/posix/net_posix.h"
+#include "../src/posix/net_posix.h"  /* For pt_posix_data, pt_posix_get */
 #include "peertalk.h"
 #include <stdio.h>
 #include <string.h>
@@ -19,6 +19,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include <errno.h>
 
 /* Test counter */
@@ -722,6 +723,129 @@ static void test_queue_status_active(void)
     PASS();
 }
 
+/* Test that TCP_NODELAY is properly set on connections */
+static void test_tcp_nodelay_set(void)
+{
+    TEST("test_tcp_nodelay_set");
+
+    reset_state();
+
+    PeerTalk_Config server_cfg;
+    memset(&server_cfg, 0, sizeof(server_cfg));
+    strncpy(server_cfg.local_name, "NoDelayServer", PT_MAX_PEER_NAME);
+    server_cfg.tcp_port = 17420;
+    server_cfg.max_peers = 16;
+
+    PeerTalk_Context *server = PeerTalk_Init(&server_cfg);
+    if (!server) {
+        FAIL("Failed to create server");
+        return;
+    }
+
+    PeerTalk_Callbacks server_cb = {0};
+    server_cb.on_peer_connected = server_on_connected;
+    PeerTalk_SetCallbacks(server, &server_cb);
+    PeerTalk_StartListening(server);
+
+    PeerTalk_Config client_cfg;
+    memset(&client_cfg, 0, sizeof(client_cfg));
+    strncpy(client_cfg.local_name, "NoDelayClient", PT_MAX_PEER_NAME);
+    client_cfg.tcp_port = 17421;
+    client_cfg.max_peers = 16;
+
+    PeerTalk_Context *client = PeerTalk_Init(&client_cfg);
+    if (!client) {
+        FAIL("Failed to create client");
+        PeerTalk_StopListening(server);
+        PeerTalk_Shutdown(server);
+        return;
+    }
+
+    PeerTalk_Callbacks client_cb = {0};
+    client_cb.on_peer_connected = client_on_connected;
+    PeerTalk_SetCallbacks(client, &client_cb);
+
+    struct pt_context *client_ctx = (struct pt_context *)client;
+    struct pt_peer *server_peer = pt_peer_create(client_ctx, "NoDelayServer", 0x7F000001, 17420);
+
+    PeerTalk_Connect(client, server_peer->hot.id);
+
+    /* Wait for connection */
+    int timeout = 50;
+    while (timeout-- > 0 && !(server_connected && client_connected)) {
+        PeerTalk_Poll(server);
+        PeerTalk_Poll(client);
+        usleep(10000);
+    }
+
+    if (!server_connected || !client_connected) {
+        FAIL("Connection not established");
+        PeerTalk_Shutdown(client);
+        PeerTalk_StopListening(server);
+        PeerTalk_Shutdown(server);
+        return;
+    }
+
+    /* Get the socket and verify TCP_NODELAY is set */
+    struct pt_context *ctx = (struct pt_context *)client;
+    pt_posix_data *pd = pt_posix_get(ctx);
+    int sock = pd->tcp_socks[server_peer->hot.id - 1];
+
+    if (sock < 0) {
+        FAIL("No socket for peer");
+        PeerTalk_Shutdown(client);
+        PeerTalk_StopListening(server);
+        PeerTalk_Shutdown(server);
+        return;
+    }
+
+    int nodelay_val = 0;
+    socklen_t optlen = sizeof(nodelay_val);
+    if (getsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &nodelay_val, &optlen) < 0) {
+        FAIL("getsockopt failed: %s", strerror(errno));
+        PeerTalk_Shutdown(client);
+        PeerTalk_StopListening(server);
+        PeerTalk_Shutdown(server);
+        return;
+    }
+
+    printf("  (TCP_NODELAY = %d on client socket)\n", nodelay_val);
+
+    if (nodelay_val != 1) {
+        FAIL("TCP_NODELAY not set! Expected 1, got %d", nodelay_val);
+        PeerTalk_Shutdown(client);
+        PeerTalk_StopListening(server);
+        PeerTalk_Shutdown(server);
+        return;
+    }
+
+    /* Also check server side socket */
+    struct pt_context *server_ctx = (struct pt_context *)server;
+    pt_posix_data *server_pd = pt_posix_get(server_ctx);
+    int server_sock = server_pd->tcp_socks[0]; /* First connected peer */
+
+    if (server_sock >= 0) {
+        nodelay_val = 0;
+        optlen = sizeof(nodelay_val);
+        if (getsockopt(server_sock, IPPROTO_TCP, TCP_NODELAY, &nodelay_val, &optlen) == 0) {
+            printf("  (TCP_NODELAY = %d on server socket)\n", nodelay_val);
+            if (nodelay_val != 1) {
+                FAIL("TCP_NODELAY not set on server socket! Expected 1, got %d", nodelay_val);
+                PeerTalk_Shutdown(client);
+                PeerTalk_StopListening(server);
+                PeerTalk_Shutdown(server);
+                return;
+            }
+        }
+    }
+
+    PeerTalk_StopListening(server);
+    PeerTalk_Shutdown(client);
+    PeerTalk_Shutdown(server);
+
+    PASS();
+}
+
 /* ========================================================================
  * Main
  * ======================================================================== */
@@ -730,6 +854,7 @@ int main(void)
 {
     printf("=== TCP Send/Receive Tests ===\n\n");
 
+    test_tcp_nodelay_set();  /* Verify optimization is applied */
     test_tcp_message_roundtrip();
     test_multiple_messages();
     test_large_message();
