@@ -384,6 +384,11 @@ int pt_mactcp_disconnect(struct pt_context *ctx, struct pt_peer *peer)
         hot->log_events = 0;
         cold->close_start = (unsigned long)TickCount();
 
+        /* CRITICAL: Set peer state to DISCONNECTING now so poll_closing
+         * can later transition to DISCOVERED. The state machine only allows
+         * CONNECTED -> DISCONNECTING -> DISCOVERED, not CONNECTED -> DISCOVERED. */
+        pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCONNECTING);
+
         PT_LOG_INFO(ctx->log, PT_LOG_CAT_CONNECT,
             "Closing connection to peer %u", (unsigned)peer->hot.id);
 
@@ -404,14 +409,16 @@ int pt_mactcp_disconnect(struct pt_context *ctx, struct pt_peer *peer)
     pt_mactcp_tcp_release(ctx, idx);
     peer->hot.connection = NULL;
 
-    /* Update peer state - back to DISCOVERED so reconnection is possible */
+    /* CRITICAL: Set state to DISCOVERED BEFORE calling callback.
+     * This allows the application to immediately reconnect in the
+     * callback if desired. */
+    pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCOVERED);
+
     if (ctx->callbacks.on_peer_disconnected != NULL) {
         ctx->callbacks.on_peer_disconnected((PeerTalk_Context *)ctx,
                                             peer->hot.id, 0,
                                             ctx->callbacks.user_data);
     }
-
-    pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCOVERED);
 
     return 0;
 }
@@ -483,14 +490,16 @@ int pt_mactcp_close_poll(struct pt_context *ctx)
         if (peer != NULL) {
             peer->hot.connection = NULL;
 
+            /* CRITICAL: Set state to DISCOVERED BEFORE calling callback.
+             * This allows the application to immediately reconnect in the
+             * callback if desired. */
+            pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCOVERED);
+
             if (ctx->callbacks.on_peer_disconnected != NULL) {
                 ctx->callbacks.on_peer_disconnected((PeerTalk_Context *)ctx,
                                                     peer->hot.id, 0,
                                                     ctx->callbacks.user_data);
             }
-
-            /* Back to DISCOVERED so reconnection is possible */
-            pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCOVERED);
         }
 
         processed++;

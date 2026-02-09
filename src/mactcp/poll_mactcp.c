@@ -383,6 +383,11 @@ static void pt_mactcp_poll_connected(struct pt_context *ctx,
         cold->close_start = (unsigned long)TickCount();
         cold->pb.ioResult = 0;  /* Abort is sync, so already complete */
 
+        /* Set peer state to DISCONNECTING so poll_closing can later
+         * transition to DISCOVERED. State machine requires:
+         * CONNECTED -> DISCONNECTING -> DISCOVERED */
+        pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCONNECTING);
+
         /* Callback and state change happen in poll_closing when release completes */
         return;
     }
@@ -450,14 +455,17 @@ static void pt_mactcp_poll_closing(struct pt_context *ctx,
     if (peer != NULL) {
         peer->hot.connection = NULL;
 
+        /* CRITICAL: Set state to DISCOVERED BEFORE calling callback.
+         * This allows the application to immediately reconnect in the
+         * callback if desired. If we set state after callback, the
+         * reconnect attempt would fail with PT_ERR_INVALID_STATE. */
+        pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCOVERED);
+
         if (ctx->callbacks.on_peer_disconnected != NULL) {
             ctx->callbacks.on_peer_disconnected((PeerTalk_Context *)ctx,
                                                 peer->hot.id, 0,
                                                 ctx->callbacks.user_data);
         }
-
-        /* Back to DISCOVERED so reconnection is possible */
-        pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCOVERED);
     }
 }
 
@@ -674,6 +682,11 @@ int pt_mactcp_poll_fast(struct pt_context *ctx)
                 hot->state = PT_STREAM_CLOSING;
                 cold->close_start = (unsigned long)TickCount();
                 cold->pb.ioResult = 0;  /* Abort is sync */
+
+                /* Set peer state to DISCONNECTING so poll_closing can later
+                 * transition to DISCOVERED. State machine requires:
+                 * CONNECTED -> DISCONNECTING -> DISCOVERED */
+                pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCONNECTING);
             }
         }
 

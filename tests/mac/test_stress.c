@@ -42,6 +42,7 @@
 #define CONNECT_TIMEOUT     300     /* 5 seconds to wait for connection */
 #define DISCONNECT_WAIT     60      /* 1 second after disconnect before next */
 #define MEMORY_CHECK_INTERVAL 10    /* Check memory every N cycles */
+#define MAX_CONNECT_RETRIES 5       /* Give up after this many consecutive failures */
 
 /* Memory leak threshold */
 #define LEAK_THRESHOLD_BYTES  4096  /* Warn if MaxBlock drops by this much */
@@ -67,6 +68,9 @@ typedef struct {
     int             disconnect_count;
     int             message_sent_count;
     int             message_recv_count;
+
+    /* Retry tracking */
+    int             consecutive_failures;
 
     /* Memory tracking */
     long            initial_maxblock;
@@ -153,6 +157,8 @@ static void set_state(StressState new_state)
 
 static void start_connect(void)
 {
+    PeerTalk_Error err;
+
     if (g_test.target_peer == 0) {
         PT_LOG_WARN(g_log, PT_LOG_CAT_APP1, "No target peer to connect to");
         return;
@@ -162,14 +168,23 @@ static void start_connect(void)
         "Cycle %d: Connecting to peer %u...",
         g_test.cycle_count + 1, (unsigned)g_test.target_peer);
 
-    {
-        PeerTalk_Error err = PeerTalk_Connect(g_ctx, g_test.target_peer);
-        if (err == PT_OK) {
-            set_state(STATE_CONNECTING);
-        } else {
+    err = PeerTalk_Connect(g_ctx, g_test.target_peer);
+    if (err == PT_OK) {
+        g_test.consecutive_failures = 0;  /* Reset on success */
+        set_state(STATE_CONNECTING);
+    } else {
+        PT_LOG_ERR(g_log, PT_LOG_CAT_APP1,
+            "Connect initiation failed! Error: %d", (int)err);
+        g_test.connect_failures++;
+        g_test.consecutive_failures++;
+
+        /* Give up after too many consecutive failures */
+        if (g_test.consecutive_failures >= MAX_CONNECT_RETRIES) {
             PT_LOG_ERR(g_log, PT_LOG_CAT_APP1,
-                "Connect initiation failed! Error: %d", (int)err);
-            g_test.connect_failures++;
+                "Too many consecutive failures (%d), giving up",
+                g_test.consecutive_failures);
+            set_state(STATE_COMPLETE);
+        } else {
             set_state(STATE_WAITING);
         }
     }
@@ -380,6 +395,7 @@ static void on_peer_connected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
         "CONNECTED to peer %u (cycle %d)", (unsigned)peer_id, g_test.cycle_count + 1);
 
     g_test.connect_successes++;
+    g_test.consecutive_failures = 0;  /* Reset on successful connect */
     set_state(STATE_CONNECTED);
 }
 

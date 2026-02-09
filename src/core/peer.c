@@ -429,7 +429,9 @@ int pt_peer_set_state(struct pt_context *ctx, struct pt_peer *peer,
         break;
 
     case PT_PEER_STATE_DISCONNECTING:
-        valid_transition = (new_state == PT_PEER_STATE_UNUSED);
+        /* Allow transition to DISCOVERED for reconnection support */
+        valid_transition = (new_state == PT_PEER_STATE_UNUSED ||
+                           new_state == PT_PEER_STATE_DISCOVERED);
         break;
 
     case PT_PEER_STATE_FAILED:
