@@ -767,6 +767,55 @@ typedef struct {
 PeerTalk_Context *PeerTalk_Init(const PeerTalk_Config *config);
 
 /**
+ * Quick-start PeerTalk with sensible defaults (zero-config).
+ *
+ * This is the simplest way to initialize PeerTalk. It:
+ *   - Sets up discovery, TCP, and UDP on default ports
+ *   - Enables auto-buffer allocation (SDK manages memory)
+ *   - Enables fragmentation for large messages
+ *   - Configures optimal settings for the platform
+ *
+ * Example:
+ * @code
+ *   // POSIX - just call QuickStart
+ *   PeerTalk_Context *ctx = PeerTalk_QuickStart("MyApp", 4, &callbacks);
+ *
+ *   // Classic Mac - call Bootstrap first for best performance
+ *   PeerTalk_BufferPool *pool = PeerTalk_Bootstrap(4);
+ *   init_toolbox();
+ *   PeerTalk_Context *ctx = PeerTalk_QuickStartWithPool("MyApp", pool, &callbacks);
+ * @endcode
+ *
+ * @param name       Local peer name (max 31 chars)
+ * @param max_peers  Maximum simultaneous peers (1-16)
+ * @param callbacks  Event callbacks (on_message, on_peer_connected, etc.)
+ * @return Context handle on success, NULL on failure
+ */
+PeerTalk_Context *PeerTalk_QuickStart(
+    const char *name,
+    uint16_t max_peers,
+    const PeerTalk_Callbacks *callbacks);
+
+/**
+ * Quick-start PeerTalk with a pre-allocated buffer pool.
+ *
+ * Use this on Classic Mac after calling PeerTalk_Bootstrap() at the
+ * very start of main(). This gives the best performance because
+ * buffers are allocated before heap fragmentation.
+ *
+ * @param name       Local peer name (max 31 chars)
+ * @param max_peers  Maximum simultaneous peers (1-16)
+ * @param pool       Buffer pool from PeerTalk_Bootstrap() or PeerTalk_AllocateBuffers()
+ * @param callbacks  Event callbacks
+ * @return Context handle on success, NULL on failure
+ */
+PeerTalk_Context *PeerTalk_QuickStartWithPool(
+    const char *name,
+    uint16_t max_peers,
+    PeerTalk_BufferPool *pool,
+    const PeerTalk_Callbacks *callbacks);
+
+/**
  * Shutdown PeerTalk and free resources
  */
 void PeerTalk_Shutdown(PeerTalk_Context *ctx);

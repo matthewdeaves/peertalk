@@ -329,6 +329,104 @@ int main(void) {
 
 ---
 
+---
+
+### D. Bootstrap API and optimal_chunk Negotiation ✅ IMPLEMENTED (2026-02-09)
+**Impact: HIGH | Result: 2-6x RECV throughput improvement**
+
+**Goal**: Enable early buffer allocation before Toolbox init, communicate optimal chunk sizes between peers.
+
+**Implementation**:
+
+**Public API** (include/peertalk.h):
+```c
+/* Bootstrap - call BEFORE InitGraf/Toolbox! */
+PeerTalk_BufferPool *PeerTalk_Bootstrap(uint16_t max_peers);
+```
+
+**Protocol Enhancement** (protocol.h/protocol.c):
+```c
+#define PT_CAP_OPTIMAL_CHUNK    0x06  /* 2 bytes: optimal chunk for this receiver */
+
+typedef struct {
+    // ... existing fields ...
+    uint16_t optimal_chunk;      /* 25% of recv_buffer (optimal per-send size) */
+} pt_capability_msg;
+```
+
+**Results** (Performa 6200, 8MB RAM):
+
+| Size | Old RECV (4KB buf) | New RECV (32KB buf) | Improvement |
+|------|-------------------|---------------------|-------------|
+| 256B | 9 KB/s | 11 KB/s | +22% |
+| 512B | 8 KB/s | **24 KB/s** | **3x** |
+| 1024B | 8 KB/s | **49 KB/s** | **6x** |
+| 2048B | 11 KB/s | **31 KB/s** | **3x** |
+| 4096B | 7 KB/s | **15 KB/s** | **2x** |
+
+**Key achievements**:
+- Bootstrap allocates 32KB buffers (8KB completion threshold)
+- SEND/RECV now balanced at smaller sizes (256-1024 bytes)
+- optimal_chunk communicated to peers for send tuning
+
+---
+
+## RECV Gap Analysis - Remaining Bottleneck
+
+Despite 2-6x improvement, RECV still lags SEND at larger sizes:
+
+| Size | SEND | RECV | Gap |
+|------|------|------|-----|
+| 2048B | 77 KB/s | 31 KB/s | 2.5x |
+| 4096B | ~140 KB/s | 15 KB/s | 9x |
+
+### Root Causes
+
+1. **Echo Path Overhead**: POSIX partner receives, then echoes back - serial processing
+2. **MacTCP Poll Frequency**: Single receive per poll iteration may not drain fast enough
+3. **TCPNoCopyRcv Timing**: Even with 8KB threshold, there's driver latency
+4. **Fragmentation at 4KB**: Messages > effective_max (4096) get fragmented
+
+### Potential Improvements
+
+1. **PollFast() for tight loops** - Skip discovery/UDP, focus on TCP I/O
+2. **Multiple receives per poll** - Drain all available data before returning
+3. **Larger effective_max** - Reduce fragmentation overhead
+4. **POSIX partner pipelining** - Echo asynchronously instead of serially
+
+### Experiments to Try
+
+```c
+/* In poll_mactcp.c - drain multiple receives per iteration */
+while (recv_pending && recv_pb.ioResult <= 0) {
+    process_received_data();
+    issue_next_recv();
+}
+```
+
+---
+
+## Remaining Performance Features
+
+### E. PollFast - For Game Loops
+**Status**: TO IMPLEMENT
+**Goal**: Minimal-overhead poll that only does TCP I/O
+
+```c
+/* Skip discovery, UDP, periodic work - just TCP send/recv */
+PeerTalk_Error PeerTalk_PollFast(PeerTalk_Context *ctx);
+```
+
+### F. Streaming Mode Improvements
+**Status**: TO ENHANCE
+**Goal**: Zero-config streaming that auto-detects large transfers
+
+### G. Adaptive Tuning Enhancements
+**Status**: TO ENHANCE
+**Goal**: Auto-tune based on peer capabilities, not just RTT
+
+---
+
 ## Test Plan
 
 After implementing items 1-3, re-run echo mode throughput tests on both machines:

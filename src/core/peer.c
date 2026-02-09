@@ -830,6 +830,7 @@ void pt_peer_update_adaptive_params(struct pt_context *ctx, struct pt_peer *peer
 {
     uint16_t rtt;
     uint16_t new_chunk;
+    uint16_t peer_optimal;
     uint8_t new_pipeline;
 
     if (!peer || peer->hot.magic != PT_PEER_MAGIC) {
@@ -837,6 +838,7 @@ void pt_peer_update_adaptive_params(struct pt_context *ctx, struct pt_peer *peer
     }
 
     rtt = peer->hot.latency_ms;
+    peer_optimal = peer->cold.caps.optimal_chunk;
 
     /* Tuning logic based on measured RTT
      *
@@ -862,6 +864,19 @@ void pt_peer_update_adaptive_params(struct pt_context *ctx, struct pt_peer *peer
         new_pipeline = 1;
     }
 
+    /* Incorporate peer's optimal_chunk from capability exchange.
+     * The peer advertises their 25% threshold - the ideal chunk size
+     * that triggers efficient receive completion on their end.
+     * Use the smaller of RTT-based and peer-optimal to be safe. */
+    if (peer_optimal > 0 && peer_optimal < new_chunk) {
+        new_chunk = peer_optimal;
+        if (ctx) {
+            PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+                "Using peer %u optimal_chunk=%u (smaller than RTT-based %u)",
+                peer->hot.id, peer_optimal, new_chunk);
+        }
+    }
+
     /* Only log if parameters actually changed */
     if (peer->hot.effective_chunk != new_chunk ||
         peer->hot.pipeline_depth != new_pipeline) {
@@ -871,8 +886,8 @@ void pt_peer_update_adaptive_params(struct pt_context *ctx, struct pt_peer *peer
 
         if (ctx) {
             PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
-                "Adaptive tuning for peer %u: RTT=%ums chunk=%u pipeline=%u",
-                peer->hot.id, rtt, new_chunk, new_pipeline);
+                "Adaptive tuning for peer %u: RTT=%ums chunk=%u pipeline=%u peer_optimal=%u",
+                peer->hot.id, rtt, new_chunk, new_pipeline, peer_optimal);
         }
     }
 }

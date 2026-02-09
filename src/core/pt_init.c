@@ -189,6 +189,78 @@ PeerTalk_Context *PeerTalk_Init(const PeerTalk_Config *config) {
 }
 
 /* ========================================================================== */
+/* PeerTalk_QuickStart - Zero-Config Initialization                           */
+/* ========================================================================== */
+
+PeerTalk_Context *PeerTalk_QuickStart(
+    const char *name,
+    uint16_t max_peers,
+    const PeerTalk_Callbacks *callbacks)
+{
+    return PeerTalk_QuickStartWithPool(name, max_peers, NULL, callbacks);
+}
+
+PeerTalk_Context *PeerTalk_QuickStartWithPool(
+    const char *name,
+    uint16_t max_peers,
+    PeerTalk_BufferPool *pool,
+    const PeerTalk_Callbacks *callbacks)
+{
+    PeerTalk_Config config;
+    PeerTalk_Context *ctx;
+    size_t name_len;
+
+    /* Validate parameters */
+    if (!name || !name[0]) {
+        return NULL;
+    }
+
+    /* Initialize config with zeros */
+    pt_memset(&config, 0, sizeof(config));
+
+    /* Copy name safely */
+    name_len = 0;
+    while (name[name_len] && name_len < PT_MAX_PEER_NAME) {
+        config.local_name[name_len] = name[name_len];
+        name_len++;
+    }
+    config.local_name[name_len] = '\0';
+
+    /* Set sensible defaults */
+    config.max_peers = (max_peers > 0 && max_peers <= PT_MAX_PEERS)
+                       ? max_peers : 4;
+    config.transports = PT_TRANSPORT_ALL;
+    config.discovery_port = PT_DEFAULT_DISCOVERY_PORT;
+    config.tcp_port = PT_DEFAULT_TCP_PORT;
+    config.udp_port = PT_DEFAULT_UDP_PORT;
+    config.max_message_size = PT_MAX_MESSAGE_SIZE;
+    config.preferred_chunk = 1024;
+    config.enable_fragmentation = 1;
+
+    /* Buffer handling: use provided pool or enable auto-allocation */
+    if (pool != NULL) {
+        config.buffer_pool = pool;
+        config.auto_buffers = 0;
+    } else {
+        config.buffer_pool = NULL;
+        config.auto_buffers = 1;  /* SDK allocates optimal buffers */
+    }
+
+    /* Initialize PeerTalk */
+    ctx = PeerTalk_Init(&config);
+    if (ctx == NULL) {
+        return NULL;
+    }
+
+    /* Set callbacks if provided */
+    if (callbacks != NULL) {
+        PeerTalk_SetCallbacks(ctx, callbacks);
+    }
+
+    return ctx;
+}
+
+/* ========================================================================== */
 /* PeerTalk_Shutdown - Clean Up and Free Resources                           */
 /* ========================================================================== */
 
