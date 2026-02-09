@@ -42,6 +42,8 @@
 #define TEST_DURATION_TICKS  (60 * 60)    /* 60 seconds */
 #define PING_INTERVAL_TICKS  6            /* ~100ms between pings */
 #define MAX_SAMPLES          1000         /* Maximum RTT samples to collect */
+#define DISCOVERY_TIMEOUT_TICKS (60 * 60) /* 60 seconds to find a peer */
+#define MAX_CONNECT_RETRIES  5            /* Give up after this many failures */
 
 /* Message sizes to test (in bytes, including 8-byte header) */
 static const int g_test_sizes[] = { 16, 64, 256, 1024, 4096 };
@@ -85,10 +87,13 @@ typedef struct {
 static PeerTalk_Context *g_ctx = NULL;
 static PT_Log *g_log = NULL;
 static PeerTalk_PeerID g_connected_peer = 0;
+static PeerTalk_PeerID g_target_peer = 0;
 static LatencyTest g_test;
 static unsigned long g_test_start = 0;
 static unsigned long g_last_ping = 0;
+static unsigned long g_discovery_start = 0;
 static int g_running = 1;
+static int g_connect_failures = 0;
 
 /* ========================================================================== */
 /* Utility Functions                                                           */
@@ -327,10 +332,26 @@ static void on_peer_discovered(PeerTalk_Context *ctx, const PeerTalk_PeerInfo *p
         peer->address & 0xFF,
         (unsigned)peer->port);
 
-    /* Auto-connect to first discovered peer */
-    if (g_connected_peer == 0) {
+    /* Track target peer and auto-connect */
+    if (g_target_peer == 0) {
+        g_target_peer = peer->id;
+    }
+
+    if (g_connected_peer == 0 && g_target_peer == peer->id) {
+        PeerTalk_Error err;
         PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Connecting to peer...");
-        PeerTalk_Connect(ctx, peer->id);
+        err = PeerTalk_Connect(ctx, peer->id);
+        if (err != PT_OK) {
+            g_connect_failures++;
+            PT_LOG_ERR(g_log, PT_LOG_CAT_APP1,
+                "Connect failed: %d (attempt %d/%d)",
+                (int)err, g_connect_failures, MAX_CONNECT_RETRIES);
+            if (g_connect_failures >= MAX_CONNECT_RETRIES) {
+                PT_LOG_ERR(g_log, PT_LOG_CAT_APP1,
+                    "Too many connection failures, giving up");
+                g_test.test_complete = 1;
+            }
+        }
     }
 }
 
@@ -353,12 +374,27 @@ static void on_peer_connected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
 static void on_peer_disconnected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
                                   int reason, void *user_data)
 {
-    (void)ctx;
     (void)user_data;
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
         "DISCONNECTED from peer %u (reason=%d)", (unsigned)peer_id, reason);
     g_connected_peer = 0;
+
+    /* If test not complete, try to reconnect */
+    if (!g_test.test_complete && g_target_peer != 0) {
+        PeerTalk_Error err = PeerTalk_Connect(ctx, g_target_peer);
+        if (err != PT_OK) {
+            g_connect_failures++;
+            PT_LOG_ERR(g_log, PT_LOG_CAT_APP1,
+                "Reconnect failed: %d (attempt %d/%d)",
+                (int)err, g_connect_failures, MAX_CONNECT_RETRIES);
+            if (g_connect_failures >= MAX_CONNECT_RETRIES) {
+                PT_LOG_ERR(g_log, PT_LOG_CAT_APP1,
+                    "Too many connection failures, giving up");
+                g_test.test_complete = 1;
+            }
+        }
+    }
 }
 
 static void on_message_received(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
@@ -456,6 +492,8 @@ int main(void)
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Waiting for peer...");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Press any key to exit.");
 
+    g_discovery_start = TickCount();
+
     /* Main loop */
     while (g_running) {
         /* Check for user input */
@@ -469,6 +507,16 @@ int main(void)
         PeerTalk_Poll(g_ctx);
 
         now = TickCount();
+
+        /* Check for discovery timeout */
+        if (g_target_peer == 0 && (now - g_discovery_start) >= DISCOVERY_TIMEOUT_TICKS) {
+            PT_LOG_ERR(g_log, PT_LOG_CAT_APP1,
+                "No peer discovered after %d seconds, giving up",
+                DISCOVERY_TIMEOUT_TICKS / 60);
+            g_test.test_complete = 1;
+            g_running = 0;
+            break;
+        }
 
         /* Test logic */
         if (g_connected_peer && !g_test.test_complete) {
