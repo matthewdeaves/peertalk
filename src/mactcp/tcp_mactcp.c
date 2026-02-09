@@ -132,6 +132,10 @@ pascal void pt_tcp_asr(
  * For Mac SE 4MB: Use memory-aware sizing to leave room for heap operations.
  * For Performa 6200 8MB+: Can use optimal formula for better throughput.
  *
+ * PERFORMANCE OPTIMIZATION: If pre-allocated buffers are available, use them
+ * instead of allocating on-demand. Pre-allocated buffers are larger because
+ * they were allocated before memory fragmentation.
+ *
  * DOD: Uses hot/cold struct split. Takes index to access parallel arrays.
  *
  * @param ctx  PeerTalk context
@@ -144,7 +148,7 @@ int pt_mactcp_tcp_create(struct pt_context *ctx, int idx)
     pt_tcp_stream_hot *hot;
     pt_tcp_stream_cold *cold;
     OSErr err;
-    unsigned long buf_size;
+    unsigned long buf_size = 0;
     unsigned long original_size;
 
     if (idx < 0 || idx >= PT_MAX_PEERS) {
@@ -162,39 +166,54 @@ int pt_mactcp_tcp_create(struct pt_context *ctx, int idx)
         return -1;
     }
 
-    /* Determine buffer size based on available memory
-     * Uses conservative thresholds appropriate for Mac SE 4MB
-     * See pt_mactcp_buffer_size_for_memory() for details
-     */
-    buf_size = pt_mactcp_buffer_size_for_memory(ctx);
-    original_size = buf_size;
+    /* PERFORMANCE OPTIMIZATION: Use pre-allocated buffer if available.
+     * Pre-allocated buffers are larger (16-32KB) because they were allocated
+     * before memory fragmentation. This improves throughput via the 25% rule. */
+    if (md->prealloced_buf_size > 0 && md->prealloced_bufs[idx] != NULL) {
+        cold->rcv_buffer = md->prealloced_bufs[idx];
+        cold->rcv_buffer_size = md->prealloced_buf_size;
+        md->prealloced_bufs[idx] = NULL;  /* Mark as used */
 
-    /* Allocate receive buffer with fallback to smaller sizes
-     * This handles low-memory situations gracefully
-     */
-    while (buf_size >= PT_TCP_RCV_BUF_MIN) {
-        cold->rcv_buffer = pt_mactcp_alloc_buffer(buf_size);
-        if (cold->rcv_buffer != NULL)
-            break;
-        /* Log allocation fallback */
-        PT_LOG_WARN(ctx->log, PT_LOG_CAT_MEMORY,
-            "Buffer alloc failed (%lu), trying %lu", buf_size, buf_size / 2);
-        buf_size /= 2;  /* Try smaller buffer */
-    }
-
-    if (cold->rcv_buffer != NULL && buf_size < original_size) {
         PT_LOG_INFO(ctx->log, PT_LOG_CAT_MEMORY,
-            "TCP buffer allocated at reduced size: %lu (requested %lu)",
-            buf_size, original_size);
-    }
+            "TCP[%d] using pre-allocated %luKB buffer (25%% threshold=%luB)",
+            idx, cold->rcv_buffer_size / 1024, cold->rcv_buffer_size / 4);
+    } else {
+        /* Fall back to on-demand allocation */
 
-    if (cold->rcv_buffer == NULL) {
-        PT_LOG_ERR(ctx->log, PT_LOG_CAT_MEMORY,
-            "Failed to allocate TCP receive buffer (tried down to %lu bytes)",
-            (unsigned long)PT_TCP_RCV_BUF_MIN);
-        return -1;
+        /* Determine buffer size based on available memory
+         * Uses conservative thresholds appropriate for Mac SE 4MB
+         * See pt_mactcp_buffer_size_for_memory() for details
+         */
+        buf_size = pt_mactcp_buffer_size_for_memory(ctx);
+        original_size = buf_size;
+
+        /* Allocate receive buffer with fallback to smaller sizes
+         * This handles low-memory situations gracefully
+         */
+        while (buf_size >= PT_TCP_RCV_BUF_MIN) {
+            cold->rcv_buffer = pt_mactcp_alloc_buffer(buf_size);
+            if (cold->rcv_buffer != NULL)
+                break;
+            /* Log allocation fallback */
+            PT_LOG_WARN(ctx->log, PT_LOG_CAT_MEMORY,
+                "Buffer alloc failed (%lu), trying %lu", buf_size, buf_size / 2);
+            buf_size /= 2;  /* Try smaller buffer */
+        }
+
+        if (cold->rcv_buffer != NULL && buf_size < original_size) {
+            PT_LOG_INFO(ctx->log, PT_LOG_CAT_MEMORY,
+                "TCP buffer allocated at reduced size: %lu (requested %lu)",
+                buf_size, original_size);
+        }
+
+        if (cold->rcv_buffer == NULL) {
+            PT_LOG_ERR(ctx->log, PT_LOG_CAT_MEMORY,
+                "Failed to allocate TCP receive buffer (tried down to %lu bytes)",
+                (unsigned long)PT_TCP_RCV_BUF_MIN);
+            return -1;
+        }
+        cold->rcv_buffer_size = buf_size;
     }
-    cold->rcv_buffer_size = buf_size;
 
     /* Log actual allocation for debugging */
     PT_LOG_INFO(ctx->log, PT_LOG_CAT_MEMORY,
@@ -408,9 +427,21 @@ int pt_mactcp_tcp_release(struct pt_context *ctx, int idx)
             "TCPRelease returned: %d", (int)err);
     }
 
-    /* Free buffer */
+    /* Handle buffer - return to pool if pre-allocated, else free */
     if (cold->rcv_buffer != NULL) {
-        pt_mactcp_free_buffer(cold->rcv_buffer);
+        /* Check if this buffer matches the pre-allocated size.
+         * If so, return it to the pool for reuse. */
+        if (md->prealloced_buf_size > 0 &&
+            cold->rcv_buffer_size == md->prealloced_buf_size &&
+            md->prealloced_bufs[idx] == NULL) {
+            /* Return to pool */
+            md->prealloced_bufs[idx] = cold->rcv_buffer;
+            PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_MEMORY,
+                "TCP[%d] buffer returned to pre-alloc pool", idx);
+        } else {
+            /* Not pre-allocated or pool slot occupied - free it */
+            pt_mactcp_free_buffer(cold->rcv_buffer);
+        }
         cold->rcv_buffer = NULL;
     }
 

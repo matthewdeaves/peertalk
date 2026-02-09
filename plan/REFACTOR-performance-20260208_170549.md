@@ -246,6 +246,7 @@ Foundation is in place for future optimizations (multiple outstanding receives, 
 | 3 | Tunable message limits | N/A | N/A | - | ✅ Already implemented |
 | **A** | **Async send pipelining** | **HIGH** | **HIGH** | **Throughput** | **✅ DONE - 112 KB/s (2.5x)** |
 | **B** | **Async receive** | **NEUTRAL** | **HIGH** | **Throughput** | **✅ DONE - matches baseline** |
+| **C** | **Buffer pre-allocation** | **N/A** | **MEDIUM** | **Throughput** | **❌ NOT VIABLE - memory constraints** |
 | 4 | Streaming mode | N/A | N/A | File transfer | ✅ Already implemented |
 | 5 | Reduce small msg overhead | MEDIUM | MEDIUM | Chat apps | ✅ Compact headers wired up |
 | 6 | UDP fast path | N/A | N/A | Games | ✅ Already implemented |
@@ -253,6 +254,43 @@ Foundation is in place for future optimizations (multiple outstanding receives, 
 | 8 | Poll loop optimization | N/A | N/A | High throughput | ✅ Already implemented |
 
 **Key Finding**: The existing implementation is more optimized than initially assessed. The perceived capability exchange "bug" was a test app timing issue - the library handles capabilities correctly. Async send pipelining provided significant gains (2.5x). Async receive is now implemented and stable (neutral performance) - poll order critical for preventing backpressure under heavy load.
+
+---
+
+### C. Buffer Pre-allocation ❌ NOT VIABLE
+**Impact: N/A | Effort: MEDIUM | Result: Memory constraints prevent implementation**
+
+**Goal**: Pre-allocate TCP receive buffers before MacTCP driver opens to get larger buffers (16-32KB instead of 4KB), improving the 25% threshold rule.
+
+**Implementation Attempted** (2026-02-09):
+1. Added `prealloced_bufs[]` array to `pt_mactcp_data` structure
+2. Created `pt_mactcp_preallocate_early()` in platform_mactcp.c
+3. Called BEFORE `PBOpenSync()` for MacTCP driver
+4. Modified `pt_mactcp_tcp_create()` to use pre-allocated buffers
+
+**Results**: Pre-allocation fails due to memory constraints.
+
+**Logs show**:
+```
+[00000016][INF] Early pre-allocation: MaxBlock=9664 (before MacTCP driver)
+[00000016][WRN] Insufficient memory for pre-allocation (MaxBlock=9664, need=147456 for 16 peers)
+```
+
+**Root Cause**: Even before MacTCP driver opens, `MaxBlock` is only ~10KB. This is because:
+1. MacTCP is a shared driver - already loaded before app starts
+2. System and app resources allocate before `main()` runs
+3. App CODE segments load into application heap
+
+**Memory required**:
+- For 4 peers × 8KB buffers + headroom = ~48KB minimum
+- Available: ~10KB contiguous
+
+**Conclusion**: The theoretical optimization is sound - larger buffers would improve receive throughput via the 25% threshold rule. However, Classic Mac memory management constraints make pre-allocation impractical:
+- Heap is fragmented before app gets control
+- No opportunity to allocate early enough
+- Would require application-level changes (allocating in main() before PeerTalk_Init)
+
+**Code preserved** in platform_mactcp.c and mactcp_driver.c for future reference if memory constraints change or if apps can be modified to allocate buffers before calling PeerTalk_Init.
 
 ---
 
