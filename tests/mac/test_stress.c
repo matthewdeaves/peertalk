@@ -37,7 +37,7 @@
 /* Configuration                                                               */
 /* ========================================================================== */
 
-#define TARGET_CYCLES       50      /* Number of connect/disconnect cycles */
+#define TARGET_CYCLES       5       /* Number of connect/disconnect cycles (keep low for LaunchAPPL timeout) */
 #define CYCLE_DELAY_TICKS   30      /* 0.5 second between cycles */
 #define CONNECT_TIMEOUT     300     /* 5 seconds to wait for connection */
 #define DISCONNECT_WAIT     60      /* 1 second after disconnect before next */
@@ -162,12 +162,16 @@ static void start_connect(void)
         "Cycle %d: Connecting to peer %u...",
         g_test.cycle_count + 1, (unsigned)g_test.target_peer);
 
-    if (PeerTalk_Connect(g_ctx, g_test.target_peer) == PT_OK) {
-        set_state(STATE_CONNECTING);
-    } else {
-        PT_LOG_ERR(g_log, PT_LOG_CAT_APP1, "Connect initiation failed!");
-        g_test.connect_failures++;
-        set_state(STATE_WAITING);
+    {
+        PeerTalk_Error err = PeerTalk_Connect(g_ctx, g_test.target_peer);
+        if (err == PT_OK) {
+            set_state(STATE_CONNECTING);
+        } else {
+            PT_LOG_ERR(g_log, PT_LOG_CAT_APP1,
+                "Connect initiation failed! Error: %d", (int)err);
+            g_test.connect_failures++;
+            set_state(STATE_WAITING);
+        }
     }
 }
 
@@ -187,8 +191,8 @@ static void start_disconnect(void)
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
         "Cycle %d: Disconnecting...", g_test.cycle_count + 1);
 
-    /* Disconnect will happen through PeerTalk_Disconnect or connection drop */
-    /* For now, we just stop using the connection and wait for timeout */
+    /* Actually disconnect - this resets peer state to DISCOVERED for reconnection */
+    PeerTalk_Disconnect(g_ctx, g_test.target_peer);
     set_state(STATE_DISCONNECTING);
 }
 
@@ -457,8 +461,8 @@ int main(void)
     memset(&config, 0, sizeof(config));
     strncpy(config.local_name, "MacStress", PT_MAX_PEER_NAME);
     config.max_peers = 4;
-    config.discovery_port = 7353;
-    config.tcp_port = 7354;
+    config.discovery_port = 7363;  /* Different port to avoid duplicateSocket from previous test */
+    config.tcp_port = 7364;
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Initializing PeerTalk...");
     g_ctx = PeerTalk_Init(&config);

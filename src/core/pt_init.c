@@ -107,7 +107,13 @@ PeerTalk_Context *PeerTalk_Init(const PeerTalk_Config *config) {
             PT_LogSetLevel(ctx->log, (PT_LogLevel)config->log_level);
         }
         PT_LogSetCategories(ctx->log, PT_LOG_CAT_ALL);
+#if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)
+        /* Mac has no console - use file output */
+        PT_LogSetOutput(ctx->log, PT_LOG_OUT_FILE);
+        PT_LogSetFile(ctx->log, "PT_Log");
+#else
         PT_LogSetOutput(ctx->log, PT_LOG_OUT_CONSOLE);
+#endif
     }
 
     /* Initialize local peer info */

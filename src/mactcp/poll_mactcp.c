@@ -355,7 +355,15 @@ static void pt_mactcp_poll_connected(struct pt_context *ctx,
     /* Receive data */
     result = pt_mactcp_tcp_recv(ctx, peer);
     if (result < 0) {
-        /* Connection lost */
+        /* Connection lost - check if we're actively closing */
+        if (hot->state == PT_STREAM_CLOSING) {
+            /* We initiated disconnect - this is expected, let close handler finish */
+            PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_CONNECT,
+                "Recv during close for peer %u (expected)", (unsigned)peer->hot.id);
+            return;  /* Close handler will clean up */
+        }
+
+        /* Unexpected connection loss */
         PT_LOG_INFO(ctx->log, PT_LOG_CAT_CONNECT,
             "Connection lost to peer %u", (unsigned)peer->hot.id);
 
@@ -366,9 +374,10 @@ static void pt_mactcp_poll_connected(struct pt_context *ctx,
         }
 
         peer->hot.connection = NULL;
-        pt_peer_destroy(ctx, peer);
         pt_mactcp_tcp_release(ctx, idx);
-        return;  /* Peer destroyed, can't continue */
+        /* Set back to DISCOVERED so reconnection is possible */
+        pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCOVERED);
+        return;
     }
 
     /* Flow control: Check for pressure updates to send
