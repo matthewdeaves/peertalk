@@ -84,8 +84,8 @@ struct pt_peer;
 #define PT_CAPFLAG_COMPACT_HEADER  0x0004  /* Peer supports compact 4-byte headers */
 
 /* Capability defaults (for legacy peers without PT_DISC_FLAG_HAS_CAPS) */
-#define PT_CAP_DEFAULT_MAX_MSG      512     /* Conservative for legacy */
-#define PT_CAP_DEFAULT_CHUNK        256     /* Conservative for legacy */
+#define PT_CAP_DEFAULT_MAX_MSG      4096    /* Optimized for LAN performance */
+#define PT_CAP_DEFAULT_CHUNK        1024    /* Optimized for LAN performance */
 #define PT_CAP_DEFAULT_PRESSURE     50      /* Moderate constraint */
 
 /* Capability limits */
