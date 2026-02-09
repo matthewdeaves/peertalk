@@ -86,6 +86,7 @@ typedef struct {
 
 static PeerTalk_Context *g_ctx = NULL;
 static PT_Log *g_log = NULL;
+static PeerTalk_BufferPool *g_buffer_pool = NULL;
 static PeerTalk_PeerID g_connected_peer = 0;
 static PeerTalk_PeerID g_target_peer = 0;
 static LatencyTest g_test;
@@ -436,6 +437,15 @@ int main(void)
 
     init_toolbox();
 
+    /**
+     * CRITICAL: Allocate TCP buffer pool FIRST, before any other allocations.
+     * Larger TCP buffers improve receive throughput via MacTCP's 25% threshold rule.
+     */
+    g_buffer_pool = PeerTalk_AllocateBuffers(4, PT_TCP_BUF_16K);
+    if (!g_buffer_pool) {
+        g_buffer_pool = PeerTalk_AllocateBuffers(4, PT_TCP_BUF_8K);
+    }
+
     /* Create PT_Log */
     g_log = PT_LogCreate();
     if (g_log) {
@@ -455,12 +465,27 @@ int main(void)
     /* Initialize test state */
     init_test();
 
+    /* Log buffer pool info */
+    {
+        uint16_t pool_count = 0;
+        uint32_t pool_size = 0;
+        PeerTalk_GetBufferPoolInfo(g_buffer_pool, &pool_count, &pool_size);
+        if (g_buffer_pool) {
+            PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+                "Buffer pool: %u buffers × %luKB",
+                (unsigned)pool_count, (unsigned long)(pool_size/1024));
+        } else {
+            PT_LOG_WARN(g_log, PT_LOG_CAT_APP1, "No buffer pool - using on-demand");
+        }
+    }
+
     /* Configure PeerTalk */
     memset(&config, 0, sizeof(config));
     strncpy(config.local_name, "MacLatency", PT_MAX_PEER_NAME);
     config.max_peers = 4;
     config.discovery_port = 7353;
     config.tcp_port = 7354;
+    config.buffer_pool = g_buffer_pool;
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Initializing PeerTalk...");
     g_ctx = PeerTalk_Init(&config);
@@ -578,6 +603,9 @@ cleanup:
     log_stream_cleanup();
     if (g_ctx) {
         PeerTalk_Shutdown(g_ctx);
+    }
+    if (g_buffer_pool) {
+        PeerTalk_FreeBuffers(g_buffer_pool);
     }
     if (g_log) {
         PT_LogDestroy(g_log);

@@ -76,6 +76,7 @@ typedef struct {
 
 static PeerTalk_Context *g_ctx = NULL;
 static PT_Log *g_log = NULL;
+static PeerTalk_BufferPool *g_buffer_pool = NULL;
 static PeerTalk_PeerID g_connected_peer = 0;
 static PeerTalk_PeerID g_target_peer = 0;
 static ThroughputTest g_test;
@@ -390,6 +391,23 @@ int main(void)
 
     init_toolbox();
 
+    /**
+     * CRITICAL: Allocate TCP buffer pool FIRST, before any other allocations.
+     *
+     * This is the key optimization for MacTCP throughput. By allocating here
+     * at the very start of main(), we get larger contiguous memory blocks
+     * before the heap fragments. Larger TCP buffers improve receive throughput
+     * via MacTCP's 25% threshold rule (16KB buffer = 4KB completion threshold).
+     *
+     * Try 16KB buffers first, fall back to 8KB if memory is tight.
+     */
+    g_buffer_pool = PeerTalk_AllocateBuffers(4, PT_TCP_BUF_16K);  /* 4 peers × 16KB */
+    if (!g_buffer_pool) {
+        /* Fall back to smaller buffers */
+        g_buffer_pool = PeerTalk_AllocateBuffers(4, PT_TCP_BUF_8K);  /* 4 peers × 8KB */
+    }
+    /* Note: If both fail, PeerTalk will allocate on-demand (may get 4KB buffers) */
+
     /* Create PT_Log */
     g_log = PT_LogCreate();
     if (g_log) {
@@ -406,10 +424,24 @@ int main(void)
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Version: %s", PeerTalk_Version());
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
 
-    /* Log initial memory state */
+    /* Log initial memory state and buffer pool info */
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
-        "Initial memory: FreeMem=%ld MaxBlock=%ld",
+        "Memory after pool alloc: FreeMem=%ld MaxBlock=%ld",
         (long)FreeMem(), (long)MaxBlock());
+    {
+        uint16_t pool_count = 0;
+        uint32_t pool_size = 0;
+        PeerTalk_GetBufferPoolInfo(g_buffer_pool, &pool_count, &pool_size);
+        if (g_buffer_pool) {
+            PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+                "Buffer pool: %u buffers × %luKB (25%% threshold=%luB)",
+                (unsigned)pool_count, (unsigned long)(pool_size/1024),
+                (unsigned long)(pool_size/4));
+        } else {
+            PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                "Buffer pool allocation failed - using on-demand (may be slower)");
+        }
+    }
 
     /* Initialize test state */
     init_test();
@@ -420,6 +452,7 @@ int main(void)
     config.max_peers = 4;
     config.discovery_port = 7353;
     config.tcp_port = 7354;
+    config.buffer_pool = g_buffer_pool;  /* Pass pre-allocated buffers */
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Initializing PeerTalk...");
     g_ctx = PeerTalk_Init(&config);
@@ -546,6 +579,10 @@ cleanup:
     log_stream_cleanup();
     if (g_ctx) {
         PeerTalk_Shutdown(g_ctx);
+    }
+    /* Free buffer pool AFTER PeerTalk_Shutdown (buffers returned to pool during shutdown) */
+    if (g_buffer_pool) {
+        PeerTalk_FreeBuffers(g_buffer_pool);
     }
     if (g_log) {
         PT_LogDestroy(g_log);
