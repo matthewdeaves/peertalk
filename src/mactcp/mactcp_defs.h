@@ -130,8 +130,10 @@ typedef struct pt_tcp_stream_hot {
     uint8_t           rds_outstanding;  /* 1 byte  - offset 11 */
     volatile uint8_t  log_events;       /* 1 byte  - offset 12 (ISR-safe logging) */
     int8_t            peer_idx;         /* 1 byte  - offset 13 (-1 = no peer) */
-    /* Total: 14 bytes, 2-byte aligned, fits in minimal cache line */
-    /* Polling 8 streams loads ~112 bytes (was ~144 with pointer) */
+    volatile uint8_t  recv_pending;     /* 1 byte  - offset 14 (async recv outstanding) */
+    uint8_t           _pad;             /* 1 byte  - offset 15 (alignment padding) */
+    /* Total: 16 bytes, 2-byte aligned, fits in minimal cache line */
+    /* Polling 8 streams loads ~128 bytes */
 } pt_tcp_stream_hot;
 
 /**
@@ -149,7 +151,8 @@ typedef struct pt_tcp_stream_hot {
  * Cold path data - accessed during setup, I/O, teardown
  */
 typedef struct pt_tcp_stream_cold {
-    TCPiopb           pb;               /* Parameter block for calls (~100 bytes) */
+    TCPiopb           pb;               /* Parameter block for general calls (~100 bytes) */
+    TCPiopb           recv_pb;          /* Dedicated pb for async receive (~100 bytes) */
 
     /* Buffer management (must be locked, non-relocatable) */
     Ptr               rcv_buffer;       /* Passed to TCPCreate */

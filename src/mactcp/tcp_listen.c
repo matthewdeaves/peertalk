@@ -81,6 +81,7 @@ extern int pt_mactcp_tcp_release_listener(struct pt_context *ctx);
 
 /* From tcp_io.c */
 extern int pt_mactcp_send_capability(struct pt_context *ctx, struct pt_peer *peer);
+extern int pt_mactcp_issue_async_recv(struct pt_context *ctx, int stream_idx);
 
 /* ========================================================================== */
 /* Constants                                                                  */
@@ -407,6 +408,10 @@ int pt_mactcp_listen_poll(struct pt_context *ctx)
             /* Continue anyway - will fall back to sync sends */
         }
     }
+
+    /* Issue initial async receive to keep one permanently outstanding.
+     * This eliminates the ASR notification gap for faster receive. */
+    pt_mactcp_issue_async_recv(ctx, client_idx);
 
     /* Fire callback */
     if (ctx->callbacks.on_peer_connected != NULL) {

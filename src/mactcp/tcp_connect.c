@@ -29,6 +29,9 @@ extern short pt_mactcp_get_refnum(void);
 extern int pt_mactcp_tcp_create(struct pt_context *ctx, int idx);
 extern int pt_mactcp_tcp_release(struct pt_context *ctx, int idx);
 
+/* From tcp_io.c */
+extern int pt_mactcp_issue_async_recv(struct pt_context *ctx, int stream_idx);
+
 /* ========================================================================== */
 /* Constants                                                                  */
 /* ========================================================================== */
@@ -300,6 +303,10 @@ int pt_mactcp_connect_poll(struct pt_context *ctx)
             hot->state = PT_STREAM_CONNECTED;
             pt_peer_set_state(ctx, peer, PT_PEER_STATE_CONNECTED);
             peer->hot.last_seen = (pt_tick_t)TickCount();
+
+            /* Issue initial async receive to keep one permanently outstanding.
+             * This eliminates the ASR notification gap for faster receive. */
+            pt_mactcp_issue_async_recv(ctx, i);
 
             if (ctx->callbacks.on_peer_connected != NULL) {
                 ctx->callbacks.on_peer_connected((PeerTalk_Context *)ctx,

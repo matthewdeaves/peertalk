@@ -383,20 +383,86 @@ int pt_mactcp_tcp_send_async(struct pt_context *ctx, struct pt_peer *peer,
 }
 
 /* ========================================================================== */
-/* TCP Receive                                                                */
+/* TCP Receive (Async Implementation)                                         */
 /* ========================================================================== */
 
 /**
- * Receive data using TCPNoCopyRcv (high-performance method).
+ * Issue async TCPNoCopyRcv on a stream.
  *
- * Implements proper message framing to handle:
- * - Multiple messages arriving in one TCPNoCopyRcv call
- * - Partial messages split across multiple calls
+ * This keeps a receive command permanently outstanding so data arrival
+ * triggers immediate completion rather than waiting for ASR notification.
  *
- * Uses peer->cold.ibuf as a persistent receive buffer with ibuflen
- * tracking unprocessed bytes.
+ * From MacTCP Programmer's Guide (Lines 706-713):
+ * "By polling the ioResult field in the parameter block. When this value
+ * changes from commandInProgress to some other value, the call has been
+ * completed."
  *
- * DOD: Uses hot/cold struct split. Looks up stream by index stored in peer.
+ * CRITICAL: Uses dedicated recv_pb parameter block (not the general pb)
+ * so other operations can proceed while receive is pending.
+ *
+ * @param ctx        PeerTalk context
+ * @param stream_idx Stream index (0 to PT_MAX_PEERS-1)
+ * @return           0 on success, negative error on failure
+ */
+int pt_mactcp_issue_async_recv(struct pt_context *ctx, int stream_idx)
+{
+    pt_mactcp_data *md = pt_mactcp_get(ctx);
+    pt_tcp_stream_hot *hot;
+    pt_tcp_stream_cold *cold;
+    OSErr err;
+
+    if (stream_idx < 0 || stream_idx >= PT_MAX_PEERS)
+        return PT_ERR_INVALID_PARAM;
+
+    hot = &md->tcp_hot[stream_idx];
+    cold = &md->tcp_cold[stream_idx];
+
+    /* Don't issue if already pending or not connected */
+    if (hot->recv_pending || hot->state != PT_STREAM_CONNECTED)
+        return 0;
+
+    /* Setup async TCPNoCopyRcv using dedicated recv_pb */
+    pt_memset(&cold->recv_pb, 0, sizeof(cold->recv_pb));
+    cold->recv_pb.csCode = TCPNoCopyRcv;
+    cold->recv_pb.ioCRefNum = md->driver_refnum;
+    cold->recv_pb.tcpStream = hot->stream;
+    cold->recv_pb.ioCompletion = NULL;  /* CRITICAL: No completion - poll instead */
+
+    /*
+     * Command timeout of 2 seconds (minimum allowed by MacTCP).
+     * This ensures the receive completes periodically even if no data
+     * arrives, preventing stalls under backpressure conditions.
+     * The async nature means we're not blocking - we poll ioResult.
+     */
+    cold->recv_pb.csParam.receive.commandTimeoutValue = 2;
+    cold->recv_pb.csParam.receive.rdsPtr = (Ptr)cold->rds;
+    cold->recv_pb.csParam.receive.rdsLength = PT_MAX_RDS_ENTRIES;
+
+    /* Issue async receive */
+    err = PBControlAsync((ParmBlkPtr)&cold->recv_pb);
+
+    if (err != noErr) {
+        PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
+            "PBControlAsync TCPNoCopyRcv failed: %d", (int)err);
+        return PT_ERR_NETWORK;
+    }
+
+    hot->recv_pending = 1;
+    return 0;
+}
+
+/**
+ * Receive data using async TCPNoCopyRcv (high-performance method).
+ *
+ * ASYNC RECEIVE STRATEGY:
+ * 1. Check if async receive completed (poll ioResult)
+ * 2. If complete: copy data to ibuf, return buffers, immediately re-issue
+ * 3. Process all complete messages in ibuf
+ * 4. If no receive pending and connected, issue one
+ *
+ * This eliminates the ASR notification gap - we always have a receive
+ * command outstanding, so data arrival triggers immediate completion
+ * rather than waiting for the next poll cycle.
  *
  * @param ctx   PeerTalk context
  * @param peer  Peer to receive from
@@ -417,6 +483,8 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
     uint16_t expected_len;
     uint16_t bytes_consumed;
     int messages_processed = 0;
+    int recv_loops = 0;
+    const int max_recv_loops = 8;  /* Max completions to process per poll */
 
     if (peer == NULL || peer->hot.magic != PT_PEER_MAGIC)
         return PT_ERR_INVALID_PARAM;
@@ -431,135 +499,103 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
     /* Check for connection close (hot struct flags) */
     if (hot->asr_flags & PT_ASR_CONN_CLOSED) {
         hot->asr_flags &= ~PT_ASR_CONN_CLOSED;
+        hot->recv_pending = 0;  /* Cancel pending receive state */
         return -1;  /* Trigger disconnect */
     }
 
-    /* Fetch new data if ASR signaled arrival */
-    if (hot->asr_flags & PT_ASR_DATA_ARRIVED) {
-        int fetch_loops = 0;
-        const int max_fetch_loops = 8;  /* Handle multiple 4KB messages per poll */
+    /*
+     * ASYNC RECEIVE COMPLETION CHECK
+     *
+     * Poll ioResult to see if async receive completed:
+     * - ioResult == 1: still in progress (commandInProgress)
+     * - ioResult == 0: completed successfully (noErr)
+     * - ioResult < 0: completed with error
+     *
+     * Loop to drain multiple completions per poll (up to max_recv_loops).
+     */
+    while (hot->recv_pending && recv_loops < max_recv_loops) {
+        int16_t io_result = cold->recv_pb.ioResult;
+
+        if (io_result == 1) {
+            /* Still in progress - nothing to do */
+            break;
+        }
+
+        /* Receive completed - process it */
+        hot->recv_pending = 0;
+        recv_loops++;
+
+        if (io_result == commandTimeout) {
+            /* Timeout with no data - re-issue and continue */
+            pt_mactcp_issue_async_recv(ctx, idx);
+            break;
+        } else if (io_result != noErr) {
+            PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
+                "Async TCPNoCopyRcv completed with error: %d", (int)io_result);
+
+            if (io_result == connectionClosing || io_result == connectionTerminated) {
+                return -1;
+            }
+            /* Other error - try to recover by re-issuing */
+            pt_mactcp_issue_async_recv(ctx, idx);
+            break;
+        }
+
+        /* Success - copy RDS data to ibuf */
+        hot->rds_outstanding = 1;
+
+        for (rds_idx = 0; rds_idx < PT_MAX_RDS_ENTRIES && cold->rds[rds_idx].length > 0; rds_idx++) {
+            unsigned short chunk_len = cold->rds[rds_idx].length;
+            if (peer->cold.ibuflen + chunk_len > sizeof(peer->cold.ibuf)) {
+                PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
+                    "RCV: data exceeds ibuf (%u + %u > %u)",
+                    (unsigned)peer->cold.ibuflen, (unsigned)chunk_len,
+                    (unsigned)sizeof(peer->cold.ibuf));
+                break;
+            }
+            pt_memcpy(peer->cold.ibuf + peer->cold.ibuflen,
+                      cold->rds[rds_idx].ptr, chunk_len);
+            peer->cold.ibuflen += chunk_len;
+        }
 
         PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
-            "RCV: ASR signaled, stream=%d ibuflen=%u",
-            idx, (unsigned)peer->cold.ibuflen);
-        hot->asr_flags &= ~PT_ASR_DATA_ARRIVED;
+            "ASYNC RCV: +%u bytes in %d chunks (ibuflen=%u)",
+            (unsigned)cold->recv_pb.csParam.receive.rcvBuffLen, rds_idx,
+            (unsigned)peer->cold.ibuflen);
 
-        /*
-         * THROUGHPUT OPTIMIZATION: Loop to drain MacTCP's receive buffers.
-         *
-         * Due to the 25% threshold, large messages trigger early completion.
-         * After returning RDS, use TCPStatus to check for more unread data.
-         * If data remains, issue another TCPNoCopyRcv immediately instead of
-         * waiting for the next ASR (which won't fire until all data is consumed).
-         */
-        do {
-            uint16_t ibuflen_before = peer->cold.ibuflen;
+        /* CRITICAL: Return RDS buffers immediately */
+        if (hot->rds_outstanding) {
+            TCPiopb return_pb;
+            pt_memset(&return_pb, 0, sizeof(return_pb));
+            return_pb.csCode = TCPRcvBfrReturn;
+            return_pb.ioCRefNum = md->driver_refnum;
+            return_pb.tcpStream = hot->stream;
+            return_pb.csParam.receive.rdsPtr = (Ptr)cold->rds;
 
-            /* Check if ibuf has room for more data */
-            if (peer->cold.ibuflen >= sizeof(peer->cold.ibuf) - 1500) {
-                break;  /* ibuf nearly full, process what we have */
-            }
-
-            /*
-             * Issue TCPNoCopyRcv (pb and rds in cold struct).
-             * From MacTCP Programmer's Guide: "The minimum value of the command
-             * timeout is 2 seconds; 0 means infinite."
-             */
-            pt_memset(&cold->pb, 0, sizeof(cold->pb));
-            cold->pb.csCode = TCPNoCopyRcv;
-            cold->pb.ioCRefNum = md->driver_refnum;
-            cold->pb.tcpStream = hot->stream;
-
-            cold->pb.csParam.receive.commandTimeoutValue = 2;
-            cold->pb.csParam.receive.rdsPtr = (Ptr)cold->rds;
-            cold->pb.csParam.receive.rdsLength = PT_MAX_RDS_ENTRIES;
-
-            err = PBControlSync((ParmBlkPtr)&cold->pb);
-
-            if (err == commandTimeout) {
-                /* No data ready - exit loop */
-                break;
-            } else if (err != noErr) {
+            err = PBControlSync((ParmBlkPtr)&return_pb);
+            if (err != noErr) {
                 PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
-                    "TCPNoCopyRcv failed: %d", (int)err);
-
-                if (err == connectionClosing || err == connectionTerminated) {
-                    return -1;
-                }
-                break;
+                    "TCPRcvBfrReturn failed: %d", (int)err);
             }
+            hot->rds_outstanding = 0;
+        }
 
-            /* Append RDS data to ibuf after existing content */
-            hot->rds_outstanding = 1;
+        /* Immediately re-issue async receive to keep one outstanding */
+        pt_mactcp_issue_async_recv(ctx, idx);
+    }
 
-            for (rds_idx = 0; rds_idx < PT_MAX_RDS_ENTRIES && cold->rds[rds_idx].length > 0; rds_idx++) {
-                unsigned short chunk_len = cold->rds[rds_idx].length;
-                if (peer->cold.ibuflen + chunk_len > sizeof(peer->cold.ibuf)) {
-                    PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
-                        "RCV: data exceeds ibuf (%u + %u > %u)",
-                        (unsigned)peer->cold.ibuflen, (unsigned)chunk_len,
-                        (unsigned)sizeof(peer->cold.ibuf));
-                    break;
-                }
-                pt_memcpy(peer->cold.ibuf + peer->cold.ibuflen,
-                          cold->rds[rds_idx].ptr, chunk_len);
-                peer->cold.ibuflen += chunk_len;
-            }
+    /* Also check for ASR-signaled data (fallback path) */
+    if (hot->asr_flags & PT_ASR_DATA_ARRIVED) {
+        hot->asr_flags &= ~PT_ASR_DATA_ARRIVED;
+        /* If no receive pending, issue one now */
+        if (!hot->recv_pending && hot->state == PT_STREAM_CONNECTED) {
+            pt_mactcp_issue_async_recv(ctx, idx);
+        }
+    }
 
-            PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
-                "RCV: +%u bytes in %d chunks (ibuflen %u->%u)",
-                (unsigned)(peer->cold.ibuflen - ibuflen_before), rds_idx,
-                (unsigned)ibuflen_before, (unsigned)peer->cold.ibuflen);
-
-            /*
-             * CRITICAL: Return RDS buffers IMMEDIATELY after copying.
-             * MacTCP won't send another ASR until buffers are returned.
-             */
-            if (hot->rds_outstanding) {
-                TCPiopb return_pb;
-                pt_memset(&return_pb, 0, sizeof(return_pb));
-                return_pb.csCode = TCPRcvBfrReturn;
-                return_pb.ioCRefNum = md->driver_refnum;
-                return_pb.tcpStream = hot->stream;
-                return_pb.csParam.receive.rdsPtr = (Ptr)cold->rds;
-
-                err = PBControlSync((ParmBlkPtr)&return_pb);
-                if (err != noErr) {
-                    PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
-                        "TCPRcvBfrReturn failed: %d", (int)err);
-                }
-                hot->rds_outstanding = 0;
-            }
-
-            /* If no data was received this iteration, exit loop */
-            if (peer->cold.ibuflen == ibuflen_before) {
-                break;
-            }
-
-            fetch_loops++;
-
-            /*
-             * Check if more data is waiting using TCPStatus.
-             * This avoids waiting for ASR when data is already buffered.
-             */
-            if (fetch_loops < max_fetch_loops) {
-                TCPiopb status_pb;
-                pt_memset(&status_pb, 0, sizeof(status_pb));
-                status_pb.csCode = TCPStatus;
-                status_pb.ioCRefNum = md->driver_refnum;
-                status_pb.tcpStream = hot->stream;
-
-                if (PBControlSync((ParmBlkPtr)&status_pb) == noErr) {
-                    /* amtUnreadData is in csParam.status.amtUnreadData */
-                    if (status_pb.csParam.status.amtUnreadData == 0) {
-                        break;  /* No more data waiting */
-                    }
-                    /* More data available - continue loop */
-                } else {
-                    break;  /* Status failed, exit loop */
-                }
-            }
-        } while (fetch_loops < max_fetch_loops);
+    /* Ensure we always have a receive outstanding when connected */
+    if (!hot->recv_pending && hot->state == PT_STREAM_CONNECTED) {
+        pt_mactcp_issue_async_recv(ctx, idx);
     }
 
     /*
@@ -793,23 +829,10 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
     }
 
     /*
-     * Proactive check: If we processed messages and have room in ibuf,
-     * check TCPStatus for more data. Set ASR flag if data is waiting
-     * so next poll will fetch immediately.
+     * With async receive, we don't need proactive TCPStatus checks.
+     * The permanently outstanding receive command will complete as
+     * soon as data arrives, which we'll catch on the next poll.
      */
-    if (messages_processed > 0 && peer->cold.ibuflen < sizeof(peer->cold.ibuf) / 2) {
-        TCPiopb status_pb;
-        pt_memset(&status_pb, 0, sizeof(status_pb));
-        status_pb.csCode = TCPStatus;
-        status_pb.ioCRefNum = md->driver_refnum;
-        status_pb.tcpStream = hot->stream;
-
-        if (PBControlSync((ParmBlkPtr)&status_pb) == noErr) {
-            if (status_pb.csParam.status.amtUnreadData > 0) {
-                hot->asr_flags |= PT_ASR_DATA_ARRIVED;
-            }
-        }
-    }
 
     return messages_processed;
 }

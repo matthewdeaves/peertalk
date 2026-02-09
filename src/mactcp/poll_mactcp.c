@@ -87,6 +87,7 @@ extern int pt_mactcp_tcp_send(struct pt_context *ctx, struct pt_peer *peer,
 extern int pt_mactcp_tcp_send_with_flags(struct pt_context *ctx, struct pt_peer *peer,
                                           const void *data, uint16_t len, uint8_t flags);
 extern int pt_mactcp_send_capability(struct pt_context *ctx, struct pt_peer *peer);
+extern int pt_mactcp_issue_async_recv(struct pt_context *ctx, int stream_idx);
 
 /**
  * Wrapper for pt_stream_poll send function.
@@ -211,6 +212,10 @@ static void pt_mactcp_poll_connecting(struct pt_context *ctx,
             }
         }
 
+        /* Issue initial async receive to keep one permanently outstanding.
+         * This eliminates the ASR notification gap for faster receive. */
+        pt_mactcp_issue_async_recv(ctx, idx);
+
         if (ctx->callbacks.on_peer_connected != NULL) {
             ctx->callbacks.on_peer_connected((PeerTalk_Context *)ctx,
                                              peer->hot.id,
@@ -275,6 +280,56 @@ static void pt_mactcp_poll_connected(struct pt_context *ctx,
      */
     if (ctx->plat && ctx->plat->poll_send_completions) {
         ctx->plat->poll_send_completions(ctx, peer);
+    }
+
+    /* RECEIVE FIRST: Process incoming data before sending more
+     *
+     * CRITICAL: Receive must happen BEFORE sends to prevent backpressure
+     * buildup under heavy bidirectional load. At 4096 byte message sizes,
+     * processing sends first can starve the receive path, causing severe
+     * throughput regression (11 KB/s → 1 KB/s observed).
+     *
+     * The async receive pattern issues one TCPNoCopyRcv that stays
+     * outstanding. We poll ioResult here and re-issue immediately
+     * on completion to always have a receive pending.
+     */
+    result = pt_mactcp_tcp_recv(ctx, peer);
+    if (result < 0) {
+        /* Connection lost unexpectedly.
+         *
+         * CRITICAL: Do NOT call pt_mactcp_tcp_release() directly here!
+         * MacTCP may still have pending async operations that reference
+         * the receive buffer. Freeing the buffer while MacTCP still owns
+         * it causes heap corruption (the driver writes to freed memory).
+         *
+         * Instead, use TCPAbort to cancel pending operations, then let
+         * the normal close path handle cleanup via pt_mactcp_poll_closing.
+         */
+        pt_mactcp_data *md = pt_mactcp_get(ctx);
+        TCPiopb abort_pb;
+
+        PT_LOG_INFO(ctx->log, PT_LOG_CAT_CONNECT,
+            "Connection lost to peer %u, aborting stream", (unsigned)peer->hot.id);
+
+        /* Abort to cancel any pending operations */
+        pt_memset(&abort_pb, 0, sizeof(abort_pb));
+        abort_pb.csCode = TCPAbort;
+        abort_pb.ioCRefNum = md->driver_refnum;
+        abort_pb.tcpStream = hot->stream;
+        PBControlSync((ParmBlkPtr)&abort_pb);
+
+        /* Transition to CLOSING state - poll_closing will handle release */
+        hot->state = PT_STREAM_CLOSING;
+        cold->close_start = (unsigned long)TickCount();
+        cold->pb.ioResult = 0;  /* Abort is sync, so already complete */
+
+        /* Set peer state to DISCONNECTING so poll_closing can later
+         * transition to DISCOVERED. State machine requires:
+         * CONNECTED -> DISCONNECTING -> DISCOVERED */
+        pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCONNECTING);
+
+        /* Callback and state change happen in poll_closing when release completes */
+        return;
     }
 
     /* Tier 2: Send large message from direct buffer first (priority) */
@@ -351,46 +406,6 @@ static void pt_mactcp_poll_connected(struct pt_context *ctx,
 
     /* Stream: Process active stream transfers (e.g., log streaming) */
     pt_stream_poll(ctx, peer, pt_mactcp_stream_send);
-
-    /* Receive data */
-    result = pt_mactcp_tcp_recv(ctx, peer);
-    if (result < 0) {
-        /* Connection lost unexpectedly.
-         *
-         * CRITICAL: Do NOT call pt_mactcp_tcp_release() directly here!
-         * MacTCP may still have pending async operations that reference
-         * the receive buffer. Freeing the buffer while MacTCP still owns
-         * it causes heap corruption (the driver writes to freed memory).
-         *
-         * Instead, use TCPAbort to cancel pending operations, then let
-         * the normal close path handle cleanup via pt_mactcp_poll_closing.
-         */
-        pt_mactcp_data *md = pt_mactcp_get(ctx);
-        TCPiopb abort_pb;
-
-        PT_LOG_INFO(ctx->log, PT_LOG_CAT_CONNECT,
-            "Connection lost to peer %u, aborting stream", (unsigned)peer->hot.id);
-
-        /* Abort to cancel any pending operations */
-        pt_memset(&abort_pb, 0, sizeof(abort_pb));
-        abort_pb.csCode = TCPAbort;
-        abort_pb.ioCRefNum = md->driver_refnum;
-        abort_pb.tcpStream = hot->stream;
-        PBControlSync((ParmBlkPtr)&abort_pb);
-
-        /* Transition to CLOSING state - poll_closing will handle release */
-        hot->state = PT_STREAM_CLOSING;
-        cold->close_start = (unsigned long)TickCount();
-        cold->pb.ioResult = 0;  /* Abort is sync, so already complete */
-
-        /* Set peer state to DISCONNECTING so poll_closing can later
-         * transition to DISCOVERED. State machine requires:
-         * CONNECTED -> DISCONNECTING -> DISCOVERED */
-        pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCONNECTING);
-
-        /* Callback and state change happen in poll_closing when release completes */
-        return;
-    }
 
     /* Flow control: Check for pressure updates to send
      *

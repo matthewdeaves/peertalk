@@ -196,6 +196,47 @@ PeerTalk_Poll(ctx);
 
 ---
 
+---
+
+### B. Async Receive Implementation ✅ COMPLETE (NEUTRAL)
+**Impact: NEUTRAL | Effort: HIGH | Result: No regression, matches baseline**
+
+**Goal**: Convert synchronous TCPNoCopyRcv to async with permanent receive outstanding.
+
+**Implementation** (2026-02-09):
+1. Added `recv_pending` flag and dedicated `recv_pb` to hot/cold structs
+2. Changed `pt_mactcp_tcp_recv()` from PBControlSync to PBControlAsync
+3. Issue initial async receive on connection (tcp_listen.c, tcp_connect.c, poll_mactcp.c)
+4. Poll ioResult in main loop, re-issue immediately on completion
+5. **CRITICAL FIX**: Process receives BEFORE sends in poll loop (poll_mactcp.c)
+
+**Results** (Performa 6200, with poll order fix):
+
+| Size | Baseline RECV | Async RECV | Notes |
+|------|---------------|------------|-------|
+| 256 B | 11 KB/s | 11 KB/s | No change |
+| 512 B | 14 KB/s | 10-14 KB/s | Matches baseline |
+| 1024 B | 14 KB/s | 12-14 KB/s | Matches baseline |
+| 2048 B | 13 KB/s | 13 KB/s | Matches baseline |
+| 4096 B | 11 KB/s | 11 KB/s | **Matches baseline** |
+
+**Key Fixes Applied**:
+1. `commandTimeoutValue = 2` (minimum, prevents infinite stall)
+2. **Poll order**: Receive processed BEFORE sends to prevent backpressure buildup
+   - Previous order: sends first → starved receive under heavy load
+   - New order: receive first → data drained before more sends queued
+
+**Root Cause of Initial 4096-byte Regression**:
+Under heavy bidirectional load, processing sends before receives caused:
+1. Send queue drained (8 messages) before checking receive
+2. TCP backpressure built up as receive fell behind
+3. 2-second timeout fired repeatedly, causing stalls
+
+**Decision**: Async receive implementation is NEUTRAL - no improvement, but no regression.
+Foundation is in place for future optimizations (multiple outstanding receives, etc.).
+
+---
+
 ## Summary Table
 
 | Priority | Improvement | Impact | Effort | Best For | Status |
@@ -204,13 +245,14 @@ PeerTalk_Poll(ctx);
 | 2 | Reduce reassembly copies | N/A | N/A | - | ✅ Already optimized (2 copies) |
 | 3 | Tunable message limits | N/A | N/A | - | ✅ Already implemented |
 | **A** | **Async send pipelining** | **HIGH** | **HIGH** | **Throughput** | **✅ DONE - 112 KB/s (2.5x)** |
+| **B** | **Async receive** | **NEUTRAL** | **HIGH** | **Throughput** | **✅ DONE - matches baseline** |
 | 4 | Streaming mode | N/A | N/A | File transfer | ✅ Already implemented |
 | 5 | Reduce small msg overhead | MEDIUM | MEDIUM | Chat apps | ✅ Compact headers wired up |
 | 6 | UDP fast path | N/A | N/A | Games | ✅ Already implemented |
 | 7 | Adaptive tuning | N/A | N/A | Mixed traffic | ✅ Already implemented |
 | 8 | Poll loop optimization | N/A | N/A | High throughput | ✅ Already implemented |
 
-**Key Finding**: The existing implementation is more optimized than initially assessed. The perceived capability exchange "bug" was a test app timing issue - the library handles capabilities correctly. Further performance gains require new features (streaming, UDP fast path) rather than fixes.
+**Key Finding**: The existing implementation is more optimized than initially assessed. The perceived capability exchange "bug" was a test app timing issue - the library handles capabilities correctly. Async send pipelining provided significant gains (2.5x). Async receive is now implemented and stable (neutral performance) - poll order critical for preventing backpressure under heavy load.
 
 ---
 
