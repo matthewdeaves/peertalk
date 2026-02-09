@@ -486,14 +486,15 @@ int pt_capability_encode(const pt_capability_msg *caps, uint8_t *buf, size_t buf
 {
     size_t offset = 0;
 
-    /* Calculate required size: 4 TLVs
+    /* Calculate required size: 5 TLVs
      * - MAX_MESSAGE: 1 + 1 + 2 = 4
      * - PREFERRED_CHUNK: 1 + 1 + 2 = 4
      * - BUFFER_PRESSURE: 1 + 1 + 1 = 3
      * - FLAGS: 1 + 1 + 2 = 4
-     * Total: 15 bytes
+     * - RECV_BUFFER_SIZE: 1 + 1 + 2 = 4
+     * Total: 19 bytes
      */
-    if (buf_len < 15) {
+    if (buf_len < 19) {
         return PT_ERR_BUFFER_FULL;
     }
 
@@ -520,6 +521,12 @@ int pt_capability_encode(const pt_capability_msg *caps, uint8_t *buf, size_t buf
     buf[offset++] = (caps->capability_flags >> 8) & 0xFF;
     buf[offset++] = caps->capability_flags & 0xFF;
 
+    /* TLV 5: Receive buffer size (2 bytes) - helps sender tune chunk size */
+    buf[offset++] = PT_CAP_RECV_BUFFER_SIZE;
+    buf[offset++] = 2;
+    buf[offset++] = (caps->recv_buffer_size >> 8) & 0xFF;
+    buf[offset++] = caps->recv_buffer_size & 0xFF;
+
     return (int)offset;
 }
 
@@ -534,11 +541,12 @@ int pt_capability_decode(struct pt_context *ctx, const uint8_t *buf, size_t len,
     caps->preferred_chunk = PT_CAP_DEFAULT_CHUNK;
     caps->buffer_pressure = PT_CAP_DEFAULT_PRESSURE;
     caps->capability_flags = 0;
+    caps->recv_buffer_size = 8192;  /* Default to typical TCP buffer */
     caps->reserved = 0;
 
     /* Log payload info for debugging capability exchange issues */
-    if (ctx && len < 15) {
-        /* Expected payload is 15 bytes (4 TLVs). Log if shorter. */
+    if (ctx && len < 19) {
+        /* Expected payload is 19 bytes (5 TLVs). Log if shorter. */
         PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
             "Capability payload short: len=%zu (expected 15), bytes: %02X %02X %02X %02X",
             len,
@@ -594,6 +602,16 @@ int pt_capability_decode(struct pt_context *ctx, const uint8_t *buf, size_t len,
         case PT_CAP_FLAGS:
             if (tlv_len >= 2) {
                 caps->capability_flags = ((uint16_t)buf[offset] << 8) | buf[offset + 1];
+            }
+            break;
+
+        case PT_CAP_RECV_BUFFER_SIZE:
+            if (tlv_len >= 2) {
+                caps->recv_buffer_size = ((uint16_t)buf[offset] << 8) | buf[offset + 1];
+                /* Minimum 4KB, maximum 64KB */
+                if (caps->recv_buffer_size < 4096) {
+                    caps->recv_buffer_size = 4096;
+                }
             }
             break;
 

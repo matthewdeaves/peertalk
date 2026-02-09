@@ -167,13 +167,21 @@ static void echo_message(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
                          const void *data, uint16_t len)
 {
     /* Echo the message back exactly as received */
-    if (PeerTalk_Send(ctx, peer_id, data, len) == PT_OK) {
+    PeerTalk_Error err = PeerTalk_Send(ctx, peer_id, data, len);
+    if (err == PT_OK) {
         g_stats.echo_count++;
         g_stats.echo_bytes += len;
 
         if (g_config.verbose && (g_stats.echo_count % 100 == 0)) {
             printf("[ECHO] %llu messages echoed\n",
                    (unsigned long long)g_stats.echo_count);
+        }
+    } else {
+        /* Log first few failures to diagnose */
+        static int fail_logged = 0;
+        if (fail_logged < 10) {
+            printf("[ECHO] Send failed: err=%d len=%u peer=%u\n", err, len, peer_id);
+            fail_logged++;
         }
     }
 }

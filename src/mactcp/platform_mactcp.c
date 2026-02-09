@@ -277,7 +277,7 @@ extern pt_send_slot *pt_pipeline_get_slot(struct pt_context *ctx, struct pt_peer
 
 /* Forward declaration for async send (implemented in tcp_io.c) */
 extern int pt_mactcp_tcp_send_async(struct pt_context *ctx, struct pt_peer *peer,
-                                    const void *data, uint16_t len);
+                                    const void *data, uint16_t len, uint8_t flags);
 
 /**
  * Poll for send completions - check ioResult of pending async sends.

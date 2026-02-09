@@ -255,7 +255,7 @@ extern pt_send_slot *pt_pipeline_get_slot(struct pt_context *ctx, struct pt_peer
  *              negative error code on failure
  */
 int pt_mactcp_tcp_send_async(struct pt_context *ctx, struct pt_peer *peer,
-                              const void *data, uint16_t len)
+                              const void *data, uint16_t len, uint8_t flags)
 {
     pt_mactcp_data *md = pt_mactcp_get(ctx);
     pt_send_slot *slot;
@@ -295,13 +295,16 @@ int pt_mactcp_tcp_send_async(struct pt_context *ctx, struct pt_peer *peer,
         return PT_ERR_INVALID_STATE;  /* TCPiopb not allocated */
     }
 
-    /* Check if compact headers are negotiated with this peer */
-    use_compact = peer->cold.caps.compact_mode;
+    /* Check if compact headers are negotiated with this peer.
+     * IMPORTANT: Don't use compact headers for fragments because
+     * PT_MSG_FLAG_FRAGMENT (0x10) doesn't fit in the 4-bit flags field. */
+    use_compact = peer->cold.caps.compact_mode &&
+                  !(flags & PT_MSG_FLAG_FRAGMENT);
 
     if (use_compact) {
         /* Build compact header (4 bytes, no CRC) */
         compact_hdr.type = PT_MSG_TYPE_DATA;
-        compact_hdr.flags = 0;
+        compact_hdr.flags = flags & 0x0F;  /* Use low nibble of message flags */
         compact_hdr.payload_len = len;
         pt_message_encode_compact(&compact_hdr, slot->buffer);
         header_size = PT_COMPACT_HEADER_SIZE;
@@ -316,7 +319,7 @@ int pt_mactcp_tcp_send_async(struct pt_context *ctx, struct pt_peer *peer,
         /* Build full message header (10 bytes + 2 CRC) */
         hdr.version = PT_PROTOCOL_VERSION;
         hdr.type = PT_MSG_TYPE_DATA;
-        hdr.flags = 0;
+        hdr.flags = flags;  /* Pass through message flags to protocol */
         hdr.sequence = peer->hot.send_seq++;
         hdr.payload_len = len;
 
@@ -353,7 +356,33 @@ int pt_mactcp_tcp_send_async(struct pt_context *ctx, struct pt_peer *peer,
     pb->csParam.send.ulpTimeoutValue = 30;
     pb->csParam.send.ulpTimeoutAction = 1;
     pb->csParam.send.validityFlags = 0xC0;
-    pb->csParam.send.pushFlag = 0;  /* Don't push - allow batching */
+
+    /* Push flag controls receiver delivery timing:
+     * - push=1: Receiver gets immediate delivery (low latency)
+     * - push=0: Receiver may batch data (high throughput)
+     *
+     * Flag semantics (in priority order):
+     * 1. PUSH_PREFERRED capability: Always push (receiver needs it)
+     * 2. NO_DELAY or FLUSH flags: Force push for this message
+     * 3. BATCH flag: No push (allow receiver buffering)
+     * 4. Default: Push for interactive messaging
+     *
+     * CAPABILITY NEGOTIATION: If peer sets PT_CAPFLAG_PUSH_PREFERRED,
+     * they have small buffers and NEED immediate delivery. Honor this
+     * regardless of sender's flags - the receiver knows best.
+     */
+    if (peer->cold.caps.push_preferred) {
+        /* Peer explicitly needs push for performance */
+        pb->csParam.send.pushFlag = 1;
+    } else if (flags & (PT_MSG_FLAG_NO_DELAY | PT_MSG_FLAG_FLUSH)) {
+        /* Sender requests immediate delivery or batch flush */
+        pb->csParam.send.pushFlag = 1;
+    } else if (flags & PT_MSG_FLAG_BATCH) {
+        pb->csParam.send.pushFlag = 0;  /* Allow receiver to batch */
+    } else {
+        pb->csParam.send.pushFlag = 1;  /* Immediate delivery (default) */
+    }
+
     pb->csParam.send.urgentFlag = 0;
     pb->csParam.send.wdsPtr = (Ptr)slot->wds;
     pb->ioCompletion = NULL;  /* CRITICAL: No completion - poll instead */
@@ -771,6 +800,9 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
                     peer->cold.caps.buffer_pressure = caps.buffer_pressure;
                     peer->cold.caps.caps_exchanged = 1;
 
+                    /* Store receive buffer size for chunk tuning */
+                    peer->cold.caps.recv_buffer_size = caps.recv_buffer_size;
+
                     /* Negotiate compact header mode - both must support it */
                     if ((caps.capability_flags & PT_CAPFLAG_COMPACT_HEADER) &&
                         (ctx->local_capability_flags & PT_CAPFLAG_COMPACT_HEADER)) {
@@ -778,6 +810,10 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
                     } else {
                         peer->cold.caps.compact_mode = 0;
                     }
+
+                    /* Check if peer needs push for performance */
+                    peer->cold.caps.push_preferred =
+                        (caps.capability_flags & PT_CAPFLAG_PUSH_PREFERRED) ? 1 : 0;
 
                     /* Calculate effective max = min(ours, theirs) */
                     effective_max = ctx->local_max_message;
@@ -787,12 +823,14 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
                     peer->hot.effective_max_msg = effective_max;
 
                     PT_LOG_INFO(ctx->log, PT_LOG_CAT_NETWORK,
-                        "Received capabilities from peer %u: max=%u chunk=%u pressure=%u compact=%u",
+                        "Received capabilities from peer %u: max=%u chunk=%u pressure=%u compact=%u recv_buf=%u push=%u",
                         (unsigned)peer->hot.id,
                         (unsigned)caps.max_message_size,
                         (unsigned)caps.preferred_chunk,
                         (unsigned)caps.buffer_pressure,
-                        (unsigned)peer->cold.caps.compact_mode);
+                        (unsigned)peer->cold.caps.compact_mode,
+                        (unsigned)caps.recv_buffer_size,
+                        (unsigned)peer->cold.caps.push_preferred);
                 } else {
                     PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
                         "Failed to decode capabilities from peer %u",
@@ -971,7 +1009,7 @@ int pt_mactcp_send_capability(struct pt_context *ctx, struct pt_peer *peer)
     pt_capability_msg caps;
     pt_message_header hdr;
     uint8_t header_buf[PT_MESSAGE_HEADER_SIZE];
-    uint8_t payload_buf[16];  /* TLV payload max ~12 bytes */
+    uint8_t payload_buf[24];  /* TLV payload: 5 TLVs = ~19 bytes */
     uint8_t crc_buf[2];
     uint16_t crc;
     int payload_len;
@@ -997,7 +1035,17 @@ int pt_mactcp_send_capability(struct pt_context *ctx, struct pt_peer *peer)
     /* Fill in our capabilities */
     caps.max_message_size = ctx->local_max_message;
     caps.preferred_chunk = ctx->local_preferred_chunk;
-    caps.capability_flags = ctx->local_capability_flags;
+
+    /* MacTCP: Request push for performance (bypasses 25% threshold).
+     * Also report async enabled since we use async recv pattern.
+     * This helps POSIX senders optimize their behavior for us. */
+    caps.capability_flags = ctx->local_capability_flags |
+                            PT_CAPFLAG_PUSH_PREFERRED |
+                            PT_CAPFLAG_ASYNC_ENABLED;
+
+    /* Report our TCP receive buffer size (from cold struct) */
+    caps.recv_buffer_size = (uint16_t)(cold->rcv_buffer_size > 0 ?
+        (cold->rcv_buffer_size > 65535 ? 65535 : cold->rcv_buffer_size) : 8192);
 
     /* Calculate current buffer pressure from BOTH queues - report the worse one.
      * On MacTCP, recv uses zero-copy so recv_queue is often empty.

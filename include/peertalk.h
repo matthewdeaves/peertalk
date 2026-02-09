@@ -196,11 +196,23 @@ typedef enum {
 /* Send Flags                                                                 */
 /* ========================================================================== */
 
+/* Send flags (passed to PeerTalk_SendEx)
+ *
+ * Delivery semantics:
+ * - NO_DELAY: Send immediately, set TCP PSH flag (low latency)
+ * - BATCH: Allow receiver to buffer (high throughput bulk transfers)
+ * - FLUSH: End of batch - flush receiver buffers
+ *
+ * For Classic Mac receivers, FLUSH ensures the final message in a
+ * batch triggers immediate TCPNoCopyRcv completion.
+ */
 #define PT_SEND_DEFAULT         0x00
 #define PT_SEND_UNRELIABLE      0x01    /* Use UDP if available */
 #define PT_SEND_COALESCABLE     0x02    /* Allow message coalescing */
 #define PT_SEND_NO_DELAY        0x04    /* Disable Nagle algorithm */
-#define PT_SEND_UDP_NO_QUEUE    0x08    /* UDP fast path - explicit no queue */
+#define PT_SEND_BATCH           0x08    /* Allow batching (high throughput) */
+#define PT_SEND_FLUSH           0x20    /* End of batch - flush receiver */
+#define PT_SEND_UDP_NO_QUEUE    0x80    /* UDP fast path - explicit no queue */
 
 /* ========================================================================== */
 /* Coalesce Keys                                                              */
@@ -518,18 +530,23 @@ typedef struct {
     uint8_t         auto_cleanup;           /* Auto-remove timed-out peers, default = 1 */
     uint8_t         log_level;              /* 0=off, 1=err, 2=warn, 3=info, 4=debug */
     uint8_t         enable_fragmentation;   /* Auto-fragment large messages, default = 1 */
+    uint8_t         auto_buffers;           /* Auto-allocate optimal buffers, default = 0 */
+    uint8_t         _pad8[3];               /* Alignment padding */
 
     /* Pre-allocated buffer pool (MacTCP optimization)
      *
-     * For best throughput on Classic Mac, allocate buffers at the very start
-     * of main() BEFORE any other allocations fragment the heap:
-     *
+     * Option 1: Manual allocation (best performance - allocate early)
      *   pool = PeerTalk_AllocateBuffers(max_peers, PT_TCP_BUF_16K);
      *   config.buffer_pool = pool;
-     *   PeerTalk_Init(&config, ...);
      *
-     * If NULL, PeerTalk allocates buffers on-demand (may get smaller buffers
-     * due to heap fragmentation, reducing throughput).
+     * Option 2: Auto-allocation (convenient - SDK manages buffers)
+     *   config.auto_buffers = 1;  // SDK allocates optimal buffers
+     *
+     * The auto_buffers option allocates the largest possible buffers that
+     * fit in available memory during PeerTalk_Init(). This may be smaller
+     * than manual allocation at start of main() due to heap fragmentation.
+     *
+     * If both buffer_pool and auto_buffers are set, buffer_pool is used.
      */
     PeerTalk_BufferPool *buffer_pool;       /* Pre-allocated TCP buffers, or NULL */
 } PeerTalk_Config;

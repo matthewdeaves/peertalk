@@ -554,7 +554,15 @@ PeerTalk_Error PeerTalk_SendEx(PeerTalk_Context *ctx_pub,
         peer->pipeline.initialized &&
         peer->pipeline.pending_count < PT_SEND_PIPELINE_DEPTH) {
 
-        int async_err = ctx->plat->tcp_send_async(ctx, peer, data, length);
+        /* Convert PT_SEND_* flags to PT_MSG_FLAG_* for protocol layer.
+         * The values are designed to match for the common flags:
+         * - PT_SEND_UNRELIABLE (0x01) -> PT_MSG_FLAG_UNRELIABLE (0x01)
+         * - PT_SEND_COALESCABLE (0x02) -> PT_MSG_FLAG_COALESCABLE (0x02)
+         * - PT_SEND_NO_DELAY (0x04) -> PT_MSG_FLAG_NO_DELAY (0x04)
+         * The PT_MSG_FLAG_NO_DELAY flag is used to set pushFlag=1 in MacTCP. */
+        uint8_t msg_flags = flags & 0x0F;  /* Mask to low nibble (protocol flags) */
+
+        int async_err = ctx->plat->tcp_send_async(ctx, peer, data, length, msg_flags);
         if (async_err == PT_OK) {
             PT_CTX_DEBUG(ctx, PT_LOG_CAT_SEND,
                         "Async send: %u bytes to peer %u (slots used: %d/%d)",
@@ -648,8 +656,8 @@ PeerTalk_Error PeerTalk_SendEx(PeerTalk_Context *ctx_pub,
         return PT_ERR_BUFFER_FULL;
     }
 
-    /* TODO: Handle PT_SEND_NO_DELAY flag (Phase 4+ platform layer) */
-    (void)flags;  /* Suppress unused warning for now */
+    /* Flags are now handled by tcp_send_async (MacTCP pushFlag control)
+     * and protocol layer (PT_MSG_FLAG_* in message headers). */
 
     PT_CTX_DEBUG(ctx, PT_LOG_CAT_SEND,
                 "Queued %u bytes to peer %u (pri=%u, flags=0x%02X, key=%u)",

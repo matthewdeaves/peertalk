@@ -57,7 +57,7 @@ typedef struct {
 
     /* Async send pipeline ops (NULL if platform doesn't support/need async) */
     int             (*tcp_send_async)(struct pt_context *ctx, struct pt_peer *peer,
-                                      const void *data, uint16_t len);
+                                      const void *data, uint16_t len, uint8_t flags);
     int             (*poll_send_completions)(struct pt_context *ctx,
                                              struct pt_peer *peer);
     int             (*send_slots_available)(struct pt_context *ctx,
@@ -165,12 +165,15 @@ typedef struct {
     uint16_t max_message_size;   /* Peer's max (256-8192), 0=unknown */
     uint16_t preferred_chunk;    /* Optimal chunk size */
     uint16_t capability_flags;   /* PT_CAPFLAG_* */
+    uint16_t recv_buffer_size;   /* Peer's receive buffer size (0=unknown, default 8192) */
     uint8_t  buffer_pressure;    /* 0-100: peer's reported constraint level */
     uint8_t  caps_exchanged;     /* 1 after exchange complete */
     uint8_t  last_reported_pressure; /* 0-100: what we last told peer */
     uint8_t  pressure_update_pending; /* 1 if need to send pressure update */
     uint8_t  first_send_logged;  /* 1 after logging first send effective_max */
     uint8_t  compact_mode;       /* 1 if compact headers negotiated with peer */
+    uint8_t  push_preferred;     /* 1 if peer needs pushFlag=1 always */
+    uint8_t  _pad;               /* Alignment padding */
 } pt_peer_caps;
 
 /* ========================================================================== */
@@ -344,7 +347,7 @@ struct pt_context {
     uint16_t            local_preferred_chunk;  /* Our preferred chunk (0=1024) */
     uint16_t            local_capability_flags; /* Our PT_CAPFLAG_* */
     uint8_t             enable_fragmentation;   /* 1=auto-fragment (default 1) */
-    uint8_t             reserved_cap;
+    uint8_t             owns_buffer_pool;       /* 1=we allocated buffer_pool, must free */
 
     /* Platform-specific data follows (allocated via pt_plat_extra_size) */
 };

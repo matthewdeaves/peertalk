@@ -16,6 +16,7 @@
 #include "pt_compat.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -867,6 +868,12 @@ int pt_posix_listen_poll(struct pt_context *ctx) {
 
     set_nonblocking(ctx, client_sock);
 
+    /* Disable Nagle - ensure immediate send for Classic Mac receivers */
+    {
+        int flag = 1;
+        setsockopt(client_sock, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
+    }
+
     client_ip = ntohl(addr.sin_addr.s_addr);
 
     PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT,
@@ -972,6 +979,14 @@ int pt_posix_connect(struct pt_context *ctx, struct pt_peer *peer) {
     }
 
     set_nonblocking(ctx, sock);
+
+    /* Disable Nagle's algorithm - send immediately rather than coalescing.
+     * This ensures TCP PSH flag is set promptly, triggering immediate
+     * TCPNoCopyRcv completion on Classic Mac receivers. */
+    {
+        int flag = 1;
+        setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
+    }
 
     pt_memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
@@ -1960,6 +1975,9 @@ static int pt_recv_process_message(struct pt_context *ctx, struct pt_peer *peer,
                     peer->cold.caps.buffer_pressure = caps.buffer_pressure;
                     peer->cold.caps.caps_exchanged = 1;
 
+                    /* Store receive buffer size for chunk tuning */
+                    peer->cold.caps.recv_buffer_size = caps.recv_buffer_size;
+
                     /* Negotiate compact header mode - both must support it */
                     if ((caps.capability_flags & PT_CAPFLAG_COMPACT_HEADER) &&
                         (ctx->local_capability_flags & PT_CAPFLAG_COMPACT_HEADER)) {
@@ -1967,6 +1985,10 @@ static int pt_recv_process_message(struct pt_context *ctx, struct pt_peer *peer,
                     } else {
                         peer->cold.caps.compact_mode = 0;
                     }
+
+                    /* Check if peer needs push for performance */
+                    peer->cold.caps.push_preferred =
+                        (caps.capability_flags & PT_CAPFLAG_PUSH_PREFERRED) ? 1 : 0;
 
                     /* Calculate effective max = min(ours, theirs) */
                     effective_max = ctx->local_max_message;
@@ -1976,9 +1998,10 @@ static int pt_recv_process_message(struct pt_context *ctx, struct pt_peer *peer,
                     peer->hot.effective_max_msg = effective_max;
 
                     PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,
-                        "Received capabilities from peer %u: max=%u chunk=%u pressure=%u compact=%u",
+                        "Received capabilities from peer %u: max=%u chunk=%u pressure=%u compact=%u recv_buf=%u push=%u",
                         peer->hot.id, caps.max_message_size, caps.preferred_chunk,
-                        caps.buffer_pressure, peer->cold.caps.compact_mode);
+                        caps.buffer_pressure, peer->cold.caps.compact_mode,
+                        caps.recv_buffer_size, peer->cold.caps.push_preferred);
                 } else {
                     PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
                         "Failed to decode capabilities from peer %u", peer->hot.id);

@@ -77,6 +77,16 @@ PeerTalk_Context *PeerTalk_Init(const PeerTalk_Config *config) {
         ctx->config.direct_buffer_size = PT_DIRECT_DEFAULT_SIZE;
     }
 
+    /* Auto-allocate buffer pool if requested and not already provided */
+#if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)
+    if (ctx->config.auto_buffers && ctx->config.buffer_pool == NULL) {
+        uint16_t peer_count = ctx->config.max_peers > 0 ? ctx->config.max_peers : PT_MAX_PEERS;
+        ctx->config.buffer_pool = PeerTalk_AllocateBuffersAuto(peer_count);
+        /* Mark that we own this pool and should free it on shutdown */
+        ctx->owns_buffer_pool = (ctx->config.buffer_pool != NULL) ? 1 : 0;
+    }
+#endif
+
     /* Apply two-tier queue configuration */
     ctx->direct_threshold = PT_DIRECT_THRESHOLD;
     ctx->direct_buffer_size = ctx->config.direct_buffer_size;
@@ -202,6 +212,14 @@ void PeerTalk_Shutdown(PeerTalk_Context *ctx_handle) {
 
     /* Free peer list */
     pt_peer_list_free(ctx);
+
+    /* Free auto-allocated buffer pool */
+#if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)
+    if (ctx->owns_buffer_pool && ctx->config.buffer_pool != NULL) {
+        PeerTalk_FreeBuffers(ctx->config.buffer_pool);
+        ctx->config.buffer_pool = NULL;
+    }
+#endif
 
     /* Destroy PT_Log context last (need it for shutdown logging) */
     if (ctx->log) {

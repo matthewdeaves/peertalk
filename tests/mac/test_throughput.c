@@ -443,13 +443,27 @@ int main(void)
     /* Initialize test state */
     init_test();
 
-    /* Configure PeerTalk */
+    /* Configure PeerTalk
+     *
+     * Buffer allocation options:
+     *
+     * OPTION 1 (Best performance - used here): Manual early allocation
+     *   g_buffer_pool = PeerTalk_AllocateBuffersAuto(4);  // At start of main()
+     *   config.buffer_pool = g_buffer_pool;
+     *
+     * OPTION 2 (Simplest - SDK manages everything):
+     *   config.auto_buffers = 1;  // SDK allocates optimal buffers automatically
+     *
+     * Option 1 is better because heap is less fragmented at start of main().
+     * Option 2 is simpler but may get smaller buffers due to fragmentation.
+     */
     memset(&config, 0, sizeof(config));
     strncpy(config.local_name, "MacThroughput", PT_MAX_PEER_NAME);
     config.max_peers = 4;
     config.discovery_port = 7353;
     config.tcp_port = 7354;
-    config.buffer_pool = g_buffer_pool;  /* Pass pre-allocated buffers */
+    config.buffer_pool = g_buffer_pool;  /* Option 1: Pre-allocated buffers */
+    /* config.auto_buffers = 1; */       /* Option 2: SDK auto-allocates */
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Initializing PeerTalk...");
     g_ctx = PeerTalk_Init(&config);
