@@ -355,28 +355,35 @@ static void pt_mactcp_poll_connected(struct pt_context *ctx,
     /* Receive data */
     result = pt_mactcp_tcp_recv(ctx, peer);
     if (result < 0) {
-        /* Connection lost - check if we're actively closing */
-        if (hot->state == PT_STREAM_CLOSING) {
-            /* We initiated disconnect - this is expected, let close handler finish */
-            PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_CONNECT,
-                "Recv during close for peer %u (expected)", (unsigned)peer->hot.id);
-            return;  /* Close handler will clean up */
-        }
+        /* Connection lost unexpectedly.
+         *
+         * CRITICAL: Do NOT call pt_mactcp_tcp_release() directly here!
+         * MacTCP may still have pending async operations that reference
+         * the receive buffer. Freeing the buffer while MacTCP still owns
+         * it causes heap corruption (the driver writes to freed memory).
+         *
+         * Instead, use TCPAbort to cancel pending operations, then let
+         * the normal close path handle cleanup via pt_mactcp_poll_closing.
+         */
+        pt_mactcp_data *md = pt_mactcp_get(ctx);
+        TCPiopb abort_pb;
 
-        /* Unexpected connection loss */
         PT_LOG_INFO(ctx->log, PT_LOG_CAT_CONNECT,
-            "Connection lost to peer %u", (unsigned)peer->hot.id);
+            "Connection lost to peer %u, aborting stream", (unsigned)peer->hot.id);
 
-        if (ctx->callbacks.on_peer_disconnected != NULL) {
-            ctx->callbacks.on_peer_disconnected((PeerTalk_Context *)ctx,
-                                                peer->hot.id, PT_ERR_NETWORK,
-                                                ctx->callbacks.user_data);
-        }
+        /* Abort to cancel any pending operations */
+        pt_memset(&abort_pb, 0, sizeof(abort_pb));
+        abort_pb.csCode = TCPAbort;
+        abort_pb.ioCRefNum = md->driver_refnum;
+        abort_pb.tcpStream = hot->stream;
+        PBControlSync((ParmBlkPtr)&abort_pb);
 
-        peer->hot.connection = NULL;
-        pt_mactcp_tcp_release(ctx, idx);
-        /* Set back to DISCOVERED so reconnection is possible */
-        pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCOVERED);
+        /* Transition to CLOSING state - poll_closing will handle release */
+        hot->state = PT_STREAM_CLOSING;
+        cold->close_start = (unsigned long)TickCount();
+        cold->pb.ioResult = 0;  /* Abort is sync, so already complete */
+
+        /* Callback and state change happen in poll_closing when release completes */
         return;
     }
 
@@ -644,19 +651,29 @@ int pt_mactcp_poll_fast(struct pt_context *ctx)
         {
             int result = pt_mactcp_tcp_recv(ctx, peer);
             if (result < 0) {
-                /* Connection lost */
+                /* Connection lost unexpectedly.
+                 *
+                 * CRITICAL: Use TCPAbort and transition to CLOSING state.
+                 * Do NOT call pt_mactcp_tcp_release() directly - MacTCP
+                 * may still have pending operations that reference the
+                 * receive buffer.
+                 */
+                TCPiopb abort_pb;
+
                 PT_LOG_INFO(ctx->log, PT_LOG_CAT_CONNECT,
-                    "Connection lost to peer %u (fast poll)", (unsigned)peer->hot.id);
+                    "Connection lost to peer %u (fast poll), aborting", (unsigned)peer->hot.id);
 
-                if (ctx->callbacks.on_peer_disconnected != NULL) {
-                    ctx->callbacks.on_peer_disconnected((PeerTalk_Context *)ctx,
-                                                        peer->hot.id, PT_ERR_NETWORK,
-                                                        ctx->callbacks.user_data);
-                }
+                /* Abort to cancel any pending operations */
+                pt_memset(&abort_pb, 0, sizeof(abort_pb));
+                abort_pb.csCode = TCPAbort;
+                abort_pb.ioCRefNum = md->driver_refnum;
+                abort_pb.tcpStream = hot->stream;
+                PBControlSync((ParmBlkPtr)&abort_pb);
 
-                peer->hot.connection = NULL;
-                pt_peer_destroy(ctx, peer);
-                pt_mactcp_tcp_release(ctx, i);
+                /* Transition to CLOSING - regular poll will handle cleanup */
+                hot->state = PT_STREAM_CLOSING;
+                cold->close_start = (unsigned long)TickCount();
+                cold->pb.ioResult = 0;  /* Abort is sync */
             }
         }
 
