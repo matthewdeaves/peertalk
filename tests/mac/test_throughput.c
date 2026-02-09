@@ -399,14 +399,11 @@ int main(void)
      * before the heap fragments. Larger TCP buffers improve receive throughput
      * via MacTCP's 25% threshold rule (16KB buffer = 4KB completion threshold).
      *
-     * Try 16KB buffers first, fall back to 8KB if memory is tight.
+     * PeerTalk_AllocateBuffersAuto() checks available RAM and picks the
+     * largest buffer size that will fit (32KB/16KB/8KB/4KB).
      */
-    g_buffer_pool = PeerTalk_AllocateBuffers(4, PT_TCP_BUF_16K);  /* 4 peers × 16KB */
-    if (!g_buffer_pool) {
-        /* Fall back to smaller buffers */
-        g_buffer_pool = PeerTalk_AllocateBuffers(4, PT_TCP_BUF_8K);  /* 4 peers × 8KB */
-    }
-    /* Note: If both fail, PeerTalk will allocate on-demand (may get 4KB buffers) */
+    g_buffer_pool = PeerTalk_AllocateBuffersAuto(4);  /* 4 peers, auto-size */
+    /* Note: If NULL, PeerTalk will allocate on-demand (may get smaller buffers) */
 
     /* Create PT_Log */
     g_log = PT_LogCreate();

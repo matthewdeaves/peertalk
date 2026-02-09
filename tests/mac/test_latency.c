@@ -439,12 +439,9 @@ int main(void)
 
     /**
      * CRITICAL: Allocate TCP buffer pool FIRST, before any other allocations.
-     * Larger TCP buffers improve receive throughput via MacTCP's 25% threshold rule.
+     * PeerTalk_AllocateBuffersAuto() checks available RAM and picks the best size.
      */
-    g_buffer_pool = PeerTalk_AllocateBuffers(4, PT_TCP_BUF_16K);
-    if (!g_buffer_pool) {
-        g_buffer_pool = PeerTalk_AllocateBuffers(4, PT_TCP_BUF_8K);
-    }
+    g_buffer_pool = PeerTalk_AllocateBuffersAuto(4);  /* 4 peers, auto-size */
 
     /* Create PT_Log */
     g_log = PT_LogCreate();

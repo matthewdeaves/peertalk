@@ -122,6 +122,77 @@ PeerTalk_BufferPool *PeerTalk_AllocateBuffers(uint16_t count, uint32_t buffer_si
 }
 
 /**
+ * Allocate a buffer pool with automatic sizing based on available memory.
+ *
+ * This function checks available memory and automatically chooses the largest
+ * buffer size that will fit. Ideal for apps that want optimal performance
+ * without manual memory management.
+ *
+ * Sizing logic (considers total allocation including overhead):
+ *   - If room for 32KB buffers: use PT_TCP_BUF_32K (25% threshold = 8KB)
+ *   - If room for 16KB buffers: use PT_TCP_BUF_16K (25% threshold = 4KB)
+ *   - If room for 8KB buffers:  use PT_TCP_BUF_8K  (25% threshold = 2KB)
+ *   - Otherwise:                use PT_TCP_BUF_4K  (25% threshold = 1KB)
+ *
+ * Usage:
+ *   pool = PeerTalk_AllocateBuffersAuto(4);  // 4 peers, auto-size
+ *   if (pool) {
+ *       uint32_t size;
+ *       PeerTalk_GetBufferPoolInfo(pool, NULL, &size);
+ *       printf("Allocated %luKB buffers\n", size/1024);
+ *   }
+ *
+ * @param count  Number of buffers to allocate (should match max_peers)
+ * @return Pool handle, or NULL if even minimum allocation failed
+ */
+PeerTalk_BufferPool *PeerTalk_AllocateBuffersAuto(uint16_t count)
+{
+    PeerTalk_BufferPool *pool;
+    unsigned long max_block;
+    size_t overhead;
+    size_t total_needed;
+
+    if (count == 0) {
+        return NULL;
+    }
+
+    /* Get available contiguous memory */
+    max_block = (unsigned long)pt_get_max_block();
+
+    /* Calculate overhead (header + pointers + flags + alignment) */
+    overhead = sizeof(PeerTalk_BufferPool) +
+               (count * sizeof(void *)) +
+               ((count + 3) & ~(size_t)3);
+
+    /* Try sizes from largest to smallest */
+
+    /* Try 32KB buffers (best for file transfer, high-throughput) */
+    total_needed = overhead + ((size_t)count * PT_TCP_BUF_32K);
+    if (max_block >= total_needed + 4096) {  /* Leave 4KB headroom */
+        pool = PeerTalk_AllocateBuffers(count, PT_TCP_BUF_32K);
+        if (pool) return pool;
+    }
+
+    /* Try 16KB buffers (good for most apps) */
+    total_needed = overhead + ((size_t)count * PT_TCP_BUF_16K);
+    if (max_block >= total_needed + 2048) {  /* Leave 2KB headroom */
+        pool = PeerTalk_AllocateBuffers(count, PT_TCP_BUF_16K);
+        if (pool) return pool;
+    }
+
+    /* Try 8KB buffers (interactive apps, lower memory) */
+    total_needed = overhead + ((size_t)count * PT_TCP_BUF_8K);
+    if (max_block >= total_needed + 1024) {  /* Leave 1KB headroom */
+        pool = PeerTalk_AllocateBuffers(count, PT_TCP_BUF_8K);
+        if (pool) return pool;
+    }
+
+    /* Fall back to 4KB minimum */
+    pool = PeerTalk_AllocateBuffers(count, PT_TCP_BUF_4K);
+    return pool;  /* May be NULL if even 4KB fails */
+}
+
+/**
  * Free a buffer pool.
  *
  * Call this after PeerTalk_Shutdown() when you no longer need the pool.

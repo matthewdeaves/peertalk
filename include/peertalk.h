@@ -416,6 +416,31 @@ typedef struct PeerTalk_BufferPool PeerTalk_BufferPool;
 PeerTalk_BufferPool *PeerTalk_AllocateBuffers(uint16_t count, uint32_t buffer_size);
 
 /**
+ * Allocate a buffer pool with automatic sizing based on available memory.
+ *
+ * Checks available RAM and automatically chooses the largest buffer size
+ * that will fit. This is the recommended function for most applications.
+ *
+ * Sizing logic:
+ *   - 8MB+ machine, plenty of RAM: 32KB buffers (best throughput)
+ *   - 4-8MB machine: 16KB buffers (good throughput)
+ *   - 4MB machine, tight: 8KB buffers (acceptable)
+ *   - Very low memory: 4KB buffers (minimum)
+ *
+ * Example:
+ *   pool = PeerTalk_AllocateBuffersAuto(4);  // Auto-detect best size for 4 peers
+ *   if (pool) {
+ *       uint32_t size;
+ *       PeerTalk_GetBufferPoolInfo(pool, NULL, &size);
+ *       printf("Allocated %luKB buffers\n", size/1024);
+ *   }
+ *
+ * @param count  Number of buffers to allocate (should match max_peers)
+ * @return Pool handle, or NULL if even minimum allocation failed
+ */
+PeerTalk_BufferPool *PeerTalk_AllocateBuffersAuto(uint16_t count);
+
+/**
  * Free a buffer pool that was not passed to PeerTalk_Init.
  *
  * If you allocated a buffer pool but then decided not to use it (e.g., you're
