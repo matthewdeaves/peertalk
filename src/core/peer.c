@@ -869,11 +869,12 @@ void pt_peer_update_adaptive_params(struct pt_context *ctx, struct pt_peer *peer
      * that triggers efficient receive completion on their end.
      * Use the smaller of RTT-based and peer-optimal to be safe. */
     if (peer_optimal > 0 && peer_optimal < new_chunk) {
+        uint16_t rtt_based_chunk = new_chunk;  /* Save RTT-based value for logging */
         new_chunk = peer_optimal;
         if (ctx) {
             PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
                 "Using peer %u optimal_chunk=%u (smaller than RTT-based %u)",
-                peer->hot.id, peer_optimal, new_chunk);
+                peer->hot.id, peer_optimal, rtt_based_chunk);
         }
     }
 

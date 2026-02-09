@@ -109,6 +109,8 @@ Thumbs.db
 *.tmp
 *.temp
 *.log
+# Preserve performance test logs
+!plan/performance/**/*.log
 *.bak
 *.old
 *.pid

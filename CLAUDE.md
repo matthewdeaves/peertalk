@@ -135,9 +135,14 @@ scripts/                      # Build and utility scripts
 
 **Generated directories (gitignored):**
 - `build/` - Compiled libraries and test binaries
-- `downloads/` - Logs fetched from Classic Mac hardware
+- `downloads/` - Temporary logs fetched from Classic Mac via FTP (use for debugging)
 - `packages/` - Mac binaries packaged for transfer
 - `LaunchAPPL-build/` - Built LaunchAPPLServer binaries
+
+**Performance logs (committed to git):**
+- `plan/performance/mactcp/performa6200/` - Performa 6200 (8MB RAM) test results
+- `plan/performance/mactcp/macse/` - Mac SE (4MB RAM) test results
+- Test apps auto-stream logs to POSIX partner; perf_partner saves them by machine IP
 
 **LaunchAPPL Architecture:**
 - **Client** at `/opt/Retro68-build/toolchain/bin/LaunchAPPL` (in Docker container)
@@ -235,16 +240,27 @@ docker run --rm --network host -v "$(pwd)":/workspace -w /workspace \
 
 5. **Fetch and view logs**:
    ```bash
+   # Option A: Via FTP (if machine has FTP configured)
    mcp__classic-mac-hardware__download_file(machine="performa6200",
        remote_path="PT_Throughput", local_path="downloads/performa6200/PT_Throughput")
-   # Logs use CRLF line endings for cross-platform compatibility
-   cat downloads/performa6200/PT_Throughput
+
+   # Option B: From perf_partner container (REQUIRED for LaunchAPPL-only machines)
+   # Mac test apps stream their logs to the partner at test completion
+   docker logs perf-partner 2>&1 | tee plan/performance/mactcp/macse_throughput_$(date +%Y%m%d_%H%M%S).log
    ```
 
 6. **Stop partner when done**:
    ```bash
-   docker stop perf-partner
+   docker stop perf-partner && docker rm perf-partner
    ```
+
+**IMPORTANT: Log Streaming Behavior**
+
+Mac test apps automatically stream their logs to the POSIX perf_partner at the end of the test. This is critical for:
+- Machines without FTP (e.g., Mac SE with LaunchAPPL only)
+- Capturing test results before the Mac test app exits
+
+**Always capture perf_partner logs before stopping the container**, especially for LaunchAPPL-only machines. Save performance logs to `plan/performance/mactcp/` with descriptive filenames.
 
 **Skill shortcuts:**
 ```

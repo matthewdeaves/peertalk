@@ -601,40 +601,66 @@ int pt_mactcp_poll_fast(struct pt_context *ctx)
 {
     pt_mactcp_data *md = pt_mactcp_get(ctx);
     int i;
+    int found_connected = 0;
 
     /*
+     * PollFast: Minimal-overhead poll for game loops (60 Hz).
+     *
      * Only poll connected streams for TCP I/O.
-     * Skip: discovery, listener, connecting, closing, periodic work.
+     * Skip: discovery, listener, connecting, closing, periodic work, streaming.
+     *
+     * Design for game loops:
+     * - Call PollFast every frame (16-33ms)
+     * - Call regular Poll every 10-15 frames for discovery/maintenance
      */
     for (i = 0; i < PT_MAX_PEERS; i++) {
         pt_tcp_stream_hot *hot = &md->tcp_hot[i];
         pt_tcp_stream_cold *cold = &md->tcp_cold[i];
-        struct pt_peer *peer = PT_PEER_FROM_IDX(ctx, hot->peer_idx);
+        struct pt_peer *peer;
 
         if (hot->state != PT_STREAM_CONNECTED)
             continue;
 
+        peer = PT_PEER_FROM_IDX(ctx, hot->peer_idx);
         if (peer == NULL)
             continue;
+
+        found_connected = 1;
 
         /* Poll async send completions first to free slots */
         if (ctx->plat && ctx->plat->poll_send_completions) {
             ctx->plat->poll_send_completions(ctx, peer);
         }
 
-        /* Tier 2: Send from direct buffer first */
+        /* RECEIVE FIRST: Prevents backpressure buildup under bidirectional load */
+        {
+            int result = pt_mactcp_tcp_recv(ctx, peer);
+            if (result < 0) {
+                /* Connection lost - abort and let regular poll handle cleanup */
+                TCPiopb abort_pb;
+
+                pt_memset(&abort_pb, 0, sizeof(abort_pb));
+                abort_pb.csCode = TCPAbort;
+                abort_pb.ioCRefNum = md->driver_refnum;
+                abort_pb.tcpStream = hot->stream;
+                PBControlSync((ParmBlkPtr)&abort_pb);
+
+                hot->state = PT_STREAM_CLOSING;
+                cold->close_start = (unsigned long)TickCount();
+                cold->pb.ioResult = 0;
+                pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCONNECTING);
+                continue;
+            }
+        }
+
+        /* Tier 2: Send from direct buffer (priority path) */
         if (pt_direct_buffer_ready(&peer->send_direct)) {
             pt_direct_buffer *buf = &peer->send_direct;
-            int result;
 
             pt_direct_buffer_mark_sending(buf);
-            result = pt_mactcp_tcp_send_with_flags(ctx, peer, buf->data, buf->length, buf->msg_flags);
+            pt_mactcp_tcp_send_with_flags(ctx, peer, buf->data, buf->length, buf->msg_flags);
             pt_direct_buffer_complete(buf);
-
-            if (result != 0 && result != PT_ERR_WOULD_BLOCK) {
-                PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
-                    "Tier 2 fast send failed: %d", result);
-            }
+            /* Errors logged by regular poll, not fast poll */
         }
 
         /* Tier 1: Drain send queue - multiple messages per poll */
@@ -667,47 +693,12 @@ int pt_mactcp_poll_fast(struct pt_context *ctx)
             }
         }
 
-        /* Stream: Process active stream transfers */
-        pt_stream_poll(ctx, peer, pt_mactcp_stream_send);
+        /* NOTE: Stream poll skipped in PollFast - use regular Poll for streams */
 
-        /* Receive data */
-        {
-            int result = pt_mactcp_tcp_recv(ctx, peer);
-            if (result < 0) {
-                /* Connection lost unexpectedly.
-                 *
-                 * CRITICAL: Use TCPAbort and transition to CLOSING state.
-                 * Do NOT call pt_mactcp_tcp_release() directly - MacTCP
-                 * may still have pending operations that reference the
-                 * receive buffer.
-                 */
-                TCPiopb abort_pb;
-
-                PT_LOG_INFO(ctx->log, PT_LOG_CAT_CONNECT,
-                    "Connection lost to peer %u (fast poll), aborting", (unsigned)peer->hot.id);
-
-                /* Abort to cancel any pending operations */
-                pt_memset(&abort_pb, 0, sizeof(abort_pb));
-                abort_pb.csCode = TCPAbort;
-                abort_pb.ioCRefNum = md->driver_refnum;
-                abort_pb.tcpStream = hot->stream;
-                PBControlSync((ParmBlkPtr)&abort_pb);
-
-                /* Transition to CLOSING - regular poll will handle cleanup */
-                hot->state = PT_STREAM_CLOSING;
-                cold->close_start = (unsigned long)TickCount();
-                cold->pb.ioResult = 0;  /* Abort is sync */
-
-                /* Set peer state to DISCONNECTING so poll_closing can later
-                 * transition to DISCOVERED. State machine requires:
-                 * CONNECTED -> DISCONNECTING -> DISCOVERED */
-                pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCONNECTING);
-            }
-        }
-
-        (void)cold;  /* Unused in fast poll */
+        (void)cold;  /* Only used for close_start on disconnect */
     }
 
+    (void)found_connected;  /* Could be used for early-out optimization */
     return 0;
 }
 

@@ -2897,17 +2897,13 @@ drain_queues:
             continue;
         }
 
-        /* Tier 2: Direct buffer first */
+        /* Tier 2: Direct buffer first (priority path) */
         if (pt_direct_buffer_ready(&peer->send_direct)) {
             pt_direct_buffer *buf = &peer->send_direct;
             pt_direct_buffer_mark_sending(buf);
-            int result = pt_posix_send_with_flags(ctx, peer, buf->data, buf->length, buf->msg_flags);
+            pt_posix_send_with_flags(ctx, peer, buf->data, buf->length, buf->msg_flags);
             pt_direct_buffer_complete(buf);
-
-            if (result != PT_OK && result != PT_ERR_WOULD_BLOCK) {
-                PT_CTX_WARN(ctx, PT_LOG_CAT_SEND,
-                    "Tier 2 fast send failed: %d", result);
-            }
+            /* Errors logged by regular poll, not fast poll */
         }
 
         /* Tier 1: Queue drain */
@@ -2940,8 +2936,7 @@ drain_queues:
             }
         }
 
-        /* Stream: Process active stream transfers */
-        pt_stream_poll(ctx, peer, pt_posix_send);
+        /* NOTE: Stream poll skipped in PollFast - use regular Poll for streams */
     }
 
     return 0;

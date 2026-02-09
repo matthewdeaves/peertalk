@@ -62,12 +62,15 @@ typedef struct {
     int             message_count;
     int             duration_sec;
     int             verbose;
+    int             fast;           /* No sleep in main loop (high CPU, low latency) */
 } TestConfig;
 
 typedef struct {
     /* Latency stats (echo mode) */
     uint64_t        echo_count;
     uint64_t        echo_bytes;
+    uint64_t        echo_retries;       /* Echoes retried due to backpressure */
+    uint64_t        echo_drops;         /* Echoes dropped (queue full) */
     uint64_t        min_rtt_us;
     uint64_t        max_rtt_us;
     uint64_t        total_rtt_us;
@@ -93,6 +96,27 @@ typedef struct {
 } TestStats;
 
 /* ========================================================================== */
+/* Echo Retry Queue (for backpressure handling)                                */
+/* ========================================================================== */
+
+#define ECHO_QUEUE_SIZE     64
+#define ECHO_BUFFER_SIZE    8192
+
+typedef struct {
+    uint8_t         data[ECHO_BUFFER_SIZE];
+    uint16_t        len;
+    PeerTalk_PeerID peer_id;
+    int             valid;
+} EchoSlot;
+
+typedef struct {
+    EchoSlot        slots[ECHO_QUEUE_SIZE];
+    int             head;               /* Next slot to write */
+    int             tail;               /* Next slot to read */
+    int             count;              /* Number of pending echoes */
+} EchoQueue;
+
+/* ========================================================================== */
 /* Log Reception State                                                         */
 /* ========================================================================== */
 
@@ -107,6 +131,7 @@ typedef struct {
     uint32_t        expected_length;  /* Total bytes expected */
     uint32_t        received_length;  /* Bytes received so far */
     PeerTalk_PeerID peer_id;          /* Peer sending logs */
+    uint32_t        peer_ip;          /* Peer IP for folder selection */
     int             active;           /* 1 if receiving logs */
     char            peer_name[64];    /* For filename */
 } LogReceiver;
@@ -123,6 +148,7 @@ static PeerTalk_PeerID g_connected_peer = 0;
 static int g_streaming = 0;
 static uint8_t *g_stream_buffer = NULL;
 static LogReceiver g_log_receiver = {0};
+static EchoQueue g_echo_queue = {0};
 
 /* ========================================================================== */
 /* Utility Functions                                                           */
@@ -163,10 +189,68 @@ static void sigint_handler(int sig)
  * - Mac calculates RTT from timestamp
  */
 
+/**
+ * Queue an echo for retry when send fails due to backpressure
+ */
+static int echo_queue_push(PeerTalk_PeerID peer_id, const void *data, uint16_t len)
+{
+    if (g_echo_queue.count >= ECHO_QUEUE_SIZE) {
+        return -1;  /* Queue full */
+    }
+    if (len > ECHO_BUFFER_SIZE) {
+        return -1;  /* Message too large */
+    }
+
+    EchoSlot *slot = &g_echo_queue.slots[g_echo_queue.head];
+    memcpy(slot->data, data, len);
+    slot->len = len;
+    slot->peer_id = peer_id;
+    slot->valid = 1;
+
+    g_echo_queue.head = (g_echo_queue.head + 1) % ECHO_QUEUE_SIZE;
+    g_echo_queue.count++;
+    return 0;
+}
+
+/**
+ * Drain pending echoes from retry queue
+ * Called from main loop to handle backpressure recovery
+ */
+static void echo_queue_drain(PeerTalk_Context *ctx)
+{
+    int drain_count = 0;
+    const int max_drain = 16;  /* Match Mac's burst size */
+
+    while (g_echo_queue.count > 0 && drain_count < max_drain) {
+        EchoSlot *slot = &g_echo_queue.slots[g_echo_queue.tail];
+        if (!slot->valid) break;
+
+        PeerTalk_Error err = PeerTalk_Send(ctx, slot->peer_id, slot->data, slot->len);
+        if (err == PT_OK) {
+            g_stats.echo_count++;
+            g_stats.echo_bytes += slot->len;
+            g_stats.echo_retries++;
+            slot->valid = 0;
+            g_echo_queue.tail = (g_echo_queue.tail + 1) % ECHO_QUEUE_SIZE;
+            g_echo_queue.count--;
+            drain_count++;
+        } else if (err == PT_ERR_WOULD_BLOCK || err == PT_ERR_BUFFER_FULL) {
+            /* Still backpressured, try again next poll */
+            break;
+        } else {
+            /* Real error, drop this echo */
+            g_stats.echo_drops++;
+            slot->valid = 0;
+            g_echo_queue.tail = (g_echo_queue.tail + 1) % ECHO_QUEUE_SIZE;
+            g_echo_queue.count--;
+        }
+    }
+}
+
 static void echo_message(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
                          const void *data, uint16_t len)
 {
-    /* Echo the message back exactly as received */
+    /* Try to echo immediately */
     PeerTalk_Error err = PeerTalk_Send(ctx, peer_id, data, len);
     if (err == PT_OK) {
         g_stats.echo_count++;
@@ -176,8 +260,16 @@ static void echo_message(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
             printf("[ECHO] %llu messages echoed\n",
                    (unsigned long long)g_stats.echo_count);
         }
+    } else if (err == PT_ERR_WOULD_BLOCK || err == PT_ERR_BUFFER_FULL) {
+        /* Backpressure - queue for retry instead of dropping */
+        if (echo_queue_push(peer_id, data, len) < 0) {
+            g_stats.echo_drops++;
+            if (g_config.verbose) {
+                printf("[ECHO] Queue full, dropped echo len=%u\n", len);
+            }
+        }
     } else {
-        /* Log first few failures to diagnose */
+        /* Real error */
         static int fail_logged = 0;
         if (fail_logged < 10) {
             printf("[ECHO] Send failed: err=%d len=%u peer=%u\n", err, len, peer_id);
@@ -228,6 +320,9 @@ static void start_streaming(void)
 
 static void stream_tick(void)
 {
+    int burst_count = 0;
+    const int max_burst = 10;  /* Match Mac's burst size */
+
     if (!g_streaming || g_connected_peer == 0)
         return;
 
@@ -245,14 +340,26 @@ static void stream_tick(void)
         return;
     }
 
-    /* Send next message with sequence number */
-    uint32_t seq = (uint32_t)g_stats.messages_sent;
-    memcpy(g_stream_buffer, &seq, sizeof(seq));
+    /* Send messages in bursts (like Mac test apps do) for maximum throughput */
+    while (burst_count < max_burst &&
+           g_stats.messages_sent < (uint64_t)g_config.message_count) {
+        /* Add sequence number to first 4 bytes */
+        uint32_t seq = (uint32_t)g_stats.messages_sent;
+        memcpy(g_stream_buffer, &seq, sizeof(seq));
 
-    if (PeerTalk_Send(g_ctx, g_connected_peer, g_stream_buffer,
-                      g_config.message_size) == PT_OK) {
-        g_stats.bytes_sent += g_config.message_size;
-        g_stats.messages_sent++;
+        PeerTalk_Error err = PeerTalk_Send(g_ctx, g_connected_peer, g_stream_buffer,
+                                            g_config.message_size);
+        if (err == PT_OK) {
+            g_stats.bytes_sent += g_config.message_size;
+            g_stats.messages_sent++;
+            burst_count++;
+        } else if (err == PT_ERR_WOULD_BLOCK || err == PT_ERR_BUFFER_FULL) {
+            /* Backpressure - stop burst and let poll drain */
+            break;
+        } else {
+            /* Real error */
+            break;
+        }
     }
 }
 
@@ -263,8 +370,9 @@ static void stream_tick(void)
 /**
  * Initialize log receiver for a peer
  */
-static int log_receiver_start(PeerTalk_PeerID peer_id, const void *header_data,
-                               uint16_t header_len, const char *peer_name)
+static int log_receiver_start(PeerTalk_PeerID peer_id, uint32_t peer_ip,
+                               const void *header_data, uint16_t header_len,
+                               const char *peer_name)
 {
     uint32_t total_length;
 
@@ -294,6 +402,7 @@ static int log_receiver_start(PeerTalk_PeerID peer_id, const void *header_data,
     g_log_receiver.expected_length = total_length;
     g_log_receiver.received_length = 0;
     g_log_receiver.peer_id = peer_id;
+    g_log_receiver.peer_ip = peer_ip;
     g_log_receiver.active = 1;
     strncpy(g_log_receiver.peer_name, peer_name ? peer_name : "unknown", 63);
     g_log_receiver.peer_name[63] = '\0';
@@ -302,8 +411,8 @@ static int log_receiver_start(PeerTalk_PeerID peer_id, const void *header_data,
     memcpy(g_log_receiver.buffer, header_data, header_len);
     g_log_receiver.received_length = header_len;
 
-    printf("[LOG] Started receiving logs from %s (%u bytes expected)\n",
-           g_log_receiver.peer_name, total_length);
+    printf("[LOG] Started receiving logs from %s (IP 0x%08X, %u bytes expected)\n",
+           g_log_receiver.peer_name, peer_ip, total_length);
 
     return 0;
 }
@@ -330,28 +439,55 @@ static void log_receiver_append(const void *data, uint16_t len)
 }
 
 /**
+ * Determine machine folder from peer IP address
+ */
+static const char *get_machine_folder(uint32_t ip)
+{
+    /* Known machine IPs - update as machines are added */
+    switch (ip) {
+    case 0x0ABC0137:  /* 10.188.1.55 = Mac SE */
+        return "macse";
+    case 0x0ABC01D5:  /* 10.188.1.213 = Performa 6200 */
+        return "performa6200";
+    default:
+        return "unknown";
+    }
+}
+
+/**
  * Check if log reception is complete and save to file
  */
 static void log_receiver_check_complete(void)
 {
     FILE *fp;
-    char filename[128];
+    char filename[256];
+    char machine_folder[64];
     time_t now;
     struct tm *tm_info;
+    const char *machine;
 
     if (!g_log_receiver.active) return;
     if (g_log_receiver.received_length < g_log_receiver.expected_length) return;
 
-    /* Generate filename with timestamp */
+    /* Determine machine folder from peer IP */
+    machine = get_machine_folder(g_log_receiver.peer_ip);
+    snprintf(machine_folder, sizeof(machine_folder), "plan/performance/mactcp/%s", machine);
+
+    /* Generate filename with timestamp - save to machine-specific folder */
     now = time(NULL);
     tm_info = localtime(&now);
-    snprintf(filename, sizeof(filename), "logs/%s_%04d%02d%02d_%02d%02d%02d.log",
-             g_log_receiver.peer_name,
+    snprintf(filename, sizeof(filename),
+             "%s/%s_%04d%02d%02d_%02d%02d%02d.log",
+             machine_folder,
+             g_log_receiver.peer_name[0] ? g_log_receiver.peer_name : "test",
              tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday,
              tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec);
 
-    /* Create logs directory if needed */
-    mkdir("logs", 0755);
+    /* Create directory structure if needed */
+    mkdir("plan", 0755);
+    mkdir("plan/performance", 0755);
+    mkdir("plan/performance/mactcp", 0755);
+    mkdir(machine_folder, 0755);
 
     /* Write log data (skip header) */
     fp = fopen(filename, "w");
@@ -379,16 +515,19 @@ static int log_receiver_handle(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
         memcmp(data, LOG_STREAM_MARKER, LOG_STREAM_MARKER_LEN) == 0) {
 
         const char *name = "unknown";
+        uint32_t peer_ip = 0;
         const PeerTalk_PeerInfo *info = PeerTalk_GetPeerByID(ctx, peer_id);
         if (info) {
             name = PeerTalk_GetPeerName(ctx, info->name_idx);
             if (!name) name = "unknown";
+            peer_ip = info->address;
         }
 
         if (g_config.verbose) {
-            printf("[LOG] Detected log stream marker from peer %u\n", peer_id);
+            printf("[LOG] Detected log stream marker from peer %u (IP 0x%08X)\n",
+                   peer_id, peer_ip);
         }
-        log_receiver_start(peer_id, data, len, name);
+        log_receiver_start(peer_id, peer_ip, data, len, name);
         log_receiver_check_complete();
         return 1;
     }
@@ -546,6 +685,7 @@ static void print_usage(const char *prog)
     printf("  --count N         Number of messages (default: 1000)\n");
     printf("  --duration SEC    Test duration in seconds (default: 0 = forever)\n");
     printf("  --verbose         Enable verbose logging\n");
+    printf("  --fast            No sleep in main loop (high CPU, minimal latency)\n");
     printf("  --help            Show this help\n");
     printf("\n");
     printf("Modes:\n");
@@ -584,6 +724,11 @@ static void print_stats(void)
     printf("  Sent/Echoed: %llu (%llu bytes)\n",
            (unsigned long long)g_stats.echo_count,
            (unsigned long long)g_stats.echo_bytes);
+    if (g_stats.echo_retries > 0 || g_stats.echo_drops > 0) {
+        printf("  Echo retries: %llu, drops: %llu\n",
+               (unsigned long long)g_stats.echo_retries,
+               (unsigned long long)g_stats.echo_drops);
+    }
 
     if (g_config.mode == MODE_STREAM && g_stats.bytes_sent > 0) {
         double elapsed = (g_stats.stream_end.tv_sec - g_stats.stream_start.tv_sec) +
@@ -642,6 +787,8 @@ int main(int argc, char *argv[])
             g_config.duration_sec = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--verbose") == 0) {
             g_config.verbose = 1;
+        } else if (strcmp(argv[i], "--fast") == 0) {
+            g_config.fast = 1;
         } else if (strcmp(argv[i], "--help") == 0) {
             print_usage(argv[0]);
             return 0;
@@ -659,10 +806,11 @@ int main(int argc, char *argv[])
     printf("========================================\n");
     printf("PeerTalk Performance Test Partner\n");
     printf("Version: %s\n", PeerTalk_Version());
-    printf("Mode: %s\n",
+    printf("Mode: %s%s\n",
            g_config.mode == MODE_ECHO ? "echo" :
            g_config.mode == MODE_STREAM ? "stream" :
-           g_config.mode == MODE_STRESS ? "stress" : "discovery");
+           g_config.mode == MODE_STRESS ? "stress" : "discovery",
+           g_config.fast ? " (FAST)" : "");
     printf("========================================\n\n");
 
     /* Initialize PeerTalk */
@@ -712,11 +860,34 @@ int main(int argc, char *argv[])
     start_time = time(NULL);
     last_status = start_time;
 
-    /* Main loop */
+    /* Main loop
+     *
+     * SDK Usage Note: We use PeerTalk_Poll() for normal operation, but switch
+     * to PeerTalk_PollFast() in echo mode with --fast flag for minimum latency.
+     * PollFast skips discovery and periodic work, only doing TCP I/O.
+     */
     while (g_running) {
-        PeerTalk_Poll(g_ctx);
+        /* Choose poll function based on mode and fast flag
+         * SDK Pattern: PollFast for tight loops, regular Poll for full functionality
+         */
+        if (g_config.fast && g_config.mode == MODE_ECHO && g_connected_peer != 0) {
+            /* Fast path: PollFast for minimal latency echo during active connection */
+            PeerTalk_PollFast(g_ctx);
+        } else {
+            /* Normal path: full Poll for discovery, connection management, etc. */
+            PeerTalk_Poll(g_ctx);
+        }
 
-        /* Handle streaming if active */
+        /* Drain echo retry queue (handles backpressure recovery)
+         * SDK Pattern: Handle WOULD_BLOCK by queuing and retrying, not dropping
+         */
+        if (g_config.mode == MODE_ECHO) {
+            echo_queue_drain(g_ctx);
+        }
+
+        /* Handle streaming if active
+         * SDK Pattern: Send in bursts to maximize throughput, handle backpressure
+         */
         if (g_streaming) {
             stream_tick();
         }
@@ -724,11 +895,15 @@ int main(int argc, char *argv[])
         /* Status update every 10 seconds */
         now = time(NULL);
         if (now - last_status >= 10) {
-            printf("[STATUS] %ld sec: peers=%llu, msgs=%llu, connected=%s\n",
+            printf("[STATUS] %ld sec: peers=%llu, msgs=%llu, connected=%s",
                    (long)(now - start_time),
                    (unsigned long long)g_stats.unique_peers_found,
                    (unsigned long long)g_stats.messages_received,
                    g_connected_peer ? "yes" : "no");
+            if (g_echo_queue.count > 0) {
+                printf(", echo_queue=%d", g_echo_queue.count);
+            }
+            printf("\n");
             last_status = now;
         }
 
@@ -738,7 +913,12 @@ int main(int argc, char *argv[])
             break;
         }
 
-        usleep(1000);  /* 1ms sleep to avoid busy-wait */
+        /* Sleep to avoid busy-wait, unless --fast mode for minimal latency.
+         * In fast mode, we spin at 100% CPU for lowest possible echo latency.
+         * SDK Note: Fast mode + PollFast = maximum performance for echo server. */
+        if (!g_config.fast) {
+            usleep(1000);  /* 1ms sleep to avoid busy-wait */
+        }
     }
 
     print_stats();
