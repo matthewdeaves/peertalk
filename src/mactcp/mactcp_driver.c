@@ -356,39 +356,9 @@ void pt_mactcp_init_streams(pt_mactcp_data *md)
         md->tcp_cold[i].rcv_buffer_size = 0;
     }
 
-    /* Note: prealloced_bufs is initialized and populated by
-     * pt_mactcp_preallocate_early() in platform_mactcp.c BEFORE
-     * the MacTCP driver opens. DO NOT reinitialize here or we
-     * would lose the pre-allocated buffers! */
-
     /* Initialize timing */
     md->last_announce_tick = 0;
     md->ticks_per_second = 60;  /* Mac tick rate */
-}
-
-/* Note: TCP buffer pre-allocation moved to platform_mactcp.c:pt_mactcp_preallocate_early()
- * which runs BEFORE the MacTCP driver opens (when MaxBlock is much larger). */
-
-/**
- * Free pre-allocated TCP buffers.
- *
- * Called during shutdown to release pre-allocated buffers that are
- * not currently assigned to a stream.
- *
- * @param ctx  PeerTalk context
- */
-void pt_mactcp_free_preallocated_buffers(struct pt_context *ctx)
-{
-    pt_mactcp_data *md = pt_mactcp_get(ctx);
-    int i;
-
-    for (i = 0; i < PT_MAX_PEERS; i++) {
-        if (md->prealloced_bufs[i] != NULL) {
-            pt_mactcp_free_buffer(md->prealloced_bufs[i]);
-            md->prealloced_bufs[i] = NULL;
-        }
-    }
-    md->prealloced_buf_size = 0;
 }
 
 /**
@@ -409,11 +379,6 @@ int pt_mactcp_data_init(struct pt_context *ctx)
 
     /* Initialize all stream states */
     pt_mactcp_init_streams(md);
-
-    /* Note: TCP buffer pre-allocation happens EARLIER in platform_mactcp.c
-     * before the MacTCP driver opens. By that point, MaxBlock is much larger
-     * because MacTCP hasn't yet allocated its internal buffers.
-     * See pt_mactcp_preallocate_early() in platform_mactcp.c. */
 
     /* Note: UPPs are created in platform_mactcp.c mactcp_init()
      * because the ASR callbacks are defined there.

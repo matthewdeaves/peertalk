@@ -246,7 +246,7 @@ Foundation is in place for future optimizations (multiple outstanding receives, 
 | 3 | Tunable message limits | N/A | N/A | - | ✅ Already implemented |
 | **A** | **Async send pipelining** | **HIGH** | **HIGH** | **Throughput** | **✅ DONE - 112 KB/s (2.5x)** |
 | **B** | **Async receive** | **NEUTRAL** | **HIGH** | **Throughput** | **✅ DONE - matches baseline** |
-| **C** | **Buffer pre-allocation** | **N/A** | **MEDIUM** | **Throughput** | **❌ NOT VIABLE - memory constraints** |
+| **C** | **Buffer pre-allocation** | **HIGH (potential)** | **MEDIUM** | **Throughput** | **✅ DONE - Public API for app-level allocation** |
 | 4 | Streaming mode | N/A | N/A | File transfer | ✅ Already implemented |
 | 5 | Reduce small msg overhead | MEDIUM | MEDIUM | Chat apps | ✅ Compact headers wired up |
 | 6 | UDP fast path | N/A | N/A | Games | ✅ Already implemented |
@@ -257,40 +257,75 @@ Foundation is in place for future optimizations (multiple outstanding receives, 
 
 ---
 
-### C. Buffer Pre-allocation ❌ NOT VIABLE
-**Impact: N/A | Effort: MEDIUM | Result: Memory constraints prevent implementation**
+### C. Buffer Pre-allocation ✅ IMPLEMENTED (Public API)
+**Impact: HIGH (potential) | Effort: MEDIUM | Result: Public API enables app-level pre-allocation**
 
-**Goal**: Pre-allocate TCP receive buffers before MacTCP driver opens to get larger buffers (16-32KB instead of 4KB), improving the 25% threshold rule.
+**Goal**: Enable applications to pre-allocate TCP receive buffers at the very start of `main()` before heap fragmentation, getting larger buffers (16-32KB instead of 4KB) that improve throughput via MacTCP's 25% threshold rule.
 
-**Implementation Attempted** (2026-02-09):
-1. Added `prealloced_bufs[]` array to `pt_mactcp_data` structure
-2. Created `pt_mactcp_preallocate_early()` in platform_mactcp.c
-3. Called BEFORE `PBOpenSync()` for MacTCP driver
-4. Modified `pt_mactcp_tcp_create()` to use pre-allocated buffers
+**Implementation** (2026-02-09):
 
-**Results**: Pre-allocation fails due to memory constraints.
+**Public API** (include/peertalk.h):
+```c
+/* Buffer size constants for pre-allocation */
+#define PT_TCP_BUF_4K   4096    /* Minimum - 25% threshold = 1KB */
+#define PT_TCP_BUF_8K   8192    /* Character apps - 25% threshold = 2KB */
+#define PT_TCP_BUF_16K  16384   /* Block apps - 25% threshold = 4KB */
+#define PT_TCP_BUF_32K  32768   /* High throughput - 25% threshold = 8KB */
 
-**Logs show**:
+/* Allocate buffer pool at start of main() */
+PeerTalk_BufferPool *PeerTalk_AllocateBuffers(uint16_t count, uint32_t buffer_size);
+void PeerTalk_FreeBuffers(PeerTalk_BufferPool *pool);
+void PeerTalk_GetBufferPoolInfo(const PeerTalk_BufferPool *pool,
+                                 uint16_t *out_count, uint32_t *out_size);
+
+/* Pass pool to PeerTalk via config */
+typedef struct {
+    // ... other fields ...
+    PeerTalk_BufferPool *buffer_pool;  /* Pre-allocated TCP buffers, or NULL */
+} PeerTalk_Config;
 ```
-[00000016][INF] Early pre-allocation: MaxBlock=9664 (before MacTCP driver)
-[00000016][WRN] Insufficient memory for pre-allocation (MaxBlock=9664, need=147456 for 16 peers)
+
+**Usage Pattern**:
+```c
+int main(void) {
+    PeerTalk_BufferPool *pool;
+    PeerTalk_Config config;
+
+    /* FIRST: Allocate buffers while heap is contiguous */
+    pool = PeerTalk_AllocateBuffers(4, PT_TCP_BUF_16K);
+    if (!pool) {
+        /* Try smaller size */
+        pool = PeerTalk_AllocateBuffers(4, PT_TCP_BUF_8K);
+    }
+
+    /* Pass pool to PeerTalk */
+    config.buffer_pool = pool;
+    PeerTalk_Init(&config, ...);
+
+    /* ... use library ... */
+
+    PeerTalk_Shutdown(ctx);
+    PeerTalk_FreeBuffers(pool);
+    return 0;
+}
 ```
 
-**Root Cause**: Even before MacTCP driver opens, `MaxBlock` is only ~10KB. This is because:
-1. MacTCP is a shared driver - already loaded before app starts
-2. System and app resources allocate before `main()` runs
-3. App CODE segments load into application heap
+**Why app-level, not library-internal**:
+- Internal pre-allocation fails because heap is already fragmented by the time `PeerTalk_Init()` runs
+- App SIZE resource gives a contiguous heap at launch - first thing in `main()` is the opportunity
+- Classic Mac apps know their memory requirements (SIZE resource preferred/minimum)
+- App can choose buffer size based on use case (chat app vs file transfer)
 
-**Memory required**:
-- For 4 peers × 8KB buffers + headroom = ~48KB minimum
-- Available: ~10KB contiguous
+**Files Modified**:
+- `include/peertalk.h` - Buffer pool API declarations
+- `src/core/buffer_pool.c` - Platform-agnostic pool implementation
+- `src/core/pt_internal.h` - Internal pool functions
+- `src/mactcp/tcp_mactcp.c` - Uses pool in `pt_mactcp_tcp_create()`
 
-**Conclusion**: The theoretical optimization is sound - larger buffers would improve receive throughput via the 25% threshold rule. However, Classic Mac memory management constraints make pre-allocation impractical:
-- Heap is fragmented before app gets control
-- No opportunity to allocate early enough
-- Would require application-level changes (allocating in main() before PeerTalk_Init)
-
-**Code preserved** in platform_mactcp.c and mactcp_driver.c for future reference if memory constraints change or if apps can be modified to allocate buffers before calling PeerTalk_Init.
+**Expected Benefits** (pending hardware test):
+- 16KB buffer → 4KB completion threshold → 4x fewer completions per message
+- 32KB buffer → 8KB completion threshold → handles 4096-byte messages in one call
+- Should improve receive throughput asymmetry seen at larger message sizes
 
 ---
 

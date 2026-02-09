@@ -322,21 +322,6 @@ typedef struct pt_mactcp_data {
     pt_tcp_stream_hot  tcp_hot[PT_MAX_PEERS];
     pt_tcp_stream_cold tcp_cold[PT_MAX_PEERS];
 
-    /* Pre-allocated TCP receive buffers
-     *
-     * PERFORMANCE OPTIMIZATION: Allocate TCP buffers at init time before
-     * other allocations (listener, discovery, queues) fragment memory.
-     * This allows larger buffers (16-32KB vs 4KB) improving the 25% threshold:
-     * - 4KB buffer = receive completes at 1KB (slow)
-     * - 16KB buffer = receive completes at 4KB (4x better)
-     * - 32KB buffer = receive completes at 8KB (8x better)
-     *
-     * Set prealloced_buf_size = 0 if pre-allocation failed (falls back to
-     * on-demand allocation in pt_mactcp_tcp_create).
-     */
-    Ptr               prealloced_bufs[PT_MAX_PEERS];
-    unsigned long     prealloced_buf_size;  /* Size of each pre-allocated buffer, 0 = none */
-
     /* Timing */
     unsigned long     last_announce_tick;
     unsigned long     ticks_per_second;  /* 60 on Mac */

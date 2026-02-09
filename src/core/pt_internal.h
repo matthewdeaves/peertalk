@@ -496,4 +496,26 @@ void pt_plat_free(void *ptr);
  */
 size_t pt_plat_extra_size(void);
 
+/* ========================================================================== */
+/* Buffer Pool Internal Functions                                             */
+/* ========================================================================== */
+
+/**
+ * Get a buffer from the pool (marks it in-use).
+ * Returns NULL if pool is NULL or exhausted.
+ */
+void *pt_buffer_pool_get(PeerTalk_BufferPool *pool);
+
+/**
+ * Return a buffer to the pool (marks it available).
+ * Returns 1 if buffer was from this pool, 0 otherwise.
+ */
+int pt_buffer_pool_return(PeerTalk_BufferPool *pool, void *buffer);
+
+/**
+ * Get the buffer size for a pool.
+ * Returns 0 if pool is NULL.
+ */
+uint32_t pt_buffer_pool_size(const PeerTalk_BufferPool *pool);
+
 #endif /* PT_INTERNAL_H */

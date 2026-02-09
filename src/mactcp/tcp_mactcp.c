@@ -166,18 +166,21 @@ int pt_mactcp_tcp_create(struct pt_context *ctx, int idx)
         return -1;
     }
 
-    /* PERFORMANCE OPTIMIZATION: Use pre-allocated buffer if available.
-     * Pre-allocated buffers are larger (16-32KB) because they were allocated
-     * before memory fragmentation. This improves throughput via the 25% rule. */
-    if (md->prealloced_buf_size > 0 && md->prealloced_bufs[idx] != NULL) {
-        cold->rcv_buffer = md->prealloced_bufs[idx];
-        cold->rcv_buffer_size = md->prealloced_buf_size;
-        md->prealloced_bufs[idx] = NULL;  /* Mark as used */
+    /* PERFORMANCE OPTIMIZATION: Use buffer from app-provided pool if available.
+     * Pool buffers are larger (16-32KB) because they were allocated at the
+     * start of main() before memory fragmentation. This improves throughput
+     * via MacTCP's 25% threshold rule. */
+    if (ctx->config.buffer_pool != NULL) {
+        cold->rcv_buffer = (Ptr)pt_buffer_pool_get(ctx->config.buffer_pool);
+        if (cold->rcv_buffer != NULL) {
+            cold->rcv_buffer_size = pt_buffer_pool_size(ctx->config.buffer_pool);
+            PT_LOG_INFO(ctx->log, PT_LOG_CAT_MEMORY,
+                "TCP[%d] using pool buffer %luKB (25%% threshold=%luB)",
+                idx, cold->rcv_buffer_size / 1024, cold->rcv_buffer_size / 4);
+        }
+    }
 
-        PT_LOG_INFO(ctx->log, PT_LOG_CAT_MEMORY,
-            "TCP[%d] using pre-allocated %luKB buffer (25%% threshold=%luB)",
-            idx, cold->rcv_buffer_size / 1024, cold->rcv_buffer_size / 4);
-    } else {
+    if (cold->rcv_buffer == NULL) {
         /* Fall back to on-demand allocation */
 
         /* Determine buffer size based on available memory
@@ -427,19 +430,15 @@ int pt_mactcp_tcp_release(struct pt_context *ctx, int idx)
             "TCPRelease returned: %d", (int)err);
     }
 
-    /* Handle buffer - return to pool if pre-allocated, else free */
+    /* Handle buffer - return to pool if from pool, else free */
     if (cold->rcv_buffer != NULL) {
-        /* Check if this buffer matches the pre-allocated size.
-         * If so, return it to the pool for reuse. */
-        if (md->prealloced_buf_size > 0 &&
-            cold->rcv_buffer_size == md->prealloced_buf_size &&
-            md->prealloced_bufs[idx] == NULL) {
-            /* Return to pool */
-            md->prealloced_bufs[idx] = cold->rcv_buffer;
+        /* Try to return buffer to the app's pool */
+        if (ctx->config.buffer_pool != NULL &&
+            pt_buffer_pool_return(ctx->config.buffer_pool, cold->rcv_buffer)) {
             PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_MEMORY,
-                "TCP[%d] buffer returned to pre-alloc pool", idx);
+                "TCP[%d] buffer returned to pool", idx);
         } else {
-            /* Not pre-allocated or pool slot occupied - free it */
+            /* Not from pool - free it */
             pt_mactcp_free_buffer(cold->rcv_buffer);
         }
         cold->rcv_buffer = NULL;

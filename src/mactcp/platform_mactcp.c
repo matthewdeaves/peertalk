@@ -74,114 +74,6 @@ static UDPNotifyUPP g_udp_notify_upp = NULL;
  * - udp_mactcp.c (pt_udp_asr) - Session 5.2
  */
 
-/* Forward declaration for buffer allocation (from mactcp_driver.c) */
-extern Ptr pt_mactcp_alloc_buffer(unsigned long size);
-extern void pt_mactcp_free_buffer(Ptr buffer);
-
-/* ========================================================================== */
-/* Early Buffer Pre-allocation                                                */
-/* ========================================================================== */
-
-/**
- * Pre-allocate TCP receive buffers BEFORE MacTCP driver opens.
- *
- * CRITICAL: This MUST be called BEFORE PBOpenSync() for the MacTCP driver.
- * MacTCP's initialization allocates significant internal buffers that fragment
- * the heap. By allocating our buffers first, we can get larger contiguous
- * blocks (16-32KB instead of 4KB).
- *
- * The 25% threshold rule (MacTCP Programmer's Guide lines 3070-3091) means:
- * - 4KB buffer = receive completes at 1KB (slow, many poll cycles)
- * - 16KB buffer = receive completes at 4KB (4x better)
- * - 32KB buffer = receive completes at 8KB (optimal for 4096-byte messages)
- *
- * @param ctx  PeerTalk context (pt_mactcp_data is at end of context)
- */
-static void pt_mactcp_preallocate_early(struct pt_context *ctx)
-{
-    pt_mactcp_data *md = pt_mactcp_get(ctx);
-    long max_block;
-    unsigned long target_size;
-    unsigned long total_needed;
-    int i;
-    int allocated = 0;
-
-    /* Initialize pre-alloc tracking before any allocations */
-    for (i = 0; i < PT_MAX_PEERS; i++) {
-        md->prealloced_bufs[i] = NULL;
-    }
-    md->prealloced_buf_size = 0;
-
-    /* Check memory state BEFORE MacTCP driver opens - should be much larger */
-    max_block = MaxBlock();
-
-    PT_LOG_INFO(ctx->log, PT_LOG_CAT_MEMORY,
-        "Early pre-allocation: MaxBlock=%ld (before MacTCP driver)",
-        max_block);
-
-    /* Determine target buffer size based on available memory
-     * We need PT_MAX_PEERS buffers plus headroom for MacTCP + other allocations
-     */
-    total_needed = (unsigned long)PT_MAX_PEERS * PT_TCP_RCV_BUF_HIGH + 65536;
-    if (max_block >= (long)total_needed) {
-        target_size = PT_TCP_RCV_BUF_HIGH;  /* 32KB per stream */
-        PT_LOG_INFO(ctx->log, PT_LOG_CAT_MEMORY,
-            "Pre-allocating %d x 32KB TCP buffers", PT_MAX_PEERS);
-    } else {
-        total_needed = (unsigned long)PT_MAX_PEERS * PT_TCP_RCV_BUF_BLOCK + 32768;
-        if (max_block >= (long)total_needed) {
-            target_size = PT_TCP_RCV_BUF_BLOCK;  /* 16KB per stream */
-            PT_LOG_INFO(ctx->log, PT_LOG_CAT_MEMORY,
-                "Pre-allocating %d x 16KB TCP buffers", PT_MAX_PEERS);
-        } else {
-            total_needed = (unsigned long)PT_MAX_PEERS * PT_TCP_RCV_BUF_CHAR + 16384;
-            if (max_block >= (long)total_needed) {
-                target_size = PT_TCP_RCV_BUF_CHAR;  /* 8KB per stream */
-                PT_LOG_INFO(ctx->log, PT_LOG_CAT_MEMORY,
-                    "Pre-allocating %d x 8KB TCP buffers", PT_MAX_PEERS);
-            } else {
-                /* Not enough memory - fall back to on-demand allocation */
-                PT_LOG_WARN(ctx->log, PT_LOG_CAT_MEMORY,
-                    "Insufficient memory for pre-allocation (MaxBlock=%ld, need=%lu for %d peers)",
-                    max_block, total_needed, PT_MAX_PEERS);
-                return;
-            }
-        }
-    }
-
-    /* Allocate all buffers */
-    for (i = 0; i < PT_MAX_PEERS; i++) {
-        md->prealloced_bufs[i] = pt_mactcp_alloc_buffer(target_size);
-        if (md->prealloced_bufs[i] != NULL) {
-            allocated++;
-        } else {
-            PT_LOG_WARN(ctx->log, PT_LOG_CAT_MEMORY,
-                "Pre-allocation failed at buffer %d/%d", i + 1, PT_MAX_PEERS);
-            break;
-        }
-    }
-
-    if (allocated == PT_MAX_PEERS) {
-        md->prealloced_buf_size = target_size;
-        PT_LOG_INFO(ctx->log, PT_LOG_CAT_MEMORY,
-            "Pre-allocated %d TCP buffers of %luKB (total %luKB, 25%% threshold=%luB)",
-            PT_MAX_PEERS, target_size / 1024,
-            (target_size * PT_MAX_PEERS) / 1024, target_size / 4);
-    } else {
-        /* Partial allocation - free all and fall back to on-demand */
-        for (i = 0; i < PT_MAX_PEERS; i++) {
-            if (md->prealloced_bufs[i] != NULL) {
-                pt_mactcp_free_buffer(md->prealloced_bufs[i]);
-                md->prealloced_bufs[i] = NULL;
-            }
-        }
-        md->prealloced_buf_size = 0;
-        PT_LOG_WARN(ctx->log, PT_LOG_CAT_MEMORY,
-            "Pre-allocation incomplete (%d/%d), using on-demand allocation",
-            allocated, PT_MAX_PEERS);
-    }
-}
-
 /* ========================================================================== */
 /* Platform Operations                                                        */
 /* ========================================================================== */
@@ -189,16 +81,6 @@ static void pt_mactcp_preallocate_early(struct pt_context *ctx)
 static int mactcp_init(struct pt_context *ctx) {
     ParamBlockRec pb;
     OSErr err;
-
-    /**
-     * PERFORMANCE OPTIMIZATION: Pre-allocate TCP receive buffers BEFORE
-     * opening the MacTCP driver. MacTCP's internal buffer allocation
-     * fragments heap memory significantly, reducing MaxBlock from ~300KB
-     * to ~10KB. By allocating our buffers first, we can get larger
-     * contiguous blocks (16-32KB) which improves receive throughput
-     * via the 25% threshold rule.
-     */
-    pt_mactcp_preallocate_early(ctx);
 
     /**
      * Open MacTCP driver using PBOpenSync.
@@ -292,7 +174,6 @@ static int mactcp_init(struct pt_context *ctx) {
 /* Forward declarations for cleanup functions */
 extern void pt_mactcp_discovery_stop(struct pt_context *ctx);
 extern void pt_mactcp_tcp_release_all(struct pt_context *ctx);
-extern void pt_mactcp_free_preallocated_buffers(struct pt_context *ctx);
 
 static void mactcp_shutdown(struct pt_context *ctx) {
     pt_mactcp_data *md = pt_mactcp_get(ctx);
@@ -317,8 +198,8 @@ static void mactcp_shutdown(struct pt_context *ctx) {
     /* Release ALL TCP streams (listener + peer connections) */
     pt_mactcp_tcp_release_all(ctx);
 
-    /* Free any pre-allocated buffers that are still in the pool */
-    pt_mactcp_free_preallocated_buffers(ctx);
+    /* Note: Buffer pool cleanup is handled by application calling
+     * PeerTalk_FreeBuffers() - the pool is app-owned memory. */
 
     /* Note: Completion routine UPPs were intentionally not created.
      * We poll pb.ioResult directly instead of using callbacks.

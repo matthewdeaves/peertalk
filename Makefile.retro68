@@ -50,7 +50,8 @@ CORE_SRCS = \
     src/core/queue.c \
     src/core/send.c \
     src/core/direct_buffer.c \
-    src/core/stream.c
+    src/core/stream.c \
+    src/core/buffer_pool.c
 
 # PT_Log sources (Mac version)
 LOG_SRCS = src/log/pt_log_mac.c

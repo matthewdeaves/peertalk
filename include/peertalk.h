@@ -89,6 +89,12 @@ const char *PeerTalk_Version(void);
     #define PT_PIPELINE_MAX_PAYLOAD 4096
 #endif
 
+/* TCP receive buffer sizes for pre-allocation */
+#define PT_TCP_BUF_4K   4096    /* Minimum - 25% threshold = 1KB */
+#define PT_TCP_BUF_8K   8192    /* Character apps - 25% threshold = 2KB */
+#define PT_TCP_BUF_16K  16384   /* Block apps - 25% threshold = 4KB */
+#define PT_TCP_BUF_32K  32768   /* High throughput - 25% threshold = 8KB */
+
 #define PT_DEFAULT_DISCOVERY_PORT   7353
 #define PT_DEFAULT_TCP_PORT         7354
 #define PT_DEFAULT_UDP_PORT         7355
@@ -346,6 +352,95 @@ typedef struct {
 } PeerTalk_GlobalStats;
 
 /* ========================================================================== */
+/* Buffer Pool (Classic Mac Performance Optimization)                         */
+/* ========================================================================== */
+
+/**
+ * Pre-allocated TCP receive buffer pool.
+ *
+ * CLASSIC MAC ONLY: On MacTCP/Open Transport, larger TCP receive buffers
+ * significantly improve throughput due to the "25% threshold rule" - MacTCP
+ * completes a receive when data reaches 25% of the buffer size:
+ *   - 4KB buffer = receive completes at 1KB (many small receives)
+ *   - 16KB buffer = receive completes at 4KB (4x better throughput)
+ *   - 32KB buffer = receive completes at 8KB (optimal for large messages)
+ *
+ * However, MacTCP fragments the heap when it loads, leaving only ~10KB
+ * contiguous blocks. To get larger buffers, allocate them at the VERY START
+ * of main(), before MacTCP/Open Transport or PeerTalk initialize.
+ *
+ * Usage (Classic Mac only):
+ * @code
+ *   int main(void) {
+ *       PeerTalk_BufferPool *pool;
+ *       PeerTalk_Config config = {0};
+ *       PeerTalk_Context *ctx;
+ *
+ *       // FIRST: Allocate buffers before anything fragments the heap
+ *       pool = PeerTalk_AllocateBuffers(4, PT_TCP_BUF_16K);
+ *       if (!pool) {
+ *           // Fall back to smaller buffers or continue without
+ *           pool = PeerTalk_AllocateBuffers(4, PT_TCP_BUF_8K);
+ *       }
+ *
+ *       // Then initialize PeerTalk with the buffer pool
+ *       strcpy(config.local_name, "MyApp");
+ *       config.buffer_pool = pool;  // Pass pre-allocated buffers
+ *       ctx = PeerTalk_Init(&config);
+ *       // ...
+ *   }
+ * @endcode
+ *
+ * On POSIX systems, this is ignored - buffer allocation is not a bottleneck.
+ */
+typedef struct PeerTalk_BufferPool PeerTalk_BufferPool;
+
+/**
+ * Allocate TCP receive buffers at the earliest opportunity.
+ *
+ * CALL THIS FIRST in main(), before any other initialization.
+ * Classic Mac heaps fragment quickly; this must run before MacTCP loads.
+ *
+ * @param count       Number of buffers (typically max_peers from config)
+ * @param buffer_size Size of each buffer (use PT_TCP_BUF_* constants)
+ * @return            Buffer pool handle, or NULL if allocation failed
+ *
+ * Recommended sizes:
+ *   - PT_TCP_BUF_32K: High-throughput apps (file transfer) - needs ~128KB+ heap
+ *   - PT_TCP_BUF_16K: Block-oriented apps (streaming) - needs ~64KB+ heap
+ *   - PT_TCP_BUF_8K:  Interactive apps (chat) - needs ~32KB+ heap
+ *   - PT_TCP_BUF_4K:  Low-memory fallback (Mac SE 4MB)
+ *
+ * If allocation fails, try a smaller buffer_size or count.
+ */
+PeerTalk_BufferPool *PeerTalk_AllocateBuffers(uint16_t count, uint32_t buffer_size);
+
+/**
+ * Free a buffer pool that was not passed to PeerTalk_Init.
+ *
+ * If you allocated a buffer pool but then decided not to use it (e.g., you're
+ * creating multiple pools to find the right size), free unused pools with this.
+ *
+ * NOTE: Do NOT call this for a pool that was passed to PeerTalk_Init() -
+ * PeerTalk_Shutdown() handles cleanup automatically.
+ *
+ * @param pool  Buffer pool to free (safe to pass NULL)
+ */
+void PeerTalk_FreeBuffers(PeerTalk_BufferPool *pool);
+
+/**
+ * Query buffer pool properties.
+ *
+ * Useful for logging what size buffers were successfully allocated.
+ *
+ * @param pool        Buffer pool handle
+ * @param out_count   Receives number of buffers (may be NULL)
+ * @param out_size    Receives size of each buffer (may be NULL)
+ */
+void PeerTalk_GetBufferPoolInfo(const PeerTalk_BufferPool *pool,
+                                 uint16_t *out_count, uint32_t *out_size);
+
+/* ========================================================================== */
 /* Configuration                                                              */
 /* ========================================================================== */
 
@@ -398,6 +493,20 @@ typedef struct {
     uint8_t         auto_cleanup;           /* Auto-remove timed-out peers, default = 1 */
     uint8_t         log_level;              /* 0=off, 1=err, 2=warn, 3=info, 4=debug */
     uint8_t         enable_fragmentation;   /* Auto-fragment large messages, default = 1 */
+
+    /* Pre-allocated buffer pool (MacTCP optimization)
+     *
+     * For best throughput on Classic Mac, allocate buffers at the very start
+     * of main() BEFORE any other allocations fragment the heap:
+     *
+     *   pool = PeerTalk_AllocateBuffers(max_peers, PT_TCP_BUF_16K);
+     *   config.buffer_pool = pool;
+     *   PeerTalk_Init(&config, ...);
+     *
+     * If NULL, PeerTalk allocates buffers on-demand (may get smaller buffers
+     * due to heap fragmentation, reducing throughput).
+     */
+    PeerTalk_BufferPool *buffer_pool;       /* Pre-allocated TCP buffers, or NULL */
 } PeerTalk_Config;
 
 /* ========================================================================== */
