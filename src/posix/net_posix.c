@@ -1466,6 +1466,13 @@ int pt_posix_send_capability(struct pt_context *ctx, struct pt_peer *peer) {
     caps.preferred_chunk = ctx->local_preferred_chunk;
     caps.capability_flags = ctx->local_capability_flags;
 
+    /* POSIX: Report standard socket buffer sizes.
+     * POSIX doesn't have MacTCP's 25% threshold issue, so we report
+     * typical defaults. The optimal_chunk is our preferred chunk since
+     * there's no completion threshold to optimize for. */
+    caps.recv_buffer_size = 65535;  /* Typical socket buffer size */
+    caps.optimal_chunk = ctx->local_preferred_chunk;
+
     /* Calculate current buffer pressure from BOTH queues - report the worse one.
      * This captures the actual constraint regardless of where it is:
      * - High send_pressure: "I can't transmit fast enough"
@@ -1975,8 +1982,9 @@ static int pt_recv_process_message(struct pt_context *ctx, struct pt_peer *peer,
                     peer->cold.caps.buffer_pressure = caps.buffer_pressure;
                     peer->cold.caps.caps_exchanged = 1;
 
-                    /* Store receive buffer size for chunk tuning */
+                    /* Store receive buffer size and optimal chunk for tuning */
                     peer->cold.caps.recv_buffer_size = caps.recv_buffer_size;
+                    peer->cold.caps.optimal_chunk = caps.optimal_chunk;
 
                     /* Negotiate compact header mode - both must support it */
                     if ((caps.capability_flags & PT_CAPFLAG_COMPACT_HEADER) &&
@@ -1998,10 +2006,10 @@ static int pt_recv_process_message(struct pt_context *ctx, struct pt_peer *peer,
                     peer->hot.effective_max_msg = effective_max;
 
                     PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,
-                        "Received capabilities from peer %u: max=%u chunk=%u pressure=%u compact=%u recv_buf=%u push=%u",
+                        "Received capabilities from peer %u: max=%u chunk=%u pressure=%u compact=%u recv_buf=%u optimal=%u push=%u",
                         peer->hot.id, caps.max_message_size, caps.preferred_chunk,
                         caps.buffer_pressure, peer->cold.caps.compact_mode,
-                        caps.recv_buffer_size, peer->cold.caps.push_preferred);
+                        caps.recv_buffer_size, caps.optimal_chunk, peer->cold.caps.push_preferred);
                 } else {
                     PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
                         "Failed to decode capabilities from peer %u", peer->hot.id);

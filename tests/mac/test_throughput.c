@@ -389,21 +389,28 @@ int main(void)
     unsigned long test_duration_ticks = TEST_DURATION_SEC * 60UL;
     unsigned long report_interval_ticks = REPORT_INTERVAL_SEC * 60UL;
 
-    init_toolbox();
-
     /**
-     * CRITICAL: Allocate TCP buffer pool FIRST, before any other allocations.
+     * CRITICAL: Bootstrap PeerTalk FIRST, before ANY Toolbox initialization!
      *
-     * This is the key optimization for MacTCP throughput. By allocating here
-     * at the very start of main(), we get larger contiguous memory blocks
-     * before the heap fragments. Larger TCP buffers improve receive throughput
-     * via MacTCP's 25% threshold rule (16KB buffer = 4KB completion threshold).
+     * PeerTalk_Bootstrap() does three things:
+     *   1. MaxApplZone() - extends heap to maximum size
+     *   2. MoreMasters() - pre-allocates master pointer blocks
+     *   3. Allocates TCP receive buffers while heap is contiguous
      *
-     * PeerTalk_AllocateBuffersAuto() checks available RAM and picks the
-     * largest buffer size that will fit (32KB/16KB/8KB/4KB).
+     * This is the key optimization for MacTCP throughput. By allocating
+     * before InitGraf/InitFonts/etc., we get much larger contiguous blocks:
+     *   - Before toolbox: typically 16-32KB buffers on 8MB Mac
+     *   - After toolbox: often only 4KB buffers due to fragmentation
+     *
+     * Larger buffers improve receive throughput via MacTCP's 25% threshold:
+     *   - 4KB buffer = 1KB threshold (slow)
+     *   - 16KB buffer = 4KB threshold (4x better)
+     *   - 32KB buffer = 8KB threshold (8x better)
      */
-    g_buffer_pool = PeerTalk_AllocateBuffersAuto(4);  /* 4 peers, auto-size */
-    /* Note: If NULL, PeerTalk will allocate on-demand (may get smaller buffers) */
+    g_buffer_pool = PeerTalk_Bootstrap(4);  /* 4 peers, auto-size */
+
+    /* NOW safe to initialize Toolbox */
+    init_toolbox();
 
     /* Create PT_Log */
     g_log = PT_LogCreate();

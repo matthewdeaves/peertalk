@@ -408,6 +408,47 @@ typedef struct {
 typedef struct PeerTalk_BufferPool PeerTalk_BufferPool;
 
 /**
+ * Bootstrap PeerTalk at the very start of main().
+ *
+ * CRITICAL: Call this BEFORE any Toolbox initialization (InitGraf, InitFonts, etc.)!
+ *
+ * This function:
+ *   1. Calls MaxApplZone() to maximize heap space
+ *   2. Calls MoreMasters() to pre-allocate master pointers
+ *   3. Allocates TCP receive buffers while heap is contiguous
+ *
+ * The allocated buffer pool is returned so you can pass it to PeerTalk_Init().
+ *
+ * Example usage:
+ * @code
+ *   int main(void) {
+ *       PeerTalk_BufferPool *pool;
+ *       PeerTalk_Config config = {0};
+ *
+ *       // FIRST LINE OF MAIN - before ANY toolbox init!
+ *       pool = PeerTalk_Bootstrap(4);  // 4 peers
+ *
+ *       // Now safe to init toolbox
+ *       InitGraf(&qd.thePort);
+ *       InitFonts();
+ *       InitWindows();
+ *       // ...
+ *
+ *       // Configure PeerTalk with pre-allocated buffers
+ *       config.buffer_pool = pool;
+ *       config.max_peers = 4;
+ *       ctx = PeerTalk_Init(&config);
+ *   }
+ * @endcode
+ *
+ * On POSIX, this is a no-op that returns NULL (use auto_buffers=1 in config).
+ *
+ * @param max_peers  Maximum number of simultaneous peers
+ * @return Buffer pool handle, or NULL on POSIX/failure
+ */
+PeerTalk_BufferPool *PeerTalk_Bootstrap(uint16_t max_peers);
+
+/**
  * Allocate TCP receive buffers at the earliest opportunity.
  *
  * CALL THIS FIRST in main(), before any other initialization.

@@ -486,15 +486,16 @@ int pt_capability_encode(const pt_capability_msg *caps, uint8_t *buf, size_t buf
 {
     size_t offset = 0;
 
-    /* Calculate required size: 5 TLVs
+    /* Calculate required size: 6 TLVs
      * - MAX_MESSAGE: 1 + 1 + 2 = 4
      * - PREFERRED_CHUNK: 1 + 1 + 2 = 4
      * - BUFFER_PRESSURE: 1 + 1 + 1 = 3
      * - FLAGS: 1 + 1 + 2 = 4
      * - RECV_BUFFER_SIZE: 1 + 1 + 2 = 4
-     * Total: 19 bytes
+     * - OPTIMAL_CHUNK: 1 + 1 + 2 = 4
+     * Total: 23 bytes
      */
-    if (buf_len < 19) {
+    if (buf_len < 23) {
         return PT_ERR_BUFFER_FULL;
     }
 
@@ -521,11 +522,19 @@ int pt_capability_encode(const pt_capability_msg *caps, uint8_t *buf, size_t buf
     buf[offset++] = (caps->capability_flags >> 8) & 0xFF;
     buf[offset++] = caps->capability_flags & 0xFF;
 
-    /* TLV 5: Receive buffer size (2 bytes) - helps sender tune chunk size */
+    /* TLV 5: Receive buffer size (2 bytes) */
     buf[offset++] = PT_CAP_RECV_BUFFER_SIZE;
     buf[offset++] = 2;
     buf[offset++] = (caps->recv_buffer_size >> 8) & 0xFF;
     buf[offset++] = caps->recv_buffer_size & 0xFF;
+
+    /* TLV 6: Optimal chunk size (2 bytes)
+     * This is 25% of recv_buffer - the MacTCP completion threshold.
+     * Tells sender the ideal per-send size for this receiver. */
+    buf[offset++] = PT_CAP_OPTIMAL_CHUNK;
+    buf[offset++] = 2;
+    buf[offset++] = (caps->optimal_chunk >> 8) & 0xFF;
+    buf[offset++] = caps->optimal_chunk & 0xFF;
 
     return (int)offset;
 }
@@ -542,13 +551,14 @@ int pt_capability_decode(struct pt_context *ctx, const uint8_t *buf, size_t len,
     caps->buffer_pressure = PT_CAP_DEFAULT_PRESSURE;
     caps->capability_flags = 0;
     caps->recv_buffer_size = 8192;  /* Default to typical TCP buffer */
+    caps->optimal_chunk = 2048;     /* Default: 25% of 8KB buffer */
     caps->reserved = 0;
 
     /* Log payload info for debugging capability exchange issues */
-    if (ctx && len < 19) {
-        /* Expected payload is 19 bytes (5 TLVs). Log if shorter. */
+    if (ctx && len < 23) {
+        /* Expected payload is 23 bytes (6 TLVs). Log if shorter. */
         PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
-            "Capability payload short: len=%zu (expected 15), bytes: %02X %02X %02X %02X",
+            "Capability payload short: len=%zu (expected 23), bytes: %02X %02X %02X %02X",
             len,
             (len > 0) ? buf[0] : 0, (len > 1) ? buf[1] : 0,
             (len > 2) ? buf[2] : 0, (len > 3) ? buf[3] : 0);
@@ -615,6 +625,19 @@ int pt_capability_decode(struct pt_context *ctx, const uint8_t *buf, size_t len,
             }
             break;
 
+        case PT_CAP_OPTIMAL_CHUNK:
+            if (tlv_len >= 2) {
+                caps->optimal_chunk = ((uint16_t)buf[offset] << 8) | buf[offset + 1];
+                /* Minimum 512 bytes, maximum 16KB */
+                if (caps->optimal_chunk < 512) {
+                    caps->optimal_chunk = 512;
+                }
+                if (caps->optimal_chunk > 16384) {
+                    caps->optimal_chunk = 16384;
+                }
+            }
+            break;
+
         default:
             /* Unknown TLV - skip it (forward compatibility) */
             if (ctx) {
@@ -635,9 +658,10 @@ int pt_capability_decode(struct pt_context *ctx, const uint8_t *buf, size_t len,
 
     if (ctx) {
         PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
-            "Capability decoded: max=%u, chunk=%u, pressure=%u, flags=0x%04X",
+            "Capability decoded: max=%u, chunk=%u, pressure=%u, flags=0x%04X, recv_buf=%u, optimal=%u",
             caps->max_message_size, caps->preferred_chunk,
-            caps->buffer_pressure, caps->capability_flags);
+            caps->buffer_pressure, caps->capability_flags,
+            caps->recv_buffer_size, caps->optimal_chunk);
     }
 
     return 0;

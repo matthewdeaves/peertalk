@@ -451,9 +451,25 @@ PeerTalk_Error PeerTalk_SendEx(PeerTalk_Context *ctx_pub,
         /* Allocate unique message ID for this fragmented message */
         msg_id = (uint16_t)(ctx->next_message_id++ & 0xFFFF);
 
-        /* Max fragment data = peer's max minus fragment header overhead.
-         * Also must fit in a queue slot (fragments go through Tier 1 queue). */
-        max_frag_data = peer->hot.effective_max_msg - PT_FRAGMENT_HEADER_SIZE;
+        /* Determine optimal fragment size:
+         * 1. Use peer's optimal_chunk if negotiated (fills 25% of MacTCP buffer)
+         * 2. Fall back to effective_max_msg minus overhead
+         * 3. Cap by queue slot size */
+        if (peer->cold.caps.caps_exchanged && peer->cold.caps.optimal_chunk > 0) {
+            /* Use peer's advertised optimal chunk for best receive performance */
+            max_frag_data = peer->cold.caps.optimal_chunk;
+        } else {
+            /* Default: peer's max minus fragment header overhead */
+            max_frag_data = peer->hot.effective_max_msg - PT_FRAGMENT_HEADER_SIZE;
+        }
+
+        /* Cap by peer's max message size (fragments can't exceed this) */
+        {
+            uint16_t max_peer = peer->hot.effective_max_msg - PT_FRAGMENT_HEADER_SIZE;
+            if (max_frag_data > max_peer) {
+                max_frag_data = max_peer;
+            }
+        }
 
         /* Limit to queue slot size (fragment header + data must fit) */
         {
@@ -472,8 +488,8 @@ PeerTalk_Error PeerTalk_SendEx(PeerTalk_Context *ctx_pub,
         }
 
         PT_CTX_INFO(ctx, PT_LOG_CAT_SEND,
-            "Fragmenting %u bytes for peer %u (max=%u, chunks=%u)",
-            length, peer_id, peer->hot.effective_max_msg,
+            "Fragmenting %u bytes for peer %u (chunk=%u, max=%u, count=%u)",
+            length, peer_id, max_frag_data, peer->hot.effective_max_msg,
             (length + max_frag_data - 1) / max_frag_data);
 
         while (remaining > 0) {

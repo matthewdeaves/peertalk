@@ -16,6 +16,10 @@
 #include "pt_internal.h"
 #include "pt_compat.h"
 
+#if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)
+#include <MacMemory.h>
+#endif
+
 /**
  * Buffer pool structure.
  *
@@ -37,6 +41,62 @@ struct PeerTalk_BufferPool {
     uint8_t    *in_use;         /* Array of in_use flags */
     /* Actual buffers follow in memory */
 };
+
+/* ========================================================================== */
+/* Bootstrap - Early Initialization                                           */
+/* ========================================================================== */
+
+/**
+ * Bootstrap PeerTalk at the very start of main().
+ *
+ * CRITICAL: Call this BEFORE any Toolbox initialization!
+ *
+ * This function:
+ *   1. On Classic Mac: Calls MaxApplZone() + MoreMasters() to prepare heap
+ *   2. Allocates TCP receive buffers while heap is contiguous
+ *   3. Returns pool for use in PeerTalk_Config
+ *
+ * The earlier this is called, the larger buffers we can allocate:
+ *   - Before InitGraf: Can typically get 16-32KB buffers on 8MB Mac
+ *   - After InitGraf: May only get 8KB buffers
+ *   - After InitWindows: May only get 4KB buffers
+ *
+ * @param max_peers  Maximum simultaneous peers (determines buffer count)
+ * @return Buffer pool handle, or NULL on POSIX/failure
+ */
+PeerTalk_BufferPool *PeerTalk_Bootstrap(uint16_t max_peers)
+{
+#if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)
+    /*
+     * Classic Mac heap preparation:
+     *
+     * MaxApplZone() - Extends application heap to maximum size.
+     *   This must be called BEFORE any allocations for best results.
+     *   If toolbox already called, this has no effect (heap already grown).
+     *
+     * MoreMasters() - Pre-allocates a block of master pointers.
+     *   Prevents heap fragmentation from incremental master pointer
+     *   allocation. Call 2-4 times for apps with many handles.
+     */
+    MaxApplZone();
+    MoreMasters();
+    MoreMasters();
+    MoreMasters();
+    MoreMasters();  /* 4 calls = plenty of master pointers */
+
+    /* Now allocate buffers while heap is still contiguous */
+    return PeerTalk_AllocateBuffersAuto(max_peers);
+
+#else
+    /* POSIX: Buffer allocation is not needed (no 25% threshold issue) */
+    (void)max_peers;
+    return NULL;
+#endif
+}
+
+/* ========================================================================== */
+/* Buffer Pool Allocation                                                     */
+/* ========================================================================== */
 
 /**
  * Allocate a pool of TCP receive buffers.

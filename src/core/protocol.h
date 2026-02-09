@@ -89,6 +89,7 @@ struct pt_peer;
 #define PT_CAP_BUFFER_PRESSURE  0x03  /* 1 byte: 0-100 constraint level */
 #define PT_CAP_FLAGS            0x04  /* 2 bytes: capability flags */
 #define PT_CAP_RECV_BUFFER_SIZE 0x05  /* 2 bytes: receive buffer size in bytes */
+#define PT_CAP_OPTIMAL_CHUNK    0x06  /* 2 bytes: optimal chunk for this receiver */
 
 /* Capability flags (sent in PT_CAP_FLAGS TLV)
  *
@@ -159,6 +160,7 @@ typedef struct {
     uint16_t preferred_chunk;    /* Optimal streaming chunk size */
     uint16_t capability_flags;   /* PT_CAPFLAG_* */
     uint16_t recv_buffer_size;   /* Receive buffer size in bytes (0 = default 8192) */
+    uint16_t optimal_chunk;      /* 25% of recv_buffer (optimal per-send size for receiver) */
     uint8_t  buffer_pressure;    /* 0-100 constraint level */
     uint8_t  reserved;
 } pt_capability_msg;

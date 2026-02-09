@@ -800,8 +800,9 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
                     peer->cold.caps.buffer_pressure = caps.buffer_pressure;
                     peer->cold.caps.caps_exchanged = 1;
 
-                    /* Store receive buffer size for chunk tuning */
+                    /* Store receive buffer size and optimal chunk for tuning */
                     peer->cold.caps.recv_buffer_size = caps.recv_buffer_size;
+                    peer->cold.caps.optimal_chunk = caps.optimal_chunk;
 
                     /* Negotiate compact header mode - both must support it */
                     if ((caps.capability_flags & PT_CAPFLAG_COMPACT_HEADER) &&
@@ -823,13 +824,14 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
                     peer->hot.effective_max_msg = effective_max;
 
                     PT_LOG_INFO(ctx->log, PT_LOG_CAT_NETWORK,
-                        "Received capabilities from peer %u: max=%u chunk=%u pressure=%u compact=%u recv_buf=%u push=%u",
+                        "Received capabilities from peer %u: max=%u chunk=%u pressure=%u compact=%u recv_buf=%u optimal=%u push=%u",
                         (unsigned)peer->hot.id,
                         (unsigned)caps.max_message_size,
                         (unsigned)caps.preferred_chunk,
                         (unsigned)caps.buffer_pressure,
                         (unsigned)peer->cold.caps.compact_mode,
                         (unsigned)caps.recv_buffer_size,
+                        (unsigned)caps.optimal_chunk,
                         (unsigned)peer->cold.caps.push_preferred);
                 } else {
                     PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
@@ -1046,6 +1048,14 @@ int pt_mactcp_send_capability(struct pt_context *ctx, struct pt_peer *peer)
     /* Report our TCP receive buffer size (from cold struct) */
     caps.recv_buffer_size = (uint16_t)(cold->rcv_buffer_size > 0 ?
         (cold->rcv_buffer_size > 65535 ? 65535 : cold->rcv_buffer_size) : 8192);
+
+    /* Calculate optimal chunk size = 25% of recv buffer (MacTCP completion threshold).
+     * This tells the sender the ideal per-send size for our receiver.
+     * With a 16KB buffer, optimal_chunk = 4KB - fills 25% per send for fast completion. */
+    caps.optimal_chunk = caps.recv_buffer_size / 4;
+    if (caps.optimal_chunk < 512) {
+        caps.optimal_chunk = 512;  /* Minimum practical chunk */
+    }
 
     /* Calculate current buffer pressure from BOTH queues - report the worse one.
      * On MacTCP, recv uses zero-copy so recv_queue is often empty.
