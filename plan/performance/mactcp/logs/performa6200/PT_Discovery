@@ -1,0 +1,27 @@
+[00000050][INF] ========================================
+[00000050][INF] PeerTalk Discovery Reliability Test
+[00000050][INF] Version: 1.0.0
+[00000050][INF] Duration: 120 seconds
+[00000050][INF] ========================================
+[00000050][INF] Initializing PeerTalk...
+[00000133][INF] Discovery started. Listening for peers...
+[00000133][INF] Press any key to stop early.
+[00010166][INF] FIRST DISCOVERY: "PerfPartner" at 10.188.1.173:7354 after 10033 ms
+[00010166][INF] NEW PEER: "PerfPartner" at 10.188.1.173:7354 (id=1)
+[00010166][INF] STATUS @ 10 sec: discoveries=1 unique=1 present=1 lost=0 recovered=0
+[00010183][DBG]   Peer 1 "PerfPartner" (10.188.1.173): seen=1 lost=0 PRESENT
+[00020216][INF] STATUS @ 20 sec: discoveries=2 unique=1 present=1 lost=0 recovered=0
+[00020216][DBG]   Peer 1 "PerfPartner" (10.188.1.173): seen=2 lost=0 PRESENT
+[00030266][INF] STATUS @ 30 sec: discoveries=3 unique=1 present=1 lost=0 recovered=0
+[00030266][DBG]   Peer 1 "PerfPartner" (10.188.1.173): seen=3 lost=0 PRESENT
+[00040283][INF] STATUS @ 40 sec: discoveries=4 unique=1 present=1 lost=0 recovered=0
+[00040283][DBG]   Peer 1 "PerfPartner" (10.188.1.173): seen=4 lost=0 PRESENT
+[00050316][INF] STATUS @ 50 sec: discoveries=5 unique=1 present=1 lost=0 recovered=0
+[00050316][DBG]   Peer 1 "PerfPartner" (10.188.1.173): seen=5 lost=0 PRESENT
+[00060333][INF] STATUS @ 60 sec: discoveries=6 unique=1 present=1 lost=0 recovered=0
+[00060333][DBG]   Peer 1 "PerfPartner" (10.188.1.173): seen=6 lost=0 PRESENT
+[00070366][INF] STATUS @ 70 sec: discoveries=7 unique=1 present=1 lost=0 recovered=0
+[00070366][DBG]   Peer 1 "PerfPartner" (10.188.1.173): seen=7 lost=0 PRESENT
+[00080416][INF] STATUS @ 80 sec: discoveries=8 unique=1 present=1 lost=0 recovered=0
+[00080416][DBG]   Peer 1 "PerfPartner" (10.188.1.173): seen=8 lost=0 PRESENT
+[00090500][INF] STATUS @ 90 sec: discoveries=9 unique=1 present=1 lost=0 recovered=0

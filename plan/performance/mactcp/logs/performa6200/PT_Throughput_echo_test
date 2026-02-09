@@ -1,0 +1,82 @@
+[00000050][INF] ========================================
+[00000050][INF] PeerTalk Throughput Test
+[00000050][INF] Version: 1.0.0
+[00000050][INF] ========================================
+[00000050][INF] Initial memory: FreeMem=16032 MaxBlock=11904
+[00000050][INF] Initializing PeerTalk...
+[00000150][INF] Waiting for peer...
+[00000150][INF] Press any key to exit.
+[00009400][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00009416][INF] Connecting to peer...
+[00009500][INF] CONNECTED to peer 1
+[00009500][INF] Peer capabilities: max_msg=512 chunk=256 pressure=0
+[00009500][INF] Effective max message size: 512 bytes
+[00009500][INF] Starting throughput test with buffer size 256
+[00014516][INF] BUF 256: sent=4 KB/s (89 msgs) recv=4 KB/s (88 msgs) errs=0
+[00019550][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00019666][INF] BUF 256: sent=4 KB/s (183 msgs) recv=4 KB/s (182 msgs) errs=0
+[00024700][INF] BUF 256: sent=4 KB/s (247 msgs) recv=4 KB/s (246 msgs) errs=0
+[00029633][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00029733][INF] BUF 256: sent=4 KB/s (339 msgs) recv=4 KB/s (338 msgs) errs=0
+[00034750][INF] BUF 256: sent=4 KB/s (427 msgs) recv=4 KB/s (426 msgs) errs=0
+[00039583][INF] COMPLETE 256 bytes: SEND=4 KB/s (508 msgs) RECV=4 KB/s (507 msgs)
+[00039583][INF] Starting buffer size 512 test
+[00039616][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00039766][INF] BUF 512: sent=10 KB/s (4 msgs) recv=9 KB/s (4 msgs) errs=0
+[00044766][INF] BUF 512: sent=9 KB/s (98 msgs) recv=9 KB/s (98 msgs) errs=0
+[00049666][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00049783][INF] BUF 512: sent=8 KB/s (183 msgs) recv=8 KB/s (183 msgs) errs=0
+[00055016][INF] BUF 512: sent=8 KB/s (272 msgs) recv=8 KB/s (272 msgs) errs=0
+[00059783][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00060000][INF] BUF 512: sent=8 KB/s (365 msgs) recv=8 KB/s (365 msgs) errs=0
+[00065000][INF] BUF 512: sent=9 KB/s (469 msgs) recv=9 KB/s (469 msgs) errs=0
+[00069666][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00069766][INF] COMPLETE 512 bytes: SEND=9 KB/s (561 msgs) RECV=9 KB/s (561 msgs)
+[00069766][INF] Starting buffer size 1024 test
+[00070016][INF] BUF 1024: sent=16 KB/s (4 msgs) recv=10 KB/s (3 msgs) errs=0
+[00075066][INF] BUF 1024: sent=17 KB/s (91 msgs) recv=16 KB/s (90 msgs) errs=0
+[00079616][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00080083][INF] BUF 1024: sent=16 KB/s (170 msgs) recv=16 KB/s (169 msgs) errs=0
+[00085166][INF] BUF 1024: sent=16 KB/s (255 msgs) recv=16 KB/s (254 msgs) errs=0
+[00088600][INF] DISCOVERED: "MacThroughput" at 10.188.1.55:7354
+[00089733][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00090200][INF] BUF 1024: sent=16 KB/s (334 msgs) recv=16 KB/s (333 msgs) errs=0
+[00095333][INF] BUF 1024: sent=16 KB/s (415 msgs) recv=16 KB/s (414 msgs) errs=0
+[00099750][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00099800][INF] COMPLETE 1024 bytes: SEND=16 KB/s (488 msgs) RECV=16 KB/s (487 msgs)
+[00099800][INF] Starting buffer size 2048 test
+[00100433][INF] BUF 2048: sent=28 KB/s (9 msgs) recv=15 KB/s (6 msgs) errs=0
+[00103800][INF] DISCOVERED: "MacThroughput" at 10.188.1.55:7354
+[00105450][INF] BUF 2048: sent=31 KB/s (90 msgs) recv=20 KB/s (59 msgs) errs=0
+[00109850][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00110516][INF] BUF 2048: sent=30 KB/s (166 msgs) recv=19 KB/s (108 msgs) errs=0
+[00115450][INF] BUF 2048: sent=30 KB/s (236 msgs) recv=19 KB/s (154 msgs) errs=0
+[00118816][INF] DISCOVERED: "MacThroughput" at 10.188.1.55:7354
+[00119933][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00120466][INF] BUF 2048: sent=29 KB/s (308 msgs) recv=19 KB/s (200 msgs) errs=0
+[00125500][INF] BUF 2048: sent=30 KB/s (389 msgs) recv=19 KB/s (253 msgs) errs=0
+[00129816][INF] COMPLETE 2048 bytes: SEND=30 KB/s (455 msgs) RECV=19 KB/s (296 msgs)
+[00129816][INF] Starting buffer size 4096 test
+[00129966][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00130550][INF] BUF 4096: sent=49 KB/s (9 msgs) recv=13 KB/s (5 msgs) errs=0
+[00133916][INF] DISCOVERED: "MacThroughput" at 10.188.1.55:7354
+[00135566][INF] BUF 4096: sent=45 KB/s (66 msgs) recv=14 KB/s (25 msgs) errs=0
+[00139833][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00140666][INF] BUF 4096: sent=45 KB/s (124 msgs) recv=14 KB/s (44 msgs) errs=0
+[00145700][INF] BUF 4096: sent=45 KB/s (182 msgs) recv=14 KB/s (63 msgs) errs=0
+[00149000][INF] DISCOVERED: "MacThroughput" at 10.188.1.55:7354
+[00149983][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00150750][INF] BUF 4096: sent=45 KB/s (240 msgs) recv=14 KB/s (82 msgs) errs=0
+[00155816][INF] BUF 4096: sent=46 KB/s (299 msgs) recv=14 KB/s (101 msgs) errs=0
+[00159900][INF] COMPLETE 4096 bytes: SEND=45 KB/s (345 msgs) RECV=14 KB/s (116 msgs)
+[00159900][INF] All throughput tests complete
+[00159916][INF] ========================================
+[00159916][INF] THROUGHPUT TEST RESULTS
+[00159916][INF] ========================================
+[00159916][INF]  256 bytes: SEND    4 KB/s  RECV    4 KB/s  (errs=0)
+[00159916][INF]  512 bytes: SEND    9 KB/s  RECV    9 KB/s  (errs=0)
+[00159916][INF] 1024 bytes: SEND   16 KB/s  RECV   16 KB/s  (errs=0)
+[00159916][INF] 2048 bytes: SEND   30 KB/s  RECV   19 KB/s  (errs=0)
+[00159916][INF] 4096 bytes: SEND   45 KB/s  RECV   14 KB/s  (errs=0)
+[00159933][INF] ========================================
+[00159933][INF] Memory: FreeMem=192 MaxBlock=192

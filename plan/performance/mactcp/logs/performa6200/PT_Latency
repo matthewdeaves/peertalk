@@ -1,0 +1,1049 @@
+[00000050][INF] ========================================
+[00000050][INF] PeerTalk Latency Test
+[00000050][INF] Version: 1.0.0
+[00000050][INF] ========================================
+[00000050][INF] Buffer pool: 4 buffers × 4KB
+[00000050][INF] Initializing PeerTalk...
+[00000133][INF] Waiting for peer...
+[00000133][INF] Press any key to exit.
+[00009133][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00009133][INF] Connecting to peer...
+[00009250][INF] CONNECTED to peer 1
+[00009250][INF] Starting latency test with size 16
+[00009266][DBG] PING seq=0 size=16 sent
+[00009350][DBG] PONG seq=0 rtt=6 ticks (100 ms)
+[00009366][DBG] PING seq=1 size=16 sent
+[00009450][DBG] PONG seq=1 rtt=6 ticks (100 ms)
+[00009450][DBG] PING seq=2 size=16 sent
+[00009466][DBG] PONG seq=2 rtt=1 ticks (16 ms)
+[00009550][DBG] PING seq=3 size=16 sent
+[00009633][DBG] PONG seq=3 rtt=5 ticks (83 ms)
+[00009716][DBG] PING seq=4 size=16 sent
+[00009800][DBG] PONG seq=4 rtt=5 ticks (83 ms)
+[00009816][DBG] PING seq=5 size=16 sent
+[00009900][DBG] PONG seq=5 rtt=5 ticks (83 ms)
+[00009983][DBG] PING seq=6 size=16 sent
+[00010066][DBG] PONG seq=6 rtt=5 ticks (83 ms)
+[00010083][DBG] PING seq=7 size=16 sent
+[00010166][DBG] PONG seq=7 rtt=5 ticks (83 ms)
+[00010250][DBG] PING seq=8 size=16 sent
+[00010333][DBG] PONG seq=8 rtt=5 ticks (83 ms)
+[00010416][DBG] PING seq=9 size=16 sent
+[00010516][DBG] PONG seq=9 rtt=6 ticks (100 ms)
+[00010516][DBG] PING seq=10 size=16 sent
+[00010533][DBG] PONG seq=10 rtt=1 ticks (16 ms)
+[00010616][DBG] PING seq=11 size=16 sent
+[00010700][DBG] PONG seq=11 rtt=5 ticks (83 ms)
+[00010783][DBG] PING seq=12 size=16 sent
+[00010866][DBG] PONG seq=12 rtt=5 ticks (83 ms)
+[00010950][DBG] PING seq=13 size=16 sent
+[00011050][DBG] PONG seq=13 rtt=6 ticks (100 ms)
+[00011050][DBG] PING seq=14 size=16 sent
+[00011066][DBG] PONG seq=14 rtt=1 ticks (16 ms)
+[00011183][DBG] PING seq=15 size=16 sent
+[00011266][DBG] PONG seq=15 rtt=5 ticks (83 ms)
+[00011350][DBG] PING seq=16 size=16 sent
+[00011450][DBG] PONG seq=16 rtt=6 ticks (100 ms)
+[00011450][DBG] PING seq=17 size=16 sent
+[00011550][DBG] PONG seq=17 rtt=6 ticks (100 ms)
+[00011550][DBG] PING seq=18 size=16 sent
+[00011566][DBG] PONG seq=18 rtt=1 ticks (16 ms)
+[00011650][DBG] PING seq=19 size=16 sent
+[00011666][DBG] PONG seq=19 rtt=1 ticks (16 ms)
+[00011750][DBG] PING seq=20 size=16 sent
+[00011766][DBG] PONG seq=20 rtt=1 ticks (16 ms)
+[00011850][DBG] PING seq=21 size=16 sent
+[00011866][DBG] PONG seq=21 rtt=1 ticks (16 ms)
+[00011950][DBG] PING seq=22 size=16 sent
+[00012033][DBG] PONG seq=22 rtt=5 ticks (83 ms)
+[00012116][DBG] PING seq=23 size=16 sent
+[00012200][DBG] PONG seq=23 rtt=5 ticks (83 ms)
+[00012283][DBG] PING seq=24 size=16 sent
+[00012366][DBG] PONG seq=24 rtt=5 ticks (83 ms)
+[00012450][DBG] PING seq=25 size=16 sent
+[00012466][DBG] PONG seq=25 rtt=1 ticks (16 ms)
+[00012550][DBG] PING seq=26 size=16 sent
+[00012566][DBG] PONG seq=26 rtt=1 ticks (16 ms)
+[00012650][DBG] PING seq=27 size=16 sent
+[00012666][DBG] PONG seq=27 rtt=1 ticks (16 ms)
+[00012750][DBG] PING seq=28 size=16 sent
+[00012766][DBG] PONG seq=28 rtt=1 ticks (16 ms)
+[00012850][DBG] PING seq=29 size=16 sent
+[00012866][DBG] PONG seq=29 rtt=1 ticks (16 ms)
+[00012950][DBG] PING seq=30 size=16 sent
+[00012966][DBG] PONG seq=30 rtt=1 ticks (16 ms)
+[00013050][DBG] PING seq=31 size=16 sent
+[00013066][DBG] PONG seq=31 rtt=1 ticks (16 ms)
+[00013150][DBG] PING seq=32 size=16 sent
+[00013166][DBG] PONG seq=32 rtt=1 ticks (16 ms)
+[00013250][DBG] PING seq=33 size=16 sent
+[00013333][DBG] PONG seq=33 rtt=5 ticks (83 ms)
+[00013416][DBG] PING seq=34 size=16 sent
+[00013516][DBG] PONG seq=34 rtt=6 ticks (100 ms)
+[00013516][DBG] PING seq=35 size=16 sent
+[00013533][DBG] PONG seq=35 rtt=1 ticks (16 ms)
+[00013616][DBG] PING seq=36 size=16 sent
+[00013633][DBG] PONG seq=36 rtt=1 ticks (16 ms)
+[00013716][DBG] PING seq=37 size=16 sent
+[00013800][DBG] PONG seq=37 rtt=5 ticks (83 ms)
+[00013883][DBG] PING seq=38 size=16 sent
+[00014050][DBG] PONG seq=38 rtt=10 ticks (166 ms)
+[00014050][DBG] PING seq=39 size=16 sent
+[00014150][DBG] PONG seq=39 rtt=6 ticks (100 ms)
+[00014150][DBG] PING seq=40 size=16 sent
+[00014166][DBG] PONG seq=40 rtt=1 ticks (16 ms)
+[00014250][DBG] PING seq=41 size=16 sent
+[00014333][DBG] PONG seq=41 rtt=5 ticks (83 ms)
+[00014350][DBG] PING seq=42 size=16 sent
+[00014433][DBG] PONG seq=42 rtt=5 ticks (83 ms)
+[00014516][DBG] PING seq=43 size=16 sent
+[00015183][DBG] PONG seq=43 rtt=40 ticks (666 ms)
+[00015200][DBG] PING seq=44 size=16 sent
+[00015300][DBG] PONG seq=44 rtt=6 ticks (100 ms)
+[00015300][DBG] PING seq=45 size=16 sent
+[00015383][DBG] PONG seq=45 rtt=5 ticks (83 ms)
+[00015466][DBG] PING seq=46 size=16 sent
+[00015566][DBG] PONG seq=46 rtt=6 ticks (100 ms)
+[00015566][DBG] PING seq=47 size=16 sent
+[00015666][DBG] PONG seq=47 rtt=6 ticks (100 ms)
+[00015666][DBG] PING seq=48 size=16 sent
+[00015683][DBG] PONG seq=48 rtt=1 ticks (16 ms)
+[00015766][DBG] PING seq=49 size=16 sent
+[00015783][DBG] PONG seq=49 rtt=1 ticks (16 ms)
+[00015866][DBG] PING seq=50 size=16 sent
+[00016033][DBG] PONG seq=50 rtt=10 ticks (166 ms)
+[00016033][DBG] PING seq=51 size=16 sent
+[00016183][DBG] PONG seq=51 rtt=9 ticks (150 ms)
+[00016183][DBG] PING seq=52 size=16 sent
+[00016200][DBG] PONG seq=52 rtt=1 ticks (16 ms)
+[00016283][DBG] PING seq=53 size=16 sent
+[00016450][DBG] PONG seq=53 rtt=10 ticks (166 ms)
+[00016450][DBG] PING seq=54 size=16 sent
+[00016466][DBG] PONG seq=54 rtt=1 ticks (16 ms)
+[00016550][DBG] PING seq=55 size=16 sent
+[00016650][DBG] PONG seq=55 rtt=6 ticks (100 ms)
+[00016650][DBG] PING seq=56 size=16 sent
+[00016666][DBG] PONG seq=56 rtt=1 ticks (16 ms)
+[00016750][DBG] PING seq=57 size=16 sent
+[00016833][DBG] PONG seq=57 rtt=5 ticks (83 ms)
+[00016916][DBG] PING seq=58 size=16 sent
+[00017000][DBG] PONG seq=58 rtt=5 ticks (83 ms)
+[00017083][DBG] PING seq=59 size=16 sent
+[00017183][DBG] PONG seq=59 rtt=6 ticks (100 ms)
+[00017183][DBG] PING seq=60 size=16 sent
+[00017200][DBG] PONG seq=60 rtt=1 ticks (16 ms)
+[00017283][DBG] PING seq=61 size=16 sent
+[00017366][DBG] PONG seq=61 rtt=5 ticks (83 ms)
+[00017383][DBG] PING seq=62 size=16 sent
+[00017466][DBG] PONG seq=62 rtt=5 ticks (83 ms)
+[00017483][DBG] PING seq=63 size=16 sent
+[00017566][DBG] PONG seq=63 rtt=5 ticks (83 ms)
+[00017666][DBG] PING seq=64 size=16 sent
+[00017766][DBG] PONG seq=64 rtt=6 ticks (100 ms)
+[00017766][DBG] PING seq=65 size=16 sent
+[00017783][DBG] PONG seq=65 rtt=1 ticks (16 ms)
+[00017866][DBG] PING seq=66 size=16 sent
+[00017883][DBG] PONG seq=66 rtt=1 ticks (16 ms)
+[00017966][DBG] PING seq=67 size=16 sent
+[00018050][DBG] PONG seq=67 rtt=5 ticks (83 ms)
+[00018133][DBG] PING seq=68 size=16 sent
+[00018150][DBG] PONG seq=68 rtt=1 ticks (16 ms)
+[00018233][DBG] PING seq=69 size=16 sent
+[00018250][DBG] PONG seq=69 rtt=1 ticks (16 ms)
+[00018333][DBG] PING seq=70 size=16 sent
+[00018416][DBG] PONG seq=70 rtt=5 ticks (83 ms)
+[00018500][DBG] PING seq=71 size=16 sent
+[00018600][DBG] PONG seq=71 rtt=6 ticks (100 ms)
+[00018600][DBG] PING seq=72 size=16 sent
+[00018700][DBG] PONG seq=72 rtt=6 ticks (100 ms)
+[00018700][DBG] PING seq=73 size=16 sent
+[00018716][DBG] PONG seq=73 rtt=1 ticks (16 ms)
+[00018800][DBG] PING seq=74 size=16 sent
+[00018816][DBG] PONG seq=74 rtt=1 ticks (16 ms)
+[00018900][DBG] PING seq=75 size=16 sent
+[00018916][DBG] PONG seq=75 rtt=1 ticks (16 ms)
+[00019000][DBG] PING seq=76 size=16 sent
+[00019083][DBG] PONG seq=76 rtt=5 ticks (83 ms)
+[00019100][DBG] PING seq=77 size=16 sent
+[00019200][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00019200][DBG] PONG seq=77 rtt=6 ticks (100 ms)
+[00019200][DBG] PING seq=78 size=16 sent
+[00019216][DBG] PONG seq=78 rtt=1 ticks (16 ms)
+[00019300][DBG] PING seq=79 size=16 sent
+[00019316][DBG] PONG seq=79 rtt=1 ticks (16 ms)
+[00019400][DBG] PING seq=80 size=16 sent
+[00019483][DBG] PONG seq=80 rtt=5 ticks (83 ms)
+[00019500][DBG] PING seq=81 size=16 sent
+[00019583][DBG] PONG seq=81 rtt=5 ticks (83 ms)
+[00019666][DBG] PING seq=82 size=16 sent
+[00019833][DBG] PONG seq=82 rtt=10 ticks (166 ms)
+[00019833][DBG] PING seq=83 size=16 sent
+[00019850][DBG] PONG seq=83 rtt=1 ticks (16 ms)
+[00019933][DBG] PING seq=84 size=16 sent
+[00019950][DBG] PONG seq=84 rtt=1 ticks (16 ms)
+[00020033][DBG] PING seq=85 size=16 sent
+[00020116][DBG] PONG seq=85 rtt=5 ticks (83 ms)
+[00020200][DBG] PING seq=86 size=16 sent
+[00020216][DBG] PONG seq=86 rtt=1 ticks (16 ms)
+[00020300][DBG] PING seq=87 size=16 sent
+[00020383][DBG] PONG seq=87 rtt=5 ticks (83 ms)
+[00020466][DBG] PING seq=88 size=16 sent
+[00020550][DBG] PONG seq=88 rtt=5 ticks (83 ms)
+[00020566][DBG] PING seq=89 size=16 sent
+[00020650][DBG] PONG seq=89 rtt=5 ticks (83 ms)
+[00020733][DBG] PING seq=90 size=16 sent
+[00020816][DBG] PONG seq=90 rtt=5 ticks (83 ms)
+[00020900][DBG] PING seq=91 size=16 sent
+[00021066][DBG] PONG seq=91 rtt=10 ticks (166 ms)
+[00021066][DBG] PING seq=92 size=16 sent
+[00021083][DBG] PONG seq=92 rtt=1 ticks (16 ms)
+[00021183][DBG] PING seq=93 size=16 sent
+[00021300][DBG] PONG seq=93 rtt=7 ticks (116 ms)
+[00021300][DBG] PING seq=94 size=16 sent
+[00021316][DBG] PONG seq=94 rtt=1 ticks (16 ms)
+[00021400][DBG] PING seq=95 size=16 sent
+[00021500][DBG] PONG seq=95 rtt=6 ticks (100 ms)
+[00021500][DBG] PING seq=96 size=16 sent
+[00021600][DBG] PONG seq=96 rtt=6 ticks (100 ms)
+[00021600][DBG] PING seq=97 size=16 sent
+[00021616][DBG] PONG seq=97 rtt=1 ticks (16 ms)
+[00021700][DBG] PING seq=98 size=16 sent
+[00021716][DBG] PONG seq=98 rtt=1 ticks (16 ms)
+[00021800][DBG] PING seq=99 size=16 sent
+[00021816][DBG] PONG seq=99 rtt=1 ticks (16 ms)
+[00021816][INF] SIZE 16: min=16 max=666 avg=66 ms (sent=100 recv=100 lost=0)
+[00021816][INF] Starting size 64 test
+[00021900][DBG] PING seq=0 size=64 sent
+[00021916][DBG] PONG seq=0 rtt=1 ticks (16 ms)
+[00022000][DBG] PING seq=1 size=64 sent
+[00022016][DBG] PONG seq=1 rtt=1 ticks (16 ms)
+[00022100][DBG] PING seq=2 size=64 sent
+[00022116][DBG] PONG seq=2 rtt=1 ticks (16 ms)
+[00022200][DBG] PING seq=3 size=64 sent
+[00022216][DBG] PONG seq=3 rtt=1 ticks (16 ms)
+[00022300][DBG] PING seq=4 size=64 sent
+[00022383][DBG] PONG seq=4 rtt=5 ticks (83 ms)
+[00022400][DBG] PING seq=5 size=64 sent
+[00022483][DBG] PONG seq=5 rtt=5 ticks (83 ms)
+[00022500][DBG] PING seq=6 size=64 sent
+[00022583][DBG] PONG seq=6 rtt=5 ticks (83 ms)
+[00022666][DBG] PING seq=7 size=64 sent
+[00022750][DBG] PONG seq=7 rtt=5 ticks (83 ms)
+[00022850][DBG] PING seq=8 size=64 sent
+[00022933][DBG] PONG seq=8 rtt=5 ticks (83 ms)
+[00022950][DBG] PING seq=9 size=64 sent
+[00023033][DBG] PONG seq=9 rtt=5 ticks (83 ms)
+[00023050][DBG] PING seq=10 size=64 sent
+[00023133][DBG] PONG seq=10 rtt=5 ticks (83 ms)
+[00023150][DBG] PING seq=11 size=64 sent
+[00023233][DBG] PONG seq=11 rtt=5 ticks (83 ms)
+[00023316][DBG] PING seq=12 size=64 sent
+[00023416][DBG] PONG seq=12 rtt=6 ticks (100 ms)
+[00023416][DBG] PING seq=13 size=64 sent
+[00023433][DBG] PONG seq=13 rtt=1 ticks (16 ms)
+[00023516][DBG] PING seq=14 size=64 sent
+[00023533][DBG] PONG seq=14 rtt=1 ticks (16 ms)
+[00023616][DBG] PING seq=15 size=64 sent
+[00023700][DBG] PONG seq=15 rtt=5 ticks (83 ms)
+[00023783][DBG] PING seq=16 size=64 sent
+[00023866][DBG] PONG seq=16 rtt=5 ticks (83 ms)
+[00023950][DBG] PING seq=17 size=64 sent
+[00023966][DBG] PONG seq=17 rtt=1 ticks (16 ms)
+[00024050][DBG] PING seq=18 size=64 sent
+[00024066][DBG] PONG seq=18 rtt=1 ticks (16 ms)
+[00024150][DBG] PING seq=19 size=64 sent
+[00024233][DBG] PONG seq=19 rtt=5 ticks (83 ms)
+[00024250][DBG] PING seq=20 size=64 sent
+[00024333][DBG] PONG seq=20 rtt=5 ticks (83 ms)
+[00024416][DBG] PING seq=21 size=64 sent
+[00024500][DBG] PONG seq=21 rtt=5 ticks (83 ms)
+[00024516][DBG] PING seq=22 size=64 sent
+[00024600][DBG] PONG seq=22 rtt=5 ticks (83 ms)
+[00024700][DBG] PING seq=23 size=64 sent
+[00024783][DBG] PONG seq=23 rtt=5 ticks (83 ms)
+[00024800][DBG] PING seq=24 size=64 sent
+[00024883][DBG] PONG seq=24 rtt=5 ticks (83 ms)
+[00024966][DBG] PING seq=25 size=64 sent
+[00025050][DBG] PONG seq=25 rtt=5 ticks (83 ms)
+[00025133][DBG] PING seq=26 size=64 sent
+[00025233][DBG] PONG seq=26 rtt=6 ticks (100 ms)
+[00025233][DBG] PING seq=27 size=64 sent
+[00025250][DBG] PONG seq=27 rtt=1 ticks (16 ms)
+[00025333][DBG] PING seq=28 size=64 sent
+[00025416][DBG] PONG seq=28 rtt=5 ticks (83 ms)
+[00025500][DBG] PING seq=29 size=64 sent
+[00025666][DBG] PONG seq=29 rtt=10 ticks (166 ms)
+[00025666][DBG] PING seq=30 size=64 sent
+[00025683][DBG] PONG seq=30 rtt=1 ticks (16 ms)
+[00025766][DBG] PING seq=31 size=64 sent
+[00025850][DBG] PONG seq=31 rtt=5 ticks (83 ms)
+[00025933][DBG] PING seq=32 size=64 sent
+[00026016][DBG] PONG seq=32 rtt=5 ticks (83 ms)
+[00026033][DBG] PING seq=33 size=64 sent
+[00026116][DBG] PONG seq=33 rtt=5 ticks (83 ms)
+[00026133][DBG] PING seq=34 size=64 sent
+[00026216][DBG] PONG seq=34 rtt=5 ticks (83 ms)
+[00026283][DBG] PING seq=35 size=64 sent
+[00026383][DBG] PONG seq=35 rtt=6 ticks (100 ms)
+[00026383][DBG] PING seq=36 size=64 sent
+[00026400][DBG] PONG seq=36 rtt=1 ticks (16 ms)
+[00026483][DBG] PING seq=37 size=64 sent
+[00026566][DBG] PONG seq=37 rtt=5 ticks (83 ms)
+[00026650][DBG] PING seq=38 size=64 sent
+[00026733][DBG] PONG seq=38 rtt=5 ticks (83 ms)
+[00026816][DBG] PING seq=39 size=64 sent
+[00026833][DBG] PONG seq=39 rtt=1 ticks (16 ms)
+[00026916][DBG] PING seq=40 size=64 sent
+[00027000][DBG] PONG seq=40 rtt=5 ticks (83 ms)
+[00027083][DBG] PING seq=41 size=64 sent
+[00027166][DBG] PONG seq=41 rtt=5 ticks (83 ms)
+[00027183][DBG] PING seq=42 size=64 sent
+[00027283][DBG] PONG seq=42 rtt=6 ticks (100 ms)
+[00027283][DBG] PING seq=43 size=64 sent
+[00027300][DBG] PONG seq=43 rtt=1 ticks (16 ms)
+[00027383][DBG] PING seq=44 size=64 sent
+[00027466][DBG] PONG seq=44 rtt=5 ticks (83 ms)
+[00027483][DBG] PING seq=45 size=64 sent
+[00027566][DBG] PONG seq=45 rtt=5 ticks (83 ms)
+[00027650][DBG] PING seq=46 size=64 sent
+[00027816][DBG] PONG seq=46 rtt=10 ticks (166 ms)
+[00027816][DBG] PING seq=47 size=64 sent
+[00027916][DBG] PONG seq=47 rtt=6 ticks (100 ms)
+[00027916][DBG] PING seq=48 size=64 sent
+[00027933][DBG] PONG seq=48 rtt=1 ticks (16 ms)
+[00028016][DBG] PING seq=49 size=64 sent
+[00028100][DBG] PONG seq=49 rtt=5 ticks (83 ms)
+[00028116][DBG] PING seq=50 size=64 sent
+[00028200][DBG] PONG seq=50 rtt=5 ticks (83 ms)
+[00028216][DBG] PING seq=51 size=64 sent
+[00028300][DBG] PONG seq=51 rtt=5 ticks (83 ms)
+[00028400][DBG] PING seq=52 size=64 sent
+[00028483][DBG] PONG seq=52 rtt=5 ticks (83 ms)
+[00028566][DBG] PING seq=53 size=64 sent
+[00028583][DBG] PONG seq=53 rtt=1 ticks (16 ms)
+[00028666][DBG] PING seq=54 size=64 sent
+[00028750][DBG] PONG seq=54 rtt=5 ticks (83 ms)
+[00028833][DBG] PING seq=55 size=64 sent
+[00029016][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00029016][DBG] PONG seq=55 rtt=11 ticks (183 ms)
+[00029016][DBG] PING seq=56 size=64 sent
+[00029033][DBG] PONG seq=56 rtt=1 ticks (16 ms)
+[00029116][DBG] PING seq=57 size=64 sent
+[00029200][DBG] PONG seq=57 rtt=5 ticks (83 ms)
+[00029216][DBG] PING seq=58 size=64 sent
+[00029300][DBG] PONG seq=58 rtt=5 ticks (83 ms)
+[00029383][DBG] PING seq=59 size=64 sent
+[00029566][DBG] PONG seq=59 rtt=11 ticks (183 ms)
+[00029566][DBG] PING seq=60 size=64 sent
+[00029666][DBG] PONG seq=60 rtt=6 ticks (100 ms)
+[00029666][DBG] PING seq=61 size=64 sent
+[00029683][DBG] PONG seq=61 rtt=1 ticks (16 ms)
+[00029766][DBG] PING seq=62 size=64 sent
+[00029850][DBG] PONG seq=62 rtt=5 ticks (83 ms)
+[00029933][DBG] PING seq=63 size=64 sent
+[00030100][DBG] PONG seq=63 rtt=10 ticks (166 ms)
+[00030100][DBG] PING seq=64 size=64 sent
+[00030116][DBG] PONG seq=64 rtt=1 ticks (16 ms)
+[00030200][DBG] PING seq=65 size=64 sent
+[00030233][DBG] PONG seq=65 rtt=2 ticks (33 ms)
+[00030316][DBG] PING seq=66 size=64 sent
+[00030500][DBG] PONG seq=66 rtt=11 ticks (183 ms)
+[00030500][DBG] PING seq=67 size=64 sent
+[00030600][DBG] PONG seq=67 rtt=6 ticks (100 ms)
+[00030600][DBG] PING seq=68 size=64 sent
+[00030616][DBG] PONG seq=68 rtt=1 ticks (16 ms)
+[00030700][DBG] PING seq=69 size=64 sent
+[00030716][DBG] PONG seq=69 rtt=1 ticks (16 ms)
+[00030800][DBG] PING seq=70 size=64 sent
+[00030900][DBG] PONG seq=70 rtt=6 ticks (100 ms)
+[00030900][DBG] PING seq=71 size=64 sent
+[00031000][DBG] PONG seq=71 rtt=6 ticks (100 ms)
+[00031000][DBG] PING seq=72 size=64 sent
+[00031016][DBG] PONG seq=72 rtt=1 ticks (16 ms)
+[00031100][DBG] PING seq=73 size=64 sent
+[00031183][DBG] PONG seq=73 rtt=5 ticks (83 ms)
+[00031266][DBG] PING seq=74 size=64 sent
+[00031400][DBG] PONG seq=74 rtt=8 ticks (133 ms)
+[00031400][DBG] PING seq=75 size=64 sent
+[00031416][DBG] PONG seq=75 rtt=1 ticks (16 ms)
+[00031500][DBG] PING seq=76 size=64 sent
+[00031516][DBG] PONG seq=76 rtt=1 ticks (16 ms)
+[00031600][DBG] PING seq=77 size=64 sent
+[00031616][DBG] PONG seq=77 rtt=1 ticks (16 ms)
+[00031700][DBG] PING seq=78 size=64 sent
+[00031716][DBG] PONG seq=78 rtt=1 ticks (16 ms)
+[00031800][DBG] PING seq=79 size=64 sent
+[00031816][DBG] PONG seq=79 rtt=1 ticks (16 ms)
+[00031900][DBG] PING seq=80 size=64 sent
+[00031916][DBG] PONG seq=80 rtt=1 ticks (16 ms)
+[00032000][DBG] PING seq=81 size=64 sent
+[00032083][DBG] PONG seq=81 rtt=5 ticks (83 ms)
+[00032100][DBG] PING seq=82 size=64 sent
+[00032183][DBG] PONG seq=82 rtt=5 ticks (83 ms)
+[00032266][DBG] PING seq=83 size=64 sent
+[00032433][DBG] PONG seq=83 rtt=10 ticks (166 ms)
+[00032433][DBG] PING seq=84 size=64 sent
+[00032450][DBG] PONG seq=84 rtt=1 ticks (16 ms)
+[00032533][DBG] PING seq=85 size=64 sent
+[00032550][DBG] PONG seq=85 rtt=1 ticks (16 ms)
+[00032633][DBG] PING seq=86 size=64 sent
+[00032716][DBG] PONG seq=86 rtt=5 ticks (83 ms)
+[00032800][DBG] PING seq=87 size=64 sent
+[00032966][DBG] PONG seq=87 rtt=10 ticks (166 ms)
+[00032966][DBG] PING seq=88 size=64 sent
+[00033066][DBG] PONG seq=88 rtt=6 ticks (100 ms)
+[00033066][DBG] PING seq=89 size=64 sent
+[00033083][DBG] PONG seq=89 rtt=1 ticks (16 ms)
+[00033166][DBG] PING seq=90 size=64 sent
+[00033250][DBG] PONG seq=90 rtt=5 ticks (83 ms)
+[00033333][DBG] PING seq=91 size=64 sent
+[00033433][DBG] PONG seq=91 rtt=6 ticks (100 ms)
+[00033433][DBG] PING seq=92 size=64 sent
+[00033533][DBG] PONG seq=92 rtt=6 ticks (100 ms)
+[00033533][DBG] PING seq=93 size=64 sent
+[00033550][DBG] PONG seq=93 rtt=1 ticks (16 ms)
+[00033633][DBG] PING seq=94 size=64 sent
+[00033650][DBG] PONG seq=94 rtt=1 ticks (16 ms)
+[00033733][DBG] PING seq=95 size=64 sent
+[00033816][DBG] PONG seq=95 rtt=5 ticks (83 ms)
+[00033900][DBG] PING seq=96 size=64 sent
+[00034066][DBG] PONG seq=96 rtt=10 ticks (166 ms)
+[00034066][DBG] PING seq=97 size=64 sent
+[00034166][DBG] PONG seq=97 rtt=6 ticks (100 ms)
+[00034166][DBG] PING seq=98 size=64 sent
+[00034266][DBG] PONG seq=98 rtt=6 ticks (100 ms)
+[00034266][DBG] PING seq=99 size=64 sent
+[00034366][DBG] PONG seq=99 rtt=6 ticks (100 ms)
+[00034366][DBG] PING seq=100 size=64 sent
+[00034366][INF] SIZE 64: min=16 max=183 avg=66 ms (sent=101 recv=100 lost=0)
+[00034366][INF] Starting size 256 test
+[00034466][WRN] PONG seq mismatch: got 100 expected 100
+[00034466][DBG] PING seq=0 size=256 sent
+[00034566][DBG] PONG seq=0 rtt=6 ticks (100 ms)
+[00034566][DBG] PING seq=1 size=256 sent
+[00034583][DBG] PONG seq=1 rtt=1 ticks (16 ms)
+[00034666][DBG] PING seq=2 size=256 sent
+[00034683][DBG] PONG seq=2 rtt=1 ticks (16 ms)
+[00034766][DBG] PING seq=3 size=256 sent
+[00034783][DBG] PONG seq=3 rtt=1 ticks (16 ms)
+[00034866][DBG] PING seq=4 size=256 sent
+[00034950][DBG] PONG seq=4 rtt=5 ticks (83 ms)
+[00034966][DBG] PING seq=5 size=256 sent
+[00035050][DBG] PONG seq=5 rtt=5 ticks (83 ms)
+[00035066][DBG] PING seq=6 size=256 sent
+[00035150][DBG] PONG seq=6 rtt=5 ticks (83 ms)
+[00035233][DBG] PING seq=7 size=256 sent
+[00035316][DBG] PONG seq=7 rtt=5 ticks (83 ms)
+[00035400][DBG] PING seq=8 size=256 sent
+[00035500][DBG] PONG seq=8 rtt=6 ticks (100 ms)
+[00035500][DBG] PING seq=9 size=256 sent
+[00035516][DBG] PONG seq=9 rtt=1 ticks (16 ms)
+[00035616][DBG] PING seq=10 size=256 sent
+[00035700][DBG] PONG seq=10 rtt=5 ticks (83 ms)
+[00035716][DBG] PING seq=11 size=256 sent
+[00035800][DBG] PONG seq=11 rtt=5 ticks (83 ms)
+[00035883][DBG] PING seq=12 size=256 sent
+[00036050][DBG] PONG seq=12 rtt=10 ticks (166 ms)
+[00036050][DBG] PING seq=13 size=256 sent
+[00036066][DBG] PONG seq=13 rtt=1 ticks (16 ms)
+[00036150][DBG] PING seq=14 size=256 sent
+[00036233][DBG] PONG seq=14 rtt=5 ticks (83 ms)
+[00036250][DBG] PING seq=15 size=256 sent
+[00036333][DBG] PONG seq=15 rtt=5 ticks (83 ms)
+[00036400][DBG] PING seq=16 size=256 sent
+[00036483][DBG] PONG seq=16 rtt=5 ticks (83 ms)
+[00036500][DBG] PING seq=17 size=256 sent
+[00036583][DBG] PONG seq=17 rtt=5 ticks (83 ms)
+[00036600][DBG] PING seq=18 size=256 sent
+[00036683][DBG] PONG seq=18 rtt=5 ticks (83 ms)
+[00036766][DBG] PING seq=19 size=256 sent
+[00036850][DBG] PONG seq=19 rtt=5 ticks (83 ms)
+[00036933][DBG] PING seq=20 size=256 sent
+[00037016][DBG] PONG seq=20 rtt=5 ticks (83 ms)
+[00037100][DBG] PING seq=21 size=256 sent
+[00037116][DBG] PONG seq=21 rtt=1 ticks (16 ms)
+[00037200][DBG] PING seq=22 size=256 sent
+[00037216][DBG] PONG seq=22 rtt=1 ticks (16 ms)
+[00037300][DBG] PING seq=23 size=256 sent
+[00037383][DBG] PONG seq=23 rtt=5 ticks (83 ms)
+[00037466][DBG] PING seq=24 size=256 sent
+[00037566][DBG] PONG seq=24 rtt=6 ticks (100 ms)
+[00037566][DBG] PING seq=25 size=256 sent
+[00037583][DBG] PONG seq=25 rtt=1 ticks (16 ms)
+[00037683][DBG] PING seq=26 size=256 sent
+[00037766][DBG] PONG seq=26 rtt=5 ticks (83 ms)
+[00037850][DBG] PING seq=27 size=256 sent
+[00037933][DBG] PONG seq=27 rtt=5 ticks (83 ms)
+[00038016][DBG] PING seq=28 size=256 sent
+[00038100][DBG] PONG seq=28 rtt=5 ticks (83 ms)
+[00038183][DBG] PING seq=29 size=256 sent
+[00038266][DBG] PONG seq=29 rtt=5 ticks (83 ms)
+[00038283][DBG] PING seq=30 size=256 sent
+[00038366][DBG] PONG seq=30 rtt=5 ticks (83 ms)
+[00038450][DBG] PING seq=31 size=256 sent
+[00038616][DBG] PONG seq=31 rtt=10 ticks (166 ms)
+[00038616][DBG] PING seq=32 size=256 sent
+[00038633][DBG] PONG seq=32 rtt=1 ticks (16 ms)
+[00038716][DBG] PING seq=33 size=256 sent
+[00038733][DBG] PONG seq=33 rtt=1 ticks (16 ms)
+[00038816][DBG] PING seq=34 size=256 sent
+[00038900][DBG] PONG seq=34 rtt=5 ticks (83 ms)
+[00038916][DBG] PING seq=35 size=256 sent
+[00039000][DBG] PONG seq=35 rtt=5 ticks (83 ms)
+[00039100][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00039100][DBG] PING seq=36 size=256 sent
+[00039200][DBG] PONG seq=36 rtt=6 ticks (100 ms)
+[00039200][DBG] PING seq=37 size=256 sent
+[00039300][DBG] PONG seq=37 rtt=6 ticks (100 ms)
+[00039300][DBG] PING seq=38 size=256 sent
+[00039316][DBG] PONG seq=38 rtt=1 ticks (16 ms)
+[00039400][DBG] PING seq=39 size=256 sent
+[00039416][DBG] PONG seq=39 rtt=1 ticks (16 ms)
+[00039500][DBG] PING seq=40 size=256 sent
+[00039516][DBG] PONG seq=40 rtt=1 ticks (16 ms)
+[00039600][DBG] PING seq=41 size=256 sent
+[00039616][DBG] PONG seq=41 rtt=1 ticks (16 ms)
+[00039700][DBG] PING seq=42 size=256 sent
+[00039716][DBG] PONG seq=42 rtt=1 ticks (16 ms)
+[00039800][DBG] PING seq=43 size=256 sent
+[00039816][DBG] PONG seq=43 rtt=1 ticks (16 ms)
+[00039900][DBG] PING seq=44 size=256 sent
+[00039916][DBG] PONG seq=44 rtt=1 ticks (16 ms)
+[00040000][DBG] PING seq=45 size=256 sent
+[00040100][DBG] PONG seq=45 rtt=6 ticks (100 ms)
+[00040100][DBG] PING seq=46 size=256 sent
+[00040200][DBG] PONG seq=46 rtt=6 ticks (100 ms)
+[00040200][DBG] PING seq=47 size=256 sent
+[00040300][DBG] PONG seq=47 rtt=6 ticks (100 ms)
+[00040300][DBG] PING seq=48 size=256 sent
+[00040316][DBG] PONG seq=48 rtt=1 ticks (16 ms)
+[00040400][DBG] PING seq=49 size=256 sent
+[00040416][DBG] PONG seq=49 rtt=1 ticks (16 ms)
+[00040500][DBG] PING seq=50 size=256 sent
+[00040516][DBG] PONG seq=50 rtt=1 ticks (16 ms)
+[00040600][DBG] PING seq=51 size=256 sent
+[00040616][DBG] PONG seq=51 rtt=1 ticks (16 ms)
+[00040700][DBG] PING seq=52 size=256 sent
+[00040716][DBG] PONG seq=52 rtt=1 ticks (16 ms)
+[00040800][DBG] PING seq=53 size=256 sent
+[00040883][DBG] PONG seq=53 rtt=5 ticks (83 ms)
+[00040966][DBG] PING seq=54 size=256 sent
+[00041050][DBG] PONG seq=54 rtt=5 ticks (83 ms)
+[00041133][DBG] PING seq=55 size=256 sent
+[00041233][DBG] PONG seq=55 rtt=6 ticks (100 ms)
+[00041233][DBG] PING seq=56 size=256 sent
+[00041250][DBG] PONG seq=56 rtt=1 ticks (16 ms)
+[00041333][DBG] PING seq=57 size=256 sent
+[00041350][DBG] PONG seq=57 rtt=1 ticks (16 ms)
+[00041433][DBG] PING seq=58 size=256 sent
+[00041466][DBG] PONG seq=58 rtt=2 ticks (33 ms)
+[00041566][DBG] PING seq=59 size=256 sent
+[00041666][DBG] PONG seq=59 rtt=6 ticks (100 ms)
+[00041666][DBG] PING seq=60 size=256 sent
+[00041683][DBG] PONG seq=60 rtt=1 ticks (16 ms)
+[00041766][DBG] PING seq=61 size=256 sent
+[00041783][DBG] PONG seq=61 rtt=1 ticks (16 ms)
+[00041866][DBG] PING seq=62 size=256 sent
+[00041883][DBG] PONG seq=62 rtt=1 ticks (16 ms)
+[00041966][DBG] PING seq=63 size=256 sent
+[00041983][DBG] PONG seq=63 rtt=1 ticks (16 ms)
+[00042066][DBG] PING seq=64 size=256 sent
+[00042083][DBG] PONG seq=64 rtt=1 ticks (16 ms)
+[00042166][DBG] PING seq=65 size=256 sent
+[00042250][DBG] PONG seq=65 rtt=5 ticks (83 ms)
+[00042333][DBG] PING seq=66 size=256 sent
+[00042500][DBG] PONG seq=66 rtt=10 ticks (166 ms)
+[00042500][DBG] PING seq=67 size=256 sent
+[00042600][DBG] PONG seq=67 rtt=6 ticks (100 ms)
+[00042600][DBG] PING seq=68 size=256 sent
+[00042616][DBG] PONG seq=68 rtt=1 ticks (16 ms)
+[00042700][DBG] PING seq=69 size=256 sent
+[00042716][DBG] PONG seq=69 rtt=1 ticks (16 ms)
+[00042800][DBG] PING seq=70 size=256 sent
+[00042816][DBG] PONG seq=70 rtt=1 ticks (16 ms)
+[00042916][DBG] PING seq=71 size=256 sent
+[00043000][DBG] PONG seq=71 rtt=5 ticks (83 ms)
+[00043016][DBG] PING seq=72 size=256 sent
+[00043100][DBG] PONG seq=72 rtt=5 ticks (83 ms)
+[00043183][DBG] PING seq=73 size=256 sent
+[00043266][DBG] PONG seq=73 rtt=5 ticks (83 ms)
+[00043350][DBG] PING seq=74 size=256 sent
+[00043366][DBG] PONG seq=74 rtt=1 ticks (16 ms)
+[00043450][DBG] PING seq=75 size=256 sent
+[00043466][DBG] PONG seq=75 rtt=1 ticks (16 ms)
+[00043550][DBG] PING seq=76 size=256 sent
+[00043566][DBG] PONG seq=76 rtt=1 ticks (16 ms)
+[00043666][DBG] PING seq=77 size=256 sent
+[00043833][DBG] PONG seq=77 rtt=10 ticks (166 ms)
+[00043833][DBG] PING seq=78 size=256 sent
+[00043850][DBG] PONG seq=78 rtt=1 ticks (16 ms)
+[00043933][DBG] PING seq=79 size=256 sent
+[00043950][DBG] PONG seq=79 rtt=1 ticks (16 ms)
+[00044033][DBG] PING seq=80 size=256 sent
+[00044133][DBG] PONG seq=80 rtt=6 ticks (100 ms)
+[00044133][DBG] PING seq=81 size=256 sent
+[00044150][DBG] PONG seq=81 rtt=1 ticks (16 ms)
+[00044250][DBG] PING seq=82 size=256 sent
+[00044333][DBG] PONG seq=82 rtt=5 ticks (83 ms)
+[00044416][DBG] PING seq=83 size=256 sent
+[00044500][DBG] PONG seq=83 rtt=5 ticks (83 ms)
+[00044583][DBG] PING seq=84 size=256 sent
+[00044600][DBG] PONG seq=84 rtt=1 ticks (16 ms)
+[00044683][DBG] PING seq=85 size=256 sent
+[00044766][DBG] PONG seq=85 rtt=5 ticks (83 ms)
+[00044850][DBG] PING seq=86 size=256 sent
+[00044933][DBG] PONG seq=86 rtt=5 ticks (83 ms)
+[00044950][DBG] PING seq=87 size=256 sent
+[00045033][DBG] PONG seq=87 rtt=5 ticks (83 ms)
+[00045116][DBG] PING seq=88 size=256 sent
+[00045283][DBG] PONG seq=88 rtt=10 ticks (166 ms)
+[00045300][DBG] PING seq=89 size=256 sent
+[00045400][DBG] PONG seq=89 rtt=7 ticks (116 ms)
+[00045400][DBG] PING seq=90 size=256 sent
+[00045483][DBG] PONG seq=90 rtt=5 ticks (83 ms)
+[00045566][DBG] PING seq=91 size=256 sent
+[00045666][DBG] PONG seq=91 rtt=6 ticks (100 ms)
+[00045666][DBG] PING seq=92 size=256 sent
+[00045766][DBG] PONG seq=92 rtt=6 ticks (100 ms)
+[00045766][DBG] PING seq=93 size=256 sent
+[00045866][DBG] PONG seq=93 rtt=6 ticks (100 ms)
+[00045866][DBG] PING seq=94 size=256 sent
+[00045883][DBG] PONG seq=94 rtt=1 ticks (16 ms)
+[00045966][DBG] PING seq=95 size=256 sent
+[00045983][DBG] PONG seq=95 rtt=1 ticks (16 ms)
+[00046066][DBG] PING seq=96 size=256 sent
+[00046150][DBG] PONG seq=96 rtt=5 ticks (83 ms)
+[00046233][DBG] PING seq=97 size=256 sent
+[00046400][DBG] PONG seq=97 rtt=10 ticks (166 ms)
+[00046400][DBG] PING seq=98 size=256 sent
+[00046416][DBG] PONG seq=98 rtt=1 ticks (16 ms)
+[00046500][DBG] PING seq=99 size=256 sent
+[00046566][DBG] PONG seq=99 rtt=4 ticks (66 ms)
+[00046566][INF] SIZE 256: min=16 max=166 avg=50 ms (sent=100 recv=100 lost=0)
+[00046566][INF] Starting size 1024 test
+[00046666][DBG] PING seq=0 size=1024 sent
+[00046766][DBG] PONG seq=0 rtt=6 ticks (100 ms)
+[00046766][DBG] PING seq=1 size=1024 sent
+[00046883][DBG] PONG seq=1 rtt=7 ticks (116 ms)
+[00046883][DBG] PING seq=2 size=1024 sent
+[00046983][DBG] PONG seq=2 rtt=6 ticks (100 ms)
+[00046983][DBG] PING seq=3 size=1024 sent
+[00047083][DBG] PONG seq=3 rtt=6 ticks (100 ms)
+[00047083][DBG] PING seq=4 size=1024 sent
+[00047183][DBG] PONG seq=4 rtt=6 ticks (100 ms)
+[00047183][DBG] PING seq=5 size=1024 sent
+[00047283][DBG] PONG seq=5 rtt=6 ticks (100 ms)
+[00047283][DBG] PING seq=6 size=1024 sent
+[00047466][DBG] PONG seq=6 rtt=11 ticks (183 ms)
+[00047466][DBG] PING seq=7 size=1024 sent
+[00047566][DBG] PONG seq=7 rtt=6 ticks (100 ms)
+[00047566][DBG] PING seq=8 size=1024 sent
+[00047600][DBG] PONG seq=8 rtt=2 ticks (33 ms)
+[00047683][DBG] PING seq=9 size=1024 sent
+[00047850][DBG] PONG seq=9 rtt=10 ticks (166 ms)
+[00047850][DBG] PING seq=10 size=1024 sent
+[00047950][DBG] PONG seq=10 rtt=6 ticks (100 ms)
+[00047950][DBG] PING seq=11 size=1024 sent
+[00048066][DBG] PONG seq=11 rtt=7 ticks (116 ms)
+[00048066][DBG] PING seq=12 size=1024 sent
+[00048233][DBG] PONG seq=12 rtt=10 ticks (166 ms)
+[00048233][DBG] PING seq=13 size=1024 sent
+[00048416][DBG] PONG seq=13 rtt=11 ticks (183 ms)
+[00048416][DBG] PING seq=14 size=1024 sent
+[00048600][DBG] PONG seq=14 rtt=11 ticks (183 ms)
+[00048600][DBG] PING seq=15 size=1024 sent
+[00048783][DBG] PONG seq=15 rtt=11 ticks (183 ms)
+[00048783][DBG] PING seq=16 size=1024 sent
+[00048883][DBG] PONG seq=16 rtt=6 ticks (100 ms)
+[00048883][DBG] PING seq=17 size=1024 sent
+[00049000][DBG] PONG seq=17 rtt=7 ticks (116 ms)
+[00049000][DBG] PING seq=18 size=1024 sent
+[00049200][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00049200][DBG] PONG seq=18 rtt=12 ticks (200 ms)
+[00049200][DBG] PING seq=19 size=1024 sent
+[00049300][DBG] PONG seq=19 rtt=6 ticks (100 ms)
+[00049300][DBG] PING seq=20 size=1024 sent
+[00049483][DBG] PONG seq=20 rtt=11 ticks (183 ms)
+[00049483][DBG] PING seq=21 size=1024 sent
+[00049600][DBG] PONG seq=21 rtt=7 ticks (116 ms)
+[00049600][DBG] PING seq=22 size=1024 sent
+[00049700][DBG] PONG seq=22 rtt=6 ticks (100 ms)
+[00049700][DBG] PING seq=23 size=1024 sent
+[00049883][DBG] PONG seq=23 rtt=11 ticks (183 ms)
+[00049883][DBG] PING seq=24 size=1024 sent
+[00049983][DBG] PONG seq=24 rtt=6 ticks (100 ms)
+[00049983][DBG] PING seq=25 size=1024 sent
+[00050166][DBG] PONG seq=25 rtt=11 ticks (183 ms)
+[00050166][DBG] PING seq=26 size=1024 sent
+[00050333][DBG] PONG seq=26 rtt=10 ticks (166 ms)
+[00050333][DBG] PING seq=27 size=1024 sent
+[00050433][DBG] PONG seq=27 rtt=6 ticks (100 ms)
+[00050433][DBG] PING seq=28 size=1024 sent
+[00050616][DBG] PONG seq=28 rtt=11 ticks (183 ms)
+[00050616][DBG] PING seq=29 size=1024 sent
+[00050733][DBG] PONG seq=29 rtt=7 ticks (116 ms)
+[00050733][DBG] PING seq=30 size=1024 sent
+[00050850][DBG] PONG seq=30 rtt=7 ticks (116 ms)
+[00050850][DBG] PING seq=31 size=1024 sent
+[00051016][DBG] PONG seq=31 rtt=10 ticks (166 ms)
+[00051016][DBG] PING seq=32 size=1024 sent
+[00051050][DBG] PONG seq=32 rtt=2 ticks (33 ms)
+[00051133][DBG] PING seq=33 size=1024 sent
+[00051233][DBG] PONG seq=33 rtt=6 ticks (100 ms)
+[00051233][DBG] PING seq=34 size=1024 sent
+[00051333][DBG] PONG seq=34 rtt=6 ticks (100 ms)
+[00051333][DBG] PING seq=35 size=1024 sent
+[00051433][DBG] PONG seq=35 rtt=6 ticks (100 ms)
+[00051433][DBG] PING seq=36 size=1024 sent
+[00051550][DBG] PONG seq=36 rtt=7 ticks (116 ms)
+[00051550][DBG] PING seq=37 size=1024 sent
+[00051650][DBG] PONG seq=37 rtt=6 ticks (100 ms)
+[00051650][DBG] PING seq=38 size=1024 sent
+[00051816][DBG] PONG seq=38 rtt=10 ticks (166 ms)
+[00051816][DBG] PING seq=39 size=1024 sent
+[00051916][DBG] PONG seq=39 rtt=6 ticks (100 ms)
+[00051916][DBG] PING seq=40 size=1024 sent
+[00052016][DBG] PONG seq=40 rtt=6 ticks (100 ms)
+[00052016][DBG] PING seq=41 size=1024 sent
+[00052133][DBG] PONG seq=41 rtt=7 ticks (116 ms)
+[00052133][DBG] PING seq=42 size=1024 sent
+[00052300][DBG] PONG seq=42 rtt=10 ticks (166 ms)
+[00052300][DBG] PING seq=43 size=1024 sent
+[00052416][DBG] PONG seq=43 rtt=7 ticks (116 ms)
+[00052416][DBG] PING seq=44 size=1024 sent
+[00052583][DBG] PONG seq=44 rtt=10 ticks (166 ms)
+[00052583][DBG] PING seq=45 size=1024 sent
+[00052766][DBG] PONG seq=45 rtt=11 ticks (183 ms)
+[00052766][DBG] PING seq=46 size=1024 sent
+[00052866][DBG] PONG seq=46 rtt=6 ticks (100 ms)
+[00052866][DBG] PING seq=47 size=1024 sent
+[00053050][DBG] PONG seq=47 rtt=11 ticks (183 ms)
+[00053050][DBG] PING seq=48 size=1024 sent
+[00053233][DBG] PONG seq=48 rtt=11 ticks (183 ms)
+[00053233][DBG] PING seq=49 size=1024 sent
+[00053333][DBG] PONG seq=49 rtt=6 ticks (100 ms)
+[00053333][DBG] PING seq=50 size=1024 sent
+[00053516][DBG] PONG seq=50 rtt=11 ticks (183 ms)
+[00053516][DBG] PING seq=51 size=1024 sent
+[00053616][DBG] PONG seq=51 rtt=6 ticks (100 ms)
+[00053616][DBG] PING seq=52 size=1024 sent
+[00053650][DBG] PONG seq=52 rtt=2 ticks (33 ms)
+[00053733][DBG] PING seq=53 size=1024 sent
+[00053833][DBG] PONG seq=53 rtt=6 ticks (100 ms)
+[00053833][DBG] PING seq=54 size=1024 sent
+[00054016][DBG] PONG seq=54 rtt=11 ticks (183 ms)
+[00054016][DBG] PING seq=55 size=1024 sent
+[00054116][DBG] PONG seq=55 rtt=6 ticks (100 ms)
+[00054116][DBG] PING seq=56 size=1024 sent
+[00054216][DBG] PONG seq=56 rtt=6 ticks (100 ms)
+[00054216][DBG] PING seq=57 size=1024 sent
+[00054316][DBG] PONG seq=57 rtt=6 ticks (100 ms)
+[00054316][DBG] PING seq=58 size=1024 sent
+[00054416][DBG] PONG seq=58 rtt=6 ticks (100 ms)
+[00054416][DBG] PING seq=59 size=1024 sent
+[00054516][DBG] PONG seq=59 rtt=6 ticks (100 ms)
+[00054516][DBG] PING seq=60 size=1024 sent
+[00054633][DBG] PONG seq=60 rtt=7 ticks (116 ms)
+[00054633][DBG] PING seq=61 size=1024 sent
+[00054800][DBG] PONG seq=61 rtt=10 ticks (166 ms)
+[00054800][DBG] PING seq=62 size=1024 sent
+[00054983][DBG] PONG seq=62 rtt=11 ticks (183 ms)
+[00054983][DBG] PING seq=63 size=1024 sent
+[00055166][DBG] PONG seq=63 rtt=11 ticks (183 ms)
+[00055166][DBG] PING seq=64 size=1024 sent
+[00055200][DBG] PONG seq=64 rtt=2 ticks (33 ms)
+[00055283][DBG] PING seq=65 size=1024 sent
+[00055383][DBG] PONG seq=65 rtt=6 ticks (100 ms)
+[00055383][DBG] PING seq=66 size=1024 sent
+[00055483][DBG] PONG seq=66 rtt=6 ticks (100 ms)
+[00055483][DBG] PING seq=67 size=1024 sent
+[00055583][DBG] PONG seq=67 rtt=6 ticks (100 ms)
+[00055583][DBG] PING seq=68 size=1024 sent
+[00055700][DBG] PONG seq=68 rtt=7 ticks (116 ms)
+[00055700][DBG] PING seq=69 size=1024 sent
+[00055800][DBG] PONG seq=69 rtt=6 ticks (100 ms)
+[00055800][DBG] PING seq=70 size=1024 sent
+[00055900][DBG] PONG seq=70 rtt=6 ticks (100 ms)
+[00055900][DBG] PING seq=71 size=1024 sent
+[00056016][DBG] PONG seq=71 rtt=7 ticks (116 ms)
+[00056016][DBG] PING seq=72 size=1024 sent
+[00056183][DBG] PONG seq=72 rtt=10 ticks (166 ms)
+[00056183][DBG] PING seq=73 size=1024 sent
+[00056366][DBG] PONG seq=73 rtt=11 ticks (183 ms)
+[00056366][DBG] PING seq=74 size=1024 sent
+[00056466][DBG] PONG seq=74 rtt=6 ticks (100 ms)
+[00056466][DBG] PING seq=75 size=1024 sent
+[00056566][DBG] PONG seq=75 rtt=6 ticks (100 ms)
+[00056566][DBG] PING seq=76 size=1024 sent
+[00056750][DBG] PONG seq=76 rtt=11 ticks (183 ms)
+[00056750][DBG] PING seq=77 size=1024 sent
+[00056816][DBG] PONG seq=77 rtt=4 ticks (66 ms)
+[00056916][DBG] PING seq=78 size=1024 sent
+[00057016][DBG] PONG seq=78 rtt=6 ticks (100 ms)
+[00057016][DBG] PING seq=79 size=1024 sent
+[00057116][DBG] PONG seq=79 rtt=6 ticks (100 ms)
+[00057116][DBG] PING seq=80 size=1024 sent
+[00057233][DBG] PONG seq=80 rtt=7 ticks (116 ms)
+[00057233][DBG] PING seq=81 size=1024 sent
+[00057400][DBG] PONG seq=81 rtt=10 ticks (166 ms)
+[00057400][DBG] PING seq=82 size=1024 sent
+[00057500][DBG] PONG seq=82 rtt=6 ticks (100 ms)
+[00057500][DBG] PING seq=83 size=1024 sent
+[00057616][DBG] PONG seq=83 rtt=7 ticks (116 ms)
+[00057616][DBG] PING seq=84 size=1024 sent
+[00057716][DBG] PONG seq=84 rtt=6 ticks (100 ms)
+[00057716][DBG] PING seq=85 size=1024 sent
+[00057900][DBG] PONG seq=85 rtt=11 ticks (183 ms)
+[00057900][DBG] PING seq=86 size=1024 sent
+[00058000][DBG] PONG seq=86 rtt=6 ticks (100 ms)
+[00058000][DBG] PING seq=87 size=1024 sent
+[00058183][DBG] PONG seq=87 rtt=11 ticks (183 ms)
+[00058183][DBG] PING seq=88 size=1024 sent
+[00058300][DBG] PONG seq=88 rtt=7 ticks (116 ms)
+[00058300][DBG] PING seq=89 size=1024 sent
+[00058466][DBG] PONG seq=89 rtt=10 ticks (166 ms)
+[00058466][DBG] PING seq=90 size=1024 sent
+[00058650][DBG] PONG seq=90 rtt=11 ticks (183 ms)
+[00058650][DBG] PING seq=91 size=1024 sent
+[00058833][DBG] PONG seq=91 rtt=11 ticks (183 ms)
+[00058833][DBG] PING seq=92 size=1024 sent
+[00058933][DBG] PONG seq=92 rtt=6 ticks (100 ms)
+[00058933][DBG] PING seq=93 size=1024 sent
+[00059116][DBG] PONG seq=93 rtt=11 ticks (183 ms)
+[00059116][DBG] PING seq=94 size=1024 sent
+[00059216][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00059316][DBG] PONG seq=94 rtt=12 ticks (200 ms)
+[00059316][DBG] PING seq=95 size=1024 sent
+[00059500][DBG] PONG seq=95 rtt=11 ticks (183 ms)
+[00059500][DBG] PING seq=96 size=1024 sent
+[00059616][DBG] PONG seq=96 rtt=7 ticks (116 ms)
+[00059616][DBG] PING seq=97 size=1024 sent
+[00059716][DBG] PONG seq=97 rtt=6 ticks (100 ms)
+[00059716][DBG] PING seq=98 size=1024 sent
+[00059750][DBG] PONG seq=98 rtt=2 ticks (33 ms)
+[00059833][DBG] PING seq=99 size=1024 sent
+[00060000][DBG] PONG seq=99 rtt=10 ticks (166 ms)
+[00060000][DBG] PING seq=100 size=1024 sent
+[00060000][INF] SIZE 1024: min=33 max=200 avg=116 ms (sent=101 recv=100 lost=0)
+[00060016][INF] Starting size 4096 test
+[00060100][DBG] PING seq=0 size=4096 sent
+[00060200][WRN] PONG seq mismatch: got 100 expected 0
+[00060333][DBG] PONG seq=0 rtt=14 ticks (233 ms)
+[00060350][DBG] PING seq=1 size=4096 sent
+[00060616][DBG] PONG seq=1 rtt=17 ticks (283 ms)
+[00060633][DBG] PING seq=2 size=4096 sent
+[00060900][DBG] PONG seq=2 rtt=17 ticks (283 ms)
+[00060916][DBG] PING seq=3 size=4096 sent
+[00061183][DBG] PONG seq=3 rtt=17 ticks (283 ms)
+[00061200][DBG] PING seq=4 size=4096 sent
+[00061400][DBG] PONG seq=4 rtt=13 ticks (216 ms)
+[00061416][DBG] PING seq=5 size=4096 sent
+[00061616][DBG] PONG seq=5 rtt=13 ticks (216 ms)
+[00061616][DBG] PING seq=6 size=4096 sent
+[00061883][DBG] PONG seq=6 rtt=16 ticks (266 ms)
+[00061900][DBG] PING seq=7 size=4096 sent
+[00062100][DBG] PONG seq=7 rtt=13 ticks (216 ms)
+[00062100][DBG] PING seq=8 size=4096 sent
+[00062383][DBG] PONG seq=8 rtt=17 ticks (283 ms)
+[00062383][DBG] PING seq=9 size=4096 sent
+[00062683][DBG] PONG seq=9 rtt=18 ticks (300 ms)
+[00062700][DBG] PING seq=10 size=4096 sent
+[00062983][DBG] PONG seq=10 rtt=18 ticks (300 ms)
+[00062983][DBG] PING seq=11 size=4096 sent
+[00063183][DBG] PONG seq=11 rtt=12 ticks (200 ms)
+[00063183][DBG] PING seq=12 size=4096 sent
+[00063533][DBG] PONG seq=12 rtt=21 ticks (350 ms)
+[00063533][DBG] PING seq=13 size=4096 sent
+[00063750][DBG] PONG seq=13 rtt=13 ticks (216 ms)
+[00063750][DBG] PING seq=14 size=4096 sent
+[00064033][DBG] PONG seq=14 rtt=17 ticks (283 ms)
+[00064050][DBG] PING seq=15 size=4096 sent
+[00064316][DBG] PONG seq=15 rtt=17 ticks (283 ms)
+[00064316][DBG] PING seq=16 size=4096 sent
+[00064533][DBG] PONG seq=16 rtt=13 ticks (216 ms)
+[00064533][DBG] PING seq=17 size=4096 sent
+[00064750][DBG] PONG seq=17 rtt=13 ticks (216 ms)
+[00064750][DBG] PING seq=18 size=4096 sent
+[00065033][DBG] PONG seq=18 rtt=17 ticks (283 ms)
+[00065050][DBG] PING seq=19 size=4096 sent
+[00065250][DBG] PONG seq=19 rtt=13 ticks (216 ms)
+[00065266][DBG] PING seq=20 size=4096 sent
+[00065533][DBG] PONG seq=20 rtt=17 ticks (283 ms)
+[00065550][DBG] PING seq=21 size=4096 sent
+[00065750][DBG] PONG seq=21 rtt=13 ticks (216 ms)
+[00065750][DBG] PING seq=22 size=4096 sent
+[00066100][DBG] PONG seq=22 rtt=21 ticks (350 ms)
+[00066116][DBG] PING seq=23 size=4096 sent
+[00066383][DBG] PONG seq=23 rtt=17 ticks (283 ms)
+[00066383][DBG] PING seq=24 size=4096 sent
+[00066666][DBG] PONG seq=24 rtt=17 ticks (283 ms)
+[00066683][DBG] PING seq=25 size=4096 sent
+[00066883][DBG] PONG seq=25 rtt=13 ticks (216 ms)
+[00066900][DBG] PING seq=26 size=4096 sent
+[00067050][DBG] PONG seq=26 rtt=10 ticks (166 ms)
+[00067050][DBG] PING seq=27 size=4096 sent
+[00067266][DBG] PONG seq=27 rtt=13 ticks (216 ms)
+[00067266][DBG] PING seq=28 size=4096 sent
+[00067550][DBG] PONG seq=28 rtt=17 ticks (283 ms)
+[00067550][DBG] PING seq=29 size=4096 sent
+[00067766][DBG] PONG seq=29 rtt=13 ticks (216 ms)
+[00067766][DBG] PING seq=30 size=4096 sent
+[00067983][DBG] PONG seq=30 rtt=13 ticks (216 ms)
+[00067983][DBG] PING seq=31 size=4096 sent
+[00068266][DBG] PONG seq=31 rtt=17 ticks (283 ms)
+[00068283][DBG] PING seq=32 size=4096 sent
+[00068550][DBG] PONG seq=32 rtt=17 ticks (283 ms)
+[00068566][DBG] PING seq=33 size=4096 sent
+[00068766][DBG] PONG seq=33 rtt=13 ticks (216 ms)
+[00068766][DBG] PING seq=34 size=4096 sent
+[00069050][DBG] PONG seq=34 rtt=17 ticks (283 ms)
+[00069066][DBG] PING seq=35 size=4096 sent
+[00069250][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00069350][DBG] PONG seq=35 rtt=18 ticks (300 ms)
+[00069350][DBG] PING seq=36 size=4096 sent
+[00069633][DBG] PONG seq=36 rtt=17 ticks (283 ms)
+[00069650][DBG] PING seq=37 size=4096 sent
+[00069850][DBG] PONG seq=37 rtt=13 ticks (216 ms)
+[00069866][DBG] PING seq=38 size=4096 sent
+[00070133][DBG] PONG seq=38 rtt=17 ticks (283 ms)
+[00070133][DBG] PING seq=39 size=4096 sent
+[00070350][DBG] PONG seq=39 rtt=13 ticks (216 ms)
+[00070350][DBG] PING seq=40 size=4096 sent
+[00070633][DBG] PONG seq=40 rtt=17 ticks (283 ms)
+[00070650][DBG] PING seq=41 size=4096 sent
+[00070916][DBG] PONG seq=41 rtt=17 ticks (283 ms)
+[00070933][DBG] PING seq=42 size=4096 sent
+[00071200][DBG] PONG seq=42 rtt=17 ticks (283 ms)
+[00071216][DBG] PING seq=43 size=4096 sent
+[00071483][DBG] PONG seq=43 rtt=17 ticks (283 ms)
+[00071500][DBG] PING seq=44 size=4096 sent
+[00071783][DBG] PONG seq=44 rtt=18 ticks (300 ms)
+[00071800][DBG] PING seq=45 size=4096 sent
+[00072000][DBG] PONG seq=45 rtt=13 ticks (216 ms)
+[00072016][DBG] PING seq=46 size=4096 sent
+[00072200][DBG] PONG seq=46 rtt=12 ticks (200 ms)
+[00072216][DBG] PING seq=47 size=4096 sent
+[00072416][DBG] PONG seq=47 rtt=13 ticks (216 ms)
+[00072416][DBG] PING seq=48 size=4096 sent
+[00072633][DBG] PONG seq=48 rtt=13 ticks (216 ms)
+[00072633][DBG] PING seq=49 size=4096 sent
+[00072916][DBG] PONG seq=49 rtt=17 ticks (283 ms)
+[00072933][DBG] PING seq=50 size=4096 sent
+[00073200][DBG] PONG seq=50 rtt=17 ticks (283 ms)
+[00073216][DBG] PING seq=51 size=4096 sent
+[00073483][DBG] PONG seq=51 rtt=17 ticks (283 ms)
+[00073500][DBG] PING seq=52 size=4096 sent
+[00073766][DBG] PONG seq=52 rtt=17 ticks (283 ms)
+[00073766][DBG] PING seq=53 size=4096 sent
+[00074050][DBG] PONG seq=53 rtt=17 ticks (283 ms)
+[00074066][DBG] PING seq=54 size=4096 sent
+[00074266][DBG] PONG seq=54 rtt=13 ticks (216 ms)
+[00074266][DBG] PING seq=55 size=4096 sent
+[00074483][DBG] PONG seq=55 rtt=13 ticks (216 ms)
+[00074483][DBG] PING seq=56 size=4096 sent
+[00074700][DBG] PONG seq=56 rtt=13 ticks (216 ms)
+[00074716][DBG] PING seq=57 size=4096 sent
+[00074983][DBG] PONG seq=57 rtt=17 ticks (283 ms)
+[00075000][DBG] PING seq=58 size=4096 sent
+[00075283][DBG] PONG seq=58 rtt=18 ticks (300 ms)
+[00075300][DBG] PING seq=59 size=4096 sent
+[00075683][DBG] PONG seq=59 rtt=24 ticks (400 ms)
+[00075683][DBG] PING seq=60 size=4096 sent
+[00075966][DBG] PONG seq=60 rtt=17 ticks (283 ms)
+[00075966][DBG] PING seq=61 size=4096 sent
+[00076250][DBG] PONG seq=61 rtt=17 ticks (283 ms)
+[00076266][DBG] PING seq=62 size=4096 sent
+[00076533][DBG] PONG seq=62 rtt=17 ticks (283 ms)
+[00076550][DBG] PING seq=63 size=4096 sent
+[00076750][DBG] PONG seq=63 rtt=13 ticks (216 ms)
+[00076750][DBG] PING seq=64 size=4096 sent
+[00077033][DBG] PONG seq=64 rtt=17 ticks (283 ms)
+[00077033][DBG] PING seq=65 size=4096 sent
+[00077283][DBG] PONG seq=65 rtt=15 ticks (250 ms)
+[00077283][DBG] PING seq=66 size=4096 sent
+[00077566][DBG] PONG seq=66 rtt=17 ticks (283 ms)
+[00077583][DBG] PING seq=67 size=4096 sent
+[00077850][DBG] PONG seq=67 rtt=17 ticks (283 ms)
+[00077866][DBG] PING seq=68 size=4096 sent
+[00078133][DBG] PONG seq=68 rtt=17 ticks (283 ms)
+[00078150][DBG] PING seq=69 size=4096 sent
+[00078416][DBG] PONG seq=69 rtt=17 ticks (283 ms)
+[00078433][DBG] PING seq=70 size=4096 sent
+[00078700][DBG] PONG seq=70 rtt=17 ticks (283 ms)
+[00078700][DBG] PING seq=71 size=4096 sent
+[00078983][DBG] PONG seq=71 rtt=17 ticks (283 ms)
+[00079000][DBG] PING seq=72 size=4096 sent
+[00079200][DBG] PONG seq=72 rtt=13 ticks (216 ms)
+[00079200][DBG] PING seq=73 size=4096 sent
+[00079316][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00079516][DBG] PONG seq=73 rtt=19 ticks (316 ms)
+[00079533][DBG] PING seq=74 size=4096 sent
+[00079733][DBG] PONG seq=74 rtt=13 ticks (216 ms)
+[00079750][DBG] PING seq=75 size=4096 sent
+[00079950][DBG] PONG seq=75 rtt=13 ticks (216 ms)
+[00079950][DBG] PING seq=76 size=4096 sent
+[00080233][DBG] PONG seq=76 rtt=17 ticks (283 ms)
+[00080233][DBG] PING seq=77 size=4096 sent
+[00080516][DBG] PONG seq=77 rtt=17 ticks (283 ms)
+[00080516][DBG] PING seq=78 size=4096 sent
+[00080733][DBG] PONG seq=78 rtt=13 ticks (216 ms)
+[00080750][DBG] PING seq=79 size=4096 sent
+[00080950][DBG] PONG seq=79 rtt=13 ticks (216 ms)
+[00080950][DBG] PING seq=80 size=4096 sent
+[00081166][DBG] PONG seq=80 rtt=13 ticks (216 ms)
+[00081166][DBG] PING seq=81 size=4096 sent
+[00081450][DBG] PONG seq=81 rtt=17 ticks (283 ms)
+[00081466][DBG] PING seq=82 size=4096 sent
+[00081666][DBG] PONG seq=82 rtt=13 ticks (216 ms)
+[00081666][DBG] PING seq=83 size=4096 sent
+[00081950][DBG] PONG seq=83 rtt=17 ticks (283 ms)
+[00081966][DBG] PING seq=84 size=4096 sent
+[00082233][DBG] PONG seq=84 rtt=17 ticks (283 ms)
+[00082250][DBG] PING seq=85 size=4096 sent
+[00082500][DBG] PONG seq=85 rtt=16 ticks (266 ms)
+[00082500][DBG] PING seq=86 size=4096 sent
+[00082783][DBG] PONG seq=86 rtt=17 ticks (283 ms)
+[00082800][DBG] PING seq=87 size=4096 sent
+[00083000][DBG] PONG seq=87 rtt=13 ticks (216 ms)
+[00083000][DBG] PING seq=88 size=4096 sent
+[00083283][DBG] PONG seq=88 rtt=17 ticks (283 ms)
+[00083300][DBG] PING seq=89 size=4096 sent
+[00083566][DBG] PONG seq=89 rtt=17 ticks (283 ms)
+[00083583][DBG] PING seq=90 size=4096 sent
+[00083783][DBG] PONG seq=90 rtt=13 ticks (216 ms)
+[00083783][DBG] PING seq=91 size=4096 sent
+[00084000][DBG] PONG seq=91 rtt=13 ticks (216 ms)
+[00084000][DBG] PING seq=92 size=4096 sent
+[00084200][DBG] PONG seq=92 rtt=12 ticks (200 ms)
+[00084200][DBG] PING seq=93 size=4096 sent
+[00084483][DBG] PONG seq=93 rtt=17 ticks (283 ms)
+[00084500][DBG] PING seq=94 size=4096 sent
+[00084700][DBG] PONG seq=94 rtt=13 ticks (216 ms)
+[00084700][DBG] PING seq=95 size=4096 sent
+[00084983][DBG] PONG seq=95 rtt=17 ticks (283 ms)
+[00085000][DBG] PING seq=96 size=4096 sent
+[00085266][DBG] PONG seq=96 rtt=17 ticks (283 ms)
+[00085283][DBG] PING seq=97 size=4096 sent
+[00085550][DBG] PONG seq=97 rtt=17 ticks (283 ms)
+[00085566][DBG] PING seq=98 size=4096 sent
+[00085833][DBG] PONG seq=98 rtt=17 ticks (283 ms)
+[00085850][DBG] PING seq=99 size=4096 sent
+[00086050][DBG] PONG seq=99 rtt=13 ticks (216 ms)
+[00086050][DBG] PING seq=100 size=4096 sent
+[00086066][INF] SIZE 4096: min=166 max=400 avg=250 ms (sent=101 recv=100 lost=0)
+[00086066][INF] All latency tests complete
+[00086066][INF] ========================================
+[00086066][INF] LATENCY TEST RESULTS
+[00086066][INF] ========================================
+[00086066][INF]   16 bytes: min= 16 avg= 66 max=666 ms (loss=0%)
+[00086066][INF]   64 bytes: min= 16 avg= 66 max=183 ms (loss=0%)
+[00086066][INF]  256 bytes: min= 16 avg= 50 max=166 ms (loss=0%)
+[00086083][INF] 1024 bytes: min= 33 avg=116 max=200 ms (loss=0%)
+[00086083][INF] 4096 bytes: min=166 avg=250 max=400 ms (loss=0%)
+[00086083][INF] ========================================
+[00086083][INF] Streaming 32021 bytes of logs to partner...
+[00086483][WRN] PONG seq mismatch: got 100 expected 100
+[00087750][INF] Log streaming complete: 32074 bytes sent
+[00087750][INF] ========================================
+[00087750][INF] TEST EXITING - cleaning up...
+[00087750][INF] ========================================

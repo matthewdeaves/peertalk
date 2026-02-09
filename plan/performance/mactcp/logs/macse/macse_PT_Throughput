@@ -1,0 +1,106 @@
+[00000066][INF] ========================================
+[00000066][INF] PeerTalk Throughput Test
+[00000066][INF] Version: 1.0.0
+[00000066][INF] ========================================
+[00000083][INF] Initial memory: FreeMem=15664 MaxBlock=11442
+[00000133][INF] Initializing PeerTalk...
+[00000516][INF] Waiting for peer...
+[00000516][INF] Press any key to exit.
+[00005200][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00005216][INF] Connecting to peer...
+[00005416][INF] DISCOVERED: "MacThroughput" at 10.188.1.213:7354
+[00005433][INF] Connecting to peer...
+[00005600][INF] CONNECTED to peer 1
+[00005600][INF] Peer capabilities: max_msg=512 chunk=256 pressure=0
+[00005616][INF] Effective max message size: 512 bytes
+[00005633][INF] Starting throughput test with buffer size 256
+[00005733][INF] CONNECTED to peer 2
+[00005750][INF] Peer capabilities: max_msg=512 chunk=256 pressure=0
+[00005750][INF] Effective max message size: 512 bytes
+[00005766][INF] Starting throughput test with buffer size 256
+[00010816][INF] BUF 256: sent=0 KB/s (1 msgs) recv=3 KB/s (16 msgs) errs=0
+[00015383][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00016300][INF] BUF 256: sent=0 KB/s (1 msgs) recv=4 KB/s (44 msgs) errs=0
+[00020666][INF] DISCOVERED: "MacThroughput" at 10.188.1.213:7354
+[00021433][INF] BUF 256: sent=0 KB/s (1 msgs) recv=3 KB/s (62 msgs) errs=0
+[00025583][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00026783][INF] BUF 256: sent=0 KB/s (1 msgs) recv=3 KB/s (79 msgs) errs=0
+[00031783][INF] BUF 256: sent=0 KB/s (1 msgs) recv=3 KB/s (101 msgs) errs=0
+[00035783][INF] COMPLETE 256 bytes: SEND=0 KB/s (1 msgs) RECV=3 KB/s (109 msgs)
+[00035783][INF] Starting buffer size 512 test
+[00035883][INF] DISCOVERED: "MacThroughput" at 10.188.1.213:7354
+[00035950][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00037166][INF] BUF 512: sent=0 KB/s (0 msgs) recv=2 KB/s (4 msgs) errs=0
+[00042283][INF] BUF 512: sent=0 KB/s (0 msgs) recv=2 KB/s (15 msgs) errs=0
+[00046200][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00047300][INF] BUF 512: sent=0 KB/s (0 msgs) recv=1 KB/s (15 msgs) errs=0
+[00051866][INF] DISCOVERED: "MacThroughput" at 10.188.1.213:7354
+[00052516][INF] BUF 512: sent=0 KB/s (0 msgs) recv=0 KB/s (15 msgs) errs=0
+[00055966][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00057683][INF] BUF 512: sent=0 KB/s (0 msgs) recv=0 KB/s (15 msgs) errs=0
+[00062833][INF] BUF 512: sent=0 KB/s (0 msgs) recv=0 KB/s (15 msgs) errs=0
+[00066016][INF] COMPLETE 512 bytes: SEND=0 KB/s (0 msgs) RECV=0 KB/s (15 msgs)
+[00066033][INF] Starting buffer size 1024 test
+[00066100][INF] DISCOVERED: "MacThroughput" at 10.188.1.213:7354
+[00066516][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00067866][INF] BUF 1024: sent=0 KB/s (0 msgs) recv=0 KB/s (0 msgs) errs=0
+[00073083][INF] BUF 1024: sent=0 KB/s (0 msgs) recv=0 KB/s (0 msgs) errs=0
+[00076566][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00078216][INF] BUF 1024: sent=0 KB/s (0 msgs) recv=0 KB/s (11 msgs) errs=0
+[00081300][INF] DISCOVERED: "MacThroughput" at 10.188.1.213:7354
+[00083350][INF] BUF 1024: sent=0 KB/s (0 msgs) recv=1 KB/s (25 msgs) errs=0
+[00086350][INF] DISCONNECTED from peer 2 (reason=-5)
+[00086416][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00086433][INF] Connecting to peer...
+[00096300][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00096316][INF] Connecting to peer...
+[00106283][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00106300][INF] Connecting to peer...
+[00116600][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00116616][INF] Connecting to peer...
+[00126750][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00126766][INF] Connecting to peer...
+[00136683][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00136683][INF] Connecting to peer...
+[00146516][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00146533][INF] Connecting to peer...
+[00156566][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00156583][INF] Connecting to peer...
+[00166650][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00166666][INF] Connecting to peer...
+[00176483][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00176500][INF] Connecting to peer...
+[00186550][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00186550][INF] Connecting to peer...
+[00196616][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00196616][INF] Connecting to peer...
+[00206666][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00206683][INF] Connecting to peer...
+[00216733][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00216750][INF] Connecting to peer...
+[00226783][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00226800][INF] Connecting to peer...
+[00236833][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00236850][INF] Connecting to peer...
+[00246916][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00246916][INF] Connecting to peer...
+[00256783][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00256783][INF] Connecting to peer...
+[00266816][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00266833][INF] Connecting to peer...
+[00276883][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00276883][INF] Connecting to peer...
+[00286950][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00286966][INF] Connecting to peer...
+[00297000][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00297016][INF] Connecting to peer...
+[00307050][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00307066][INF] Connecting to peer...
+[00317133][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00317150][INF] Connecting to peer...
+[00327000][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00327016][INF] Connecting to peer...
+[00337033][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00337050][INF] Connecting to peer...
+[00347100][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00347116][INF] Connecting to peer...

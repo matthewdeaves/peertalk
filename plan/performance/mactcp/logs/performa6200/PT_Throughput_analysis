@@ -1,0 +1,164 @@
+[00000050][INF] ========================================
+[00000050][INF] PeerTalk Throughput Test
+[00000050][INF] Version: 1.0.0
+[00000050][INF] ========================================
+[00000050][INF] Initial memory: FreeMem=17280 MaxBlock=13152
+[00000050][INF] Initializing PeerTalk...
+[00000166][INF] Waiting for peer...
+[00000166][INF] Press any key to exit.
+[00004450][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00004450][INF] Connecting to peer...
+[00004533][INF] CONNECTED to peer 1
+[00004533][INF] Peer capabilities: max_msg=512 chunk=256 pressure=0
+[00004533][INF] Effective max message size: 512 bytes
+[00004533][INF] Starting throughput test with buffer size 256
+[00009566][INF] BUF 256: sent=10 KB/s (205 msgs) recv=9 KB/s (199 msgs) errs=0
+[00014550][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00014600][INF] BUF 256: sent=10 KB/s (433 msgs) recv=10 KB/s (427 msgs) errs=0
+[00019616][INF] BUF 256: sent=11 KB/s (668 msgs) recv=10 KB/s (662 msgs) errs=0
+[00024616][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00024666][INF] BUF 256: sent=11 KB/s (895 msgs) recv=11 KB/s (889 msgs) errs=0
+[00029666][INF] BUF 256: sent=11 KB/s (1125 msgs) recv=11 KB/s (1119 msgs) errs=0
+[00034566][INF] COMPLETE 256 bytes: SEND=11 KB/s (1346 msgs) RECV=11 KB/s (1340 msgs)
+[00034566][INF] Starting buffer size 512 test
+[00034650][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00034716][INF] BUF 512: sent=23 KB/s (7 msgs) recv=10 KB/s (6 msgs) errs=0
+[00039733][INF] BUF 512: sent=21 KB/s (224 msgs) recv=14 KB/s (156 msgs) errs=0
+[00044800][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00044866][INF] BUF 512: sent=21 KB/s (447 msgs) recv=14 KB/s (303 msgs) errs=0
+[00049933][INF] BUF 512: sent=21 KB/s (666 msgs) recv=14 KB/s (453 msgs) errs=0
+[00054950][INF] BUF 512: sent=21 KB/s (885 msgs) recv=14 KB/s (604 msgs) errs=0
+[00059983][INF] BUF 512: sent=21 KB/s (1102 msgs) recv=14 KB/s (749 msgs) errs=0
+[00064616][INF] COMPLETE 512 bytes: SEND=21 KB/s (1305 msgs) RECV=14 KB/s (886 msgs)
+[00064616][INF] Starting buffer size 1024 test
+[00064666][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00065066][INF] BUF 1024: sent=35 KB/s (16 msgs) recv=11 KB/s (10 msgs) errs=0
+[00070133][INF] BUF 1024: sent=42 KB/s (235 msgs) recv=14 KB/s (92 msgs) errs=0
+[00074683][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00075183][INF] BUF 1024: sent=43 KB/s (460 msgs) recv=14 KB/s (164 msgs) errs=0
+[00080200][INF] BUF 1024: sent=43 KB/s (677 msgs) recv=14 KB/s (237 msgs) errs=0
+[00084750][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00085233][INF] BUF 1024: sent=43 KB/s (894 msgs) recv=14 KB/s (309 msgs) errs=0
+[00090300][INF] BUF 1024: sent=42 KB/s (1103 msgs) recv=14 KB/s (377 msgs) errs=0
+[00094650][INF] COMPLETE 1024 bytes: SEND=42 KB/s (1278 msgs) RECV=14 KB/s (435 msgs)
+[00094650][INF] Starting buffer size 2048 test
+[00094833][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00095366][INF] BUF 2048: sent=81 KB/s (29 msgs) recv=11 KB/s (8 msgs) errs=0
+[00100716][INF] BUF 2048: sent=75 KB/s (228 msgs) recv=10 KB/s (39 msgs) errs=0
+[00104866][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00105783][INF] BUF 2048: sent=86 KB/s (482 msgs) recv=11 KB/s (73 msgs) errs=0
+[00110800][INF] BUF 2048: sent=92 KB/s (743 msgs) recv=12 KB/s (109 msgs) errs=0
+[00115000][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00115866][INF] BUF 2048: sent=94 KB/s (1002 msgs) recv=12 KB/s (144 msgs) errs=0
+[00120950][INF] BUF 2048: sent=96 KB/s (1267 msgs) recv=13 KB/s (180 msgs) errs=0
+[00124733][INF] COMPLETE 2048 bytes: SEND=97 KB/s (1460 msgs) RECV=13 KB/s (207 msgs)
+[00124733][INF] Starting buffer size 4096 test
+[00124816][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00126016][INF] BUF 4096: sent=162 KB/s (52 msgs) recv=12 KB/s (8 msgs) errs=0
+[00131150][INF] BUF 4096: sent=162 KB/s (260 msgs) recv=11 KB/s (22 msgs) errs=0
+[00134900][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00136250][INF] BUF 4096: sent=164 KB/s (473 msgs) recv=11 KB/s (38 msgs) errs=0
+[00141333][INF] BUF 4096: sent=164 KB/s (683 msgs) recv=11 KB/s (52 msgs) errs=0
+[00145050][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00146333][INF] BUF 4096: sent=162 KB/s (875 msgs) recv=11 KB/s (66 msgs) errs=0
+[00151483][INF] BUF 4096: sent=4 KB/s (1082 msgs) recv=11 KB/s (80 msgs) errs=0
+[00154800][INF] COMPLETE 4096 bytes: SEND=23 KB/s (1226 msgs) RECV=11 KB/s (89 msgs)
+[00154816][INF] All throughput tests complete
+[00154816][INF] ========================================
+[00154816][INF] THROUGHPUT TEST RESULTS
+[00154816][INF] ========================================
+[00154816][INF]  256 bytes: SEND   11 KB/s  RECV   11 KB/s  (errs=0)
+[00154816][INF]  512 bytes: SEND   21 KB/s  RECV   14 KB/s  (errs=0)
+[00154816][INF] 1024 bytes: SEND   42 KB/s  RECV   14 KB/s  (errs=0)
+[00154816][INF] 2048 bytes: SEND   97 KB/s  RECV   13 KB/s  (errs=0)
+[00154833][INF] 4096 bytes: SEND   23 KB/s  RECV   11 KB/s  (errs=0)
+[00154833][INF] ========================================
+[00154833][INF] Memory: FreeMem=2992 MaxBlock=2784
+[00154833][INF] Streaming 3959 bytes of logs to partner...
+[00154933][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00155216][INF] Log streaming complete: 4011 bytes sent
+[00155216][INF] ========================================
+[00155216][INF] TEST EXITING - cleaning up...
+[00155216][INF] ========================================
+[00000033][INF] ========================================
+[00000033][INF] PeerTalk Throughput Test
+[00000033][INF] Version: 1.0.0
+[00000033][INF] ========================================
+[00000033][INF] Initial memory: FreeMem=17280 MaxBlock=13152
+[00000033][INF] Initializing PeerTalk...
+[00000133][INF] Waiting for peer...
+[00000133][INF] Press any key to exit.
+[00007833][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00007833][INF] Connecting to peer...
+[00007933][INF] CONNECTED to peer 1
+[00007933][INF] Peer capabilities: max_msg=512 chunk=256 pressure=0
+[00007933][INF] Effective max message size: 512 bytes
+[00007933][INF] Starting throughput test with buffer size 256
+[00013083][INF] BUF 256: sent=11 KB/s (239 msgs) recv=11 KB/s (232 msgs) errs=0
+[00017900][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00018133][INF] BUF 256: sent=11 KB/s (469 msgs) recv=11 KB/s (460 msgs) errs=0
+[00023150][INF] BUF 256: sent=11 KB/s (699 msgs) recv=11 KB/s (692 msgs) errs=0
+[00028000][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00028183][INF] BUF 256: sent=11 KB/s (932 msgs) recv=11 KB/s (926 msgs) errs=0
+[00033250][INF] BUF 256: sent=11 KB/s (1156 msgs) recv=11 KB/s (1148 msgs) errs=0
+[00038000][INF] COMPLETE 256 bytes: SEND=11 KB/s (1374 msgs) RECV=11 KB/s (1368 msgs)
+[00038000][INF] Starting buffer size 512 test
+[00038016][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00038316][INF] BUF 512: sent=17 KB/s (11 msgs) recv=7 KB/s (8 msgs) errs=0
+[00043350][INF] BUF 512: sent=20 KB/s (218 msgs) recv=10 KB/s (118 msgs) errs=0
+[00048083][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00048366][INF] BUF 512: sent=21 KB/s (440 msgs) recv=11 KB/s (233 msgs) errs=0
+[00053350][INF] BUF 512: sent=21 KB/s (653 msgs) recv=11 KB/s (343 msgs) errs=0
+[00058000][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00058650][INF] BUF 512: sent=20 KB/s (861 msgs) recv=10 KB/s (455 msgs) errs=0
+[00063716][INF] BUF 512: sent=20 KB/s (1074 msgs) recv=11 KB/s (601 msgs) errs=0
+[00068066][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00068133][INF] COMPLETE 512 bytes: SEND=21 KB/s (1272 msgs) RECV=12 KB/s (735 msgs)
+[00068133][INF] Starting buffer size 1024 test
+[00068816][INF] BUF 1024: sent=38 KB/s (26 msgs) recv=11 KB/s (16 msgs) errs=0
+[00073866][INF] BUF 1024: sent=39 KB/s (229 msgs) recv=13 KB/s (89 msgs) errs=0
+[00078100][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00078900][INF] BUF 1024: sent=41 KB/s (451 msgs) recv=13 KB/s (161 msgs) errs=0
+[00083983][INF] BUF 1024: sent=42 KB/s (673 msgs) recv=13 KB/s (232 msgs) errs=0
+[00088100][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00089033][INF] BUF 1024: sent=42 KB/s (898 msgs) recv=13 KB/s (306 msgs) errs=0
+[00094116][INF] BUF 1024: sent=43 KB/s (1124 msgs) recv=14 KB/s (379 msgs) errs=0
+[00098250][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00098433][INF] COMPLETE 1024 bytes: SEND=43 KB/s (1312 msgs) RECV=14 KB/s (441 msgs)
+[00098450][INF] Starting buffer size 2048 test
+[00099166][INF] BUF 2048: sent=86 KB/s (31 msgs) recv=13 KB/s (10 msgs) errs=0
+[00104216][INF] BUF 2048: sent=99 KB/s (288 msgs) recv=13 KB/s (47 msgs) errs=0
+[00108300][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00109266][INF] BUF 2048: sent=100 KB/s (544 msgs) recv=13 KB/s (81 msgs) errs=0
+[00114250][INF] BUF 2048: sent=101 KB/s (800 msgs) recv=13 KB/s (116 msgs) errs=0
+[00118150][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00119300][INF] BUF 2048: sent=101 KB/s (1054 msgs) recv=13 KB/s (151 msgs) errs=0
+[00124366][INF] BUF 2048: sent=96 KB/s (1250 msgs) recv=13 KB/s (178 msgs) errs=0
+[00128166][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00128550][INF] COMPLETE 2048 bytes: SEND=97 KB/s (1460 msgs) RECV=13 KB/s (206 msgs)
+[00128550][INF] Starting buffer size 4096 test
+[00129400][INF] BUF 4096: sent=155 KB/s (33 msgs) recv=11 KB/s (5 msgs) errs=0
+[00134450][INF] BUF 4096: sent=161 KB/s (238 msgs) recv=10 KB/s (20 msgs) errs=0
+[00139466][INF] BUF 4096: sent=164 KB/s (448 msgs) recv=11 KB/s (35 msgs) errs=0
+[00144516][INF] BUF 4096: sent=162 KB/s (650 msgs) recv=11 KB/s (49 msgs) errs=0
+[00148283][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00149500][INF] BUF 4096: sent=162 KB/s (852 msgs) recv=11 KB/s (63 msgs) errs=0
+[00154583][INF] BUF 4096: sent=2 KB/s (1062 msgs) recv=11 KB/s (77 msgs) errs=0
+[00158433][INF] DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+[00158616][INF] COMPLETE 4096 bytes: SEND=24 KB/s (1229 msgs) RECV=11 KB/s (89 msgs)
+[00158616][INF] All throughput tests complete
+[00158616][INF] ========================================
+[00158616][INF] THROUGHPUT TEST RESULTS
+[00158616][INF] ========================================
+[00158633][INF]  256 bytes: SEND   11 KB/s  RECV   11 KB/s  (errs=0)
+[00158633][INF]  512 bytes: SEND   21 KB/s  RECV   12 KB/s  (errs=0)
+[00158633][INF] 1024 bytes: SEND   43 KB/s  RECV   14 KB/s  (errs=0)
+[00158633][INF] 2048 bytes: SEND   97 KB/s  RECV   13 KB/s  (errs=0)
+[00158633][INF] 4096 bytes: SEND   24 KB/s  RECV   11 KB/s  (errs=0)
+[00158633][INF] ========================================
+[00158633][INF] Memory: FreeMem=2992 MaxBlock=2784
+[00158633][INF] Streaming 4012 bytes of logs to partner...
+[00159000][INF] Log streaming complete: 4064 bytes sent
+[00159000][INF] ========================================
+[00159016][INF] TEST EXITING - cleaning up...
+[00159016][INF] ========================================
