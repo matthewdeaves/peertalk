@@ -86,6 +86,8 @@ extern int pt_mactcp_tcp_send(struct pt_context *ctx, struct pt_peer *peer,
                                const void *data, uint16_t len);
 extern int pt_mactcp_tcp_send_with_flags(struct pt_context *ctx, struct pt_peer *peer,
                                           const void *data, uint16_t len, uint8_t flags);
+extern int pt_mactcp_tcp_send_async(struct pt_context *ctx, struct pt_peer *peer,
+                                     const void *data, uint16_t len, uint8_t flags);
 extern int pt_mactcp_send_capability(struct pt_context *ctx, struct pt_peer *peer);
 extern int pt_mactcp_issue_async_recv(struct pt_context *ctx, int stream_idx);
 
@@ -332,22 +334,38 @@ static void pt_mactcp_poll_connected(struct pt_context *ctx,
         return;
     }
 
-    /* Tier 2: Send large message from direct buffer first (priority) */
+    /* Tier 2: Send large message from direct buffer first (priority)
+     * Use async send if pipeline available for better throughput.
+     */
     if (pt_direct_buffer_ready(&peer->send_direct)) {
         pt_direct_buffer *buf = &peer->send_direct;
+        int use_async;
 
         /* Mark as sending before the actual send */
         pt_direct_buffer_mark_sending(buf);
 
-        result = pt_mactcp_tcp_send_with_flags(ctx, peer, buf->data, buf->length, buf->msg_flags);
+        /* Try async first if pipeline available */
+        use_async = peer->pipeline.initialized &&
+                    (peer->pipeline.pending_count < PT_SEND_PIPELINE_DEPTH);
+
+        if (use_async) {
+            result = pt_mactcp_tcp_send_async(ctx, peer, buf->data, buf->length, buf->msg_flags);
+            if (result == PT_ERR_WOULD_BLOCK) {
+                /* Pipeline full - use sync */
+                result = pt_mactcp_tcp_send_with_flags(ctx, peer, buf->data, buf->length, buf->msg_flags);
+            }
+        } else {
+            result = pt_mactcp_tcp_send_with_flags(ctx, peer, buf->data, buf->length, buf->msg_flags);
+        }
 
         /* Complete the buffer (returns to IDLE state) */
         pt_direct_buffer_complete(buf);
 
         if (result == 0) {
             PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
-                "Sent %u bytes (Tier 2) to peer %u",
-                (unsigned)buf->length, (unsigned)peer->hot.id);
+                "Sent %u bytes (Tier 2%s) to peer %u",
+                (unsigned)buf->length, use_async ? " async" : "",
+                (unsigned)peer->hot.id);
         } else {
             PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
                 "Tier 2 send to peer %u failed: %d",
@@ -361,22 +379,45 @@ static void pt_mactcp_poll_connected(struct pt_context *ctx,
      * On 68k Mac, poll rate is ~60Hz. Draining one message = 60 msg/sec max.
      * With fragmentation (17 chunks per 4KB message), this causes queue
      * overflow. Drain multiple messages, stopping on WOULD_BLOCK or errors.
+     *
+     * PERFORMANCE: Use async sends when pipeline slots available.
+     * Async sends don't block on ACK, allowing multiple sends in-flight.
+     * Falls back to sync if pipeline full (still works, just slower).
      */
     if (peer->send_queue) {
         pt_queue *q = peer->send_queue;
         int drain_count = 0;
         const int max_drain = 8;  /* Fewer than POSIX due to slower CPU */
+        int use_async;
+
+        /* Check if async pipeline is available */
+        use_async = peer->pipeline.initialized &&
+                    (peer->pipeline.pending_count < PT_SEND_PIPELINE_DEPTH);
 
         while (drain_count < max_drain &&
                pt_queue_pop_priority_direct(q, &data, &len) == 0) {
             uint8_t slot_flags = q->slots[q->pending_pop_slot].flags;
+            uint8_t msg_flags = (slot_flags & PT_SLOT_FRAGMENT) ? PT_MSG_FLAG_FRAGMENT : 0;
 
-            /* Check if this is a fragment - needs PT_MSG_FLAG_FRAGMENT */
-            if (slot_flags & PT_SLOT_FRAGMENT) {
-                result = pt_mactcp_tcp_send_with_flags(ctx, peer, data, len,
-                                                        PT_MSG_FLAG_FRAGMENT);
+            /* Try async send first if pipeline available */
+            if (use_async) {
+                result = pt_mactcp_tcp_send_async(ctx, peer, data, len, msg_flags);
+                if (result == PT_ERR_WOULD_BLOCK) {
+                    /* Pipeline full - fall back to sync for this message */
+                    use_async = 0;
+                    if (msg_flags & PT_MSG_FLAG_FRAGMENT) {
+                        result = pt_mactcp_tcp_send_with_flags(ctx, peer, data, len, msg_flags);
+                    } else {
+                        result = pt_mactcp_tcp_send(ctx, peer, data, len);
+                    }
+                }
             } else {
-                result = pt_mactcp_tcp_send(ctx, peer, data, len);
+                /* No async available - use sync */
+                if (msg_flags & PT_MSG_FLAG_FRAGMENT) {
+                    result = pt_mactcp_tcp_send_with_flags(ctx, peer, data, len, msg_flags);
+                } else {
+                    result = pt_mactcp_tcp_send(ctx, peer, data, len);
+                }
             }
 
             if (result == PT_ERR_WOULD_BLOCK) {
@@ -391,9 +432,10 @@ static void pt_mactcp_poll_connected(struct pt_context *ctx,
 
             if (result == 0) {
                 PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
-                    "Sent %u bytes (Tier 1%s) to peer %u",
+                    "Sent %u bytes (Tier 1%s%s) to peer %u",
                     (unsigned)len,
                     (slot_flags & PT_SLOT_FRAGMENT) ? " frag" : "",
+                    use_async ? " async" : "",
                     (unsigned)peer->hot.id);
             } else {
                 /* Network error - message lost, continue draining */
