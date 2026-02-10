@@ -152,8 +152,9 @@ static void log_stream_callback(
     }
 
     /* Sanity check: if length is already corrupt/too large, stop capturing.
-     * This prevents unsigned underflow in the remaining calculation. */
-    if (g_log_stream.length >= LOG_STREAM_BUFFER_SIZE - LOG_STREAM_HEADER_SIZE) {
+     * This prevents unsigned underflow in the remaining calculation.
+     * Use > instead of >= to allow capturing up to the last byte. */
+    if (g_log_stream.length > LOG_STREAM_BUFFER_SIZE - LOG_STREAM_HEADER_SIZE) {
         g_log_stream.overflow = 1;
         return;
     }

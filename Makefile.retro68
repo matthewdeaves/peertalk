@@ -157,13 +157,23 @@ $(TEST_BIN) $(TEST_DSK): $(TEST_CODE)
 $(BUILD_DIR)/test_%.code.bin: $(BUILD_DIR)/tests/mac/test_%.o $(LIBNAME)
 	$(CC) $(CFLAGS) -o $@ $< -L$(BUILD_DIR) -lpeertalk_$(PLATFORM)
 
-$(BUILD_DIR)/test_%.bin: $(BUILD_DIR)/test_%.code.bin tests/mac/PeerTalkTest.r
-	$(REZ) $(REZ_TEMPLATES)/Retro68APPL.r tests/mac/PeerTalkTest.r \
-		--copy $< \
-		-o $@ \
-		-t "APPL" -c "PTTK" \
-		--cc $(BUILD_DIR)/test_$*.dsk
-	@echo "Built: $@ (transfer to Mac) - 2MB heap requested"
+# Use per-app resource file if it exists, otherwise fall back to shared PeerTalkTest.r
+$(BUILD_DIR)/test_%.bin: $(BUILD_DIR)/test_%.code.bin
+	@if [ -f tests/mac/test_$*.r ]; then \
+		$(REZ) $(REZ_TEMPLATES)/Retro68APPL.r tests/mac/test_$*.r \
+			--copy $< \
+			-o $@ \
+			-t "APPL" -c "PTTK" \
+			--cc $(BUILD_DIR)/test_$*.dsk; \
+		echo "Built: $@ (with custom resources from test_$*.r)"; \
+	else \
+		$(REZ) $(REZ_TEMPLATES)/Retro68APPL.r tests/mac/PeerTalkTest.r \
+			--copy $< \
+			-o $@ \
+			-t "APPL" -c "PTTK" \
+			--cc $(BUILD_DIR)/test_$*.dsk; \
+		echo "Built: $@ (with shared PeerTalkTest.r)"; \
+	fi
 
 # Individual performance test targets
 test_latency: $(BUILD_DIR)/test_latency.bin

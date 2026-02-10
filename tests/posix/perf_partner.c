@@ -438,20 +438,138 @@ static void log_receiver_append(const void *data, uint16_t len)
     }
 }
 
+/* ========================================================================== */
+/* Machine Registry (configurable via environment)                             */
+/* ========================================================================== */
+
+#define MAX_MACHINE_ENTRIES 16
+
+typedef struct {
+    uint32_t    ip;
+    char        name[32];
+} MachineEntry;
+
+static MachineEntry g_machine_registry[MAX_MACHINE_ENTRIES];
+static int g_machine_count = 0;
+static int g_registry_loaded = 0;
+
+/**
+ * Parse IP address string to uint32_t
+ */
+static uint32_t parse_ip(const char *ip_str)
+{
+    unsigned int a, b, c, d;
+    if (sscanf(ip_str, "%u.%u.%u.%u", &a, &b, &c, &d) == 4) {
+        return ((a & 0xFF) << 24) | ((b & 0xFF) << 16) |
+               ((c & 0xFF) << 8) | (d & 0xFF);
+    }
+    return 0;
+}
+
+/**
+ * Load machine registry from MACHINE_REGISTRY environment variable
+ *
+ * Format: "IP:name,IP:name,..."
+ * Example: "10.188.1.55:macse,10.188.1.213:performa6200"
+ */
+static void load_machine_registry(void)
+{
+    const char *env;
+    char *copy, *token, *saveptr;
+
+    if (g_registry_loaded) return;
+    g_registry_loaded = 1;
+
+    /* Default entries (fallback if env not set) */
+    g_machine_registry[0].ip = 0x0ABC0137;  /* 10.188.1.55 */
+    strncpy(g_machine_registry[0].name, "macse", sizeof(g_machine_registry[0].name) - 1);
+    g_machine_registry[1].ip = 0x0ABC01D5;  /* 10.188.1.213 */
+    strncpy(g_machine_registry[1].name, "performa6200", sizeof(g_machine_registry[1].name) - 1);
+    g_machine_count = 2;
+
+    /* Override with environment variable if set */
+    env = getenv("MACHINE_REGISTRY");
+    if (!env || !*env) return;
+
+    copy = strdup(env);
+    if (!copy) return;
+
+    g_machine_count = 0;
+    token = strtok_r(copy, ",", &saveptr);
+    while (token && g_machine_count < MAX_MACHINE_ENTRIES) {
+        char *colon = strchr(token, ':');
+        if (colon) {
+            *colon = '\0';
+            g_machine_registry[g_machine_count].ip = parse_ip(token);
+            strncpy(g_machine_registry[g_machine_count].name, colon + 1,
+                    sizeof(g_machine_registry[g_machine_count].name) - 1);
+            g_machine_registry[g_machine_count].name[31] = '\0';
+            g_machine_count++;
+        }
+        token = strtok_r(NULL, ",", &saveptr);
+    }
+
+    free(copy);
+
+    if (g_config.verbose) {
+        printf("[REGISTRY] Loaded %d machines from MACHINE_REGISTRY\n", g_machine_count);
+    }
+}
+
 /**
  * Determine machine folder from peer IP address
  */
 static const char *get_machine_folder(uint32_t ip)
 {
-    /* Known machine IPs - update as machines are added */
-    switch (ip) {
-    case 0x0ABC0137:  /* 10.188.1.55 = Mac SE */
-        return "macse";
-    case 0x0ABC01D5:  /* 10.188.1.213 = Performa 6200 */
-        return "performa6200";
-    default:
-        return "unknown";
+    int i;
+    load_machine_registry();
+
+    for (i = 0; i < g_machine_count; i++) {
+        if (g_machine_registry[i].ip == ip) {
+            return g_machine_registry[i].name;
+        }
     }
+    return "unknown";
+}
+
+/* ========================================================================== */
+/* Test Name Extraction                                                        */
+/* ========================================================================== */
+
+/**
+ * Extract test name from log content
+ *
+ * Searches for test headers like "PeerTalk Latency Test" and returns
+ * lowercase test name (e.g., "latency").
+ *
+ * @param buffer  Log data buffer
+ * @param len     Length of log data
+ * @return        Static string with test name, or "test" if not found
+ */
+static const char *extract_test_name(const uint8_t *buffer, uint32_t len)
+{
+    static char name[32];
+    static const struct {
+        const char *pattern;
+        const char *name;
+    } tests[] = {
+        { "Latency Test", "latency" },
+        { "Throughput Test", "throughput" },
+        { "Stress Test", "stress" },
+        { "Discovery Test", "discovery" },
+        { "MacTCP Test", "mactcp" },
+        { NULL, NULL }
+    };
+    int i;
+
+    for (i = 0; tests[i].pattern != NULL; i++) {
+        if (memmem(buffer, len, tests[i].pattern, strlen(tests[i].pattern))) {
+            strncpy(name, tests[i].name, sizeof(name) - 1);
+            name[sizeof(name) - 1] = '\0';
+            return name;
+        }
+    }
+    return "test";
 }
 
 /**
@@ -465,6 +583,9 @@ static void log_receiver_check_complete(void)
     time_t now;
     struct tm *tm_info;
     const char *machine;
+    const char *test_name;
+    uint32_t log_data_offset;
+    uint32_t log_data_len;
 
     if (!g_log_receiver.active) return;
     if (g_log_receiver.received_length < g_log_receiver.expected_length) return;
@@ -473,13 +594,18 @@ static void log_receiver_check_complete(void)
     machine = get_machine_folder(g_log_receiver.peer_ip);
     snprintf(machine_folder, sizeof(machine_folder), "plan/performance/mactcp/%s", machine);
 
+    /* Extract test name from log content */
+    log_data_offset = LOG_STREAM_HEADER_SIZE;
+    log_data_len = g_log_receiver.received_length - log_data_offset;
+    test_name = extract_test_name(g_log_receiver.buffer + log_data_offset, log_data_len);
+
     /* Generate filename with timestamp - save to machine-specific folder */
     now = time(NULL);
     tm_info = localtime(&now);
     snprintf(filename, sizeof(filename),
              "%s/%s_%04d%02d%02d_%02d%02d%02d.log",
              machine_folder,
-             g_log_receiver.peer_name[0] ? g_log_receiver.peer_name : "test",
+             test_name,
              tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday,
              tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec);
 

@@ -392,7 +392,21 @@ class ClassicMacHardwareServer:
                     "type": "object",
                     "properties": {
                         "machine": {"type": "string", "description": f"Machine ID ({machine_ids})"},
-                        "scope": {"type": "string", "enum": ["old_files", "all"], "default": "old_files"}
+                        "scope": {
+                            "type": "string",
+                            "enum": ["old_files", "test_binaries", "logs", "launchers", "all"],
+                            "default": "old_files",
+                            "description": "Cleanup scope: old_files (.old/.bak/.tmp), test_binaries (test_*.bin), logs (PT_*), launchers (LaunchAPPL*), all"
+                        },
+                        "dry_run": {
+                            "type": "boolean",
+                            "default": False,
+                            "description": "Preview what would be deleted without actually deleting"
+                        },
+                        "pattern": {
+                            "type": "string",
+                            "description": "Glob pattern to match files (e.g., 'test_*.bin')"
+                        }
                     },
                     "required": ["machine"]
                 }
@@ -806,11 +820,19 @@ class ClassicMacHardwareServer:
         except Exception as e:
             return [TextContent(type="text", text=f"❌ Error: {e}")]
 
+    def _matches_pattern(self, filename: str, pattern: str) -> bool:
+        """Simple glob pattern matching (supports * and ?)."""
+        import fnmatch
+        return fnmatch.fnmatch(filename, pattern)
+
     def _tool_cleanup_machine(self, args: dict) -> list[TextContent]:
-        """Clean up old files."""
+        """Clean up files from Classic Mac."""
         machine_id = args["machine"]
         scope = args.get("scope", "old_files")
+        dry_run = args.get("dry_run", False)
+        pattern = args.get("pattern")
 
+        found = []
         removed = []
 
         def operation(ftp):
@@ -822,36 +844,67 @@ class ClassicMacHardwareServer:
                 if len(parts) < 9:
                     continue
                 filename = parts[8]
+                is_dir = item.startswith('d')
 
                 if filename in ['.', '..']:
                     continue
 
-                should_delete = False
-                if scope == "old_files":
-                    should_delete = filename.endswith(('.old', '.bak', '.tmp'))
-                elif scope == "all":
-                    should_delete = True
+                # Skip directories for most operations
+                if is_dir:
+                    continue
 
-                if should_delete and not item.startswith('d'):
-                    try:
-                        ftp.delete(filename)
-                        removed.append(filename)
-                    except:
-                        pass
+                should_delete = False
+
+                # If pattern is provided, use it exclusively
+                if pattern:
+                    should_delete = self._matches_pattern(filename, pattern)
+                else:
+                    # Otherwise use scope-based matching
+                    if scope == "old_files":
+                        should_delete = filename.endswith(('.old', '.bak', '.tmp'))
+                    elif scope == "test_binaries":
+                        should_delete = (filename.startswith('test_') and
+                                        filename.endswith('.bin'))
+                    elif scope == "logs":
+                        should_delete = filename.startswith('PT_')
+                    elif scope == "launchers":
+                        should_delete = filename.startswith('LaunchAPPL')
+                    elif scope == "all":
+                        should_delete = True
+
+                if should_delete:
+                    found.append(filename)
+                    if not dry_run:
+                        try:
+                            ftp.delete(filename)
+                            removed.append(filename)
+                        except Exception as e:
+                            pass  # Continue with other files
 
             return True
 
         self._ftp_operation(machine_id, operation)
         machine = self.machines[machine_id]
 
-        if removed:
-            return [TextContent(
-                type="text",
-                text=f"✅ Cleaned {machine['name']}:\n\n" +
-                     "\n".join(f"  - {f}" for f in removed)
-            )]
+        if dry_run:
+            if found:
+                return [TextContent(
+                    type="text",
+                    text=f"🔍 DRY RUN - Would delete from {machine['name']}:\n\n" +
+                         "\n".join(f"  - {f}" for f in found) +
+                         f"\n\nRun without dry_run=true to actually delete."
+                )]
+            else:
+                return [TextContent(type="text", text=f"🔍 DRY RUN - Nothing matches on {machine['name']}")]
         else:
-            return [TextContent(type="text", text=f"✅ Nothing to clean on {machine['name']}")]
+            if removed:
+                return [TextContent(
+                    type="text",
+                    text=f"✅ Cleaned {machine['name']}:\n\n" +
+                         "\n".join(f"  - {f}" for f in removed)
+                )]
+            else:
+                return [TextContent(type="text", text=f"✅ Nothing to clean on {machine['name']}")]
 
     # =========================================================================
     # Prompts

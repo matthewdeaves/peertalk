@@ -136,6 +136,7 @@ compile_commands.json
 test_*
 !test_*.c
 !test_*.h
+!test_*.r
 
 # Test results
 tools/testing/results/
