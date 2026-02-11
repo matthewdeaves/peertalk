@@ -90,7 +90,7 @@ TEST_SRCS = tests/mac/test_mactcp.c
 TEST_OBJS = $(TEST_SRCS:%.c=$(BUILD_DIR)/%.o)
 
 # Performance test sources
-PERF_TESTS = test_latency test_throughput test_stress test_discovery
+PERF_TESTS = test_latency test_throughput test_stress test_discovery test_stream
 
 # Output files
 LIBNAME = $(BUILD_DIR)/libpeertalk_$(PLATFORM).a
@@ -194,7 +194,10 @@ test_stress: $(BUILD_DIR)/test_stress.bin
 test_discovery: $(BUILD_DIR)/test_discovery.bin
 	@echo "Discovery test built: $<"
 
-.PHONY: test_latency test_throughput test_stress test_discovery perf_tests
+test_stream: $(BUILD_DIR)/test_stream.bin
+	@echo "Stream test built: $<"
+
+.PHONY: test_latency test_throughput test_stress test_discovery test_stream perf_tests
 
 # ============================================================================
 # Low-Memory Performance Tests (for 4MB Macs like SE, Plus, Classic)

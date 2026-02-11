@@ -53,8 +53,43 @@ typedef enum {
     MODE_ECHO,      /* Echo all received messages back (for latency tests) */
     MODE_STREAM,    /* Stream data to connected peer (for throughput tests) */
     MODE_STRESS,    /* Rapid connect/disconnect cycles */
-    MODE_DISCOVERY  /* Just count discovery packets */
+    MODE_DISCOVERY, /* Just count discovery packets */
+    MODE_STREAM_TEST /* One-way streaming test (Mac controls phases) */
 } TestMode;
+
+/* ========================================================================== */
+/* Stream Test Protocol (for MODE_STREAM_TEST)                                 */
+/* ========================================================================== */
+
+#define STREAM_MAGIC_0  'S'
+#define STREAM_MAGIC_1  'T'
+#define STREAM_MAGIC_2  'R'
+#define STREAM_MAGIC_3  'M'
+
+#define STREAM_CMD_START_SEND  0x01  /* Mac about to send, we should sink */
+#define STREAM_CMD_START_RECV  0x02  /* Mac ready to receive, we should stream */
+#define STREAM_CMD_STOP        0x03  /* Phase complete */
+#define STREAM_CMD_ACK         0x04  /* We acknowledge command */
+
+typedef struct {
+    char     magic[4];
+    uint8_t  command;
+    uint8_t  reserved;
+    uint16_t msg_size;
+    uint32_t duration_ms;
+} StreamControl;
+
+/* Stream test state */
+typedef struct {
+    int      active;           /* 1 if in a stream test phase */
+    int      phase;            /* 0=sink (receiving), 1=stream (sending) */
+    uint16_t msg_size;         /* Message size for current phase */
+    uint32_t duration_ms;      /* Duration for current phase */
+    uint64_t phase_start_us;   /* Microseconds when phase started */
+    uint64_t bytes_sunk;       /* Bytes received in sink phase */
+    uint64_t bytes_streamed;   /* Bytes sent in stream phase */
+    PeerTalk_PeerID peer_id;   /* Peer we're testing with */
+} StreamTestState;
 
 typedef struct {
     TestMode        mode;
@@ -208,6 +243,7 @@ static int g_streaming = 0;
 static uint8_t *g_stream_buffer = NULL;
 static LogReceiver g_log_receiver = {0};
 static EchoQueue g_echo_queue = {0};
+static StreamTestState g_stream_test = {0};
 
 /* ========================================================================== */
 /* Utility Functions                                                           */
@@ -417,6 +453,174 @@ static void print_metrics_summary(const TestMetrics *m)
     }
 
     printf("=====================================\n\n");
+}
+
+/* ========================================================================== */
+/* Stream Test Mode (One-Way Throughput Testing)                               */
+/* ========================================================================== */
+
+/**
+ * Send a stream control acknowledgment
+ */
+static void stream_test_send_ack(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id)
+{
+    StreamControl ack;
+    memset(&ack, 0, sizeof(ack));
+    ack.magic[0] = STREAM_MAGIC_0;
+    ack.magic[1] = STREAM_MAGIC_1;
+    ack.magic[2] = STREAM_MAGIC_2;
+    ack.magic[3] = STREAM_MAGIC_3;
+    ack.command = STREAM_CMD_ACK;
+
+    PeerTalk_Error err = PeerTalk_Send(ctx, peer_id, &ack, sizeof(ack));
+    if (err != PT_OK) {
+        printf("[STREAM-TEST] Failed to send ACK: %d\n", err);
+    } else if (g_config.verbose) {
+        printf("[STREAM-TEST] Sent ACK\n");
+    }
+}
+
+/**
+ * Handle stream control message from Mac
+ */
+static void stream_test_handle_control(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
+                                        const StreamControl *ctrl)
+{
+    switch (ctrl->command) {
+    case STREAM_CMD_START_SEND:
+        /* Mac is about to start sending - we become a sink */
+        g_stream_test.active = 1;
+        g_stream_test.phase = 0;  /* Sink mode */
+        g_stream_test.msg_size = ntohs(ctrl->msg_size);
+        g_stream_test.duration_ms = ntohl(ctrl->duration_ms);
+        g_stream_test.phase_start_us = get_time_us();
+        g_stream_test.bytes_sunk = 0;
+        g_stream_test.peer_id = peer_id;
+        printf("[STREAM-TEST] SINK phase started: expecting %uB messages for %ums\n",
+               g_stream_test.msg_size, g_stream_test.duration_ms);
+        stream_test_send_ack(ctx, peer_id);
+        break;
+
+    case STREAM_CMD_START_RECV:
+        /* Mac is ready to receive - we should start streaming */
+        g_stream_test.active = 1;
+        g_stream_test.phase = 1;  /* Stream mode */
+        g_stream_test.msg_size = ntohs(ctrl->msg_size);
+        g_stream_test.duration_ms = ntohl(ctrl->duration_ms);
+        g_stream_test.phase_start_us = get_time_us();
+        g_stream_test.bytes_streamed = 0;
+        g_stream_test.peer_id = peer_id;
+
+        /* Allocate stream buffer if needed */
+        if (g_stream_buffer == NULL || g_config.message_size < g_stream_test.msg_size) {
+            free(g_stream_buffer);
+            g_stream_buffer = malloc(g_stream_test.msg_size);
+            if (g_stream_buffer) {
+                /* Fill with pattern */
+                for (uint16_t i = 0; i < g_stream_test.msg_size; i++) {
+                    g_stream_buffer[i] = (uint8_t)(i & 0xFF);
+                }
+            }
+        }
+
+        printf("[STREAM-TEST] STREAM phase started: sending %uB messages for %ums\n",
+               g_stream_test.msg_size, g_stream_test.duration_ms);
+        stream_test_send_ack(ctx, peer_id);
+        break;
+
+    case STREAM_CMD_STOP:
+        /* Mac signaled phase complete */
+        if (g_stream_test.phase == 0) {
+            uint64_t elapsed_us = get_time_us() - g_stream_test.phase_start_us;
+            double elapsed_sec = elapsed_us / 1000000.0;
+            double kb_per_sec = (elapsed_sec > 0) ?
+                               (g_stream_test.bytes_sunk / 1024.0 / elapsed_sec) : 0;
+            printf("[STREAM-TEST] SINK phase complete: %llu bytes in %.2fs = %.1f KB/s\n",
+                   (unsigned long long)g_stream_test.bytes_sunk, elapsed_sec, kb_per_sec);
+        }
+        g_stream_test.active = 0;
+        g_stream_test.phase = 0;
+        stream_test_send_ack(ctx, peer_id);
+        break;
+
+    case STREAM_CMD_ACK:
+        if (g_config.verbose) {
+            printf("[STREAM-TEST] Received ACK from Mac\n");
+        }
+        break;
+
+    default:
+        printf("[STREAM-TEST] Unknown command: %u\n", ctrl->command);
+        break;
+    }
+}
+
+/**
+ * Check if message is a stream control message
+ */
+static int is_stream_control(const void *data, uint16_t len)
+{
+    if (len < sizeof(StreamControl)) return 0;
+    const uint8_t *magic = (const uint8_t *)data;
+    return (magic[0] == STREAM_MAGIC_0 &&
+            magic[1] == STREAM_MAGIC_1 &&
+            magic[2] == STREAM_MAGIC_2 &&
+            magic[3] == STREAM_MAGIC_3);
+}
+
+/**
+ * Tick function for stream test streaming phase
+ * Called from main loop when we're in streaming mode
+ */
+static void stream_test_tick(void)
+{
+    int burst_count = 0;
+    const int max_burst = 16;  /* Send in bursts like Mac does */
+    uint64_t now_us;
+    uint64_t elapsed_ms;
+
+    if (!g_stream_test.active || g_stream_test.phase != 1) return;
+    if (!g_stream_buffer || g_stream_test.peer_id == 0) return;
+
+    /* Check if duration expired */
+    now_us = get_time_us();
+    elapsed_ms = (now_us - g_stream_test.phase_start_us) / 1000;
+    if (elapsed_ms >= g_stream_test.duration_ms) {
+        /* Duration complete - send STOP command */
+        StreamControl stop;
+        memset(&stop, 0, sizeof(stop));
+        stop.magic[0] = STREAM_MAGIC_0;
+        stop.magic[1] = STREAM_MAGIC_1;
+        stop.magic[2] = STREAM_MAGIC_2;
+        stop.magic[3] = STREAM_MAGIC_3;
+        stop.command = STREAM_CMD_STOP;
+
+        PeerTalk_Send(g_ctx, g_stream_test.peer_id, &stop, sizeof(stop));
+
+        double elapsed_sec = elapsed_ms / 1000.0;
+        double kb_per_sec = (elapsed_sec > 0) ?
+                           (g_stream_test.bytes_streamed / 1024.0 / elapsed_sec) : 0;
+        printf("[STREAM-TEST] STREAM phase complete: %llu bytes in %.2fs = %.1f KB/s\n",
+               (unsigned long long)g_stream_test.bytes_streamed, elapsed_sec, kb_per_sec);
+
+        g_stream_test.active = 0;
+        g_stream_test.phase = 0;
+        return;
+    }
+
+    /* Send data burst */
+    while (burst_count < max_burst) {
+        PeerTalk_Error err = PeerTalk_Send(g_ctx, g_stream_test.peer_id,
+                                            g_stream_buffer, g_stream_test.msg_size);
+        if (err == PT_OK) {
+            g_stream_test.bytes_streamed += g_stream_test.msg_size;
+            burst_count++;
+        } else if (err == PT_ERR_WOULD_BLOCK || err == PT_ERR_BUFFER_FULL) {
+            break;  /* Backpressure - stop and let poll drain */
+        } else {
+            break;  /* Error */
+        }
+    }
 }
 
 /* ========================================================================== */
@@ -1031,6 +1235,24 @@ static void on_message_received(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
         return;  /* Message was log data, don't process further */
     }
 
+    /* Auto-detect stream test control messages (regardless of mode)
+     * This allows the partner to run in echo mode but still handle
+     * one-way streaming tests when the Mac initiates them. */
+    if (is_stream_control(data, len)) {
+        stream_test_handle_control(ctx, peer_id, (const StreamControl *)data);
+        return;
+    }
+
+    /* If we're in an active stream test sink phase, just count bytes */
+    if (g_stream_test.active && g_stream_test.phase == 0) {
+        g_stream_test.bytes_sunk += len;
+        if (g_config.verbose && (g_stream_test.bytes_sunk % (64 * 1024) == 0)) {
+            printf("[STREAM-TEST] Sunk %llu KB\n",
+                   (unsigned long long)(g_stream_test.bytes_sunk / 1024));
+        }
+        return;
+    }
+
     switch (g_config.mode) {
     case MODE_ECHO:
         echo_message(ctx, peer_id, data, len);
@@ -1059,6 +1281,11 @@ static void on_message_received(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
     case MODE_DISCOVERY:
         /* Just count, don't respond */
         break;
+
+    case MODE_STREAM_TEST:
+        /* Stream test messages handled above by auto-detection.
+         * In explicit stream-test mode, we don't echo non-control messages. */
+        break;
     }
 }
 
@@ -1073,7 +1300,7 @@ static void print_usage(const char *prog)
     printf("Usage: %s [OPTIONS]\n", prog);
     printf("\n");
     printf("Options:\n");
-    printf("  --mode MODE       Test mode: echo (default), stream, stress, discovery\n");
+    printf("  --mode MODE       Test mode: echo (default), stream, stress, discovery, stream-test\n");
     printf("  --port PORT       Discovery port (default: 7353)\n");
     printf("  --connect IP      Auto-connect to specified IP\n");
     printf("  --size BYTES      Message size for streaming (default: 1024)\n");
@@ -1084,14 +1311,18 @@ static void print_usage(const char *prog)
     printf("  --help            Show this help\n");
     printf("\n");
     printf("Modes:\n");
-    printf("  echo      Echo all received messages (for latency testing)\n");
-    printf("  stream    Stream data to connected peer (for throughput testing)\n");
-    printf("  stress    Rapid connect/disconnect cycles\n");
-    printf("  discovery Count discovery packets only\n");
+    printf("  echo        Echo all messages (default, handles ALL Mac test types)\n");
+    printf("  stream      Stream data to connected peer (legacy)\n");
+    printf("  stress      Rapid connect/disconnect cycles\n");
+    printf("  discovery   Count discovery packets only\n");
+    printf("  stream-test One-way streaming only (no echo)\n");
+    printf("\n");
+    printf("Note: Echo mode auto-detects stream-test control messages from Mac.\n");
+    printf("      Just run without --mode for all test types.\n");
     printf("\n");
     printf("Examples:\n");
-    printf("  %s                            # Run as echo server\n", prog);
-    printf("  %s --mode stream --size 4096  # Stream 4KB messages\n", prog);
+    printf("  %s                            # Run as universal test partner\n", prog);
+    printf("  %s --verbose                  # With detailed logging\n", prog);
     printf("  %s --connect 192.168.1.50     # Auto-connect to Mac\n", prog);
 }
 
@@ -1179,6 +1410,7 @@ int main(int argc, char *argv[])
             else if (strcmp(mode, "stream") == 0) g_config.mode = MODE_STREAM;
             else if (strcmp(mode, "stress") == 0) g_config.mode = MODE_STRESS;
             else if (strcmp(mode, "discovery") == 0) g_config.mode = MODE_DISCOVERY;
+            else if (strcmp(mode, "stream-test") == 0) g_config.mode = MODE_STREAM_TEST;
             else {
                 fprintf(stderr, "Unknown mode: %s\n", mode);
                 return 1;
@@ -1218,7 +1450,8 @@ int main(int argc, char *argv[])
     printf("Mode: %s%s\n",
            g_config.mode == MODE_ECHO ? "echo" :
            g_config.mode == MODE_STREAM ? "stream" :
-           g_config.mode == MODE_STRESS ? "stress" : "discovery",
+           g_config.mode == MODE_STRESS ? "stress" :
+           g_config.mode == MODE_DISCOVERY ? "discovery" : "stream-test",
            g_config.fast ? " (FAST)" : "");
     printf("========================================\n\n");
 
@@ -1299,6 +1532,11 @@ int main(int argc, char *argv[])
          */
         if (g_streaming) {
             stream_tick();
+        }
+
+        /* Handle stream test streaming phase (auto-detected from any mode) */
+        if (g_stream_test.active && g_stream_test.phase == 1) {
+            stream_test_tick();
         }
 
         /* Status update every 10 seconds */
