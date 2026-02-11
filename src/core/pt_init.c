@@ -938,15 +938,29 @@ PeerTalk_Error PeerTalk_GetPeerCapabilities(PeerTalk_Context *ctx_pub,
         return PT_ERR_PEER_NOT_FOUND;
     }
 
-    /* Fill in capabilities */
+    /* Fill in capabilities.
+     * If capability exchange hasn't completed yet (caps_exchanged==0), return
+     * sensible defaults rather than uninitialized zeros. This commonly happens
+     * when called from on_peer_connected callback before first message exchange. */
     caps->max_message_size = peer->hot.effective_max_msg;
-    caps->preferred_chunk = peer->cold.caps.preferred_chunk;
-    caps->capability_flags = peer->cold.caps.capability_flags;
-    caps->recv_buffer_size = peer->cold.caps.recv_buffer_size;
-    caps->optimal_chunk = peer->cold.caps.optimal_chunk;
-    caps->buffer_pressure = peer->cold.caps.buffer_pressure;
     caps->fragmentation_active = (ctx->enable_fragmentation &&
                                   peer->hot.effective_max_msg < ctx->local_max_message) ? 1 : 0;
+
+    if (peer->cold.caps.caps_exchanged) {
+        /* Peer sent capabilities - use negotiated values */
+        caps->preferred_chunk = peer->cold.caps.preferred_chunk;
+        caps->capability_flags = peer->cold.caps.capability_flags;
+        caps->recv_buffer_size = peer->cold.caps.recv_buffer_size;
+        caps->optimal_chunk = peer->cold.caps.optimal_chunk;
+        caps->buffer_pressure = peer->cold.caps.buffer_pressure;
+    } else {
+        /* Not yet exchanged - return conservative defaults */
+        caps->preferred_chunk = ctx->local_preferred_chunk;
+        caps->capability_flags = 0;
+        caps->recv_buffer_size = 8192;      /* Typical TCP buffer */
+        caps->optimal_chunk = 2048;         /* 25% of 8KB buffer */
+        caps->buffer_pressure = 0;
+    }
 
     return PT_OK;
 }
