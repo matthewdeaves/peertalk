@@ -1,0 +1,78 @@
+========================================
+PeerTalk Throughput Test
+Version: 1.0.0
+========================================
+Memory after pool alloc: FreeMem=2791600 MaxBlock=2789648
+Buffer pool: 4 buffers × 32KB (25% threshold=8192B)
+Initializing PeerTalk...
+Waiting for peer...
+Press any key to exit.
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+Connecting to peer...
+CONNECTED to peer 1
+Peer capabilities: max_msg=4096 chunk=1024 pressure=0
+Peer buffer info: recv_buf=8192 optimal_chunk=2048
+Effective max message size: 4096 bytes
+Optimal chunk for peer: 1024 bytes
+Starting throughput test with buffer size 256
+BUF 256: sent=16 KB/s (333 msgs) recv=16 KB/s (328 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 256: sent=16 KB/s (650 msgs) recv=15 KB/s (645 msgs) errs=0
+BUF 256: sent=16 KB/s (971 msgs) recv=15 KB/s (966 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 256: sent=16 KB/s (1295 msgs) recv=16 KB/s (1290 msgs) errs=0
+BUF 256: sent=16 KB/s (1615 msgs) recv=15 KB/s (1610 msgs) errs=0
+COMPLETE 256 bytes: SEND=15 KB/s (1923 msgs) RECV=15 KB/s (1918 msgs)
+Starting buffer size 512 test
+BUF 512: sent=32 KB/s (12 msgs) recv=25 KB/s (12 msgs) errs=0
+BUF 512: sent=32 KB/s (339 msgs) recv=32 KB/s (339 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 512: sent=32 KB/s (667 msgs) recv=32 KB/s (667 msgs) errs=0
+BUF 512: sent=32 KB/s (998 msgs) recv=32 KB/s (998 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 512: sent=32 KB/s (1330 msgs) recv=32 KB/s (1330 msgs) errs=0
+BUF 512: sent=32 KB/s (1658 msgs) recv=32 KB/s (1658 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+COMPLETE 512 bytes: SEND=32 KB/s (1971 msgs) RECV=32 KB/s (1971 msgs)
+Starting buffer size 1024 test
+BUF 1024: sent=55 KB/s (12 msgs) recv=43 KB/s (12 msgs) errs=0
+BUF 1024: sent=63 KB/s (331 msgs) recv=62 KB/s (331 msgs) errs=0
+BUF 1024: sent=63 KB/s (646 msgs) recv=62 KB/s (646 msgs) errs=0
+BUF 1024: sent=63 KB/s (962 msgs) recv=62 KB/s (962 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 1024: sent=62 KB/s (1272 msgs) recv=62 KB/s (1272 msgs) errs=0
+BUF 1024: sent=62 KB/s (1590 msgs) recv=62 KB/s (1590 msgs) errs=0
+COMPLETE 1024 bytes: SEND=62 KB/s (1889 msgs) RECV=62 KB/s (1889 msgs)
+Starting buffer size 2048 test
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 2048: sent=100 KB/s (15 msgs) recv=63 KB/s (12 msgs) errs=0
+BUF 2048: sent=97 KB/s (258 msgs) recv=57 KB/s (154 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 2048: sent=100 KB/s (518 msgs) recv=53 KB/s (280 msgs) errs=0
+BUF 2048: sent=100 KB/s (772 msgs) recv=53 KB/s (415 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 2048: sent=98 KB/s (1004 msgs) recv=52 KB/s (536 msgs) errs=0
+BUF 2048: sent=98 KB/s (1257 msgs) recv=53 KB/s (679 msgs) errs=0
+COMPLETE 2048 bytes: SEND=98 KB/s (1486 msgs) RECV=53 KB/s (806 msgs)
+Starting buffer size 4096 test
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 4096: sent=157 KB/s (19 msgs) recv=41 KB/s (6 msgs) errs=0
+BUF 4096: sent=205 KB/s (282 msgs) recv=20 KB/s (29 msgs) errs=0
+BUF 4096: sent=206 KB/s (543 msgs) recv=10 KB/s (29 msgs) errs=0
+BUF 4096: sent=207 KB/s (809 msgs) recv=7 KB/s (29 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 4096: sent=0 KB/s (1052 msgs) recv=5 KB/s (29 msgs) errs=0
+BUF 4096: sent=41 KB/s (1314 msgs) recv=4 KB/s (29 msgs) errs=0
+COMPLETE 4096 bytes: SEND=68 KB/s (1564 msgs) RECV=3 KB/s (29 msgs)
+All throughput tests complete
+========================================
+THROUGHPUT TEST RESULTS
+========================================
+ 256 bytes: SEND   15 KB/s  RECV   15 KB/s  (errs=0)
+ 512 bytes: SEND   32 KB/s  RECV   32 KB/s  (errs=0)
+1024 bytes: SEND   62 KB/s  RECV   62 KB/s  (errs=0)
+2048 bytes: SEND   98 KB/s  RECV   53 KB/s  (errs=0)
+4096 bytes: SEND   68 KB/s  RECV    3 KB/s  (errs=0)
+========================================
+Memory: FreeMem=2646576 MaxBlock=2645344
+Streaming 4043 bytes of logs to partner...
