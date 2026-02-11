@@ -478,17 +478,32 @@ int main(void)
     unsigned long now;
     int samples_per_size = 100;  /* Collect 100 samples per message size */
 
+    /**
+     * CRITICAL: PeerTalk_Bootstrap() MUST be called BEFORE init_toolbox().
+     *
+     * PeerTalk_Bootstrap() does three things in order:
+     *   1. MaxApplZone() - extends heap to maximum size
+     *   2. MoreMasters() - pre-allocates master pointer blocks
+     *   3. Allocates TCP receive buffers while heap is contiguous
+     *
+     * This is the key optimization for MacTCP throughput. By allocating
+     * before InitGraf/InitFonts/etc., we get much larger contiguous blocks:
+     *   - Before toolbox: typically 16-32KB buffers on 8MB Mac
+     *   - After toolbox: often only 4KB buffers due to fragmentation
+     *
+     * Larger buffers improve receive throughput via MacTCP's 25% threshold:
+     *   - 4KB buffer = 1KB threshold (slow)
+     *   - 16KB buffer = 4KB threshold (4x better)
+     *   - 32KB buffer = 8KB threshold (8x better)
+     */
+    g_buffer_pool = PeerTalk_Bootstrap(4);  /* 4 peers, auto-size */
+
+    /* NOW safe to initialize Toolbox */
     init_toolbox();
 
     /* Initialize status window for user feedback */
     status_init("PeerTalk Latency Test");
     status_line("Initializing...");
-
-    /**
-     * CRITICAL: Allocate TCP buffer pool FIRST, before any other allocations.
-     * PeerTalk_AllocateBuffersAuto() checks available RAM and picks the best size.
-     */
-    g_buffer_pool = PeerTalk_AllocateBuffersAuto(4);  /* 4 peers, auto-size */
 
     /* Create PT_Log */
     g_log = PT_LogCreate();
@@ -516,10 +531,12 @@ int main(void)
         PeerTalk_GetBufferPoolInfo(g_buffer_pool, &pool_count, &pool_size);
         if (g_buffer_pool) {
             PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
-                "Buffer pool: %u buffers × %luKB",
-                (unsigned)pool_count, (unsigned long)(pool_size/1024));
+                "Buffer pool: %u buffers × %luKB (25%% threshold=%luB)",
+                (unsigned)pool_count, (unsigned long)(pool_size/1024),
+                (unsigned long)(pool_size/4));
         } else {
-            PT_LOG_WARN(g_log, PT_LOG_CAT_APP1, "No buffer pool - using on-demand");
+            PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                "Buffer pool allocation failed - using on-demand (may be slower)");
         }
     }
 
