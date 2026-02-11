@@ -315,11 +315,18 @@ static void on_peer_connected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
             (unsigned)caps.max_message_size,
             (unsigned)caps.preferred_chunk,
             (unsigned)caps.buffer_pressure);
+        PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+            "Peer buffer info: recv_buf=%u optimal_chunk=%u",
+            (unsigned)caps.recv_buffer_size,
+            (unsigned)caps.optimal_chunk);
     }
 
     effective_max = PeerTalk_GetPeerMaxMessage(ctx, peer_id);
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
         "Effective max message size: %u bytes", (unsigned)effective_max);
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+        "Optimal chunk for peer: %u bytes",
+        (unsigned)PeerTalk_GetPeerOptimalChunk(ctx, peer_id));
 
     /* Start first test */
     g_test.stats[0].start_ticks = TickCount();

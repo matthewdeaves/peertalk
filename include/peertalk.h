@@ -1240,11 +1240,21 @@ PT_Log *PeerTalk_GetLog(PeerTalk_Context *ctx);
  *
  * Exchanged after TCP connection established. Use this to understand
  * peer constraints (e.g., Mac SE with 4MB vs Performa with 8MB).
+ *
+ * For Classic Mac peers, optimal_chunk is critical for throughput:
+ * - MacTCP completes a receive when buffer reaches 25% full
+ * - optimal_chunk = recv_buffer_size / 4 (the 25% threshold)
+ * - Sending at optimal_chunk size maximizes receive efficiency
+ *
+ * Example: Mac with 32KB receive buffer -> optimal_chunk = 8KB
+ * Sending 8KB messages triggers receive completions efficiently.
  */
 typedef struct {
     uint16_t        max_message_size;       /* Effective negotiated max */
     uint16_t        preferred_chunk;        /* Peer's preferred chunk size */
     uint16_t        capability_flags;       /* Peer's PT_CAPFLAG_* */
+    uint16_t        recv_buffer_size;       /* Peer's TCP receive buffer size */
+    uint16_t        optimal_chunk;          /* 25% of recv_buffer (ideal send size) */
     uint8_t         buffer_pressure;        /* Peer's constraint level 0-100 */
     uint8_t         fragmentation_active;   /* 1 if auto-frag enabled for this peer */
 } PeerTalk_Capabilities;
@@ -1280,6 +1290,31 @@ PeerTalk_Error PeerTalk_GetPeerCapabilities(
  * Returns: Effective max message size, or 0 if peer not found
  */
 uint16_t PeerTalk_GetPeerMaxMessage(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id);
+
+/**
+ * Get optimal send chunk size for a peer
+ *
+ * Returns the ideal message size for sending to this peer. For Classic Mac
+ * peers, this is 25% of their receive buffer (the MacTCP completion threshold).
+ * Sending at this size maximizes receive throughput.
+ *
+ * For best throughput to a Mac peer:
+ *   - Use this size for bulk data transfers
+ *   - Or fragment larger messages to this chunk size
+ *
+ * Example:
+ *   uint16_t chunk = PeerTalk_GetPeerOptimalChunk(ctx, peer_id);
+ *   for (offset = 0; offset < data_len; offset += chunk) {
+ *       PeerTalk_Send(ctx, peer_id, data + offset, min(chunk, data_len - offset));
+ *   }
+ *
+ * Args:
+ *   ctx     - PeerTalk context
+ *   peer_id - Peer to query
+ *
+ * Returns: Optimal chunk size in bytes, or 1024 (default) if unknown/error
+ */
+uint16_t PeerTalk_GetPeerOptimalChunk(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id);
 
 #ifdef __cplusplus
 }

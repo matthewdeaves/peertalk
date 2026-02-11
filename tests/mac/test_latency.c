@@ -386,11 +386,21 @@ static void on_peer_discovered(PeerTalk_Context *ctx, const PeerTalk_PeerInfo *p
 static void on_peer_connected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
                                void *user_data)
 {
-    (void)ctx;
+    PeerTalk_Capabilities caps;
     (void)user_data;
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "CONNECTED to peer %u", (unsigned)peer_id);
     g_connected_peer = peer_id;
+
+    /* Log peer capabilities */
+    if (PeerTalk_GetPeerCapabilities(ctx, peer_id, &caps) == PT_OK) {
+        PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+            "Peer capabilities: max=%u chunk=%u recv_buf=%u optimal=%u",
+            (unsigned)caps.max_message_size,
+            (unsigned)caps.preferred_chunk,
+            (unsigned)caps.recv_buffer_size,
+            (unsigned)caps.optimal_chunk);
+    }
 
     /* Start first test */
     g_test_start = TickCount();

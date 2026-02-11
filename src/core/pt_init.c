@@ -942,6 +942,8 @@ PeerTalk_Error PeerTalk_GetPeerCapabilities(PeerTalk_Context *ctx_pub,
     caps->max_message_size = peer->hot.effective_max_msg;
     caps->preferred_chunk = peer->cold.caps.preferred_chunk;
     caps->capability_flags = peer->cold.caps.capability_flags;
+    caps->recv_buffer_size = peer->cold.caps.recv_buffer_size;
+    caps->optimal_chunk = peer->cold.caps.optimal_chunk;
     caps->buffer_pressure = peer->cold.caps.buffer_pressure;
     caps->fragmentation_active = (ctx->enable_fragmentation &&
                                   peer->hot.effective_max_msg < ctx->local_max_message) ? 1 : 0;
@@ -972,4 +974,39 @@ uint16_t PeerTalk_GetPeerMaxMessage(PeerTalk_Context *ctx_pub,
     }
 
     return peer->hot.effective_max_msg;
+}
+
+/**
+ * Get optimal send chunk size for a peer
+ *
+ * Returns the ideal message size for sending to this peer. For Classic Mac
+ * peers, this is 25% of their receive buffer (the MacTCP completion threshold).
+ */
+uint16_t PeerTalk_GetPeerOptimalChunk(PeerTalk_Context *ctx_pub,
+                                       PeerTalk_PeerID peer_id) {
+    struct pt_context *ctx = (struct pt_context *)ctx_pub;
+    struct pt_peer *peer;
+
+    /* Validate parameters */
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return 1024;  /* Default chunk */
+    }
+
+    /* Find peer */
+    peer = pt_peer_find_by_id(ctx, peer_id);
+    if (!peer) {
+        return 1024;  /* Default chunk */
+    }
+
+    /* Return peer's optimal chunk if known, otherwise default */
+    if (peer->cold.caps.caps_exchanged && peer->cold.caps.optimal_chunk > 0) {
+        return peer->cold.caps.optimal_chunk;
+    }
+
+    /* Fall back to effective_chunk (adaptive based on RTT) or default */
+    if (peer->hot.effective_chunk > 0) {
+        return peer->hot.effective_chunk;
+    }
+
+    return 1024;  /* Default chunk */
 }

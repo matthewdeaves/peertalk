@@ -985,9 +985,14 @@ static void on_peer_connected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
                caps.preferred_chunk,
                caps.buffer_pressure,
                caps.fragmentation_active ? " [FRAG]" : "");
+        printf("[CAPS] Peer buffer: recv_buf=%u optimal_chunk=%u\n",
+               caps.recv_buffer_size,
+               caps.optimal_chunk);
     }
     effective_max = PeerTalk_GetPeerMaxMessage(ctx, peer_id);
     printf("[CAPS] Effective max message: %u bytes\n", effective_max);
+    printf("[CAPS] Optimal chunk for peer: %u bytes\n",
+           PeerTalk_GetPeerOptimalChunk(ctx, peer_id));
 
     /* Start streaming if in stream mode */
     if (g_config.mode == MODE_STREAM) {
