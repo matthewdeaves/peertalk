@@ -89,6 +89,21 @@ const char *PeerTalk_Version(void);
     #define PT_PIPELINE_MAX_PAYLOAD 4096
 #endif
 
+/* Flow control window (auto-calculated from peer's recv_buffer_size)
+ *
+ * Limits queued messages per peer to prevent flooding slower receivers.
+ * Window = peer_recv_buffer / max_message_size, clamped to min/max.
+ *
+ * Too small: underutilizes network, poor throughput
+ * Too large: floods peer, causes severe send/recv asymmetry
+ *
+ * Example: 8KB peer buffer, 4KB messages → window = 2
+ *          32KB peer buffer, 4KB messages → window = 8 (clamped to max)
+ */
+#define PT_FLOW_WINDOW_MIN      2   /* Minimum window (always allow 2 in flight) */
+#define PT_FLOW_WINDOW_MAX      8   /* Maximum window (don't flood even big buffers) */
+#define PT_FLOW_WINDOW_DEFAULT  4   /* Default before capability exchange */
+
 /* TCP receive buffer sizes for pre-allocation */
 #define PT_TCP_BUF_4K   4096    /* Minimum - 25% threshold = 1KB */
 #define PT_TCP_BUF_8K   8192    /* Character apps - 25% threshold = 2KB */

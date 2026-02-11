@@ -290,6 +290,7 @@ struct pt_peer *pt_peer_create(struct pt_context *ctx,
     peer->cold.caps.capability_flags = 0;
     peer->cold.caps.buffer_pressure = 0;
     peer->cold.caps.caps_exchanged = 0;
+    peer->cold.caps.send_window = PT_FLOW_WINDOW_DEFAULT;  /* Updated after cap exchange */
     peer->hot.effective_max_msg = PT_CAP_DEFAULT_MAX_MSG;  /* Conservative default */
     peer->hot.effective_chunk = 1024;  /* Default chunk for unknown RTT */
     peer->hot.pipeline_depth = 2;      /* Conservative pipeline depth */

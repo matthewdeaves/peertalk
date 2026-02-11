@@ -1986,6 +1986,33 @@ static int pt_recv_process_message(struct pt_context *ctx, struct pt_peer *peer,
                     peer->cold.caps.recv_buffer_size = caps.recv_buffer_size;
                     peer->cold.caps.optimal_chunk = caps.optimal_chunk;
 
+                    /* Calculate flow control window based on peer's buffer capacity
+                     *
+                     * Window = peer_recv_buffer / our_max_message
+                     * This limits how many messages we queue to avoid flooding.
+                     */
+                    {
+                        uint16_t window;
+                        uint16_t our_max = ctx->local_max_message;
+                        uint16_t peer_buf = caps.recv_buffer_size;
+
+                        if (peer_buf > 0 && our_max > 0) {
+                            window = peer_buf / our_max;
+                        } else {
+                            window = PT_FLOW_WINDOW_DEFAULT;
+                        }
+
+                        /* Clamp to min/max */
+                        if (window < PT_FLOW_WINDOW_MIN) {
+                            window = PT_FLOW_WINDOW_MIN;
+                        }
+                        if (window > PT_FLOW_WINDOW_MAX) {
+                            window = PT_FLOW_WINDOW_MAX;
+                        }
+
+                        peer->cold.caps.send_window = window;
+                    }
+
                     /* Negotiate compact header mode - both must support it */
                     if ((caps.capability_flags & PT_CAPFLAG_COMPACT_HEADER) &&
                         (ctx->local_capability_flags & PT_CAPFLAG_COMPACT_HEADER)) {

@@ -418,6 +418,34 @@ PeerTalk_Error PeerTalk_SendEx(PeerTalk_Context *ctx_pub,
     }
 
     /* ================================================================
+     * FLOW CONTROL: Check send window based on peer's buffer capacity
+     *
+     * After capability exchange, we know the peer's recv_buffer_size.
+     * We calculate a send_window = recv_buffer / max_message to limit
+     * how many messages can be queued/in-flight simultaneously.
+     *
+     * This prevents flooding slow receivers (e.g., 68k Mac) faster
+     * than they can process, which would cause severe send/recv
+     * asymmetry and poor throughput.
+     *
+     * The window is checked against: pipeline.pending_count + queue.count
+     * ================================================================ */
+    if (peer->cold.caps.caps_exchanged && peer->cold.caps.send_window > 0) {
+        uint16_t in_flight = peer->pipeline.pending_count;
+        q = peer->send_queue;
+        if (q) {
+            in_flight += q->count;
+        }
+
+        if (in_flight >= peer->cold.caps.send_window) {
+            PT_CTX_DEBUG(ctx, PT_LOG_CAT_SEND,
+                "Flow control: peer %u at window limit (in_flight=%u, window=%u)",
+                peer_id, in_flight, peer->cold.caps.send_window);
+            return PT_ERR_WOULD_BLOCK;
+        }
+    }
+
+    /* ================================================================
      * AUTOMATIC FRAGMENTATION
      *
      * If message exceeds peer's negotiated max and fragmentation is enabled,

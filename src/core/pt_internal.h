@@ -167,6 +167,7 @@ typedef struct {
     uint16_t capability_flags;   /* PT_CAPFLAG_* */
     uint16_t recv_buffer_size;   /* Peer's receive buffer size (0=unknown, default 8192) */
     uint16_t optimal_chunk;      /* Peer's 25% threshold (recv_buf/4) - optimal send size */
+    uint16_t send_window;        /* Flow control: max queued messages (auto-calculated) */
     uint8_t  buffer_pressure;    /* 0-100: peer's reported constraint level */
     uint8_t  caps_exchanged;     /* 1 after exchange complete */
     uint8_t  last_reported_pressure; /* 0-100: what we last told peer */

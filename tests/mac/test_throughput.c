@@ -45,6 +45,22 @@
 #define DISCOVERY_TIMEOUT_TICKS (60 * 60) /* 60 seconds to find a peer */
 #define MAX_CONNECT_RETRIES  5        /* Give up after this many failures */
 
+/**
+ * Flow control window size.
+ *
+ * This limits how many messages can be "in flight" (sent but not yet echoed).
+ * Without flow control, the Mac floods the network faster than it can process
+ * incoming echoes, causing severe asymmetry at large message sizes.
+ *
+ * Window sizing:
+ *   - Too small (1-2): Underutilizes network, low throughput
+ *   - Too large (10+): Overwhelms Mac receive processing
+ *   - Sweet spot (4-6): Balances throughput with receive capacity
+ *
+ * At 4096B messages with window=4: 16KB in flight, matches 25% threshold well.
+ */
+#define FLOW_CONTROL_WINDOW  4
+
 /* Buffer sizes to test */
 static const int g_buffer_sizes[] = { 256, 512, 1024, 2048, 4096 };
 #define NUM_BUFFER_SIZES  (sizeof(g_buffer_sizes) / sizeof(g_buffer_sizes[0]))
@@ -87,6 +103,7 @@ static unsigned long g_discovery_start = 0;
 static int g_running = 1;
 static int g_connect_failures = 0;
 static uint8_t g_send_buffer[4096];
+static unsigned long g_in_flight = 0;   /* Messages sent but not yet echoed */
 
 /* ========================================================================== */
 /* Utility Functions                                                           */
@@ -121,8 +138,6 @@ static void send_data_burst(void)
 {
     ThroughputStats *stats;
     int size;
-    int i;
-    int burst_count = 10;  /* Send 10 messages per poll to maximize throughput */
     PeerTalk_Error err;
 
     if (g_connected_peer == 0 || g_test.test_complete)
@@ -131,17 +146,22 @@ static void send_data_burst(void)
     stats = &g_test.stats[g_test.current_size_idx];
     size = stats->buffer_size;
 
-    for (i = 0; i < burst_count; i++) {
+    /*
+     * Window-based flow control: only send if we have room in our window.
+     * This prevents flooding the network faster than we can process echoes.
+     */
+    while (g_in_flight < FLOW_CONTROL_WINDOW) {
         /* Add sequence number to first 4 bytes */
-        uint32_t seq = stats->messages_sent;
+        uint32_t seq = (uint32_t)stats->messages_sent;
         memcpy(g_send_buffer, &seq, sizeof(seq));
 
         err = PeerTalk_Send(g_ctx, g_connected_peer, g_send_buffer, size);
         if (err == PT_OK) {
             stats->bytes_sent += size;
             stats->messages_sent++;
+            g_in_flight++;
         } else if (err == PT_ERR_WOULD_BLOCK || err == PT_ERR_BUFFER_FULL) {
-            /* Backpressure - buffer/queue busy, stop burst and let poll drain */
+            /* Backpressure - buffer/queue busy, let poll drain */
             break;
         } else {
             /* Real error */
@@ -163,11 +183,11 @@ static void report_progress(void)
     unsigned long recv_kbps = (stats->bytes_received * 1000UL) / elapsed_ms;
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
-        "BUF %d: sent=%lu KB/s (%lu msgs) recv=%lu KB/s (%lu msgs) errs=%lu",
+        "BUF %d: sent=%lu KB/s (%lu msgs) recv=%lu KB/s (%lu msgs) inflight=%lu",
         stats->buffer_size,
         send_kbps / 1024UL, stats->messages_sent,
         recv_kbps / 1024UL, stats->messages_received,
-        stats->send_errors);
+        g_in_flight);
 
     /* Update status window */
     status_clear();
@@ -208,6 +228,7 @@ static void finish_current_test(void)
     } else {
         ThroughputStats *next = &g_test.stats[g_test.current_size_idx];
         next->start_ticks = TickCount();
+        g_in_flight = 0;  /* Reset flow control for new buffer size */
         PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
             "Starting buffer size %d test", g_buffer_sizes[g_test.current_size_idx]);
     }
@@ -332,9 +353,11 @@ static void on_peer_connected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
     g_test.stats[0].start_ticks = TickCount();
     g_test_start = TickCount();
     g_last_report = g_test_start;
+    g_in_flight = 0;  /* Initialize flow control window */
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
-        "Starting throughput test with buffer size %d", g_buffer_sizes[0]);
+        "Starting throughput test with buffer size %d (window=%d)",
+        g_buffer_sizes[0], FLOW_CONTROL_WINDOW);
 
     /* Update status window */
     status_clear();
@@ -382,6 +405,11 @@ static void on_message_received(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
         stats = &g_test.stats[g_test.current_size_idx];
         stats->bytes_received += len;
         stats->messages_received++;
+
+        /* Flow control: echo received, allow another send */
+        if (g_in_flight > 0) {
+            g_in_flight--;
+        }
     }
 }
 
