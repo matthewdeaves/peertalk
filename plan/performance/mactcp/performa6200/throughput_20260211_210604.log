@@ -1,0 +1,79 @@
+========================================
+PeerTalk Throughput Test
+Version: 1.0.0
+========================================
+Memory after pool alloc: FreeMem=2791984 MaxBlock=2790032
+Buffer pool: 4 buffers × 32KB (25% threshold=8192B)
+Initializing PeerTalk...
+Waiting for peer...
+Press any key to exit.
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+Connecting to peer...
+CONNECTED to peer 1
+Peer capabilities: max_msg=4096 chunk=1024 pressure=0
+Effective max message size: 4096 bytes
+Starting throughput test with buffer size 256
+BUF 256: sent=10 KB/s (221 msgs) recv=75 KB/s (385 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 256: sent=11 KB/s (467 msgs) recv=61 KB/s (617 msgs) errs=0
+BUF 256: sent=15 KB/s (942 msgs) recv=40 KB/s (617 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 256: sent=17 KB/s (1418 msgs) recv=30 KB/s (617 msgs) errs=0
+BUF 256: sent=18 KB/s (1905 msgs) recv=24 KB/s (617 msgs) errs=0
+COMPLETE 256 bytes: SEND=19 KB/s (2367 msgs) RECV=20 KB/s (617 msgs)
+Starting buffer size 512 test
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 512: sent=45 KB/s (12 msgs) recv=0 KB/s (0 msgs) errs=0
+BUF 512: sent=52 KB/s (543 msgs) recv=0 KB/s (0 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 512: sent=52 KB/s (1065 msgs) recv=0 KB/s (0 msgs) errs=0
+BUF 512: sent=52 KB/s (1584 msgs) recv=0 KB/s (0 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 512: sent=52 KB/s (2108 msgs) recv=0 KB/s (0 msgs) errs=0
+BUF 512: sent=52 KB/s (2635 msgs) recv=0 KB/s (0 msgs) errs=0
+COMPLETE 512 bytes: SEND=52 KB/s (3132 msgs) RECV=0 KB/s (0 msgs)
+Starting buffer size 1024 test
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 1024: sent=94 KB/s (22 msgs) recv=0 KB/s (0 msgs) errs=0
+BUF 1024: sent=101 KB/s (531 msgs) recv=0 KB/s (0 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 1024: sent=101 KB/s (1043 msgs) recv=0 KB/s (0 msgs) errs=0
+BUF 1024: sent=101 KB/s (1552 msgs) recv=0 KB/s (0 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 1024: sent=101 KB/s (2063 msgs) recv=0 KB/s (0 msgs) errs=0
+BUF 1024: sent=101 KB/s (2568 msgs) recv=0 KB/s (0 msgs) errs=0
+COMPLETE 1024 bytes: SEND=101 KB/s (3053 msgs) RECV=0 KB/s (0 msgs)
+Starting buffer size 2048 test
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 2048: sent=150 KB/s (20 msgs) recv=0 KB/s (0 msgs) errs=0
+BUF 2048: sent=178 KB/s (472 msgs) recv=0 KB/s (0 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 2048: sent=178 KB/s (919 msgs) recv=0 KB/s (0 msgs) errs=0
+BUF 2048: sent=178 KB/s (1367 msgs) recv=0 KB/s (0 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 2048: sent=170 KB/s (1743 msgs) recv=0 KB/s (0 msgs) errs=0
+BUF 2048: sent=8 KB/s (2201 msgs) recv=0 KB/s (0 msgs) errs=0
+COMPLETE 2048 bytes: SEND=34 KB/s (2617 msgs) RECV=0 KB/s (0 msgs)
+Starting buffer size 4096 test
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 4096: sent=292 KB/s (28 msgs) recv=0 KB/s (0 msgs) errs=0
+BUF 4096: sent=304 KB/s (410 msgs) recv=0 KB/s (0 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 4096: sent=306 KB/s (798 msgs) recv=0 KB/s (0 msgs) errs=0
+BUF 4096: sent=35 KB/s (1184 msgs) recv=0 KB/s (0 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+BUF 4096: sent=99 KB/s (1558 msgs) recv=0 KB/s (0 msgs) errs=0
+BUF 4096: sent=140 KB/s (1944 msgs) recv=0 KB/s (0 msgs) errs=0
+COMPLETE 4096 bytes: SEND=25 KB/s (2291 msgs) RECV=0 KB/s (0 msgs)
+All throughput tests complete
+========================================
+THROUGHPUT TEST RESULTS
+========================================
+ 256 bytes: SEND   19 KB/s  RECV   20 KB/s  (errs=0)
+ 512 bytes: SEND   52 KB/s  RECV    0 KB/s  (errs=0)
+1024 bytes: SEND  101 KB/s  RECV    0 KB/s  (errs=0)
+2048 bytes: SEND   34 KB/s  RECV    0 KB/s  (errs=0)
+4096 bytes: SEND   25 KB/s  RECV    0 KB/s  (errs=0)
+========================================
+Memory: FreeMem=2646960 MaxBlock=2645728
+Streaming 4035 bytes of logs to partner...

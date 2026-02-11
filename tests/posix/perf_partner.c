@@ -127,7 +127,7 @@ typedef struct {
 #define LOG_STREAM_MARKER       "LOG:"
 #define LOG_STREAM_MARKER_LEN   4
 #define LOG_STREAM_HEADER_SIZE  8
-#define LOG_RECEIVE_BUFFER_SIZE 65536
+#define LOG_RECEIVE_BUFFER_SIZE (128 * 1024)  /* 128KB for larger test logs */
 
 typedef struct {
     uint8_t        *buffer;           /* Reception buffer */
@@ -136,8 +136,64 @@ typedef struct {
     PeerTalk_PeerID peer_id;          /* Peer sending logs */
     uint32_t        peer_ip;          /* Peer IP for folder selection */
     int             active;           /* 1 if receiving logs */
+    int             overflow;         /* 1 if buffer overflowed */
     char            peer_name[64];    /* For filename */
 } LogReceiver;
+
+/* ========================================================================== */
+/* Test Metrics Extraction                                                     */
+/* ========================================================================== */
+
+#define MAX_SIZE_ENTRIES 8
+
+typedef struct {
+    /* Latency metrics (per message size) */
+    struct {
+        int             size;
+        uint32_t        min_ms;
+        uint32_t        max_ms;
+        uint32_t        avg_ms;
+        uint32_t        sent;
+        uint32_t        recv;
+        uint32_t        lost;
+    } latency[MAX_SIZE_ENTRIES];
+    int latency_count;
+
+    /* Throughput metrics (per buffer size) */
+    struct {
+        int             size;
+        float           kb_per_sec;
+        uint32_t        messages;
+        uint32_t        duration_sec;
+    } throughput[MAX_SIZE_ENTRIES];
+    int throughput_count;
+
+    /* Stress metrics */
+    uint32_t        stress_cycles;
+    uint32_t        stress_success;
+    uint32_t        stress_failed;
+    int32_t         memory_delta;
+    int             stress_passed;  /* 1 if passed, 0 if failed, -1 if not present */
+
+    /* Discovery metrics */
+    uint32_t        discovery_total;
+    uint32_t        discovery_unique;
+    uint32_t        discovery_lost;
+    float           discovery_rate;  /* per minute */
+
+    /* Test identification */
+    char            test_type[32];
+} TestMetrics;
+
+/* Echo error tracking */
+typedef struct {
+    uint64_t        would_block;
+    uint64_t        buffer_full;
+    uint64_t        connection_reset;
+    uint64_t        other;
+} EchoErrors;
+
+static EchoErrors g_echo_errors = {0};
 
 /* ========================================================================== */
 /* Globals                                                                     */
@@ -179,6 +235,188 @@ static void sigint_handler(int sig)
     (void)sig;
     printf("\nReceived signal, shutting down...\n");
     g_running = 0;
+}
+
+/* ========================================================================== */
+/* Test Metrics Parsing                                                        */
+/* ========================================================================== */
+
+/**
+ * Parse test metrics from log content
+ *
+ * Extracts structured metrics from Mac test log data for analysis and
+ * summary reporting.
+ */
+static void parse_test_metrics(const char *data, size_t len, TestMetrics *m)
+{
+    const char *p = data;
+    const char *end = data + len;
+
+    memset(m, 0, sizeof(*m));
+    m->stress_passed = -1;  /* Not present by default */
+
+    /* Detect test type from header */
+    if (memmem(data, len, "Latency Test", 12)) {
+        strncpy(m->test_type, "latency", sizeof(m->test_type) - 1);
+    } else if (memmem(data, len, "Throughput Test", 15)) {
+        strncpy(m->test_type, "throughput", sizeof(m->test_type) - 1);
+    } else if (memmem(data, len, "Stress Test", 11)) {
+        strncpy(m->test_type, "stress", sizeof(m->test_type) - 1);
+    } else if (memmem(data, len, "Discovery Test", 14)) {
+        strncpy(m->test_type, "discovery", sizeof(m->test_type) - 1);
+    } else if (memmem(data, len, "MacTCP Test", 11)) {
+        strncpy(m->test_type, "mactcp", sizeof(m->test_type) - 1);
+    } else {
+        strncpy(m->test_type, "unknown", sizeof(m->test_type) - 1);
+    }
+
+    /* Parse latency results: "SIZE 256: min=12 max=45 avg=23 ms (sent=100 recv=98 lost=2)" */
+    while (p < end && m->latency_count < MAX_SIZE_ENTRIES) {
+        const char *line = memmem(p, end - p, "SIZE ", 5);
+        if (!line) break;
+
+        int size, min_v, max_v, avg_v, sent, recv, lost;
+        if (sscanf(line, "SIZE %d: min=%d max=%d avg=%d ms (sent=%d recv=%d lost=%d)",
+                   &size, &min_v, &max_v, &avg_v, &sent, &recv, &lost) == 7) {
+            int i = m->latency_count++;
+            m->latency[i].size = size;
+            m->latency[i].min_ms = min_v;
+            m->latency[i].max_ms = max_v;
+            m->latency[i].avg_ms = avg_v;
+            m->latency[i].sent = sent;
+            m->latency[i].recv = recv;
+            m->latency[i].lost = lost;
+        }
+        p = line + 5;
+    }
+
+    /* Parse throughput results: "THROUGHPUT 1024: 125.3 KB/s (4521 messages in 30 sec)" */
+    p = data;
+    while (p < end && m->throughput_count < MAX_SIZE_ENTRIES) {
+        const char *line = memmem(p, end - p, "THROUGHPUT ", 11);
+        if (!line) break;
+
+        int size, msgs, dur;
+        float kbps;
+        if (sscanf(line, "THROUGHPUT %d: %f KB/s (%d messages in %d sec)",
+                   &size, &kbps, &msgs, &dur) >= 2) {
+            int i = m->throughput_count++;
+            m->throughput[i].size = size;
+            m->throughput[i].kb_per_sec = kbps;
+            m->throughput[i].messages = msgs;
+            m->throughput[i].duration_sec = dur;
+        }
+        p = line + 11;
+    }
+
+    /* Parse stress results: "STRESS: 50 cycles, 48 success, 2 failed, memory delta: -2048" */
+    {
+        const char *line = memmem(data, len, "STRESS:", 7);
+        if (line) {
+            int cycles, success, failed, delta;
+            if (sscanf(line, "STRESS: %d cycles, %d success, %d failed, memory delta: %d",
+                       &cycles, &success, &failed, &delta) == 4) {
+                m->stress_cycles = cycles;
+                m->stress_success = success;
+                m->stress_failed = failed;
+                m->memory_delta = delta;
+            }
+        }
+        /* Check for pass/fail */
+        if (memmem(data, len, "STRESS TEST: PASSED", 19)) {
+            m->stress_passed = 1;
+        } else if (memmem(data, len, "STRESS TEST: FAILED", 19)) {
+            m->stress_passed = 0;
+        }
+    }
+
+    /* Parse discovery results: "DISCOVERY: 156 total, 4 unique peers, 2 lost events" */
+    {
+        const char *line = memmem(data, len, "DISCOVERY:", 10);
+        if (line) {
+            int total, unique, lost_v;
+            if (sscanf(line, "DISCOVERY: %d total, %d unique peers, %d lost",
+                       &total, &unique, &lost_v) == 3) {
+                m->discovery_total = total;
+                m->discovery_unique = unique;
+                m->discovery_lost = lost_v;
+            }
+            /* Also check for rate */
+            const char *rate_line = memmem(data, len, "discoveries/min", 15);
+            if (rate_line) {
+                /* Scan backwards to find the number */
+                const char *num_start = rate_line - 1;
+                while (num_start > data && (*num_start == '.' || (*num_start >= '0' && *num_start <= '9'))) {
+                    num_start--;
+                }
+                float rate;
+                if (sscanf(num_start, "%f", &rate) == 1) {
+                    m->discovery_rate = rate;
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Print metrics summary to stdout
+ */
+static void print_metrics_summary(const TestMetrics *m)
+{
+    int i;
+
+    printf("\n");
+    printf("========== %s METRICS ==========\n", m->test_type);
+
+    if (m->latency_count > 0) {
+        printf("\nLatency Results:\n");
+        printf("  Size    Min    Avg    Max    Loss\n");
+        printf("  ----    ---    ---    ---    ----\n");
+        for (i = 0; i < m->latency_count; i++) {
+            int loss_pct = (m->latency[i].sent > 0) ?
+                          (m->latency[i].lost * 100 / m->latency[i].sent) : 0;
+            printf("  %4dB   %3ums  %3ums  %3ums  %d%%\n",
+                   m->latency[i].size,
+                   m->latency[i].min_ms,
+                   m->latency[i].avg_ms,
+                   m->latency[i].max_ms,
+                   loss_pct);
+        }
+    }
+
+    if (m->throughput_count > 0) {
+        printf("\nThroughput Results:\n");
+        printf("  Size    KB/s    Messages\n");
+        printf("  ----    ----    --------\n");
+        for (i = 0; i < m->throughput_count; i++) {
+            printf("  %4dB   %5.1f   %u\n",
+                   m->throughput[i].size,
+                   m->throughput[i].kb_per_sec,
+                   m->throughput[i].messages);
+        }
+    }
+
+    if (m->stress_cycles > 0) {
+        printf("\nStress Results:\n");
+        printf("  Cycles: %u (%u success, %u failed)\n",
+               m->stress_cycles, m->stress_success, m->stress_failed);
+        printf("  Memory delta: %d bytes\n", m->memory_delta);
+        if (m->stress_passed >= 0) {
+            printf("  Status: %s\n", m->stress_passed ? "PASSED" : "FAILED");
+        }
+    }
+
+    if (m->discovery_total > 0) {
+        printf("\nDiscovery Results:\n");
+        printf("  Total discoveries: %u\n", m->discovery_total);
+        printf("  Unique peers: %u\n", m->discovery_unique);
+        printf("  Lost events: %u\n", m->discovery_lost);
+        if (m->discovery_rate > 0) {
+            printf("  Rate: %.1f discoveries/min\n", m->discovery_rate);
+        }
+    }
+
+    printf("=====================================\n\n");
 }
 
 /* ========================================================================== */
@@ -263,8 +501,18 @@ static void echo_message(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
             printf("[ECHO] %llu messages echoed\n",
                    (unsigned long long)g_stats.echo_count);
         }
-    } else if (err == PT_ERR_WOULD_BLOCK || err == PT_ERR_BUFFER_FULL) {
+    } else if (err == PT_ERR_WOULD_BLOCK) {
         /* Backpressure - queue for retry instead of dropping */
+        g_echo_errors.would_block++;
+        if (echo_queue_push(peer_id, data, len) < 0) {
+            g_stats.echo_drops++;
+            if (g_config.verbose) {
+                printf("[ECHO] Queue full, dropped echo len=%u\n", len);
+            }
+        }
+    } else if (err == PT_ERR_BUFFER_FULL) {
+        /* Buffer full - queue for retry */
+        g_echo_errors.buffer_full++;
         if (echo_queue_push(peer_id, data, len) < 0) {
             g_stats.echo_drops++;
             if (g_config.verbose) {
@@ -272,7 +520,12 @@ static void echo_message(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
             }
         }
     } else {
-        /* Real error */
+        /* Real error - track by type */
+        if (err == PT_ERR_NOT_CONNECTED || err == PT_ERR_CONNECTION_CLOSED) {
+            g_echo_errors.connection_reset++;
+        } else {
+            g_echo_errors.other++;
+        }
         static int fail_logged = 0;
         if (fail_logged < 10) {
             printf("[ECHO] Send failed: err=%d len=%u peer=%u\n", err, len, peer_id);
@@ -625,6 +878,14 @@ static void log_receiver_check_complete(void)
         fwrite(g_log_receiver.buffer + LOG_STREAM_HEADER_SIZE, 1, log_len, fp);
         fclose(fp);
         printf("[LOG] Saved %u bytes to %s\n", log_len, filename);
+
+        /* Parse and display metrics summary */
+        {
+            TestMetrics metrics;
+            const char *log_content = (const char *)(g_log_receiver.buffer + LOG_STREAM_HEADER_SIZE);
+            parse_test_metrics(log_content, log_data_len, &metrics);
+            print_metrics_summary(&metrics);
+        }
     } else {
         printf("[LOG] Failed to create %s: %s\n", filename, strerror(errno));
     }
@@ -857,6 +1118,20 @@ static void print_stats(void)
         printf("  Echo retries: %llu, drops: %llu\n",
                (unsigned long long)g_stats.echo_retries,
                (unsigned long long)g_stats.echo_drops);
+    }
+
+    /* Show detailed echo errors if any occurred */
+    if (g_echo_errors.would_block > 0 || g_echo_errors.buffer_full > 0 ||
+        g_echo_errors.connection_reset > 0 || g_echo_errors.other > 0) {
+        printf("\nEcho Errors (by type):\n");
+        if (g_echo_errors.would_block > 0)
+            printf("  would_block: %llu\n", (unsigned long long)g_echo_errors.would_block);
+        if (g_echo_errors.buffer_full > 0)
+            printf("  buffer_full: %llu\n", (unsigned long long)g_echo_errors.buffer_full);
+        if (g_echo_errors.connection_reset > 0)
+            printf("  connection_reset: %llu\n", (unsigned long long)g_echo_errors.connection_reset);
+        if (g_echo_errors.other > 0)
+            printf("  other: %llu\n", (unsigned long long)g_echo_errors.other);
     }
 
     if (g_config.mode == MODE_STREAM && g_stats.bytes_sent > 0) {

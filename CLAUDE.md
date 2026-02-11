@@ -186,8 +186,7 @@ mcp__classic-mac-hardware__upload_file(machine="performa6200", local_path="build
 | App | Mode | Purpose |
 |-----|------|---------|
 | `test_partner` | - | Basic discovery partner, sends canned responses |
-| `perf_partner` | `--mode echo` | **Echo server** for latency tests (default) |
-| `perf_partner` | `--mode stream` | Throughput streaming to Mac |
+| `perf_partner` | `--mode echo` | **Echo server** for latency AND throughput tests (default) |
 | `perf_partner` | `--mode stress` | Stress test partner |
 
 **Build:**
@@ -197,14 +196,13 @@ docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make 
 
 **Run (must use host networking for UDP broadcast):**
 ```bash
-# Echo mode for latency tests
+# Echo mode for latency AND throughput tests
 docker run --rm --network host -v "$(pwd)":/workspace -w /workspace \
     peertalk-posix:latest ./build/bin/perf_partner --mode echo --verbose
-
-# Stream mode for throughput tests
-docker run --rm --network host -v "$(pwd)":/workspace -w /workspace \
-    peertalk-posix:latest ./build/bin/perf_partner --mode stream --size 4096
 ```
+
+**IMPORTANT:** Throughput test uses echo mode (not stream). Stream mode gives RECV=0
+because messages aren't echoed back. Use echo mode for proper bidirectional measurement.
 
 ### Testing Workflow
 
@@ -345,6 +343,7 @@ Platform rules are automatically loaded when editing files in the corresponding 
 |-------|-------------|
 | `/build test` | Compile and run POSIX tests with coverage |
 | `/build package` | Create Mac binaries for hardware transfer |
+| `/run-test <test> [machine]` | Full hardware test workflow: build, execute, collect logs, analyze |
 | `/hw-test generate X.Y` | Create hardware test plan for Classic Mac |
 | `/test-partner start [mode]` | Start POSIX test partner (echo/stream/stress) in named container |
 | `/test-partner stop` | Stop test partner container |

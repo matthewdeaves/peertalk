@@ -28,6 +28,7 @@
 
 #include "peertalk.h"
 #include "pt_log.h"
+#include "status_window.h"
 
 /* Log streaming - sends logs to test partner at completion */
 #define LOG_STREAM_IMPLEMENTATION
@@ -215,6 +216,14 @@ static void complete_cycle(void)
 {
     g_test.cycle_count++;
     g_test.disconnect_count++;
+
+    /* Update status window */
+    status_clear();
+    status_linef("Cycle: %d/%d", g_test.cycle_count, TARGET_CYCLES);
+    status_linef("Success: %d  Failed: %d",
+                g_test.connect_successes, g_test.connect_failures);
+    status_linef("FreeMem: %lu KB", FreeMem() / 1024);
+    status_linef("MaxBlock: %lu KB", MaxBlock() / 1024);
 
     /* Memory check at intervals */
     if ((g_test.cycle_count % MEMORY_CHECK_INTERVAL) == 0) {
@@ -452,6 +461,10 @@ int main(void)
 
     init_toolbox();
 
+    /* Initialize status window for user feedback */
+    status_init("PeerTalk Stress Test");
+    status_line("Initializing...");
+
     /* Create PT_Log */
     g_log = PT_LogCreate();
     if (g_log) {
@@ -579,6 +592,9 @@ cleanup:
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "TEST EXITING - cleaning up...");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
 
+    status_clear();
+    status_line("Done. Press any key to exit.");
+
     if (g_ctx) {
         PeerTalk_Shutdown(g_ctx);
     }
@@ -586,5 +602,6 @@ cleanup:
         PT_LogDestroy(g_log);
     }
 
+    status_cleanup();
     return 0;
 }

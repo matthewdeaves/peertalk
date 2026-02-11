@@ -1,0 +1,1044 @@
+========================================
+PeerTalk Latency Test
+Version: 1.0.0
+========================================
+Buffer pool: 4 buffers × 4KB
+Initializing PeerTalk...
+Waiting for peer...
+Press any key to exit.
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+Connecting to peer...
+CONNECTED to peer 1
+Starting latency test with size 16
+PING seq=0 size=16 sent
+PONG seq=0 rtt=15 ticks (250 ms)
+PING seq=1 size=16 sent
+PONG seq=1 rtt=5 ticks (83 ms)
+PING seq=2 size=16 sent
+PONG seq=2 rtt=6 ticks (100 ms)
+PING seq=3 size=16 sent
+PONG seq=3 rtt=6 ticks (100 ms)
+PING seq=4 size=16 sent
+PONG seq=4 rtt=1 ticks (16 ms)
+PING seq=5 size=16 sent
+PONG seq=5 rtt=5 ticks (83 ms)
+PING seq=6 size=16 sent
+PONG seq=6 rtt=5 ticks (83 ms)
+PING seq=7 size=16 sent
+PONG seq=7 rtt=5 ticks (83 ms)
+PING seq=8 size=16 sent
+PONG seq=8 rtt=5 ticks (83 ms)
+PING seq=9 size=16 sent
+PONG seq=9 rtt=5 ticks (83 ms)
+PING seq=10 size=16 sent
+PONG seq=10 rtt=6 ticks (100 ms)
+PING seq=11 size=16 sent
+PONG seq=11 rtt=1 ticks (16 ms)
+PING seq=12 size=16 sent
+PONG seq=12 rtt=5 ticks (83 ms)
+PING seq=13 size=16 sent
+PONG seq=13 rtt=5 ticks (83 ms)
+PING seq=14 size=16 sent
+PONG seq=14 rtt=6 ticks (100 ms)
+PING seq=15 size=16 sent
+PONG seq=15 rtt=1 ticks (16 ms)
+PING seq=16 size=16 sent
+PONG seq=16 rtt=5 ticks (83 ms)
+PING seq=17 size=16 sent
+PONG seq=17 rtt=5 ticks (83 ms)
+PING seq=18 size=16 sent
+PONG seq=18 rtt=5 ticks (83 ms)
+PING seq=19 size=16 sent
+PONG seq=19 rtt=5 ticks (83 ms)
+PING seq=20 size=16 sent
+PONG seq=20 rtt=1 ticks (16 ms)
+PING seq=21 size=16 sent
+PONG seq=21 rtt=5 ticks (83 ms)
+PING seq=22 size=16 sent
+PONG seq=22 rtt=5 ticks (83 ms)
+PING seq=23 size=16 sent
+PONG seq=23 rtt=5 ticks (83 ms)
+PING seq=24 size=16 sent
+PONG seq=24 rtt=1 ticks (16 ms)
+PING seq=25 size=16 sent
+PONG seq=25 rtt=5 ticks (83 ms)
+PING seq=26 size=16 sent
+PONG seq=26 rtt=5 ticks (83 ms)
+PING seq=27 size=16 sent
+PONG seq=27 rtt=5 ticks (83 ms)
+PING seq=28 size=16 sent
+PONG seq=28 rtt=5 ticks (83 ms)
+PING seq=29 size=16 sent
+PONG seq=29 rtt=6 ticks (100 ms)
+PING seq=30 size=16 sent
+PONG seq=30 rtt=1 ticks (16 ms)
+PING seq=31 size=16 sent
+PONG seq=31 rtt=1 ticks (16 ms)
+PING seq=32 size=16 sent
+PONG seq=32 rtt=1 ticks (16 ms)
+PING seq=33 size=16 sent
+PONG seq=33 rtt=5 ticks (83 ms)
+PING seq=34 size=16 sent
+PONG seq=34 rtt=5 ticks (83 ms)
+PING seq=35 size=16 sent
+PONG seq=35 rtt=32 ticks (533 ms)
+PING seq=36 size=16 sent
+PONG seq=36 rtt=9 ticks (150 ms)
+PING seq=37 size=16 sent
+PONG seq=37 rtt=1 ticks (16 ms)
+PING seq=38 size=16 sent
+PONG seq=38 rtt=5 ticks (83 ms)
+PING seq=39 size=16 sent
+PONG seq=39 rtt=5 ticks (83 ms)
+PING seq=40 size=16 sent
+PONG seq=40 rtt=5 ticks (83 ms)
+PING seq=41 size=16 sent
+PONG seq=41 rtt=5 ticks (83 ms)
+PING seq=42 size=16 sent
+PONG seq=42 rtt=5 ticks (83 ms)
+PING seq=43 size=16 sent
+PONG seq=43 rtt=1 ticks (16 ms)
+PING seq=44 size=16 sent
+PONG seq=44 rtt=1 ticks (16 ms)
+PING seq=45 size=16 sent
+PONG seq=45 rtt=1 ticks (16 ms)
+PING seq=46 size=16 sent
+PONG seq=46 rtt=5 ticks (83 ms)
+PING seq=47 size=16 sent
+PONG seq=47 rtt=5 ticks (83 ms)
+PING seq=48 size=16 sent
+PONG seq=48 rtt=5 ticks (83 ms)
+PING seq=49 size=16 sent
+PONG seq=49 rtt=6 ticks (100 ms)
+PING seq=50 size=16 sent
+PONG seq=50 rtt=1 ticks (16 ms)
+PING seq=51 size=16 sent
+PONG seq=51 rtt=6 ticks (100 ms)
+PING seq=52 size=16 sent
+PONG seq=52 rtt=6 ticks (100 ms)
+PING seq=53 size=16 sent
+PONG seq=53 rtt=1 ticks (16 ms)
+PING seq=54 size=16 sent
+PONG seq=54 rtt=1 ticks (16 ms)
+PING seq=55 size=16 sent
+PONG seq=55 rtt=5 ticks (83 ms)
+PING seq=56 size=16 sent
+PONG seq=56 rtt=5 ticks (83 ms)
+PING seq=57 size=16 sent
+PONG seq=57 rtt=5 ticks (83 ms)
+PING seq=58 size=16 sent
+PONG seq=58 rtt=5 ticks (83 ms)
+PING seq=59 size=16 sent
+PONG seq=59 rtt=6 ticks (100 ms)
+PING seq=60 size=16 sent
+PONG seq=60 rtt=1 ticks (16 ms)
+PING seq=61 size=16 sent
+PONG seq=61 rtt=5 ticks (83 ms)
+PING seq=62 size=16 sent
+PONG seq=62 rtt=5 ticks (83 ms)
+PING seq=63 size=16 sent
+PONG seq=63 rtt=5 ticks (83 ms)
+PING seq=64 size=16 sent
+PONG seq=64 rtt=5 ticks (83 ms)
+PING seq=65 size=16 sent
+PONG seq=65 rtt=5 ticks (83 ms)
+PING seq=66 size=16 sent
+PONG seq=66 rtt=5 ticks (83 ms)
+PING seq=67 size=16 sent
+PONG seq=67 rtt=5 ticks (83 ms)
+PING seq=68 size=16 sent
+PONG seq=68 rtt=10 ticks (166 ms)
+PING seq=69 size=16 sent
+PONG seq=69 rtt=1 ticks (16 ms)
+PING seq=70 size=16 sent
+PONG seq=70 rtt=5 ticks (83 ms)
+PING seq=71 size=16 sent
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+PONG seq=71 rtt=7 ticks (116 ms)
+PING seq=72 size=16 sent
+PONG seq=72 rtt=6 ticks (100 ms)
+PING seq=73 size=16 sent
+PONG seq=73 rtt=1 ticks (16 ms)
+PING seq=74 size=16 sent
+PONG seq=74 rtt=5 ticks (83 ms)
+PING seq=75 size=16 sent
+PONG seq=75 rtt=5 ticks (83 ms)
+PING seq=76 size=16 sent
+PONG seq=76 rtt=6 ticks (100 ms)
+PING seq=77 size=16 sent
+PONG seq=77 rtt=1 ticks (16 ms)
+PING seq=78 size=16 sent
+PONG seq=78 rtt=1 ticks (16 ms)
+PING seq=79 size=16 sent
+PONG seq=79 rtt=11 ticks (183 ms)
+PING seq=80 size=16 sent
+PONG seq=80 rtt=1 ticks (16 ms)
+PING seq=81 size=16 sent
+PONG seq=81 rtt=1 ticks (16 ms)
+PING seq=82 size=16 sent
+PONG seq=82 rtt=5 ticks (83 ms)
+PING seq=83 size=16 sent
+PONG seq=83 rtt=10 ticks (166 ms)
+PING seq=84 size=16 sent
+PONG seq=84 rtt=6 ticks (100 ms)
+PING seq=85 size=16 sent
+PONG seq=85 rtt=1 ticks (16 ms)
+PING seq=86 size=16 sent
+PONG seq=86 rtt=5 ticks (83 ms)
+PING seq=87 size=16 sent
+PONG seq=87 rtt=5 ticks (83 ms)
+PING seq=88 size=16 sent
+PONG seq=88 rtt=5 ticks (83 ms)
+PING seq=89 size=16 sent
+PONG seq=89 rtt=5 ticks (83 ms)
+PING seq=90 size=16 sent
+PONG seq=90 rtt=10 ticks (166 ms)
+PING seq=91 size=16 sent
+PONG seq=91 rtt=1 ticks (16 ms)
+PING seq=92 size=16 sent
+PONG seq=92 rtt=1 ticks (16 ms)
+PING seq=93 size=16 sent
+PONG seq=93 rtt=5 ticks (83 ms)
+PING seq=94 size=16 sent
+PONG seq=94 rtt=5 ticks (83 ms)
+PING seq=95 size=16 sent
+PONG seq=95 rtt=6 ticks (100 ms)
+PING seq=96 size=16 sent
+PONG seq=96 rtt=5 ticks (83 ms)
+PING seq=97 size=16 sent
+PONG seq=97 rtt=5 ticks (83 ms)
+PING seq=98 size=16 sent
+PONG seq=98 rtt=5 ticks (83 ms)
+PING seq=99 size=16 sent
+PONG seq=99 rtt=5 ticks (83 ms)
+SIZE 16: min=16 max=533 avg=66 ms (sent=100 recv=100 lost=0)
+Starting size 64 test
+PING seq=0 size=64 sent
+PONG seq=0 rtt=5 ticks (83 ms)
+PING seq=1 size=64 sent
+PONG seq=1 rtt=10 ticks (166 ms)
+PING seq=2 size=64 sent
+PONG seq=2 rtt=1 ticks (16 ms)
+PING seq=3 size=64 sent
+PONG seq=3 rtt=5 ticks (83 ms)
+PING seq=4 size=64 sent
+PONG seq=4 rtt=5 ticks (83 ms)
+PING seq=5 size=64 sent
+PONG seq=5 rtt=5 ticks (83 ms)
+PING seq=6 size=64 sent
+PONG seq=6 rtt=10 ticks (166 ms)
+PING seq=7 size=64 sent
+PONG seq=7 rtt=1 ticks (16 ms)
+PING seq=8 size=64 sent
+PONG seq=8 rtt=2 ticks (33 ms)
+PING seq=9 size=64 sent
+PONG seq=9 rtt=6 ticks (100 ms)
+PING seq=10 size=64 sent
+PONG seq=10 rtt=6 ticks (100 ms)
+PING seq=11 size=64 sent
+PONG seq=11 rtt=1 ticks (16 ms)
+PING seq=12 size=64 sent
+PONG seq=12 rtt=1 ticks (16 ms)
+PING seq=13 size=64 sent
+PONG seq=13 rtt=1 ticks (16 ms)
+PING seq=14 size=64 sent
+PONG seq=14 rtt=5 ticks (83 ms)
+PING seq=15 size=64 sent
+PONG seq=15 rtt=5 ticks (83 ms)
+PING seq=16 size=64 sent
+PONG seq=16 rtt=5 ticks (83 ms)
+PING seq=17 size=64 sent
+PONG seq=17 rtt=1 ticks (16 ms)
+PING seq=18 size=64 sent
+PONG seq=18 rtt=4 ticks (66 ms)
+PING seq=19 size=64 sent
+PONG seq=19 rtt=5 ticks (83 ms)
+PING seq=20 size=64 sent
+PONG seq=20 rtt=6 ticks (100 ms)
+PING seq=21 size=64 sent
+PONG seq=21 rtt=5 ticks (83 ms)
+PING seq=22 size=64 sent
+PONG seq=22 rtt=6 ticks (100 ms)
+PING seq=23 size=64 sent
+PONG seq=23 rtt=1 ticks (16 ms)
+PING seq=24 size=64 sent
+PONG seq=24 rtt=5 ticks (83 ms)
+PING seq=25 size=64 sent
+PONG seq=25 rtt=5 ticks (83 ms)
+PING seq=26 size=64 sent
+PONG seq=26 rtt=5 ticks (83 ms)
+PING seq=27 size=64 sent
+PONG seq=27 rtt=5 ticks (83 ms)
+PING seq=28 size=64 sent
+PONG seq=28 rtt=5 ticks (83 ms)
+PING seq=29 size=64 sent
+PONG seq=29 rtt=1 ticks (16 ms)
+PING seq=30 size=64 sent
+PONG seq=30 rtt=1 ticks (16 ms)
+PING seq=31 size=64 sent
+PONG seq=31 rtt=5 ticks (83 ms)
+PING seq=32 size=64 sent
+PONG seq=32 rtt=5 ticks (83 ms)
+PING seq=33 size=64 sent
+PONG seq=33 rtt=5 ticks (83 ms)
+PING seq=34 size=64 sent
+PONG seq=34 rtt=5 ticks (83 ms)
+PING seq=35 size=64 sent
+PONG seq=35 rtt=5 ticks (83 ms)
+PING seq=36 size=64 sent
+PONG seq=36 rtt=5 ticks (83 ms)
+PING seq=37 size=64 sent
+PONG seq=37 rtt=5 ticks (83 ms)
+PING seq=38 size=64 sent
+PONG seq=38 rtt=10 ticks (166 ms)
+PING seq=39 size=64 sent
+PONG seq=39 rtt=1 ticks (16 ms)
+PING seq=40 size=64 sent
+PONG seq=40 rtt=5 ticks (83 ms)
+PING seq=41 size=64 sent
+PONG seq=41 rtt=5 ticks (83 ms)
+PING seq=42 size=64 sent
+PONG seq=42 rtt=6 ticks (100 ms)
+PING seq=43 size=64 sent
+PONG seq=43 rtt=6 ticks (100 ms)
+PING seq=44 size=64 sent
+PONG seq=44 rtt=1 ticks (16 ms)
+PING seq=45 size=64 sent
+PONG seq=45 rtt=1 ticks (16 ms)
+PING seq=46 size=64 sent
+PONG seq=46 rtt=5 ticks (83 ms)
+PING seq=47 size=64 sent
+PONG seq=47 rtt=6 ticks (100 ms)
+PING seq=48 size=64 sent
+PONG seq=48 rtt=1 ticks (16 ms)
+PING seq=49 size=64 sent
+PONG seq=49 rtt=5 ticks (83 ms)
+PING seq=50 size=64 sent
+PONG seq=50 rtt=5 ticks (83 ms)
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+PING seq=51 size=64 sent
+PONG seq=51 rtt=6 ticks (100 ms)
+PING seq=52 size=64 sent
+PONG seq=52 rtt=6 ticks (100 ms)
+PING seq=53 size=64 sent
+PONG seq=53 rtt=1 ticks (16 ms)
+PING seq=54 size=64 sent
+PONG seq=54 rtt=1 ticks (16 ms)
+PING seq=55 size=64 sent
+PONG seq=55 rtt=5 ticks (83 ms)
+PING seq=56 size=64 sent
+PONG seq=56 rtt=5 ticks (83 ms)
+PING seq=57 size=64 sent
+PONG seq=57 rtt=5 ticks (83 ms)
+PING seq=58 size=64 sent
+PONG seq=58 rtt=8 ticks (133 ms)
+PING seq=59 size=64 sent
+PONG seq=59 rtt=1 ticks (16 ms)
+PING seq=60 size=64 sent
+PONG seq=60 rtt=5 ticks (83 ms)
+PING seq=61 size=64 sent
+PONG seq=61 rtt=5 ticks (83 ms)
+PING seq=62 size=64 sent
+PONG seq=62 rtt=5 ticks (83 ms)
+PING seq=63 size=64 sent
+PONG seq=63 rtt=1 ticks (16 ms)
+PING seq=64 size=64 sent
+PONG seq=64 rtt=1 ticks (16 ms)
+PING seq=65 size=64 sent
+PONG seq=65 rtt=5 ticks (83 ms)
+PING seq=66 size=64 sent
+PONG seq=66 rtt=5 ticks (83 ms)
+PING seq=67 size=64 sent
+PONG seq=67 rtt=5 ticks (83 ms)
+PING seq=68 size=64 sent
+PONG seq=68 rtt=10 ticks (166 ms)
+PING seq=69 size=64 sent
+PONG seq=69 rtt=1 ticks (16 ms)
+PING seq=70 size=64 sent
+PONG seq=70 rtt=5 ticks (83 ms)
+PING seq=71 size=64 sent
+PONG seq=71 rtt=5 ticks (83 ms)
+PING seq=72 size=64 sent
+PONG seq=72 rtt=5 ticks (83 ms)
+PING seq=73 size=64 sent
+PONG seq=73 rtt=11 ticks (183 ms)
+PING seq=74 size=64 sent
+PONG seq=74 rtt=1 ticks (16 ms)
+PING seq=75 size=64 sent
+PONG seq=75 rtt=5 ticks (83 ms)
+PING seq=76 size=64 sent
+PONG seq=76 rtt=5 ticks (83 ms)
+PING seq=77 size=64 sent
+PONG seq=77 rtt=5 ticks (83 ms)
+PING seq=78 size=64 sent
+PONG seq=78 rtt=10 ticks (166 ms)
+PING seq=79 size=64 sent
+PONG seq=79 rtt=1 ticks (16 ms)
+PING seq=80 size=64 sent
+PONG seq=80 rtt=1 ticks (16 ms)
+PING seq=81 size=64 sent
+PONG seq=81 rtt=5 ticks (83 ms)
+PING seq=82 size=64 sent
+PONG seq=82 rtt=1 ticks (16 ms)
+PING seq=83 size=64 sent
+PONG seq=83 rtt=5 ticks (83 ms)
+PING seq=84 size=64 sent
+PONG seq=84 rtt=6 ticks (100 ms)
+PING seq=85 size=64 sent
+PONG seq=85 rtt=1 ticks (16 ms)
+PING seq=86 size=64 sent
+PONG seq=86 rtt=5 ticks (83 ms)
+PING seq=87 size=64 sent
+PONG seq=87 rtt=5 ticks (83 ms)
+PING seq=88 size=64 sent
+PONG seq=88 rtt=5 ticks (83 ms)
+PING seq=89 size=64 sent
+PONG seq=89 rtt=1 ticks (16 ms)
+PING seq=90 size=64 sent
+PONG seq=90 rtt=5 ticks (83 ms)
+PING seq=91 size=64 sent
+PONG seq=91 rtt=5 ticks (83 ms)
+PING seq=92 size=64 sent
+PONG seq=92 rtt=5 ticks (83 ms)
+PING seq=93 size=64 sent
+PONG seq=93 rtt=5 ticks (83 ms)
+PING seq=94 size=64 sent
+PONG seq=94 rtt=1 ticks (16 ms)
+PING seq=95 size=64 sent
+PONG seq=95 rtt=5 ticks (83 ms)
+PING seq=96 size=64 sent
+PONG seq=96 rtt=1 ticks (16 ms)
+PING seq=97 size=64 sent
+PONG seq=97 rtt=4 ticks (66 ms)
+PING seq=98 size=64 sent
+PONG seq=98 rtt=5 ticks (83 ms)
+PING seq=99 size=64 sent
+PONG seq=99 rtt=10 ticks (166 ms)
+PING seq=100 size=64 sent
+SIZE 64: min=16 max=183 avg=66 ms (sent=101 recv=100 lost=0)
+Starting size 256 test
+PONG seq mismatch: got 100 expected 100
+PING seq=0 size=256 sent
+PONG seq=0 rtt=6 ticks (100 ms)
+PING seq=1 size=256 sent
+PONG seq=1 rtt=1 ticks (16 ms)
+PING seq=2 size=256 sent
+PONG seq=2 rtt=6 ticks (100 ms)
+PING seq=3 size=256 sent
+PONG seq=3 rtt=6 ticks (100 ms)
+PING seq=4 size=256 sent
+PONG seq=4 rtt=1 ticks (16 ms)
+PING seq=5 size=256 sent
+PONG seq=5 rtt=5 ticks (83 ms)
+PING seq=6 size=256 sent
+PONG seq=6 rtt=5 ticks (83 ms)
+PING seq=7 size=256 sent
+PONG seq=7 rtt=1 ticks (16 ms)
+PING seq=8 size=256 sent
+PONG seq=8 rtt=1 ticks (16 ms)
+PING seq=9 size=256 sent
+PONG seq=9 rtt=1 ticks (16 ms)
+PING seq=10 size=256 sent
+PONG seq=10 rtt=5 ticks (83 ms)
+PING seq=11 size=256 sent
+PONG seq=11 rtt=5 ticks (83 ms)
+PING seq=12 size=256 sent
+PONG seq=12 rtt=1 ticks (16 ms)
+PING seq=13 size=256 sent
+PONG seq=13 rtt=1 ticks (16 ms)
+PING seq=14 size=256 sent
+PONG seq=14 rtt=1 ticks (16 ms)
+PING seq=15 size=256 sent
+PONG seq=15 rtt=5 ticks (83 ms)
+PING seq=16 size=256 sent
+PONG seq=16 rtt=5 ticks (83 ms)
+PING seq=17 size=256 sent
+PONG seq=17 rtt=6 ticks (100 ms)
+PING seq=18 size=256 sent
+PONG seq=18 rtt=1 ticks (16 ms)
+PING seq=19 size=256 sent
+PONG seq=19 rtt=1 ticks (16 ms)
+PING seq=20 size=256 sent
+PONG seq=20 rtt=6 ticks (100 ms)
+PING seq=21 size=256 sent
+PONG seq=21 rtt=5 ticks (83 ms)
+PING seq=22 size=256 sent
+PONG seq=22 rtt=6 ticks (100 ms)
+PING seq=23 size=256 sent
+PONG seq=23 rtt=1 ticks (16 ms)
+PING seq=24 size=256 sent
+PONG seq=24 rtt=1 ticks (16 ms)
+PING seq=25 size=256 sent
+PONG seq=25 rtt=5 ticks (83 ms)
+PING seq=26 size=256 sent
+PONG seq=26 rtt=6 ticks (100 ms)
+PING seq=27 size=256 sent
+PONG seq=27 rtt=1 ticks (16 ms)
+PING seq=28 size=256 sent
+PONG seq=28 rtt=1 ticks (16 ms)
+PING seq=29 size=256 sent
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+PONG seq=29 rtt=7 ticks (116 ms)
+PING seq=30 size=256 sent
+PONG seq=30 rtt=6 ticks (100 ms)
+PING seq=31 size=256 sent
+PONG seq=31 rtt=1 ticks (16 ms)
+PING seq=32 size=256 sent
+PONG seq=32 rtt=1 ticks (16 ms)
+PING seq=33 size=256 sent
+PONG seq=33 rtt=5 ticks (83 ms)
+PING seq=34 size=256 sent
+PONG seq=34 rtt=1 ticks (16 ms)
+PING seq=35 size=256 sent
+PONG seq=35 rtt=1 ticks (16 ms)
+PING seq=36 size=256 sent
+PONG seq=36 rtt=1 ticks (16 ms)
+PING seq=37 size=256 sent
+PONG seq=37 rtt=1 ticks (16 ms)
+PING seq=38 size=256 sent
+PONG seq=38 rtt=3 ticks (50 ms)
+PING seq=39 size=256 sent
+PONG seq=39 rtt=1 ticks (16 ms)
+PING seq=40 size=256 sent
+PONG seq=40 rtt=5 ticks (83 ms)
+PING seq=41 size=256 sent
+PONG seq=41 rtt=5 ticks (83 ms)
+PING seq=42 size=256 sent
+PONG seq=42 rtt=5 ticks (83 ms)
+PING seq=43 size=256 sent
+PONG seq=43 rtt=5 ticks (83 ms)
+PING seq=44 size=256 sent
+PONG seq=44 rtt=1 ticks (16 ms)
+PING seq=45 size=256 sent
+PONG seq=45 rtt=1 ticks (16 ms)
+PING seq=46 size=256 sent
+PONG seq=46 rtt=1 ticks (16 ms)
+PING seq=47 size=256 sent
+PONG seq=47 rtt=5 ticks (83 ms)
+PING seq=48 size=256 sent
+PONG seq=48 rtt=5 ticks (83 ms)
+PING seq=49 size=256 sent
+PONG seq=49 rtt=6 ticks (100 ms)
+PING seq=50 size=256 sent
+PONG seq=50 rtt=1 ticks (16 ms)
+PING seq=51 size=256 sent
+PONG seq=51 rtt=1 ticks (16 ms)
+PING seq=52 size=256 sent
+PONG seq=52 rtt=5 ticks (83 ms)
+PING seq=53 size=256 sent
+PONG seq=53 rtt=6 ticks (100 ms)
+PING seq=54 size=256 sent
+PONG seq=54 rtt=6 ticks (100 ms)
+PING seq=55 size=256 sent
+PONG seq=55 rtt=1 ticks (16 ms)
+PING seq=56 size=256 sent
+PONG seq=56 rtt=1 ticks (16 ms)
+PING seq=57 size=256 sent
+PONG seq=57 rtt=1 ticks (16 ms)
+PING seq=58 size=256 sent
+PONG seq=58 rtt=1 ticks (16 ms)
+PING seq=59 size=256 sent
+PONG seq=59 rtt=1 ticks (16 ms)
+PING seq=60 size=256 sent
+PONG seq=60 rtt=1 ticks (16 ms)
+PING seq=61 size=256 sent
+PONG seq=61 rtt=1 ticks (16 ms)
+PING seq=62 size=256 sent
+PONG seq=62 rtt=1 ticks (16 ms)
+PING seq=63 size=256 sent
+PONG seq=63 rtt=1 ticks (16 ms)
+PING seq=64 size=256 sent
+PONG seq=64 rtt=1 ticks (16 ms)
+PING seq=65 size=256 sent
+PONG seq=65 rtt=5 ticks (83 ms)
+PING seq=66 size=256 sent
+PONG seq=66 rtt=10 ticks (166 ms)
+PING seq=67 size=256 sent
+PONG seq=67 rtt=1 ticks (16 ms)
+PING seq=68 size=256 sent
+PONG seq=68 rtt=1 ticks (16 ms)
+PING seq=69 size=256 sent
+PONG seq=69 rtt=1 ticks (16 ms)
+PING seq=70 size=256 sent
+PONG seq=70 rtt=1 ticks (16 ms)
+PING seq=71 size=256 sent
+PONG seq=71 rtt=1 ticks (16 ms)
+PING seq=72 size=256 sent
+PONG seq=72 rtt=1 ticks (16 ms)
+PING seq=73 size=256 sent
+PONG seq=73 rtt=1 ticks (16 ms)
+PING seq=74 size=256 sent
+PONG seq=74 rtt=1 ticks (16 ms)
+PING seq=75 size=256 sent
+PONG seq=75 rtt=1 ticks (16 ms)
+PING seq=76 size=256 sent
+PONG seq=76 rtt=5 ticks (83 ms)
+PING seq=77 size=256 sent
+PONG seq=77 rtt=5 ticks (83 ms)
+PING seq=78 size=256 sent
+PONG seq=78 rtt=10 ticks (166 ms)
+PING seq=79 size=256 sent
+PONG seq=79 rtt=1 ticks (16 ms)
+PING seq=80 size=256 sent
+PONG seq=80 rtt=1 ticks (16 ms)
+PING seq=81 size=256 sent
+PONG seq=81 rtt=1 ticks (16 ms)
+PING seq=82 size=256 sent
+PONG seq=82 rtt=6 ticks (100 ms)
+PING seq=83 size=256 sent
+PONG seq=83 rtt=10 ticks (166 ms)
+PING seq=84 size=256 sent
+PONG seq=84 rtt=5 ticks (83 ms)
+PING seq=85 size=256 sent
+PONG seq=85 rtt=5 ticks (83 ms)
+PING seq=86 size=256 sent
+PONG seq=86 rtt=10 ticks (166 ms)
+PING seq=87 size=256 sent
+PONG seq=87 rtt=1 ticks (16 ms)
+PING seq=88 size=256 sent
+PONG seq=88 rtt=5 ticks (83 ms)
+PING seq=89 size=256 sent
+PONG seq=89 rtt=6 ticks (100 ms)
+PING seq=90 size=256 sent
+PONG seq=90 rtt=1 ticks (16 ms)
+PING seq=91 size=256 sent
+PONG seq=91 rtt=5 ticks (83 ms)
+PING seq=92 size=256 sent
+PONG seq=92 rtt=10 ticks (166 ms)
+PING seq=93 size=256 sent
+PONG seq=93 rtt=1 ticks (16 ms)
+PING seq=94 size=256 sent
+PONG seq=94 rtt=1 ticks (16 ms)
+PING seq=95 size=256 sent
+PONG seq=95 rtt=5 ticks (83 ms)
+PING seq=96 size=256 sent
+PONG seq=96 rtt=5 ticks (83 ms)
+PING seq=97 size=256 sent
+PONG seq=97 rtt=5 ticks (83 ms)
+PING seq=98 size=256 sent
+PONG seq=98 rtt=5 ticks (83 ms)
+PING seq=99 size=256 sent
+PONG seq=99 rtt=1 ticks (16 ms)
+SIZE 256: min=16 max=166 avg=50 ms (sent=100 recv=100 lost=0)
+Starting size 1024 test
+PING seq=0 size=1024 sent
+PONG seq=0 rtt=5 ticks (83 ms)
+PING seq=1 size=1024 sent
+PONG seq=1 rtt=6 ticks (100 ms)
+PING seq=2 size=1024 sent
+PONG seq=2 rtt=6 ticks (100 ms)
+PING seq=3 size=1024 sent
+PONG seq=3 rtt=11 ticks (183 ms)
+PING seq=4 size=1024 sent
+PONG seq=4 rtt=7 ticks (116 ms)
+PING seq=5 size=1024 sent
+PONG seq=5 rtt=6 ticks (100 ms)
+PING seq=6 size=1024 sent
+PONG seq=6 rtt=6 ticks (100 ms)
+PING seq=7 size=1024 sent
+PONG seq=7 rtt=6 ticks (100 ms)
+PING seq=8 size=1024 sent
+PONG seq=8 rtt=11 ticks (183 ms)
+PING seq=9 size=1024 sent
+PONG seq=9 rtt=6 ticks (100 ms)
+PING seq=10 size=1024 sent
+PONG seq=10 rtt=6 ticks (100 ms)
+PING seq=11 size=1024 sent
+PONG seq=11 rtt=7 ticks (116 ms)
+PING seq=12 size=1024 sent
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+PONG seq=12 rtt=12 ticks (200 ms)
+PING seq=13 size=1024 sent
+PONG seq=13 rtt=13 ticks (216 ms)
+PING seq=14 size=1024 sent
+PONG seq=14 rtt=10 ticks (166 ms)
+PING seq=15 size=1024 sent
+PONG seq=15 rtt=11 ticks (183 ms)
+PING seq=16 size=1024 sent
+PONG seq=16 rtt=6 ticks (100 ms)
+PING seq=17 size=1024 sent
+PONG seq=17 rtt=6 ticks (100 ms)
+PING seq=18 size=1024 sent
+PONG seq=18 rtt=6 ticks (100 ms)
+PING seq=19 size=1024 sent
+PONG seq=19 rtt=6 ticks (100 ms)
+PING seq=20 size=1024 sent
+PONG seq=20 rtt=6 ticks (100 ms)
+PING seq=21 size=1024 sent
+PONG seq=21 rtt=11 ticks (183 ms)
+PING seq=22 size=1024 sent
+PONG seq=22 rtt=6 ticks (100 ms)
+PING seq=23 size=1024 sent
+PONG seq=23 rtt=8 ticks (133 ms)
+PING seq=24 size=1024 sent
+PONG seq=24 rtt=6 ticks (100 ms)
+PING seq=25 size=1024 sent
+PONG seq=25 rtt=11 ticks (183 ms)
+PING seq=26 size=1024 sent
+PONG seq=26 rtt=6 ticks (100 ms)
+PING seq=27 size=1024 sent
+PONG seq=27 rtt=6 ticks (100 ms)
+PING seq=28 size=1024 sent
+PONG seq=28 rtt=11 ticks (183 ms)
+PING seq=29 size=1024 sent
+PONG seq=29 rtt=7 ticks (116 ms)
+PING seq=30 size=1024 sent
+PONG seq=30 rtt=11 ticks (183 ms)
+PING seq=31 size=1024 sent
+PONG seq=31 rtt=6 ticks (100 ms)
+PING seq=32 size=1024 sent
+PONG seq=32 rtt=6 ticks (100 ms)
+PING seq=33 size=1024 sent
+PONG seq=33 rtt=11 ticks (183 ms)
+PING seq=34 size=1024 sent
+PONG seq=34 rtt=11 ticks (183 ms)
+PING seq=35 size=1024 sent
+PONG seq=35 rtt=7 ticks (116 ms)
+PING seq=36 size=1024 sent
+PONG seq=36 rtt=6 ticks (100 ms)
+PING seq=37 size=1024 sent
+PONG seq=37 rtt=2 ticks (33 ms)
+PING seq=38 size=1024 sent
+PONG seq=38 rtt=6 ticks (100 ms)
+PING seq=39 size=1024 sent
+PONG seq=39 rtt=6 ticks (100 ms)
+PING seq=40 size=1024 sent
+PONG seq=40 rtt=6 ticks (100 ms)
+PING seq=41 size=1024 sent
+PONG seq=41 rtt=6 ticks (100 ms)
+PING seq=42 size=1024 sent
+PONG seq=42 rtt=6 ticks (100 ms)
+PING seq=43 size=1024 sent
+PONG seq=43 rtt=11 ticks (183 ms)
+PING seq=44 size=1024 sent
+PONG seq=44 rtt=6 ticks (100 ms)
+PING seq=45 size=1024 sent
+PONG seq=45 rtt=11 ticks (183 ms)
+PING seq=46 size=1024 sent
+PONG seq=46 rtt=6 ticks (100 ms)
+PING seq=47 size=1024 sent
+PONG seq=47 rtt=6 ticks (100 ms)
+PING seq=48 size=1024 sent
+PONG seq=48 rtt=11 ticks (183 ms)
+PING seq=49 size=1024 sent
+PONG seq=49 rtt=11 ticks (183 ms)
+PING seq=50 size=1024 sent
+PONG seq=50 rtt=7 ticks (116 ms)
+PING seq=51 size=1024 sent
+PONG seq=51 rtt=10 ticks (166 ms)
+PING seq=52 size=1024 sent
+PONG seq=52 rtt=11 ticks (183 ms)
+PING seq=53 size=1024 sent
+PONG seq=53 rtt=7 ticks (116 ms)
+PING seq=54 size=1024 sent
+PONG seq=54 rtt=10 ticks (166 ms)
+PING seq=55 size=1024 sent
+PONG seq=55 rtt=11 ticks (183 ms)
+PING seq=56 size=1024 sent
+PONG seq=56 rtt=11 ticks (183 ms)
+PING seq=57 size=1024 sent
+PONG seq=57 rtt=6 ticks (100 ms)
+PING seq=58 size=1024 sent
+PONG seq=58 rtt=7 ticks (116 ms)
+PING seq=59 size=1024 sent
+PONG seq=59 rtt=10 ticks (166 ms)
+PING seq=60 size=1024 sent
+PONG seq=60 rtt=10 ticks (166 ms)
+PING seq=61 size=1024 sent
+PONG seq=61 rtt=6 ticks (100 ms)
+PING seq=62 size=1024 sent
+PONG seq=62 rtt=6 ticks (100 ms)
+PING seq=63 size=1024 sent
+PONG seq=63 rtt=6 ticks (100 ms)
+PING seq=64 size=1024 sent
+PONG seq=64 rtt=7 ticks (116 ms)
+PING seq=65 size=1024 sent
+PONG seq=65 rtt=7 ticks (116 ms)
+PING seq=66 size=1024 sent
+PONG seq=66 rtt=11 ticks (183 ms)
+PING seq=67 size=1024 sent
+PONG seq=67 rtt=6 ticks (100 ms)
+PING seq=68 size=1024 sent
+PONG seq=68 rtt=7 ticks (116 ms)
+PING seq=69 size=1024 sent
+PONG seq=69 rtt=11 ticks (183 ms)
+PING seq=70 size=1024 sent
+PONG seq=70 rtt=11 ticks (183 ms)
+PING seq=71 size=1024 sent
+PONG seq=71 rtt=6 ticks (100 ms)
+PING seq=72 size=1024 sent
+PONG seq=72 rtt=6 ticks (100 ms)
+PING seq=73 size=1024 sent
+PONG seq=73 rtt=11 ticks (183 ms)
+PING seq=74 size=1024 sent
+PONG seq=74 rtt=11 ticks (183 ms)
+PING seq=75 size=1024 sent
+PONG seq=75 rtt=7 ticks (116 ms)
+PING seq=76 size=1024 sent
+PONG seq=76 rtt=10 ticks (166 ms)
+PING seq=77 size=1024 sent
+PONG seq=77 rtt=11 ticks (183 ms)
+PING seq=78 size=1024 sent
+PONG seq=78 rtt=7 ticks (116 ms)
+PING seq=79 size=1024 sent
+PONG seq=79 rtt=10 ticks (166 ms)
+PING seq=80 size=1024 sent
+PONG seq=80 rtt=11 ticks (183 ms)
+PING seq=81 size=1024 sent
+PONG seq=81 rtt=11 ticks (183 ms)
+PING seq=82 size=1024 sent
+PONG seq=82 rtt=2 ticks (33 ms)
+PING seq=83 size=1024 sent
+PONG seq=83 rtt=6 ticks (100 ms)
+PING seq=84 size=1024 sent
+PONG seq=84 rtt=6 ticks (100 ms)
+PING seq=85 size=1024 sent
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+PONG seq=85 rtt=8 ticks (133 ms)
+PING seq=86 size=1024 sent
+PONG seq=86 rtt=10 ticks (166 ms)
+PING seq=87 size=1024 sent
+PONG seq=87 rtt=11 ticks (183 ms)
+PING seq=88 size=1024 sent
+PONG seq=88 rtt=6 ticks (100 ms)
+PING seq=89 size=1024 sent
+PONG seq=89 rtt=6 ticks (100 ms)
+PING seq=90 size=1024 sent
+PONG seq=90 rtt=2 ticks (33 ms)
+PING seq=91 size=1024 sent
+PONG seq=91 rtt=10 ticks (166 ms)
+PING seq=92 size=1024 sent
+PONG seq=92 rtt=11 ticks (183 ms)
+PING seq=93 size=1024 sent
+PONG seq=93 rtt=6 ticks (100 ms)
+PING seq=94 size=1024 sent
+PONG seq=94 rtt=12 ticks (200 ms)
+PING seq=95 size=1024 sent
+PONG seq=95 rtt=6 ticks (100 ms)
+PING seq=96 size=1024 sent
+PONG seq=96 rtt=6 ticks (100 ms)
+PING seq=97 size=1024 sent
+PONG seq=97 rtt=8 ticks (133 ms)
+PING seq=98 size=1024 sent
+PONG seq=98 rtt=2 ticks (33 ms)
+PING seq=99 size=1024 sent
+PONG seq=99 rtt=6 ticks (100 ms)
+PING seq=100 size=1024 sent
+SIZE 1024: min=33 max=216 avg=116 ms (sent=101 recv=100 lost=0)
+Starting size 4096 test
+PING seq=0 size=4096 sent
+PONG seq mismatch: got 100 expected 0
+PONG seq=0 rtt=13 ticks (216 ms)
+PING seq=1 size=4096 sent
+PONG seq=1 rtt=17 ticks (283 ms)
+PING seq=2 size=4096 sent
+PONG seq=2 rtt=17 ticks (283 ms)
+PING seq=3 size=4096 sent
+PONG seq=3 rtt=17 ticks (283 ms)
+PING seq=4 size=4096 sent
+PONG seq=4 rtt=13 ticks (216 ms)
+PING seq=5 size=4096 sent
+PONG seq=5 rtt=17 ticks (283 ms)
+PING seq=6 size=4096 sent
+PONG seq=6 rtt=17 ticks (283 ms)
+PING seq=7 size=4096 sent
+PONG seq=7 rtt=13 ticks (216 ms)
+PING seq=8 size=4096 sent
+PONG seq=8 rtt=17 ticks (283 ms)
+PING seq=9 size=4096 sent
+PONG seq=9 rtt=13 ticks (216 ms)
+PING seq=10 size=4096 sent
+PONG seq=10 rtt=17 ticks (283 ms)
+PING seq=11 size=4096 sent
+PONG seq=11 rtt=13 ticks (216 ms)
+PING seq=12 size=4096 sent
+PONG seq=12 rtt=13 ticks (216 ms)
+PING seq=13 size=4096 sent
+PONG seq=13 rtt=16 ticks (266 ms)
+PING seq=14 size=4096 sent
+PONG seq=14 rtt=17 ticks (283 ms)
+PING seq=15 size=4096 sent
+PONG seq=15 rtt=13 ticks (216 ms)
+PING seq=16 size=4096 sent
+PONG seq=16 rtt=13 ticks (216 ms)
+PING seq=17 size=4096 sent
+PONG seq=17 rtt=16 ticks (266 ms)
+PING seq=18 size=4096 sent
+PONG seq=18 rtt=16 ticks (266 ms)
+PING seq=19 size=4096 sent
+PONG seq=19 rtt=13 ticks (216 ms)
+PING seq=20 size=4096 sent
+PONG seq=20 rtt=17 ticks (283 ms)
+PING seq=21 size=4096 sent
+PONG seq=21 rtt=12 ticks (200 ms)
+PING seq=22 size=4096 sent
+PONG seq=22 rtt=17 ticks (283 ms)
+PING seq=23 size=4096 sent
+PONG seq=23 rtt=17 ticks (283 ms)
+PING seq=24 size=4096 sent
+PONG seq=24 rtt=13 ticks (216 ms)
+PING seq=25 size=4096 sent
+PONG seq=25 rtt=17 ticks (283 ms)
+PING seq=26 size=4096 sent
+PONG seq=26 rtt=21 ticks (350 ms)
+PING seq=27 size=4096 sent
+PONG seq=27 rtt=13 ticks (216 ms)
+PING seq=28 size=4096 sent
+PONG seq=28 rtt=17 ticks (283 ms)
+PING seq=29 size=4096 sent
+PONG seq=29 rtt=17 ticks (283 ms)
+PING seq=30 size=4096 sent
+PONG seq=30 rtt=14 ticks (233 ms)
+PING seq=31 size=4096 sent
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+PONG seq=31 rtt=18 ticks (300 ms)
+PING seq=32 size=4096 sent
+PONG seq=32 rtt=18 ticks (300 ms)
+PING seq=33 size=4096 sent
+PONG seq=33 rtt=17 ticks (283 ms)
+PING seq=34 size=4096 sent
+PONG seq=34 rtt=13 ticks (216 ms)
+PING seq=35 size=4096 sent
+PONG seq=35 rtt=17 ticks (283 ms)
+PING seq=36 size=4096 sent
+PONG seq=36 rtt=8 ticks (133 ms)
+PING seq=37 size=4096 sent
+PONG seq=37 rtt=13 ticks (216 ms)
+PING seq=38 size=4096 sent
+PONG seq=38 rtt=14 ticks (233 ms)
+PING seq=39 size=4096 sent
+PONG seq=39 rtt=13 ticks (216 ms)
+PING seq=40 size=4096 sent
+PONG seq=40 rtt=17 ticks (283 ms)
+PING seq=41 size=4096 sent
+PONG seq=41 rtt=18 ticks (300 ms)
+PING seq=42 size=4096 sent
+PONG seq=42 rtt=17 ticks (283 ms)
+PING seq=43 size=4096 sent
+PONG seq=43 rtt=13 ticks (216 ms)
+PING seq=44 size=4096 sent
+PONG seq=44 rtt=17 ticks (283 ms)
+PING seq=45 size=4096 sent
+PONG seq=45 rtt=21 ticks (350 ms)
+PING seq=46 size=4096 sent
+PONG seq=46 rtt=17 ticks (283 ms)
+PING seq=47 size=4096 sent
+PONG seq=47 rtt=17 ticks (283 ms)
+PING seq=48 size=4096 sent
+PONG seq=48 rtt=13 ticks (216 ms)
+PING seq=49 size=4096 sent
+PONG seq=49 rtt=17 ticks (283 ms)
+PING seq=50 size=4096 sent
+PONG seq=50 rtt=17 ticks (283 ms)
+PING seq=51 size=4096 sent
+PONG seq=51 rtt=17 ticks (283 ms)
+PING seq=52 size=4096 sent
+PONG seq=52 rtt=17 ticks (283 ms)
+PING seq=53 size=4096 sent
+PONG seq=53 rtt=13 ticks (216 ms)
+PING seq=54 size=4096 sent
+PONG seq=54 rtt=17 ticks (283 ms)
+PING seq=55 size=4096 sent
+PONG seq=55 rtt=17 ticks (283 ms)
+PING seq=56 size=4096 sent
+PONG seq=56 rtt=13 ticks (216 ms)
+PING seq=57 size=4096 sent
+PONG seq=57 rtt=16 ticks (266 ms)
+PING seq=58 size=4096 sent
+PONG seq=58 rtt=17 ticks (283 ms)
+PING seq=59 size=4096 sent
+PONG seq=59 rtt=13 ticks (216 ms)
+PING seq=60 size=4096 sent
+PONG seq=60 rtt=17 ticks (283 ms)
+PING seq=61 size=4096 sent
+PONG seq=61 rtt=17 ticks (283 ms)
+PING seq=62 size=4096 sent
+PONG seq=62 rtt=13 ticks (216 ms)
+PING seq=63 size=4096 sent
+PONG seq=63 rtt=17 ticks (283 ms)
+PING seq=64 size=4096 sent
+PONG seq=64 rtt=17 ticks (283 ms)
+PING seq=65 size=4096 sent
+PONG seq=65 rtt=17 ticks (283 ms)
+PING seq=66 size=4096 sent
+PONG seq=66 rtt=17 ticks (283 ms)
+PING seq=67 size=4096 sent
+PONG seq=67 rtt=13 ticks (216 ms)
+PING seq=68 size=4096 sent
+PONG seq=68 rtt=17 ticks (283 ms)
+PING seq=69 size=4096 sent
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+PONG seq=69 rtt=18 ticks (300 ms)
+PING seq=70 size=4096 sent
+PONG seq=70 rtt=13 ticks (216 ms)
+PING seq=71 size=4096 sent
+PONG seq=71 rtt=17 ticks (283 ms)
+PING seq=72 size=4096 sent
+PONG seq=72 rtt=17 ticks (283 ms)
+PING seq=73 size=4096 sent
+PONG seq=73 rtt=23 ticks (383 ms)
+PING seq=74 size=4096 sent
+PONG seq=74 rtt=13 ticks (216 ms)
+PING seq=75 size=4096 sent
+PONG seq=75 rtt=17 ticks (283 ms)
+PING seq=76 size=4096 sent
+PONG seq=76 rtt=17 ticks (283 ms)
+PING seq=77 size=4096 sent
+PONG seq=77 rtt=17 ticks (283 ms)
+PING seq=78 size=4096 sent
+PONG seq=78 rtt=13 ticks (216 ms)
+PING seq=79 size=4096 sent
+PONG seq=79 rtt=17 ticks (283 ms)
+PING seq=80 size=4096 sent
+PONG seq=80 rtt=21 ticks (350 ms)
+PING seq=81 size=4096 sent
+PONG seq=81 rtt=17 ticks (283 ms)
+PING seq=82 size=4096 sent
+PONG seq=82 rtt=17 ticks (283 ms)
+PING seq=83 size=4096 sent
+PONG seq=83 rtt=13 ticks (216 ms)
+PING seq=84 size=4096 sent
+PONG seq=84 rtt=17 ticks (283 ms)
+PING seq=85 size=4096 sent
+PONG seq=85 rtt=13 ticks (216 ms)
+PING seq=86 size=4096 sent
+PONG seq=86 rtt=17 ticks (283 ms)
+PING seq=87 size=4096 sent
+PONG seq=87 rtt=18 ticks (300 ms)
+PING seq=88 size=4096 sent
+PONG seq=88 rtt=13 ticks (216 ms)
+PING seq=89 size=4096 sent
+PONG seq=89 rtt=17 ticks (283 ms)
+PING seq=90 size=4096 sent
+PONG seq=90 rtt=13 ticks (216 ms)
+PING seq=91 size=4096 sent
+PONG seq=91 rtt=17 ticks (283 ms)
+PING seq=92 size=4096 sent
+PONG seq=92 rtt=13 ticks (216 ms)
+PING seq=93 size=4096 sent
+PONG seq=93 rtt=17 ticks (283 ms)
+PING seq=94 size=4096 sent
+PONG seq=94 rtt=13 ticks (216 ms)
+PING seq=95 size=4096 sent
+PONG seq=95 rtt=15 ticks (250 ms)
+PING seq=96 size=4096 sent
+PONG seq=96 rtt=17 ticks (283 ms)
+PING seq=97 size=4096 sent
+PONG seq=97 rtt=17 ticks (283 ms)
+PING seq=98 size=4096 sent
+PONG seq=98 rtt=13 ticks (216 ms)
+PING seq=99 size=4096 sent
+PONG seq=99 rtt=17 ticks (283 ms)
+PING seq=100 size=4096 sent
+SIZE 4096: min=133 max=383 avg=250 ms (sent=101 recv=100 lost=0)
+All latency tests complete
+========================================
+LATENCY TEST RESULTS
+========================================
+  16 bytes: min= 16 avg= 66 max=533 ms (loss=0%)
+  64 bytes: min= 16 avg= 66 max=183 ms (loss=0%)
+ 256 bytes: min= 16 avg= 50 max=166 ms (loss=0%)
+1024 bytes: min= 33 avg=116 max=216 ms (loss=0%)
+4096 bytes: min=133 avg=250 max=383 ms (loss=0%)
+========================================
+Streaming 32003 bytes of logs to partner...

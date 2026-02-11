@@ -30,6 +30,7 @@
 
 #include "peertalk.h"
 #include "pt_log.h"
+#include "status_window.h"
 
 /* Log streaming helper - implementation in this file */
 #define LOG_STREAM_IMPLEMENTATION
@@ -167,6 +168,16 @@ static void report_progress(void)
         send_kbps / 1024UL, stats->messages_sent,
         recv_kbps / 1024UL, stats->messages_received,
         stats->send_errors);
+
+    /* Update status window */
+    status_clear();
+    status_linef("Buffer size: %d bytes", stats->buffer_size);
+    status_linef("Elapsed: %lu/%d sec", elapsed_ms / 1000UL, TEST_DURATION_SEC);
+    status_linef("Throughput: %lu KB/s", send_kbps / 1024UL);
+    status_linef("Messages: %lu sent", stats->messages_sent);
+    if (stats->send_errors > 0) {
+        status_linef("Errors: %lu", stats->send_errors);
+    }
 }
 
 static void finish_current_test(void)
@@ -317,6 +328,12 @@ static void on_peer_connected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
         "Starting throughput test with buffer size %d", g_buffer_sizes[0]);
+
+    /* Update status window */
+    status_clear();
+    status_linef("Connected to peer %u", (unsigned)peer_id);
+    status_linef("Starting test: %d bytes", g_buffer_sizes[0]);
+    status_line("");
 }
 
 static void on_peer_disconnected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
@@ -411,6 +428,10 @@ int main(void)
 
     /* NOW safe to initialize Toolbox */
     init_toolbox();
+
+    /* Initialize status window for user feedback */
+    status_init("PeerTalk Throughput Test");
+    status_line("Initializing...");
 
     /* Create PT_Log */
     g_log = PT_LogCreate();
@@ -511,6 +532,11 @@ int main(void)
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Waiting for peer...");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Press any key to exit.");
 
+    status_clear();
+    status_line("Waiting for peer discovery...");
+    status_line("");
+    status_line("Press any key to exit.");
+
     g_discovery_start = TickCount();
 
     /* Main loop */
@@ -560,13 +586,20 @@ int main(void)
         if (g_test.test_complete && !g_log_stream.streaming && !g_log_stream.complete) {
             print_results();
 
+            /* Update status for completion */
+            status_clear();
+            status_line("Test complete!");
+            status_line("");
+
             /* Stream logs to partner before exiting */
             if (g_connected_peer) {
+                status_line("Streaming logs to partner...");
                 PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
                     "Streaming %lu bytes of logs to partner...",
                     (unsigned long)g_log_stream.length);
                 log_stream_send(g_ctx, g_connected_peer);
             } else {
+                status_line("No peer - cannot stream logs");
                 g_running = 0;
             }
         }
@@ -594,6 +627,9 @@ cleanup:
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "TEST EXITING - cleaning up...");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
 
+    status_clear();
+    status_line("Done. Press any key to exit.");
+
     log_stream_cleanup();
     if (g_ctx) {
         PeerTalk_Shutdown(g_ctx);
@@ -606,5 +642,6 @@ cleanup:
         PT_LogDestroy(g_log);
     }
 
+    status_cleanup();
     return 0;
 }

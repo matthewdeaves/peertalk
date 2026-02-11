@@ -30,6 +30,7 @@
 
 #include "peertalk.h"
 #include "pt_log.h"
+#include "status_window.h"
 
 /* Log streaming helper - implementation in this file */
 #define LOG_STREAM_IMPLEMENTATION
@@ -280,34 +281,60 @@ static void print_results(void)
 {
     int i;
     LatencyStats *stats;
+    int total_sent = 0, total_recv = 0, total_lost = 0;
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "LATENCY TEST RESULTS");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
 
+    /* Human-readable summary */
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Size   Min  Avg  Max  Sent Recv Lost");
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "----  ---- ---- ---- ---- ---- ----");
+
     for (i = 0; i < (int)NUM_TEST_SIZES; i++) {
         stats = &g_test.stats[i];
+        total_sent += stats->sent_count;
+        total_recv += stats->recv_count;
+        total_lost += stats->lost_count;
 
         if (stats->recv_count > 0) {
             unsigned long avg_ticks = stats->total_ticks / stats->recv_count;
-            int loss_pct = (stats->sent_count > 0) ?
-                          ((stats->lost_count * 100) / stats->sent_count) : 0;
-
             PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
-                "%4d bytes: min=%3lu avg=%3lu max=%3lu ms (loss=%d%%)",
+                "%4dB %4lu %4lu %4lu %4d %4d %4d",
                 stats->message_size,
                 ticks_to_ms(stats->min_ticks),
                 ticks_to_ms(avg_ticks),
                 ticks_to_ms(stats->max_ticks),
-                loss_pct);
+                stats->sent_count, stats->recv_count, stats->lost_count);
         } else {
             PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
-                "%4d bytes: NO DATA (sent=%d lost=%d)",
+                "%4dB   --   --   -- %4d %4d %4d",
                 stats->message_size,
-                stats->sent_count, stats->lost_count);
+                stats->sent_count, stats->recv_count, stats->lost_count);
         }
     }
 
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "----  ---- ---- ---- ---- ---- ----");
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+        "Total              %4d %4d %4d", total_sent, total_recv, total_lost);
+
+    /* Machine-parseable section for perf_partner metrics extraction */
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "");
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "======== LATENCY METRICS ========");
+    for (i = 0; i < (int)NUM_TEST_SIZES; i++) {
+        stats = &g_test.stats[i];
+        if (stats->recv_count > 0) {
+            unsigned long avg_ticks = stats->total_ticks / stats->recv_count;
+            /* Format: SIZE <n>: min=<x> max=<y> avg=<z> ms (sent=<a> recv=<b> lost=<c>) */
+            PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+                "SIZE %d: min=%lu max=%lu avg=%lu ms (sent=%d recv=%d lost=%d)",
+                stats->message_size,
+                ticks_to_ms(stats->min_ticks),
+                ticks_to_ms(stats->max_ticks),
+                ticks_to_ms(avg_ticks),
+                stats->sent_count, stats->recv_count, stats->lost_count);
+        }
+    }
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
 }
 
@@ -370,6 +397,12 @@ static void on_peer_connected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
     g_last_ping = 0;
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
         "Starting latency test with size %d", g_test_sizes[0]);
+
+    /* Update status window */
+    status_clear();
+    status_linef("Connected to peer %u", (unsigned)peer_id);
+    status_linef("Starting test: %d bytes", g_test_sizes[0]);
+    status_line("");
 }
 
 static void on_peer_disconnected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
@@ -436,6 +469,10 @@ int main(void)
     int samples_per_size = 100;  /* Collect 100 samples per message size */
 
     init_toolbox();
+
+    /* Initialize status window for user feedback */
+    status_init("PeerTalk Latency Test");
+    status_line("Initializing...");
 
     /**
      * CRITICAL: Allocate TCP buffer pool FIRST, before any other allocations.
@@ -514,6 +551,11 @@ int main(void)
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Waiting for peer...");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Press any key to exit.");
 
+    status_clear();
+    status_line("Waiting for peer discovery...");
+    status_line("");
+    status_line("Press any key to exit.");
+
     g_discovery_start = TickCount();
 
     /* Main loop */
@@ -543,6 +585,7 @@ int main(void)
         /* Test logic */
         if (g_connected_peer && !g_test.test_complete) {
             LatencyStats *stats = &g_test.stats[g_test.current_size_idx];
+            static int last_update_count = -1;
 
             /* Check for pending timeout */
             check_pending_timeout();
@@ -553,9 +596,54 @@ int main(void)
                 g_last_ping = now;
             }
 
+            /* Update status window every 10 samples - show results table */
+            if (stats->recv_count != last_update_count &&
+                stats->recv_count % 10 == 0) {
+                int row;
+                last_update_count = stats->recv_count;
+                status_clear();
+
+                /* Table header (ms, 0 means <17ms) */
+                status_line("RTT in ms (0 = <17ms)");
+                status_line("Size  Min Avg Max  N");
+                status_line("----- --- --- --- ---");
+
+                /* Show all sizes - completed, current, and pending */
+                for (row = 0; row < (int)NUM_TEST_SIZES; row++) {
+                    LatencyStats *s = &g_test.stats[row];
+                    const char *marker = (row == g_test.current_size_idx) ? "*" : "";
+
+                    if (s->recv_count > 0) {
+                        unsigned long avg = s->total_ticks / s->recv_count;
+                        status_linef("%5d %3lu %3lu %3lu %3d%s",
+                                    s->message_size,
+                                    ticks_to_ms(s->min_ticks),
+                                    ticks_to_ms(avg),
+                                    ticks_to_ms(s->max_ticks),
+                                    s->recv_count, marker);
+                    } else {
+                        status_linef("%5d  --  --  --  --%s",
+                                    s->message_size, marker);
+                    }
+                }
+
+                /* Footer - show total lost if any */
+                {
+                    int total_lost = 0;
+                    for (row = 0; row <= g_test.current_size_idx; row++) {
+                        total_lost += g_test.stats[row].lost_count;
+                    }
+                    if (total_lost > 0) {
+                        status_line("");
+                        status_linef("Lost: %d packets", total_lost);
+                    }
+                }
+            }
+
             /* Check if we have enough samples for this size */
             if (stats->recv_count >= samples_per_size) {
                 advance_test();
+                last_update_count = -1;  /* Reset for next size */
             }
         }
 
@@ -563,13 +651,20 @@ int main(void)
         if (g_test.test_complete && !g_log_stream.streaming && !g_log_stream.complete) {
             print_results();
 
+            /* Update status for completion */
+            status_clear();
+            status_line("Test complete!");
+            status_line("");
+
             /* Stream logs to partner before exiting */
             if (g_connected_peer) {
+                status_line("Streaming logs to partner...");
                 PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
                     "Streaming %lu bytes of logs to partner...",
                     (unsigned long)g_log_stream.length);
                 log_stream_send(g_ctx, g_connected_peer);
             } else {
+                status_line("No peer - cannot stream logs");
                 g_running = 0;
             }
         }
@@ -597,6 +692,9 @@ cleanup:
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "TEST EXITING - cleaning up...");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
 
+    status_clear();
+    status_line("Done. Press any key to exit.");
+
     log_stream_cleanup();
     if (g_ctx) {
         PeerTalk_Shutdown(g_ctx);
@@ -608,5 +706,6 @@ cleanup:
         PT_LogDestroy(g_log);
     }
 
+    status_cleanup();
     return 0;
 }

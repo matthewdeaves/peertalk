@@ -22,6 +22,7 @@
 
 #include "peertalk.h"
 #include "pt_log.h"
+#include "status_window.h"
 
 /* Log streaming - sends logs to test partner at completion */
 #define LOG_STREAM_IMPLEMENTATION
@@ -134,6 +135,10 @@ int main(void)
     /* Initialize Mac Toolbox */
     init_toolbox();
 
+    /* Initialize status window for user feedback */
+    status_init("PeerTalk MacTCP Test");
+    status_line("Initializing...");
+
     /* Create PT_Log - outputs to file "PT_Log" in app folder */
     g_log = PT_LogCreate();
     if (g_log) {
@@ -245,6 +250,12 @@ int main(void)
                 "STATUS: %lu sec, peers_found=%d, connected=%d",
                 elapsed, g_peers_found, g_connected);
             last_status = now;
+
+            /* Update status window */
+            status_clear();
+            status_linef("Elapsed: %lu/%d sec", elapsed, test_duration_secs);
+            status_linef("Peers found: %d", g_peers_found);
+            status_linef("Connected: %s", g_connected ? "yes" : "no");
         }
 
         /* Check timeout */
@@ -324,6 +335,9 @@ cleanup:
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "TEST EXITING - cleaning up...");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
 
+    status_clear();
+    status_line("Done. Press any key to exit.");
+
     /* Shutdown */
     if (g_ctx) {
         PeerTalk_Shutdown(g_ctx);
@@ -333,5 +347,6 @@ cleanup:
         PT_LogDestroy(g_log);
     }
 
+    status_cleanup();
     return 0;
 }

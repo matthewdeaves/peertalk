@@ -27,6 +27,7 @@
 
 #include "peertalk.h"
 #include "pt_log.h"
+#include "status_window.h"
 
 /* Log streaming - sends logs to test partner at completion */
 #define LOG_STREAM_IMPLEMENTATION
@@ -168,6 +169,15 @@ static void report_progress(void)
         present_count,
         g_stats.peer_lost_events,
         g_stats.peer_recovered_events);
+
+    /* Update status window */
+    status_clear();
+    status_linef("Elapsed: %lu/%d sec", elapsed_sec, TEST_DURATION_SEC);
+    status_linef("Discoveries: %d", g_stats.total_discoveries);
+    status_linef("Unique peers: %d", g_stats.unique_peers_found);
+    if (g_stats.peer_lost_events > 0) {
+        status_linef("Lost events: %d", g_stats.peer_lost_events);
+    }
 
     /* Log per-peer stats */
     for (i = 0; i < g_stats.peer_count; i++) {
@@ -409,6 +419,10 @@ int main(void)
 
     init_toolbox();
 
+    /* Initialize status window for user feedback */
+    status_init("PeerTalk Discovery Test");
+    status_line("Initializing...");
+
     /* Create PT_Log */
     g_log = PT_LogCreate();
     if (g_log) {
@@ -560,6 +574,9 @@ cleanup:
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "TEST EXITING - cleaning up...");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
 
+    status_clear();
+    status_line("Done. Press any key to exit.");
+
     if (g_ctx) {
         PeerTalk_Shutdown(g_ctx);
     }
@@ -567,5 +584,6 @@ cleanup:
         PT_LogDestroy(g_log);
     }
 
+    status_cleanup();
     return 0;
 }

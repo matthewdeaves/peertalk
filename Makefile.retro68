@@ -135,8 +135,8 @@ $(LIBNAME): $(LIB_OBJS) | $(BUILD_DIR)
 	@echo "Built: $@"
 
 # Test application (code segment)
-$(TEST_CODE): $(TEST_OBJS) $(LIBNAME)
-	$(CC) $(CFLAGS) -o $@ $(TEST_OBJS) -L$(BUILD_DIR) -lpeertalk_$(PLATFORM)
+$(TEST_CODE): $(TEST_OBJS) $(STATUS_WINDOW_OBJ) $(LIBNAME)
+	$(CC) $(CFLAGS) -o $@ $(TEST_OBJS) $(STATUS_WINDOW_OBJ) -L$(BUILD_DIR) -lpeertalk_$(PLATFORM)
 	@echo "Built: $@"
 
 # Test application (.bin and .dsk via Rez)
@@ -153,9 +153,15 @@ $(TEST_BIN) $(TEST_DSK): $(TEST_CODE)
 # Performance Test Applications
 # ============================================================================
 
+# Status window for test apps (provides real-time progress display)
+STATUS_WINDOW_OBJ = $(BUILD_DIR)/tests/mac/status_window.o
+
+$(STATUS_WINDOW_OBJ): tests/mac/status_window.c tests/mac/status_window.h | $(BUILD_DIR)/tests/mac
+	$(CC) $(CFLAGS) -c $< -o $@
+
 # Generic rule for performance test binaries
-$(BUILD_DIR)/test_%.code.bin: $(BUILD_DIR)/tests/mac/test_%.o $(LIBNAME)
-	$(CC) $(CFLAGS) -o $@ $< -L$(BUILD_DIR) -lpeertalk_$(PLATFORM)
+$(BUILD_DIR)/test_%.code.bin: $(BUILD_DIR)/tests/mac/test_%.o $(STATUS_WINDOW_OBJ) $(LIBNAME)
+	$(CC) $(CFLAGS) -o $@ $< $(STATUS_WINDOW_OBJ) -L$(BUILD_DIR) -lpeertalk_$(PLATFORM)
 
 # Use per-app resource file if it exists, otherwise fall back to shared PeerTalkTest.r
 $(BUILD_DIR)/test_%.bin: $(BUILD_DIR)/test_%.code.bin
