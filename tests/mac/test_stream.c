@@ -71,8 +71,8 @@ typedef struct {
 #define DISCOVERY_TIMEOUT_TICKS (60 * 60) /* 60 seconds to find a peer */
 #define MAX_CONNECT_RETRIES  5
 #define DRAIN_WAIT_TICKS     (10 * 60) /* 10 seconds between phases - allows TCP backlog to clear */
-#define DRAIN_WAIT_LONG_TICKS (15 * 60) /* 15 seconds after large message RECV phases */
-#define ACK_TIMEOUT_TICKS    (10 * 60) /* 10 seconds to wait for ACK */
+#define DRAIN_WAIT_LONG_TICKS (20 * 60) /* 20 seconds after large message RECV phases */
+#define ACK_TIMEOUT_TICKS    (30 * 60) /* 30 seconds to wait for ACK */
 #define LOG_STREAM_TIMEOUT_TICKS (30 * 60) /* 30 seconds to stream logs */
 
 /* Buffer sizes to test */
@@ -307,7 +307,8 @@ static void finish_send_phase(void)
     elapsed_ms = ticks_to_ms(stats->send_end_ticks - stats->send_start_ticks);
     if (elapsed_ms == 0) elapsed_ms = 1;
 
-    kbps = (stats->send_bytes * 1000UL) / elapsed_ms / 1024UL;
+    /* Calculate KB/s avoiding overflow: (bytes/1024) * 1000 / ms */
+    kbps = (stats->send_bytes / 1024UL) * 1000UL / elapsed_ms;
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
         "SEND COMPLETE %d bytes: %lu KB/s (%lu msgs, %lu errors)",
@@ -337,7 +338,8 @@ static void finish_recv_phase(void)
     elapsed_ms = ticks_to_ms(stats->recv_end_ticks - stats->recv_start_ticks);
     if (elapsed_ms == 0) elapsed_ms = 1;
 
-    kbps = (stats->recv_bytes * 1000UL) / elapsed_ms / 1024UL;
+    /* Calculate KB/s avoiding overflow: (bytes/1024) * 1000 / ms */
+    kbps = (stats->recv_bytes / 1024UL) * 1000UL / elapsed_ms;
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
         "RECV COMPLETE %d bytes: %lu KB/s (%lu msgs)",
@@ -402,14 +404,14 @@ static void report_progress(void)
 
     if (elapsed_ms == 0) elapsed_ms = 1;
 
-    /* Log current phase progress */
+    /* Log current phase progress - use overflow-safe calculation */
     if (g_test.phase == 0) {
-        kbps = (stats->send_bytes * 1000UL) / elapsed_ms / 1024UL;
+        kbps = (stats->send_bytes / 1024UL) * 1000UL / elapsed_ms;
         PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
             "SEND %d: %lu KB/s (%lu msgs) errs=%lu",
             stats->buffer_size, kbps, stats->send_msgs, stats->send_errors);
     } else {
-        kbps = (stats->recv_bytes * 1000UL) / elapsed_ms / 1024UL;
+        kbps = (stats->recv_bytes / 1024UL) * 1000UL / elapsed_ms;
         PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
             "RECV %d: %lu KB/s (%lu msgs)",
             stats->buffer_size, kbps, stats->recv_msgs);
@@ -434,8 +436,8 @@ static void report_progress(void)
             recv_ms = ticks_to_ms(s->recv_end_ticks - s->recv_start_ticks);
             if (send_ms == 0) send_ms = 1;
             if (recv_ms == 0) recv_ms = 1;
-            send_kbps = (s->send_bytes * 1000UL) / send_ms;
-            recv_kbps = (s->recv_bytes * 1000UL) / recv_ms;
+            send_kbps = (s->send_bytes / 1024UL) * 1000UL / send_ms;
+            recv_kbps = (s->recv_bytes / 1024UL) * 1000UL / recv_ms;
             table_set_cell_kbps(&g_table, row, 1, send_kbps);
             table_set_cell_kbps(&g_table, row, 2, recv_kbps);
             table_set_cell_str(&g_table, row, 3, "DONE");
@@ -443,7 +445,7 @@ static void report_progress(void)
             /* Current test */
             if (g_test.phase == 0) {
                 /* In send phase */
-                kbps = (s->send_bytes * 1000UL) / elapsed_ms;
+                kbps = (s->send_bytes / 1024UL) * 1000UL / elapsed_ms;
                 table_set_cell_kbps(&g_table, row, 1, kbps);
                 table_clear_cell(&g_table, row, 2);
                 table_set_cell_str(&g_table, row, 3, "SEND");
@@ -451,8 +453,8 @@ static void report_progress(void)
                 /* In recv phase */
                 send_ms = ticks_to_ms(s->send_end_ticks - s->send_start_ticks);
                 if (send_ms == 0) send_ms = 1;
-                send_kbps = (s->send_bytes * 1000UL) / send_ms;
-                kbps = (s->recv_bytes * 1000UL) / elapsed_ms;
+                send_kbps = (s->send_bytes / 1024UL) * 1000UL / send_ms;
+                kbps = (s->recv_bytes / 1024UL) * 1000UL / elapsed_ms;
                 table_set_cell_kbps(&g_table, row, 1, send_kbps);
                 table_set_cell_kbps(&g_table, row, 2, kbps);
                 table_set_cell_str(&g_table, row, 3, "RECV");
@@ -491,10 +493,10 @@ static void print_results(void)
             unsigned long send_kbps = 0, recv_kbps = 0;
 
             if (send_ms > 0) {
-                send_kbps = (stats->send_bytes * 1000UL) / send_ms / 1024UL;
+                send_kbps = (stats->send_bytes / 1024UL) * 1000UL / send_ms;
             }
             if (recv_ms > 0) {
-                recv_kbps = (stats->recv_bytes * 1000UL) / recv_ms / 1024UL;
+                recv_kbps = (stats->recv_bytes / 1024UL) * 1000UL / recv_ms;
             }
 
             PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
@@ -602,11 +604,28 @@ static void on_message_received(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
     (void)peer_id;
     (void)user_data;
 
+    /* Log ALL incoming messages during ACK wait for debugging */
+    if (g_test.waiting_for_ack) {
+        const uint8_t *bytes = (const uint8_t *)data;
+        PT_LOG_DEBUG(g_log, PT_LOG_CAT_APP1,
+            "MSG during ACK wait: len=%u bytes=[%02X %02X %02X %02X ...]",
+            (unsigned)len,
+            len > 0 ? bytes[0] : 0,
+            len > 1 ? bytes[1] : 0,
+            len > 2 ? bytes[2] : 0,
+            len > 3 ? bytes[3] : 0);
+    }
+
     /* Check for control message (ACK) */
     if (is_control_message(data, len)) {
         const StreamControl *ctrl = (const StreamControl *)data;
+        PT_LOG_DEBUG(g_log, PT_LOG_CAT_APP1,
+            "Control msg: cmd=%u size=%u duration=%lu",
+            (unsigned)ctrl->command,
+            (unsigned)ctrl->msg_size,
+            (unsigned long)ctrl->duration_ms);
         if (ctrl->command == STREAM_CMD_ACK) {
-            PT_LOG_DEBUG(g_log, PT_LOG_CAT_APP1, "Received ACK from partner");
+            PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Received ACK from partner");
             on_ack_received();
         }
         return;

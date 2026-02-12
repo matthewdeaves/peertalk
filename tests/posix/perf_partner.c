@@ -479,9 +479,39 @@ static void stream_test_send_ack(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id)
     PeerTalk_Error err = PeerTalk_SendEx(ctx, peer_id, &ack, sizeof(ack),
                                           PT_PRIORITY_CRITICAL, PT_SEND_DEFAULT, 0);
     if (err != PT_OK) {
-        printf("[STREAM-TEST] Failed to send ACK: %d\n", err);
-    } else if (g_config.verbose) {
-        printf("[STREAM-TEST] Sent ACK\n");
+        printf("[STREAM-TEST] FAILED to queue ACK: err=%d\n", err);
+    } else {
+        /* Always log ACK queueing - critical for debugging */
+        printf("[STREAM-TEST] Sent ACK (queued, err=%d)\n", err);
+    }
+}
+
+/**
+ * Complete the current stream phase (called when STOP received or phase transitions)
+ * Logs stats for the phase that just ended.
+ */
+static void stream_test_complete_phase(void)
+{
+    uint64_t elapsed_us;
+    double elapsed_sec, kb_per_sec;
+
+    if (!g_stream_test.active) return;
+
+    elapsed_us = get_time_us() - g_stream_test.phase_start_us;
+    elapsed_sec = elapsed_us / 1000000.0;
+
+    if (g_stream_test.phase == 0) {
+        /* SINK phase completion */
+        kb_per_sec = (elapsed_sec > 0) ?
+                    (g_stream_test.bytes_sunk / 1024.0 / elapsed_sec) : 0;
+        printf("[STREAM-TEST] SINK phase complete: %llu bytes in %.2fs = %.1f KB/s\n",
+               (unsigned long long)g_stream_test.bytes_sunk, elapsed_sec, kb_per_sec);
+    } else {
+        /* STREAM phase completion */
+        kb_per_sec = (elapsed_sec > 0) ?
+                    (g_stream_test.bytes_streamed / 1024.0 / elapsed_sec) : 0;
+        printf("[STREAM-TEST] STREAM phase complete: %llu bytes in %.2fs = %.1f KB/s\n",
+               (unsigned long long)g_stream_test.bytes_streamed, elapsed_sec, kb_per_sec);
     }
 }
 
@@ -491,9 +521,17 @@ static void stream_test_send_ack(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id)
 static void stream_test_handle_control(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
                                         const StreamControl *ctrl)
 {
+    printf("[STREAM-TEST] Handling control: cmd=%u size=%u duration=%u\n",
+           ctrl->command, ntohs(ctrl->msg_size), ntohl(ctrl->duration_ms));
+
     switch (ctrl->command) {
     case STREAM_CMD_START_SEND:
         /* Mac is about to start sending - we become a sink */
+        /* If we were in a previous phase, complete it first */
+        if (g_stream_test.active) {
+            printf("[STREAM-TEST] Completing previous phase before new SINK\n");
+            stream_test_complete_phase();
+        }
         g_stream_test.active = 1;
         g_stream_test.phase = 0;  /* Sink mode */
         g_stream_test.msg_size = ntohs(ctrl->msg_size);
@@ -508,6 +546,11 @@ static void stream_test_handle_control(PeerTalk_Context *ctx, PeerTalk_PeerID pe
 
     case STREAM_CMD_START_RECV:
         /* Mac is ready to receive - we should start streaming */
+        /* If we were in a previous phase, complete it first */
+        if (g_stream_test.active) {
+            printf("[STREAM-TEST] Completing previous phase before new STREAM\n");
+            stream_test_complete_phase();
+        }
         g_stream_test.active = 1;
         g_stream_test.phase = 1;  /* Stream mode */
         g_stream_test.msg_size = ntohs(ctrl->msg_size);
@@ -535,14 +578,7 @@ static void stream_test_handle_control(PeerTalk_Context *ctx, PeerTalk_PeerID pe
 
     case STREAM_CMD_STOP:
         /* Mac signaled phase complete */
-        if (g_stream_test.phase == 0) {
-            uint64_t elapsed_us = get_time_us() - g_stream_test.phase_start_us;
-            double elapsed_sec = elapsed_us / 1000000.0;
-            double kb_per_sec = (elapsed_sec > 0) ?
-                               (g_stream_test.bytes_sunk / 1024.0 / elapsed_sec) : 0;
-            printf("[STREAM-TEST] SINK phase complete: %llu bytes in %.2fs = %.1f KB/s\n",
-                   (unsigned long long)g_stream_test.bytes_sunk, elapsed_sec, kb_per_sec);
-        }
+        stream_test_complete_phase();
         g_stream_test.active = 0;
         g_stream_test.phase = 0;
         stream_test_send_ack(ctx, peer_id);
@@ -565,8 +601,16 @@ static void stream_test_handle_control(PeerTalk_Context *ctx, PeerTalk_PeerID pe
  */
 static int is_stream_control(const void *data, uint16_t len)
 {
-    if (len < sizeof(StreamControl)) return 0;
     const uint8_t *magic = (const uint8_t *)data;
+
+    /* Debug: log any 12-byte message */
+    if (len == sizeof(StreamControl)) {
+        printf("[STREAM-TEST] Checking 12-byte msg: magic=[%c%c%c%c] expected=[%c%c%c%c]\n",
+               magic[0], magic[1], magic[2], magic[3],
+               STREAM_MAGIC_0, STREAM_MAGIC_1, STREAM_MAGIC_2, STREAM_MAGIC_3);
+    }
+
+    if (len < sizeof(StreamControl)) return 0;
     return (magic[0] == STREAM_MAGIC_0 &&
             magic[1] == STREAM_MAGIC_1 &&
             magic[2] == STREAM_MAGIC_2 &&
@@ -600,15 +644,12 @@ static void stream_test_tick(void)
         stop.magic[3] = STREAM_MAGIC_3;
         stop.command = STREAM_CMD_STOP;
 
+        /* Log completion stats before deactivating */
+        stream_test_complete_phase();
+
         /* CRITICAL priority ensures STOP gets through even at 90%+ pressure */
         PeerTalk_SendEx(g_ctx, g_stream_test.peer_id, &stop, sizeof(stop),
                         PT_PRIORITY_CRITICAL, PT_SEND_DEFAULT, 0);
-
-        double elapsed_sec = elapsed_ms / 1000.0;
-        double kb_per_sec = (elapsed_sec > 0) ?
-                           (g_stream_test.bytes_streamed / 1024.0 / elapsed_sec) : 0;
-        printf("[STREAM-TEST] STREAM phase complete: %llu bytes in %.2fs = %.1f KB/s\n",
-               (unsigned long long)g_stream_test.bytes_streamed, elapsed_sec, kb_per_sec);
 
         g_stream_test.active = 0;
         g_stream_test.phase = 0;
@@ -1237,6 +1278,15 @@ static void on_message_received(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
         printf("[MESSAGE] From peer %u: %u bytes\n", peer_id, len);
     }
 
+    /* Debug: always log 12-byte messages (potential control messages) */
+    if (len == 12) {
+        const uint8_t *b = (const uint8_t *)data;
+        printf("[DEBUG] 12-byte msg: bytes=[%02X %02X %02X %02X %02X %02X ...], "
+               "log_active=%d, sink_active=%d\n",
+               b[0], b[1], b[2], b[3], b[4], b[5],
+               g_log_receiver.active, g_stream_test.active);
+    }
+
     /* Check for log stream data (all modes) */
     if (log_receiver_handle(ctx, peer_id, data, len)) {
         return;  /* Message was log data, don't process further */
@@ -1252,6 +1302,11 @@ static void on_message_received(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
 
     /* If we're in an active stream test sink phase, just count bytes (NO ECHO) */
     if (g_stream_test.active && g_stream_test.phase == 0) {
+        /* Debug: log any non-data-sized message being sunk */
+        if (len != g_stream_test.msg_size) {
+            printf("[STREAM-TEST] WARNING: Sinking unexpected size %u (expected %u)\n",
+                   len, g_stream_test.msg_size);
+        }
         g_stream_test.bytes_sunk += len;
         /* Always log first message to confirm sink mode is active */
         if (g_stream_test.bytes_sunk == (uint64_t)len) {

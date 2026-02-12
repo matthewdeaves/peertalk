@@ -139,14 +139,14 @@ If partner fails to start:
    - Standard: build/mac/test_<test>.bin
    - Lowmem: build/mac/test_<test>_lowmem.bin
 
-4. Execute via MCP:
+3. Execute via MCP:
    mcp__classic-mac-hardware__execute_binary(
      machine: "<machine>",
      platform: "mactcp",
      binary_path: "<binary_path>"
    )
 
-5. Handle response:
+4. Handle response:
    - Success with output: Test started, continue
    - Timeout (60s): Expected for long tests, continue monitoring
    - Connection failed: LaunchAPPL not running, suggest /test-machine
@@ -178,13 +178,13 @@ Polling loop (every 30 seconds):
        → Continue to step 6
      fi
 
-  2. Check partner logs for completion markers:
-     docker logs perf-partner 2>&1 | tail -20 | grep -E "GOODBYE|Saving log to|TEST EXITING"
+  2. Check partner logs for completion markers (ONLY logs since test started):
+     docker logs --since "$START_TIME" perf-partner 2>&1 | grep -E "GOODBYE|Saving log to|TEST EXITING"
 
-  3. Check partner logs for activity (test still running):
-     docker logs perf-partner 2>&1 | tail -5
+  3. Check partner logs for activity (ONLY logs since test started):
+     docker logs --since "$START_TIME" perf-partner 2>&1 | tail -10
      - If seeing "Processing msg" or "Echo" lines → test in progress
-     - If seeing only "Discovery ANNOUNCE" → test may have completed or not started
+     - If empty or only "Discovery ANNOUNCE" → test may have completed or not started
 
   4. If timeout exceeded:
      → Warn user, suggest checking Mac screen
