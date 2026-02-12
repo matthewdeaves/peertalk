@@ -137,6 +137,18 @@ int main(void)
 
     /* Initialize status window for user feedback */
     status_init("PeerTalk MacTCP Test");
+
+    /* Show test description during init */
+    status_line("BASIC CONNECTIVITY");
+    status_line("------------------------");
+    status_line("Verifies MacTCP works:");
+    status_line("- UDP broadcast (discovery)");
+    status_line("- TCP connection");
+    status_line("- Message exchange");
+    status_line("");
+    status_line("Run this first to check");
+    status_line("basic network function.");
+    status_line("");
     status_line("Initializing...");
 
     /* Create PT_Log - outputs to file "PT_Log" in app folder */

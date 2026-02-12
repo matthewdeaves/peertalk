@@ -609,10 +609,18 @@ int main(void)
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Waiting for peer...");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Press any key to exit.");
 
+    /* Show test description while waiting */
     status_clear();
-    status_line("Waiting for peer discovery...");
+    status_line("THROUGHPUT TEST");
+    status_line("------------------------");
+    status_line("Measures sustained data");
+    status_line("transfer rate (KB/s).");
     status_line("");
-    status_line("Press any key to exit.");
+    status_line("Sends for 30s per size,");
+    status_line("partner echoes back.");
+    status_line("Flow control window = 4.");
+    status_line("");
+    status_line("Waiting for peer...");
 
     g_discovery_start = TickCount();
 

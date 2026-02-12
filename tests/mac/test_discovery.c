@@ -457,6 +457,16 @@ int main(void)
 
     /* Initialize status window for user feedback */
     status_init("PeerTalk Discovery Test");
+
+    /* Show test description during init */
+    status_line("DISCOVERY TEST");
+    status_line("------------------------");
+    status_line("Tests peer discovery");
+    status_line("reliability over 2 min.");
+    status_line("");
+    status_line("Counts: discoveries,");
+    status_line("unique peers, timeouts.");
+    status_line("");
     status_line("Initializing...");
 
     /* Create PT_Log */

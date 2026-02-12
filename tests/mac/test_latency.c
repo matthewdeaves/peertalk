@@ -581,10 +581,18 @@ int main(void)
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Waiting for peer...");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Press any key to exit.");
 
+    /* Show test description while waiting */
     status_clear();
-    status_line("Waiting for peer discovery...");
+    status_line("LATENCY TEST");
+    status_line("------------------------");
+    status_line("Measures round-trip time");
+    status_line("(RTT) for 100 pings at");
+    status_line("each message size.");
     status_line("");
-    status_line("Press any key to exit.");
+    status_line("0ms = faster than 1 tick");
+    status_line("(Mac resolution: 16.7ms)");
+    status_line("");
+    status_line("Waiting for peer...");
 
     g_discovery_start = TickCount();
 

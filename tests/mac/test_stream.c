@@ -699,10 +699,18 @@ int main(void)
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Waiting for peer...");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Press any key to exit.");
 
+    /* Show test description while waiting */
     status_clear();
-    status_line("Waiting for peer discovery...");
+    status_line("ONE-WAY STREAM TEST");
+    status_line("------------------------");
+    status_line("Measures pure throughput");
+    status_line("without echo overhead.");
     status_line("");
-    status_line("Press any key to exit.");
+    status_line("SEND: Mac streams to POSIX");
+    status_line("RECV: POSIX streams to Mac");
+    status_line("30s per phase per size.");
+    status_line("");
+    status_line("Waiting for peer...");
 
     g_discovery_start = TickCount();
 

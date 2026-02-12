@@ -463,6 +463,17 @@ int main(void)
 
     /* Initialize status window for user feedback */
     status_init("PeerTalk Stress Test");
+
+    /* Show test description during init */
+    status_line("STRESS TEST");
+    status_line("------------------------");
+    status_line("Tests connection stability");
+    status_line("via connect/disconnect");
+    status_line("cycles.");
+    status_line("");
+    status_line("Monitors memory for leaks");
+    status_line("(FreeMem/MaxBlock).");
+    status_line("");
     status_line("Initializing...");
 
     /* Create PT_Log */
