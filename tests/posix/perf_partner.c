@@ -1243,12 +1243,18 @@ static void on_message_received(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
         return;
     }
 
-    /* If we're in an active stream test sink phase, just count bytes */
+    /* If we're in an active stream test sink phase, just count bytes (NO ECHO) */
     if (g_stream_test.active && g_stream_test.phase == 0) {
         g_stream_test.bytes_sunk += len;
-        if (g_config.verbose && (g_stream_test.bytes_sunk % (64 * 1024) == 0)) {
-            printf("[STREAM-TEST] Sunk %llu KB\n",
-                   (unsigned long long)(g_stream_test.bytes_sunk / 1024));
+        /* Always log first message to confirm sink mode is active */
+        if (g_stream_test.bytes_sunk == (uint64_t)len) {
+            printf("[STREAM-TEST] First message SUNK (not echoed) - sink mode active\n");
+        }
+        /* Progress logging every 256KB */
+        if ((g_stream_test.bytes_sunk % (256 * 1024)) < (uint64_t)len) {
+            printf("[STREAM-TEST] Sunk %llu KB (msg_size=%u, mode=SINK)\n",
+                   (unsigned long long)(g_stream_test.bytes_sunk / 1024),
+                   g_stream_test.msg_size);
         }
         return;
     }

@@ -661,24 +661,25 @@ PeerTalk_Error PeerTalk_SendEx(PeerTalk_Context *ctx_pub,
         return PT_ERR_INVALID_STATE;
     }
 
-    /* Check backpressure before queuing */
+    /* Check backpressure before queuing
+     * pt_queue_pressure() returns 0-100 (percentage), not 0.0-1.0 */
     {
-        float pressure = pt_queue_pressure(q);
-        if (pressure >= 0.90f) {
+        uint8_t pressure = pt_queue_pressure(q);
+        if (pressure >= 90) {
             /* Queue >90% full - reject LOW priority messages */
             if (priority == PT_PRIORITY_LOW) {
                 PT_CTX_WARN(ctx, PT_LOG_CAT_SEND,
-                           "Queue pressure %.0f%% - rejecting LOW priority message",
-                           pressure * 100.0f);
+                           "Queue pressure %u%% - rejecting LOW priority message",
+                           (unsigned)pressure);
                 return PT_ERR_BUFFER_FULL;
             }
         }
-        if (pressure >= 0.75f) {
+        if (pressure >= 75) {
             /* Queue >75% full - reject NORMAL priority messages */
             if (priority == PT_PRIORITY_NORMAL) {
                 PT_CTX_WARN(ctx, PT_LOG_CAT_SEND,
-                           "Queue pressure %.0f%% - rejecting NORMAL priority message",
-                           pressure * 100.0f);
+                           "Queue pressure %u%% - rejecting NORMAL priority message",
+                           (unsigned)pressure);
                 return PT_ERR_BUFFER_FULL;
             }
         }

@@ -711,7 +711,19 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
                 PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
                     "Invalid compact header from peer %u (offset %u)",
                     (unsigned)peer->hot.id, (unsigned)bytes_consumed);
+                /* Clear ibuf AND any deferred RDS to prevent discontinuity */
                 peer->cold.ibuflen = 0;
+                if (hot->rds_outstanding) {
+                    TCPiopb return_pb;
+                    pt_memset(&return_pb, 0, sizeof(return_pb));
+                    return_pb.csCode = TCPRcvBfrReturn;
+                    return_pb.ioCRefNum = md->driver_refnum;
+                    return_pb.tcpStream = hot->stream;
+                    return_pb.csParam.receive.rdsPtr = (Ptr)cold->rds;
+                    PBControlSync((ParmBlkPtr)&return_pb);
+                    hot->rds_outstanding = 0;
+                    hot->rds_copy_idx = 0;
+                }
                 return messages_processed > 0 ? messages_processed : 0;
             }
 
@@ -742,7 +754,19 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
                 PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
                     "Invalid message header from peer %u (offset %u)",
                     (unsigned)peer->hot.id, (unsigned)bytes_consumed);
+                /* Clear ibuf AND any deferred RDS to prevent discontinuity */
                 peer->cold.ibuflen = 0;
+                if (hot->rds_outstanding) {
+                    TCPiopb return_pb;
+                    pt_memset(&return_pb, 0, sizeof(return_pb));
+                    return_pb.csCode = TCPRcvBfrReturn;
+                    return_pb.ioCRefNum = md->driver_refnum;
+                    return_pb.tcpStream = hot->stream;
+                    return_pb.csParam.receive.rdsPtr = (Ptr)cold->rds;
+                    PBControlSync((ParmBlkPtr)&return_pb);
+                    hot->rds_outstanding = 0;
+                    hot->rds_copy_idx = 0;
+                }
                 return messages_processed > 0 ? messages_processed : 0;
             }
 
@@ -765,7 +789,19 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
                 PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
                     "CRC mismatch: expected=%04X actual=%04X",
                     (unsigned)crc_expected, (unsigned)crc_actual);
+                /* Clear ibuf AND any deferred RDS to prevent discontinuity */
                 peer->cold.ibuflen = 0;
+                if (hot->rds_outstanding) {
+                    TCPiopb return_pb;
+                    pt_memset(&return_pb, 0, sizeof(return_pb));
+                    return_pb.csCode = TCPRcvBfrReturn;
+                    return_pb.ioCRefNum = md->driver_refnum;
+                    return_pb.tcpStream = hot->stream;
+                    return_pb.csParam.receive.rdsPtr = (Ptr)cold->rds;
+                    PBControlSync((ParmBlkPtr)&return_pb);
+                    hot->rds_outstanding = 0;
+                    hot->rds_copy_idx = 0;
+                }
                 return messages_processed > 0 ? messages_processed : 0;
             }
         }

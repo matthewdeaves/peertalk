@@ -121,6 +121,8 @@ static int g_running = 1;
 static int g_connect_failures = 0;
 static uint8_t g_send_buffer[4096];
 static unsigned long g_ack_wait_start = 0;
+static int g_ack_retries = 0;
+#define MAX_ACK_RETRIES 3
 static TableUI g_table;
 
 /* ========================================================================== */
@@ -156,6 +158,8 @@ static int send_control(uint8_t command, uint16_t msg_size, uint32_t duration_ms
 {
     StreamControl ctrl;
     PeerTalk_Error err;
+    int retries = 0;
+    const int max_retries = 5;
 
     ctrl.magic[0] = STREAM_MAGIC_0;
     ctrl.magic[1] = STREAM_MAGIC_1;
@@ -166,19 +170,36 @@ static int send_control(uint8_t command, uint16_t msg_size, uint32_t duration_ms
     ctrl.msg_size = msg_size;
     ctrl.duration_ms = duration_ms;
 
-    err = PeerTalk_Send(g_ctx, g_connected_peer, &ctrl, sizeof(ctrl));
-    if (err != PT_OK) {
-        PT_LOG_ERR(g_log, PT_LOG_CAT_APP1,
-            "Failed to send control message: cmd=%u err=%d",
-            (unsigned)command, (int)err);
-        return -1;
+    /* Use HIGH priority for control messages to avoid queue congestion.
+     * Retry with exponential backoff if buffer is full. */
+    while (retries < max_retries) {
+        err = PeerTalk_SendEx(g_ctx, g_connected_peer, &ctrl, sizeof(ctrl),
+                              PT_PRIORITY_HIGH, PT_SEND_DEFAULT, 0);
+        if (err == PT_OK) {
+            PT_LOG_DEBUG(g_log, PT_LOG_CAT_APP1,
+                "Sent control: cmd=%u size=%u duration=%lu",
+                (unsigned)command, (unsigned)msg_size, duration_ms);
+            return 0;
+        }
+
+        if (err == PT_ERR_BUFFER_FULL || err == PT_ERR_WOULD_BLOCK) {
+            /* Queue congested - poll to drain and retry */
+            retries++;
+            PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                "Control message queued (retry %d/%d): cmd=%u err=%d",
+                retries, max_retries, (unsigned)command, (int)err);
+            PeerTalk_Poll(g_ctx);  /* Give chance to drain */
+            continue;
+        }
+
+        /* Non-retryable error */
+        break;
     }
 
-    PT_LOG_DEBUG(g_log, PT_LOG_CAT_APP1,
-        "Sent control: cmd=%u size=%u duration=%lu",
-        (unsigned)command, (unsigned)msg_size, duration_ms);
-
-    return 0;
+    PT_LOG_ERR(g_log, PT_LOG_CAT_APP1,
+        "Failed to send control message: cmd=%u err=%d",
+        (unsigned)command, (int)err);
+    return -1;
 }
 
 static int is_control_message(const void *data, uint16_t len)
@@ -215,6 +236,7 @@ static void start_send_phase(void)
 
     g_test.waiting_for_ack = 1;
     g_ack_wait_start = TickCount();
+    g_ack_retries = 0;
 
     status_clear();
     status_linef("SEND: %d bytes", stats->buffer_size);
@@ -237,6 +259,7 @@ static void start_recv_phase(void)
 
     g_test.waiting_for_ack = 1;
     g_ack_wait_start = TickCount();
+    g_ack_retries = 0;
 
     status_clear();
     status_linef("RECV: %d bytes", stats->buffer_size);
@@ -735,10 +758,32 @@ int main(void)
             break;
         }
 
-        /* ACK timeout */
+        /* ACK timeout with retry */
         if (g_test.waiting_for_ack && (now - g_ack_wait_start) >= ACK_TIMEOUT_TICKS) {
-            PT_LOG_ERR(g_log, PT_LOG_CAT_APP1, "Timeout waiting for partner ACK");
-            g_test.test_complete = 1;
+            g_ack_retries++;
+            if (g_ack_retries >= MAX_ACK_RETRIES) {
+                PT_LOG_ERR(g_log, PT_LOG_CAT_APP1,
+                    "Timeout waiting for partner ACK (gave up after %d retries)",
+                    MAX_ACK_RETRIES);
+                g_test.test_complete = 1;
+            } else {
+                /* Retry: resend the control message */
+                StreamStats *stats = &g_test.stats[g_test.current_size_idx];
+                uint32_t duration_ms = TEST_DURATION_SEC * 1000UL;
+                uint8_t cmd = (g_test.phase == 0) ?
+                              STREAM_CMD_START_SEND : STREAM_CMD_START_RECV;
+
+                PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                    "ACK timeout, retrying (%d/%d)...", g_ack_retries, MAX_ACK_RETRIES);
+
+                if (send_control(cmd, stats->buffer_size, duration_ms) == 0) {
+                    g_ack_wait_start = now;  /* Reset timeout */
+                    status_linef("Retry %d/%d...", g_ack_retries, MAX_ACK_RETRIES);
+                } else {
+                    PT_LOG_ERR(g_log, PT_LOG_CAT_APP1, "Retry send failed");
+                    g_test.test_complete = 1;
+                }
+            }
         }
 
         /* Test logic */
