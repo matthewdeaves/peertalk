@@ -474,6 +474,7 @@ int main(void)
         PT_LogSetLevel(g_log, PT_LOG_DEBUG);
         PT_LogSetCategories(g_log, 0xFFFF);
         PT_LogSetFile(g_log, "PT_Throughput");
+        PT_LogClearFile(g_log);  /* Fresh log each run */
 
         /* Initialize log streaming (captures logs for sending to partner) */
         log_stream_init(g_log);
@@ -541,6 +542,7 @@ int main(void)
         if (lib_log) {
             PT_LogSetLevel(lib_log, PT_LOG_DEBUG);
             PT_LogSetFile(lib_log, "PT_LibDebug");
+            PT_LogClearFile(lib_log);  /* Fresh log each run */
         }
     }
 

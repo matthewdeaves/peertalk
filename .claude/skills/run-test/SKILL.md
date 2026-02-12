@@ -96,19 +96,26 @@ Polls for test completion by watching for:
 - Log file appearing in `plan/performance/mactcp/<machine>/`
 - Timeout based on test type
 
-### Step 5: Collect Logs
+### Step 5: Collect BOTH Logs
 
-Logs are automatically saved by the test partner:
-- Mac streams logs to partner at test completion
-- Partner saves to `plan/performance/mactcp/<machine>/<test>_YYYYMMDD_HHMMSS.log`
+Each test produces TWO logs that should be analyzed together:
 
-### Step 6: Analyze Results
+1. **Mac test app log** (streamed from Mac to partner, auto-saved)
+   - Contains test results, RTT/throughput data, completion status
+   - Saved as: `plan/performance/mactcp/<machine>/<test>_YYYYMMDD_HHMMSS.log`
+   - Mac apps clear their logs at startup (fresh each run)
 
-Spawns analysis subagent to:
-1. Extract statistics (RTT, KB/s, success rates)
-2. Detect anomalies (packet loss, spikes, errors)
-3. Compare to previous runs
-4. Suggest code improvements
+2. **Partner log** (POSIX perf_partner output)
+   - Contains echo counts, errors, connection events
+   - Save with: `docker logs perf-partner > <test>_<timestamp>_partner.log`
+
+### Step 6: Analyze BOTH Logs Together
+
+Analysis should cross-reference both logs:
+1. **From Mac log**: Extract statistics (RTT, KB/s, success rates)
+2. **From Partner log**: Verify message counts, check for errors
+3. **Cross-reference**: Mac sent count should match partner echo count
+4. Compare to previous runs and suggest improvements
 
 ## Test Descriptions
 

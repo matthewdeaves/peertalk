@@ -276,7 +276,7 @@ Mac test apps automatically stream their logs to the POSIX perf_partner at the e
 3. **Wrong byte order** - Use htonl/ntohl for network data.
 4. **TCPPassiveOpen re-use** - It's one-shot. Need stream transfer pattern.
 5. **Testing only in emulator** - Real hardware behaves differently.
-6. **Large debug logs** - PT_LibDebug can grow to 1MB+. Use `tail` or `head` when reading.
+6. **Fresh logs each run** - Mac test apps now clear their log files at startup using `PT_LogClearFile()`. Each log contains only data from that run - no stale data from previous runs.
 7. **Mac SE memory limits** - CRITICAL: Mac SE (4MB RAM) REQUIRES `*_lowmem.bin` builds! Standard builds request 2-3MB heap and won't launch. Use `make -f Makefile.retro68 PLATFORM=mactcp lowmem_tests` for Mac SE.
 
 ## Build Scripts

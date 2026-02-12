@@ -272,6 +272,32 @@ int PT_LogSetFile(PT_Log *log, const char *filename) {
     return 0;
 }
 
+int PT_LogClearFile(PT_Log *log) {
+    OSErr err;
+
+    if (!log || !log->file_refnum) return -1;
+
+    /* Flush any buffered content first */
+    flush_buffer(log);
+
+    /* Seek to beginning of file */
+    {
+        ParamBlockRec pb;
+        memset(&pb, 0, sizeof(pb));
+        pb.ioParam.ioRefNum = log->file_refnum;
+        pb.ioParam.ioPosMode = fsFromStart;
+        pb.ioParam.ioPosOffset = 0;
+        err = PBSetFPosSync(&pb);
+        if (err != noErr) return -1;
+    }
+
+    /* Truncate file to 0 bytes using SetEOF */
+    err = SetEOF(log->file_refnum, 0);
+    if (err != noErr) return -1;
+
+    return 0;
+}
+
 void PT_LogSetCallback(PT_Log *log, PT_LogCallback callback, void *user_data) {
     if (log) {
         log->msg_callback = callback;

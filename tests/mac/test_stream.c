@@ -591,6 +591,7 @@ int main(void)
         PT_LogSetLevel(g_log, PT_LOG_DEBUG);
         PT_LogSetCategories(g_log, 0xFFFF);
         PT_LogSetFile(g_log, "PT_Stream");
+        PT_LogClearFile(g_log);  /* Fresh log each run */
         log_stream_init(g_log);
     }
 

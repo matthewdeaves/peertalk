@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <unistd.h>
 #include <sys/time.h>
 #include <pthread.h>
 #include <time.h>
@@ -180,6 +181,32 @@ int PT_LogSetFile(PT_Log *log, const char *filename) {
 
     pthread_mutex_unlock(&log->mutex);
     return 0;
+}
+
+int PT_LogClearFile(PT_Log *log) {
+    int result = -1;
+
+    if (!log) return -1;
+
+    pthread_mutex_lock(&log->mutex);
+
+    if (log->file) {
+        /* Flush any buffered content first */
+        if (log->buffer_pos > 0) {
+            fwrite(log->buffer, 1, log->buffer_pos, log->file);
+            log->buffer_pos = 0;
+        }
+
+        /* Truncate file to 0 bytes */
+        if (ftruncate(fileno(log->file), 0) == 0) {
+            /* Seek back to beginning */
+            fseek(log->file, 0, SEEK_SET);
+            result = 0;
+        }
+    }
+
+    pthread_mutex_unlock(&log->mutex);
+    return result;
 }
 
 void PT_LogSetCallback(PT_Log *log, PT_LogCallback callback, void *user_data) {

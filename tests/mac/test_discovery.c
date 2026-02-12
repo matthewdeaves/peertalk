@@ -429,6 +429,7 @@ int main(void)
         PT_LogSetLevel(g_log, PT_LOG_DEBUG);
         PT_LogSetCategories(g_log, 0xFFFF);
         PT_LogSetFile(g_log, "PT_Discovery");
+        PT_LogClearFile(g_log);  /* Fresh log each run */
     }
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");

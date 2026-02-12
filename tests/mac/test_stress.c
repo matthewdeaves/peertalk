@@ -471,6 +471,7 @@ int main(void)
         PT_LogSetLevel(g_log, PT_LOG_DEBUG);
         PT_LogSetCategories(g_log, 0xFFFF);
         PT_LogSetFile(g_log, "PT_Stress");
+        PT_LogClearFile(g_log);  /* Fresh log each run */
     }
 
     /* Initialize log streaming to capture logs for test partner */

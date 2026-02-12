@@ -243,46 +243,42 @@ LOG_DIR="plan/performance/mactcp/<machine>"
 
 ### Step 7: Analyze Results (unless --skip-analysis)
 
+**CRITICAL: Always analyze BOTH log files together for complete picture.**
+
+Mac test apps now clear their logs at startup, so each log file contains
+only data from that specific test run (no stale data from previous runs).
+
 ```
-Analyze BOTH log files together:
-  - Mac log: Test results, RTT/throughput data, completion status
-  - Partner log: Echo counts, errors, parsed metrics, connection events
+1. Read Mac test app log (primary results):
+   tail -100 "${LOG_DIR}/<test>_${TIMESTAMP}.log"
 
-Extract from Mac log:
-1. For latency tests:
-   - Min/avg/max RTT per message size (from LATENCY METRICS section)
-   - Packet loss percentage
-   - Any RTT spikes (individual PONG entries with high RTT)
+   Extract test-specific metrics:
+   - latency: Min/avg/max RTT per size, packet loss %
+   - throughput: KB/s per buffer size, message counts, errors
+   - stress: Cycles completed/failed, memory delta
+   - discovery: Discoveries/minute, unique peers, lost events
 
-2. For throughput tests:
-   - KB/s achieved per buffer size
-   - Message counts
-   - Send errors or buffer issues
+2. Read Partner log (verification data):
+   grep -E "Echo|MESSAGE|error|METRICS" "${LOG_DIR}/<test>_${TIMESTAMP}_partner.log"
 
-3. For stress tests:
-   - Cycles completed vs failed
-   - Memory delta (leak detection)
-   - Pass/fail status
+   Extract:
+   - Total messages echoed/processed
+   - Any errors (would_block, buffer_full, connection_reset)
+   - Timing from partner's perspective
 
-4. For discovery tests:
-   - Discoveries per minute
-   - Unique peers found
-   - Lost events
+3. Cross-reference BOTH logs:
+   - Mac "sent X messages" should match partner "echoed X messages"
+   - Discrepancies indicate packet loss or protocol issues
+   - Check partner log for errors not visible in Mac log
 
-Extract from Partner log:
-  - Total echoes/messages processed
-  - Any errors (would_block, buffer_full, connection_reset)
-  - Timing anomalies from partner's perspective
-  - Parsed metrics summary (if present)
+4. Compare to previous runs:
+   ls -la plan/performance/mactcp/<machine>/<test>_*.log | tail -5
 
-Cross-reference:
-  - Mac sent count should match partner echo count
-  - Any discrepancies indicate network or protocol issues
-
-Compare to previous runs if available:
-  ls plan/performance/mactcp/<machine>/<test>_*.log | head -5
-
-Present results in a summary table and provide recommendations.
+5. Present combined analysis:
+   - Summary table from Mac log
+   - Verification notes from partner log
+   - Any discrepancies or concerns
+   - Recommendations for improvement
 ```
 
 ### Step 8: Cleanup and Report
