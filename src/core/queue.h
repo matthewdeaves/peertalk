@@ -528,11 +528,20 @@ void pt_check_queue_isr_flags(struct pt_context *ctx, pt_queue *q);
  * Phase 3: Backpressure & Batch Operations
  * ======================================================================== */
 
-/* Pressure thresholds */
+/* Pressure thresholds
+ *
+ * These define when senders should back off based on receiver-reported pressure.
+ * Higher thresholds = more aggressive sending (risk overwhelming slow receivers).
+ * Lower thresholds = more conservative (reduced throughput on fast links).
+ *
+ * Current values tuned for Classic Mac ↔ POSIX peers:
+ * - Mac receivers need early warning (slow processing)
+ * - POSIX receivers can handle bursts (high thresholds OK for Mac senders)
+ */
 #define PT_PRESSURE_LOW      25  /* Below this: safe to send freely */
-#define PT_PRESSURE_MEDIUM   50  /* Above this: reduce send rate */
-#define PT_PRESSURE_HIGH     75  /* Above this: only critical messages */
-#define PT_PRESSURE_CRITICAL 90  /* Above this: drop non-critical */
+#define PT_PRESSURE_MEDIUM   50  /* Above this: reduce send rate (skip LOW priority) */
+#define PT_PRESSURE_HIGH     85  /* Above this: heavy throttle (skip NORMAL priority) */
+#define PT_PRESSURE_CRITICAL 95  /* Above this: blocking (only CRITICAL passes) */
 
 typedef enum {
     PT_BACKPRESSURE_NONE = 0,

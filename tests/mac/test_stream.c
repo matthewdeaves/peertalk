@@ -70,8 +70,8 @@ typedef struct {
 #define REPORT_INTERVAL_SEC  5        /* Report progress every N seconds */
 #define DISCOVERY_TIMEOUT_TICKS (60 * 60) /* 60 seconds to find a peer */
 #define MAX_CONNECT_RETRIES  5
-#define DRAIN_WAIT_TICKS     (3 * 60) /* 3 seconds between phases */
-#define DRAIN_WAIT_LONG_TICKS (5 * 60) /* 5 seconds after large message RECV phases */
+#define DRAIN_WAIT_TICKS     (10 * 60) /* 10 seconds between phases - allows TCP backlog to clear */
+#define DRAIN_WAIT_LONG_TICKS (15 * 60) /* 15 seconds after large message RECV phases */
 #define ACK_TIMEOUT_TICKS    (10 * 60) /* 10 seconds to wait for ACK */
 
 /* Buffer sizes to test */
@@ -171,11 +171,12 @@ static int send_control(uint8_t command, uint16_t msg_size, uint32_t duration_ms
     ctrl.msg_size = msg_size;
     ctrl.duration_ms = duration_ms;
 
-    /* Use HIGH priority for control messages to avoid queue congestion.
+    /* Use CRITICAL priority for control messages to bypass flow control.
+     * Control messages must always get through for protocol coordination.
      * Retry with exponential backoff if buffer is full. */
     while (retries < max_retries) {
         err = PeerTalk_SendEx(g_ctx, g_connected_peer, &ctrl, sizeof(ctrl),
-                              PT_PRIORITY_HIGH, PT_SEND_DEFAULT, 0);
+                              PT_PRIORITY_CRITICAL, PT_SEND_DEFAULT, 0);
         if (err == PT_OK) {
             PT_LOG_DEBUG(g_log, PT_LOG_CAT_APP1,
                 "Sent control: cmd=%u size=%u duration=%lu",
@@ -841,11 +842,11 @@ int main(void)
                         /* Drain period before starting next size's send phase.
                          * This allows any pending RDS data from high-speed receive
                          * to be fully processed before we wait for ACK messages.
-                         * Use longer drain for larger messages (more RDS accumulation). */
-                        drain_secs = (stats->buffer_size >= 1024) ? 5 : 3;
-                        status_linef("Draining for %d seconds...", drain_secs);
+                         * Use longer drain for sizes >= 512 where receive backlog is significant. */
+                        drain_secs = (stats->buffer_size >= 512) ? 15 : 10;
+                        status_linef("Draining %ds...", drain_secs);
                         PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Draining for %d seconds...", drain_secs);
-                        draining = (stats->buffer_size >= 1024) ? 3 : 2;  /* 3=long drain, 2=normal */
+                        draining = (stats->buffer_size >= 512) ? 3 : 2;  /* 3=long drain (15s), 2=normal (10s) */
                         drain_start = now;
                     }
                 }

@@ -568,6 +568,14 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
             pt_memcpy(peer->cold.ibuf + peer->cold.ibuflen,
                       cold->rds[rds_idx].ptr, chunk_len);
             peer->cold.ibuflen += chunk_len;
+
+            /* Track peak ibuf pressure (same as main copy path) */
+            {
+                uint8_t current_pressure = (uint8_t)((peer->cold.ibuflen * 100UL) / PT_FRAME_BUF_SIZE);
+                if (current_pressure > peer->cold.caps.peak_ibuf_pressure) {
+                    peer->cold.caps.peak_ibuf_pressure = current_pressure;
+                }
+            }
         }
 
         if (copied_all) {
@@ -641,6 +649,16 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
             pt_memcpy(peer->cold.ibuf + peer->cold.ibuflen,
                       cold->rds[rds_idx].ptr, chunk_len);
             peer->cold.ibuflen += chunk_len;
+
+            /* Track peak ibuf pressure for flow control signaling.
+             * This captures pressure spikes that would be missed at capability
+             * encoding time (by then ibuf is usually drained). */
+            {
+                uint8_t current_pressure = (uint8_t)((peer->cold.ibuflen * 100UL) / PT_FRAME_BUF_SIZE);
+                if (current_pressure > peer->cold.caps.peak_ibuf_pressure) {
+                    peer->cold.caps.peak_ibuf_pressure = current_pressure;
+                }
+            }
         }
 
         PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
@@ -1152,9 +1170,21 @@ int pt_mactcp_send_capability(struct pt_context *ctx, struct pt_peer *peer)
                             PT_CAPFLAG_PUSH_PREFERRED |
                             PT_CAPFLAG_ASYNC_ENABLED;
 
-    /* Report our TCP receive buffer size (from cold struct) */
-    caps.recv_buffer_size = (uint16_t)(cold->rcv_buffer_size > 0 ?
-        (cold->rcv_buffer_size > 65535 ? 65535 : cold->rcv_buffer_size) : 8192);
+    /* Report our EFFECTIVE receive buffer size for flow control.
+     *
+     * IMPORTANT: Report ibuf size (PT_FRAME_BUF_SIZE), NOT TCP buffer size!
+     *
+     * On MacTCP, data arrives via zero-copy RDS into ibuf, which is 16KB.
+     * The TCP receive buffer (32KB from pool) is just MacTCP's internal buffer.
+     * Our actual processing capacity is limited by ibuf.
+     *
+     * The peer calculates send_window = recv_buffer / max_message.
+     * If we report 32KB with 4KB messages: window = 8 (too many!)
+     * If we report 16KB with 4KB messages: window = 4 (good balance)
+     *
+     * With accurate ibuf reporting, the partner won't overwhelm us.
+     */
+    caps.recv_buffer_size = PT_FRAME_BUF_SIZE;  /* 16KB ibuf, not 32KB TCP buffer */
 
     /* Calculate optimal chunk size = 25% of recv buffer (MacTCP completion threshold).
      * This tells the sender the ideal per-send size for our receiver.
@@ -1183,15 +1213,26 @@ int pt_mactcp_send_capability(struct pt_context *ctx, struct pt_peer *peer)
     {
         uint8_t send_pressure = peer->send_queue ? pt_queue_pressure(peer->send_queue) : 0;
         uint8_t recv_pressure = peer->recv_queue ? pt_queue_pressure(peer->recv_queue) : 0;
-        uint8_t ibuf_pressure = 0;
+        uint8_t ibuf_pressure;
 
-        /* Calculate ibuf pressure: fill level as percentage of capacity */
-        if (peer->cold.ibuflen > 0) {
-            ibuf_pressure = (uint8_t)((peer->cold.ibuflen * 100UL) / PT_FRAME_BUF_SIZE);
-            if (ibuf_pressure > 100) ibuf_pressure = 100;
+        /* Use PEAK ibuf pressure since last capability update, not instantaneous.
+         *
+         * The ibuf fills and drains within a single poll cycle - by the time
+         * we encode capabilities, ibuflen is often 0. Peak pressure captures
+         * the actual stress during receive operations.
+         *
+         * Cap at PT_PRESSURE_HIGH (85%) so ibuf alone doesn't trigger CRITICAL.
+         * CRITICAL (95%+) would cause partner to block ALL sends, collapsing
+         * throughput. We want HEAVY throttle (skip NORMAL) not full blocking.
+         * Queue pressure can still reach CRITICAL if processing actually backs up.
+         */
+        ibuf_pressure = peer->cold.caps.peak_ibuf_pressure;
+        if (ibuf_pressure > PT_PRESSURE_HIGH) {
+            ibuf_pressure = PT_PRESSURE_HIGH;
         }
 
-        /* Report maximum of all pressure sources */
+        /* Report maximum of all pressure sources.
+         * Queue pressure can still reach CRITICAL if processing backs up. */
         caps.buffer_pressure = send_pressure;
         if (recv_pressure > caps.buffer_pressure) {
             caps.buffer_pressure = recv_pressure;
@@ -1199,6 +1240,9 @@ int pt_mactcp_send_capability(struct pt_context *ctx, struct pt_peer *peer)
         if (ibuf_pressure > caps.buffer_pressure) {
             caps.buffer_pressure = ibuf_pressure;
         }
+
+        /* Reset peak after capturing - start fresh for next period */
+        peer->cold.caps.peak_ibuf_pressure = 0;
     }
 
     /* Track what we reported for flow control threshold detection */

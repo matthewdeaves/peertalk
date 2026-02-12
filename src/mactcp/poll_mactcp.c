@@ -466,39 +466,34 @@ static void pt_mactcp_poll_connected(struct pt_context *ctx,
             needs_update = pt_peer_check_pressure_update(ctx, peer);
         }
 
-        /* MacTCP-specific: Check ibuf pressure threshold crossings.
+        /* MacTCP-specific: Check if IBUF pressure crossed a threshold.
          *
-         * CRITICAL: Must handle both INCREASES and DECREASES!
-         * - Increase: Tell peer to back off (throttle sends)
-         * - Decrease: Tell peer to resume sending (unthrottle)
+         * During streaming, queue pressure stays at 0 (zero-copy path),
+         * but ibuf can fill up faster than we can process. We track
+         * peak_ibuf_pressure during RDS copy operations and check if
+         * it crossed a threshold level since the last update.
          *
-         * Without decrease notifications, the peer backs off permanently
-         * after seeing high pressure, even after we drain the buffer.
+         * Using threshold levels (0/25/50/85/95) provides hysteresis to
+         * avoid flooding with updates while still signaling pressure.
+         * Levels match PT_PRESSURE_* constants for consistent flow control.
          */
-        if (!needs_update) {
-            uint8_t ibuf_pressure = 0;
-            uint8_t ibuf_level = 0;
-            uint8_t last_level;
+        if (!needs_update && peer->cold.caps.peak_ibuf_pressure > 0) {
+            uint8_t peak = peer->cold.caps.peak_ibuf_pressure;
+            uint8_t last = peer->cold.caps.last_reported_ibuf_level;
+            uint8_t current_level;
 
-            /* Calculate current ibuf fill level (0 if empty) */
-            if (peer->cold.ibuflen > 0) {
-                ibuf_pressure = (uint8_t)((peer->cold.ibuflen * 100UL) / PT_FRAME_BUF_SIZE);
-                if (ibuf_pressure > 100) ibuf_pressure = 100;
-                ibuf_level = (ibuf_pressure >= 75) ? 75 :
-                             (ibuf_pressure >= 50) ? 50 :
-                             (ibuf_pressure >= 25) ? 25 : 0;
-            }
+            /* Quantize to threshold levels (match PT_PRESSURE_* constants) */
+            if (peak >= PT_PRESSURE_CRITICAL) current_level = PT_PRESSURE_CRITICAL;
+            else if (peak >= PT_PRESSURE_HIGH) current_level = PT_PRESSURE_HIGH;
+            else if (peak >= PT_PRESSURE_MEDIUM) current_level = PT_PRESSURE_MEDIUM;
+            else if (peak >= PT_PRESSURE_LOW) current_level = PT_PRESSURE_LOW;
+            else current_level = 0;
 
-            /* Compare against last reported (combined max of queue + ibuf) */
-            last_level = (peer->cold.caps.last_reported_pressure >= 75) ? 75 :
-                         (peer->cold.caps.last_reported_pressure >= 50) ? 50 :
-                         (peer->cold.caps.last_reported_pressure >= 25) ? 25 : 0;
-
-            /* Send update if ibuf crossed a threshold in EITHER direction */
-            if (ibuf_level != last_level) {
-                PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_PROTOCOL,
-                    "ibuf pressure changed: %u%% (level %u -> %u)",
-                    (unsigned)ibuf_pressure, (unsigned)last_level, (unsigned)ibuf_level);
+            if (current_level != last) {
+                PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+                    "ibuf pressure threshold crossed for peer %u: level %u -> %u (peak %u%%)",
+                    peer->hot.id, last, current_level, peak);
+                peer->cold.caps.last_reported_ibuf_level = current_level;
                 needs_update = 1;
             }
         }
