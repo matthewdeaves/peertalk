@@ -175,7 +175,9 @@ typedef struct {
     uint8_t  first_send_logged;  /* 1 after logging first send effective_max */
     uint8_t  compact_mode;       /* 1 if compact headers negotiated with peer */
     uint8_t  push_preferred;     /* 1 if peer needs pushFlag=1 always */
-    uint8_t  _pad;               /* Alignment padding */
+    uint8_t  last_ibuf_pressure; /* MacTCP: ibuf level when last update sent */
+    uint8_t  peak_ibuf_pressure; /* MacTCP: peak ibuf during this poll cycle */
+    uint8_t  last_reported_ibuf_level; /* MacTCP: last threshold level (0/25/50/75) */
 } pt_peer_caps;
 
 /* ========================================================================== */

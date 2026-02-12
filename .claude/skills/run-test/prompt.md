@@ -2,6 +2,11 @@
 
 Orchestrate complete hardware testing workflow on Classic Mac.
 
+**KEY INSIGHT: Logs are AUTO-STREAMED and saved locally. NEVER use FTP to download logs.**
+- Mac test apps stream logs to perf_partner at completion
+- perf_partner auto-saves to `plan/performance/mactcp/<machine>/<test>_<timestamp>.log`
+- Just read the local file - it's already there!
+
 ## Input
 
 - `$ARGUMENTS`: Test name, optional machine, and options
@@ -127,18 +132,21 @@ If partner fails to start:
 ### Step 4: Execute Test via LaunchAPPL
 
 ```
-1. Determine binary path:
+1. Record start timestamp for log filtering:
+   START_TIME=$(date -Iseconds)   # ISO format for docker logs --since
+
+2. Determine binary path:
    - Standard: build/mac/test_<test>.bin
    - Lowmem: build/mac/test_<test>_lowmem.bin
 
-2. Execute via MCP:
+4. Execute via MCP:
    mcp__classic-mac-hardware__execute_binary(
      machine: "<machine>",
      platform: "mactcp",
      binary_path: "<binary_path>"
    )
 
-3. Handle response:
+5. Handle response:
    - Success with output: Test started, continue
    - Timeout (60s): Expected for long tests, continue monitoring
    - Connection failed: LaunchAPPL not running, suggest /test-machine
@@ -185,21 +193,24 @@ Polling loop (every 30 seconds):
 
 ### Step 6: Collect BOTH Logs (Mac + Partner)
 
-**CRITICAL: Save BOTH the Mac test app log AND the perf_partner log for complete test records.**
+**CRITICAL: Logs are ALREADY SAVED LOCALLY by perf_partner. DO NOT use FTP to download logs.**
+
+The Mac test app streams logs to perf_partner at test completion. perf_partner auto-saves
+them to `plan/performance/mactcp/<machine>/<test>_<timestamp>.log`. Just read the local file.
 
 ```
-A test run produces TWO logs:
-  1. Mac test app log - streamed from Mac to partner, auto-saved
+A test run produces TWO logs (both LOCAL - no FTP needed):
+  1. Mac test app log - streamed from Mac to partner, AUTO-SAVED locally
   2. perf_partner log - partner's own output (echoes, metrics, errors)
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 LOG_DIR="plan/performance/mactcp/<machine>"
 
-1. Find the Mac test app log (auto-saved by perf_partner):
+1. Find the Mac test app log (ALREADY auto-saved by perf_partner):
 
    MAC_LOG=$(ls -t ${LOG_DIR}/<test>_*.log 2>/dev/null | head -1)
 
-   If a log file exists with today's timestamp: this is the Mac log.
+   This file ALREADY EXISTS locally. Do NOT download via FTP.
 
 2. Save the perf_partner log:
 
@@ -217,13 +228,12 @@ LOG_DIR="plan/performance/mactcp/<machine>"
 
    Display these metrics in the final report.
 
-4. ONLY if no Mac log found (streaming failed):
+4. If no Mac log found (streaming failed):
 
-   a. Check if log data is embedded in partner output:
+   Check if log data is embedded in partner output:
       grep -A 1000 "LOG:" "${LOG_DIR}/<test>_${TIMESTAMP}_partner.log"
 
-   b. If still nothing, try FTP as last resort:
-      mcp__classic-mac-hardware__download_file(...)
+   If still no logs, report streaming failure (don't attempt FTP workaround).
 
 5. Read results from Mac log:
    tail -100 "$MAC_LOG"
@@ -369,12 +379,13 @@ Test completed but no logs were received.
 
 The Mac may have disconnected before streaming logs.
 
-Manual recovery:
-  1. Check partner: docker logs perf-partner 2>&1 | tail -50
-  2. If FTP available: /fetch-logs <machine>
-  3. Check Mac: PT_<TestName> file should exist
+Check partner output for embedded logs:
+  docker logs perf-partner 2>&1 | tail -100 | grep -A 1000 "LOG:"
 
-Copy manually if found on Mac via FTP.
+If the test completed on the Mac but logs weren't streamed:
+  - The GOODBYE message may have been lost
+  - Check Mac screen for any error dialogs
+  - Rerun the test (logs stream at end of each run)
 ```
 
 ## Test Sequence for "all"
@@ -403,9 +414,9 @@ If any test fails critically, ask user whether to continue with remaining tests.
 
 4. **60s LaunchAPPL timeout** - This is normal! Tests run longer than the LaunchAPPL command timeout.
 
-5. **Log streaming** - Mac apps stream logs to partner at completion. Ensure partner stays running until logs are saved.
+5. **Log streaming** - Mac apps stream logs to partner at completion. Logs are AUTO-SAVED locally. NEVER use FTP to download logs.
 
-6. **Canonical log location** - All logs go to `plan/performance/mactcp/<machine>/` with timestamp naming.
+6. **Canonical log location** - All logs are auto-saved to `plan/performance/mactcp/<machine>/` - just read the local file!
 
 7. **Stream test vs throughput test**:
    - `throughput` - bidirectional echo-based test (Mac sends, partner echoes back)

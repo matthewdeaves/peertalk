@@ -241,15 +241,13 @@ class ClassicMacHardwareServer:
         identifier = parts[2] if len(parts) > 2 else 'latest'
 
         if resource_type == "logs":
-            return self._fetch_log_content(machine_id, identifier)
+            return self._fetch_log_via_download(machine_id, identifier)
         else:
             raise ValueError(f"Unknown resource type: {resource_type}")
 
-    def _fetch_log_content(self, machine_id: str, identifier: str) -> str:
-        """Fetch PT_Log content from machine."""
+    def _fetch_log_via_download(self, machine_id: str, identifier: str) -> str:
+        """Fetch PT_Log content from machine using generic download."""
         def operation(ftp):
-            machine = self.machines[machine_id]
-
             # PT_Log writes to a file called "PT_Log" (no extension)
             # Try multiple common locations
             log_locations = ["PT_Log", "pt_log", "PT_Log.txt"]
@@ -362,17 +360,6 @@ class ClassicMacHardwareServer:
                 }
             ),
             Tool(
-                name="fetch_logs",
-                description="Download PT_Log from Classic Mac",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "machine": {"type": "string", "description": f"Machine ID ({machine_ids})"}
-                    },
-                    "required": ["machine"]
-                }
-            ),
-            Tool(
                 name="execute_binary",
                 description="Run binary via LaunchAPPL (requires LaunchAPPLServer on Mac)",
                 inputSchema={
@@ -434,8 +421,6 @@ class ClassicMacHardwareServer:
                 return self._tool_upload_file(arguments)
             elif name == "download_file":
                 return self._tool_download_file(arguments)
-            elif name == "fetch_logs":
-                return await self._tool_fetch_logs(arguments)
             elif name == "execute_binary":
                 return self._tool_execute_binary(arguments)
             elif name == "cleanup_machine":
@@ -752,28 +737,6 @@ class ClassicMacHardwareServer:
                  f"  Size:   {file_size:,} bytes"
         )]
 
-    async def _tool_fetch_logs(self, args: dict) -> list[TextContent]:
-        """Fetch PT_Log from Classic Mac."""
-        machine_id = args["machine"]
-
-        content = self._fetch_log_content(machine_id, "latest")
-        machine = self.machines[machine_id]
-
-        # Save to downloads
-        download_dir = Path(f"downloads/{machine_id}")
-        download_dir.mkdir(parents=True, exist_ok=True)
-        local_path = download_dir / "PT_Log"
-        local_path.write_text(content)
-
-        return [TextContent(
-            type="text",
-            text=f"✅ Downloaded from {machine['name']}:\n\n"
-                 f"Remote: PT_Log\n"
-                 f"Local:  {local_path}\n"
-                 f"Size:   {len(content):,} bytes\n\n"
-                 f"--- Content ---\n{content}"
-        )]
-
     def _tool_execute_binary(self, args: dict) -> list[TextContent]:
         """Execute binary via LaunchAPPL."""
         import subprocess
@@ -815,7 +778,7 @@ class ClassicMacHardwareServer:
         except subprocess.TimeoutExpired:
             return [TextContent(
                 type="text",
-                text=f"⏱️ Timed out after 60s. Binary may still be running.\nUse fetch_logs to check."
+                text=f"⏱️ Timed out after 60s. Binary may still be running.\nLogs will be streamed to perf_partner when test completes."
             )]
         except Exception as e:
             return [TextContent(type="text", text=f"❌ Error: {e}")]

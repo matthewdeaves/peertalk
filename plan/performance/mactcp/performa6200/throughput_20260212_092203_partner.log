@@ -1,0 +1,30 @@
+[ECHO] 6700 messages echoed
+[ECHO] 6800 messages echoed
+[ECHO] 6900 messages echoed
+[ECHO] 7000 messages echoed
+[ECHO] 7100 messages echoed
+[STATUS] 130 sec: peers=7, msgs=7110, connected=yes
+[ECHO] 7200 messages echoed
+[ECHO] 7300 messages echoed
+[ECHO] 7400 messages echoed
+[ECHO] 7500 messages echoed
+[STATUS] 140 sec: peers=8, msgs=7567, connected=yes
+[ECHO] 7600 messages echoed
+[ECHO] 7700 messages echoed
+[ECHO] 7800 messages echoed
+[STATUS] 150 sec: peers=9, msgs=7890, connected=yes
+[ECHO] 7900 messages echoed
+[ECHO] 8000 messages echoed
+[ECHO] 8100 messages echoed
+[ECHO] 8200 messages echoed
+[STATUS] 160 sec: peers=9, msgs=8213, connected=yes
+[ECHO] 8300 messages echoed
+[ECHO] 8400 messages echoed
+[ECHO] 8500 messages echoed
+[STATUS] 170 sec: peers=9, msgs=8538, connected=yes
+[LOG] Detected log stream marker from peer 1 (IP 0x0ABC01D5)
+[LOG] Started receiving logs from  (IP 0x0ABC01D5, 4378 bytes expected)
+[LOG] Received 2048/4378 bytes
+[LOG] Received 3072/4378 bytes
+[LOG] Received 4096/4378 bytes
+[00170331][ERR] Header recv error for peer 1: Connection reset by peer

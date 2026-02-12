@@ -264,7 +264,6 @@ Mac test apps automatically stream their logs to the POSIX perf_partner at the e
 /test-partner status         # Check if running
 /test-partner stop           # Stop when done
 /run-test throughput         # Full automated test workflow
-/fetch-logs performa6200     # Get PT_Log from Mac
 ```
 
 **Note:** Mac apps use ports 7353 (discovery) and 7354 (TCP). The POSIX partner must use the same ports.
@@ -356,7 +355,6 @@ Platform rules are automatically loaded when editing files in the corresponding 
 | `/test-machine <id>` | Test FTP and LaunchAPPL connectivity |
 | `/deploy [machine\|platform\|all]` | Deploy PeerTalk binaries via FTP (requires PeerTalk implemented) |
 | `/execute <machine> <app-path>` | Run apps remotely via LaunchAPPL (tests without PeerTalk) |
-| `/fetch-logs [machine\|platform\|all]` | Retrieve PT_Log output from Classic Mac hardware |
 
 ### Reference & Documentation
 | Skill | When to Use |
@@ -383,9 +381,8 @@ See `.claude/rules/classic-mac-hardware.md` for complete enforcement rules.
 
 **Key Tools:**
 - `upload_file` - Upload any file to Classic Mac (preserves filename)
-- `download_file` - Download file from Classic Mac
+- `download_file` - Download file from Classic Mac (use for PT_Log if needed)
 - `execute_binary` - Run apps remotely via LaunchAPPL TCP protocol
-- `fetch_logs` - Retrieve PT_Log output from Mac
 - `list_directory` / `create_directory` / `delete_files` - File management
 - `test_connection` - Verify FTP and LaunchAPPL connectivity
 - `reload_config` - Hot-reload machine registry after changes
@@ -412,7 +409,6 @@ Each machine entry includes:
     setup-launcher/            # Build & deploy LaunchAPPLServer
     deploy/                    # Deploy PeerTalk builds via FTP
     execute/                   # Remote execution via LaunchAPPL
-    fetch-logs/                # Retrieve PT_Log output
     test-machine/              # Test FTP/LaunchAPPL connectivity
     build/                     # Build system with quality gates
     session/                   # Phase session navigation
@@ -423,6 +419,7 @@ Each machine entry includes:
     mac-api/                   # Inside Macintosh API search
     backport/                  # Cherry-pick tooling updates
     test-partner/              # Manage POSIX test partner containers
+    run-test/                  # Full hardware test workflow (logs auto-streamed)
   rules/                       # Development and platform rules
     build-requirements.md      # Docker-only builds (CRITICAL)
     classic-mac-hardware.md    # MCP-only file operations (CRITICAL)

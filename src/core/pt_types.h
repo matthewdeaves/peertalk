@@ -89,13 +89,13 @@
  * This is the staging buffer for TCP receive/send framing. Must be large
  * enough to hold the largest expected message plus header (10) + CRC (2).
  *
- * 8192 bytes balances throughput (fewer copies) with memory usage.
- * MacTCP recommends 16KB for block apps, but 8KB is sufficient for
- * most messages and reduces memory pressure on 4-8MB Macs.
+ * 16KB allows buffering 3+ 4KB messages during high-speed receive.
+ * Without this, deferred RDS stalls the TCP connection when large
+ * messages arrive faster than they can be processed.
  *
- * With PT_MAX_PEERS=8, ibuf+obuf = 16KB per peer = 128KB total.
+ * With PT_MAX_PEERS=8, ibuf+obuf = 32KB per peer = 256KB total.
  */
-#define PT_FRAME_BUF_SIZE   8192
+#define PT_FRAME_BUF_SIZE   16384
 
 /* ========================================================================== */
 /* Internal Types                                                             */

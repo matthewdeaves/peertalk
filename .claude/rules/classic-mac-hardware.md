@@ -8,12 +8,13 @@
 |-----------|----------|
 | Upload file | `mcp__classic-mac-hardware__upload_file` |
 | Download file | `mcp__classic-mac-hardware__download_file` |
-| Fetch logs | `mcp__classic-mac-hardware__fetch_logs` |
 | List directory | `mcp__classic-mac-hardware__list_directory` |
 | Create directory | `mcp__classic-mac-hardware__create_directory` |
 | Delete files | `mcp__classic-mac-hardware__delete_files` |
 | Test connection | `mcp__classic-mac-hardware__test_connection` |
 | Execute binary | `mcp__classic-mac-hardware__execute_binary` |
+
+**Note:** Test logs are auto-streamed to the POSIX perf_partner. If FTP download is needed, use `download_file` with `remote_path="PT_Log"`.
 
 ## Prohibited: Direct FTP/Scripts
 
@@ -37,9 +38,15 @@ mcp__classic-mac-hardware__upload_file(
 ```
 
 ```python
-# CORRECT: Use MCP tool for logs
-mcp__classic-mac-hardware__fetch_logs(machine="se30")
+# CORRECT: Download logs manually if streaming failed
+mcp__classic-mac-hardware__download_file(
+    machine="se30",
+    remote_path="PT_Log",
+    local_path="downloads/se30/PT_Log"
+)
 ```
+
+**Note:** Logs are normally auto-streamed to perf_partner. Manual download is rarely needed.
 
 ## Incorrect Examples
 
