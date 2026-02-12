@@ -135,8 +135,8 @@ $(LIBNAME): $(LIB_OBJS) | $(BUILD_DIR)
 	@echo "Built: $@"
 
 # Test application (code segment)
-$(TEST_CODE): $(TEST_OBJS) $(STATUS_WINDOW_OBJ) $(LIBNAME)
-	$(CC) $(CFLAGS) -o $@ $(TEST_OBJS) $(STATUS_WINDOW_OBJ) -L$(BUILD_DIR) -lpeertalk_$(PLATFORM)
+$(TEST_CODE): $(TEST_OBJS) $(TEST_UI_OBJS) $(LIBNAME)
+	$(CC) $(CFLAGS) -o $@ $(TEST_OBJS) $(TEST_UI_OBJS) -L$(BUILD_DIR) -lpeertalk_$(PLATFORM)
 	@echo "Built: $@"
 
 # Test application (.bin and .dsk via Rez)
@@ -159,9 +159,18 @@ STATUS_WINDOW_OBJ = $(BUILD_DIR)/tests/mac/status_window.o
 $(STATUS_WINDOW_OBJ): tests/mac/status_window.c tests/mac/status_window.h | $(BUILD_DIR)/tests/mac
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# Table UI for test apps (tabular results display)
+TABLE_UI_OBJ = $(BUILD_DIR)/tests/mac/table_ui.o
+
+$(TABLE_UI_OBJ): tests/mac/table_ui.c tests/mac/table_ui.h tests/mac/status_window.h | $(BUILD_DIR)/tests/mac
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Combined UI objects for test apps
+TEST_UI_OBJS = $(STATUS_WINDOW_OBJ) $(TABLE_UI_OBJ)
+
 # Generic rule for performance test binaries
-$(BUILD_DIR)/test_%.code.bin: $(BUILD_DIR)/tests/mac/test_%.o $(STATUS_WINDOW_OBJ) $(LIBNAME)
-	$(CC) $(CFLAGS) -o $@ $< $(STATUS_WINDOW_OBJ) -L$(BUILD_DIR) -lpeertalk_$(PLATFORM)
+$(BUILD_DIR)/test_%.code.bin: $(BUILD_DIR)/tests/mac/test_%.o $(TEST_UI_OBJS) $(LIBNAME)
+	$(CC) $(CFLAGS) -o $@ $< $(TEST_UI_OBJS) -L$(BUILD_DIR) -lpeertalk_$(PLATFORM)
 
 # Use per-app resource file if it exists, otherwise fall back to shared PeerTalkTest.r
 $(BUILD_DIR)/test_%.bin: $(BUILD_DIR)/test_%.code.bin

@@ -31,6 +31,7 @@
 #include "peertalk.h"
 #include "pt_log.h"
 #include "status_window.h"
+#include "table_ui.h"
 
 /* Log streaming helper - implementation in this file */
 #define LOG_STREAM_IMPLEMENTATION
@@ -104,6 +105,7 @@ static int g_running = 1;
 static int g_connect_failures = 0;
 static uint8_t g_send_buffer[4096];
 static unsigned long g_in_flight = 0;   /* Messages sent but not yet echoed */
+static TableUI g_table;
 
 /* ========================================================================== */
 /* Utility Functions                                                           */
@@ -176,6 +178,7 @@ static void report_progress(void)
     ThroughputStats *stats = &g_test.stats[g_test.current_size_idx];
     unsigned long elapsed_ticks = TickCount() - stats->start_ticks;
     unsigned long elapsed_ms = ticks_to_ms(elapsed_ticks);
+    int row;
 
     if (elapsed_ms == 0) elapsed_ms = 1;
 
@@ -189,15 +192,52 @@ static void report_progress(void)
         recv_kbps / 1024UL, stats->messages_received,
         g_in_flight);
 
-    /* Update status window */
-    status_clear();
-    status_linef("Buffer size: %d bytes", stats->buffer_size);
-    status_linef("Elapsed: %lu/%d sec", elapsed_ms / 1000UL, TEST_DURATION_SEC);
-    status_linef("Throughput: %lu KB/s", send_kbps / 1024UL);
-    status_linef("Messages: %lu sent", stats->messages_sent);
-    if (stats->send_errors > 0) {
-        status_linef("Errors: %lu", stats->send_errors);
+    /* Build results table showing all buffer sizes */
+    table_init(&g_table, "Throughput (KB/s)", NUM_BUFFER_SIZES, 5);
+    table_set_header(&g_table, 0, "Size", 5, TABLE_ALIGN_RIGHT);
+    table_set_header(&g_table, 1, "Send", 5, TABLE_ALIGN_RIGHT);
+    table_set_header(&g_table, 2, "Recv", 5, TABLE_ALIGN_RIGHT);
+    table_set_header(&g_table, 3, "Msgs", 6, TABLE_ALIGN_RIGHT);
+    table_set_header(&g_table, 4, "Err", 4, TABLE_ALIGN_RIGHT);
+
+    for (row = 0; row < (int)NUM_BUFFER_SIZES; row++) {
+        ThroughputStats *s = &g_test.stats[row];
+        unsigned long row_elapsed_ticks, row_elapsed_ms;
+        unsigned long row_send_kbps, row_recv_kbps;
+
+        table_set_cell_int(&g_table, row, 0, s->buffer_size);
+
+        if (row < g_test.current_size_idx && s->end_ticks > 0) {
+            /* Completed test - use final stats */
+            row_elapsed_ticks = s->end_ticks - s->start_ticks;
+            row_elapsed_ms = ticks_to_ms(row_elapsed_ticks);
+            if (row_elapsed_ms == 0) row_elapsed_ms = 1;
+            row_send_kbps = (s->bytes_sent * 1000UL) / row_elapsed_ms;
+            row_recv_kbps = (s->bytes_received * 1000UL) / row_elapsed_ms;
+            table_set_cell_kbps(&g_table, row, 1, row_send_kbps);
+            table_set_cell_kbps(&g_table, row, 2, row_recv_kbps);
+            table_set_cell_uint(&g_table, row, 3, s->messages_sent);
+            table_set_cell_uint(&g_table, row, 4, s->send_errors);
+        } else if (row == g_test.current_size_idx && s->messages_sent > 0) {
+            /* Current test - use live stats */
+            table_set_cell_kbps(&g_table, row, 1, send_kbps);
+            table_set_cell_kbps(&g_table, row, 2, recv_kbps);
+            table_set_cell_uint(&g_table, row, 3, s->messages_sent);
+            table_set_cell_uint(&g_table, row, 4, s->send_errors);
+        } else {
+            /* Not yet started */
+            table_clear_cell(&g_table, row, 1);
+            table_clear_cell(&g_table, row, 2);
+            table_clear_cell(&g_table, row, 3);
+            table_clear_cell(&g_table, row, 4);
+        }
     }
+
+    table_set_current_row(&g_table, g_test.current_size_idx);
+    table_render(&g_table);
+
+    /* Show elapsed time below table */
+    status_linef("Elapsed: %lu/%d sec", elapsed_ms / 1000UL, TEST_DURATION_SEC);
 }
 
 static void finish_current_test(void)

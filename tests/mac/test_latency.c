@@ -31,6 +31,7 @@
 #include "peertalk.h"
 #include "pt_log.h"
 #include "status_window.h"
+#include "table_ui.h"
 
 /* Log streaming helper - implementation in this file */
 #define LOG_STREAM_IMPLEMENTATION
@@ -96,6 +97,7 @@ static unsigned long g_last_ping = 0;
 static unsigned long g_discovery_start = 0;
 static int g_running = 1;
 static int g_connect_failures = 0;
+static TableUI g_table;
 
 /* ========================================================================== */
 /* Utility Functions                                                           */
@@ -628,43 +630,48 @@ int main(void)
             if (stats->recv_count != last_update_count &&
                 stats->recv_count % 10 == 0) {
                 int row;
+                int total_lost = 0;
                 last_update_count = stats->recv_count;
-                status_clear();
 
-                /* Table header (ms, 0 means <17ms) */
-                status_line("RTT in ms (0 = <17ms)");
-                status_line("Size  Min Avg Max  N");
-                status_line("----- --- --- --- ---");
+                /* Build table with latency results */
+                table_init(&g_table, "RTT in ms (0 = <17ms)", NUM_TEST_SIZES, 5);
+                table_set_header(&g_table, 0, "Size", 5, TABLE_ALIGN_RIGHT);
+                table_set_header(&g_table, 1, "Min", 4, TABLE_ALIGN_RIGHT);
+                table_set_header(&g_table, 2, "Avg", 4, TABLE_ALIGN_RIGHT);
+                table_set_header(&g_table, 3, "Max", 4, TABLE_ALIGN_RIGHT);
+                table_set_header(&g_table, 4, "N", 4, TABLE_ALIGN_RIGHT);
 
-                /* Show all sizes - completed, current, and pending */
+                /* Populate rows with results */
                 for (row = 0; row < (int)NUM_TEST_SIZES; row++) {
                     LatencyStats *s = &g_test.stats[row];
-                    const char *marker = (row == g_test.current_size_idx) ? "*" : "";
+
+                    table_set_cell_int(&g_table, row, 0, s->message_size);
 
                     if (s->recv_count > 0) {
                         unsigned long avg = s->total_ticks / s->recv_count;
-                        status_linef("%5d %3lu %3lu %3lu %3d%s",
-                                    s->message_size,
-                                    ticks_to_ms(s->min_ticks),
-                                    ticks_to_ms(avg),
-                                    ticks_to_ms(s->max_ticks),
-                                    s->recv_count, marker);
+                        table_set_cell_ms(&g_table, row, 1, s->min_ticks);
+                        table_set_cell_ms(&g_table, row, 2, avg);
+                        table_set_cell_ms(&g_table, row, 3, s->max_ticks);
+                        table_set_cell_int(&g_table, row, 4, s->recv_count);
                     } else {
-                        status_linef("%5d  --  --  --  --%s",
-                                    s->message_size, marker);
+                        table_clear_cell(&g_table, row, 1);
+                        table_clear_cell(&g_table, row, 2);
+                        table_clear_cell(&g_table, row, 3);
+                        table_clear_cell(&g_table, row, 4);
                     }
                 }
 
-                /* Footer - show total lost if any */
-                {
-                    int total_lost = 0;
-                    for (row = 0; row <= g_test.current_size_idx; row++) {
-                        total_lost += g_test.stats[row].lost_count;
-                    }
-                    if (total_lost > 0) {
-                        status_line("");
-                        status_linef("Lost: %d packets", total_lost);
-                    }
+                /* Mark current row and render */
+                table_set_current_row(&g_table, g_test.current_size_idx);
+                table_render(&g_table);
+
+                /* Show lost packets footer if any */
+                for (row = 0; row <= g_test.current_size_idx; row++) {
+                    total_lost += g_test.stats[row].lost_count;
+                }
+                if (total_lost > 0) {
+                    status_line("");
+                    status_linef("Lost: %d packets", total_lost);
                 }
             }
 

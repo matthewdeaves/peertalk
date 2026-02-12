@@ -31,6 +31,7 @@
 #include "peertalk.h"
 #include "pt_log.h"
 #include "status_window.h"
+#include "table_ui.h"
 
 /* Log streaming helper - implementation in this file */
 #define LOG_STREAM_IMPLEMENTATION
@@ -120,6 +121,7 @@ static int g_running = 1;
 static int g_connect_failures = 0;
 static uint8_t g_send_buffer[4096];
 static unsigned long g_ack_wait_start = 0;
+static TableUI g_table;
 
 /* ========================================================================== */
 /* Utility Functions                                                           */
@@ -369,30 +371,75 @@ static void report_progress(void)
     unsigned long elapsed_ticks = TickCount() - g_test.phase_start_ticks;
     unsigned long elapsed_ms = ticks_to_ms(elapsed_ticks);
     unsigned long kbps;
+    int row;
 
     if (elapsed_ms == 0) elapsed_ms = 1;
 
+    /* Log current phase progress */
     if (g_test.phase == 0) {
         kbps = (stats->send_bytes * 1000UL) / elapsed_ms / 1024UL;
         PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
             "SEND %d: %lu KB/s (%lu msgs) errs=%lu",
             stats->buffer_size, kbps, stats->send_msgs, stats->send_errors);
-
-        status_clear();
-        status_linef("SEND: %d bytes", stats->buffer_size);
-        status_linef("Throughput: %lu KB/s", kbps);
-        status_linef("Messages: %lu", stats->send_msgs);
     } else {
         kbps = (stats->recv_bytes * 1000UL) / elapsed_ms / 1024UL;
         PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
             "RECV %d: %lu KB/s (%lu msgs)",
             stats->buffer_size, kbps, stats->recv_msgs);
-
-        status_clear();
-        status_linef("RECV: %d bytes", stats->buffer_size);
-        status_linef("Throughput: %lu KB/s", kbps);
-        status_linef("Messages: %lu", stats->recv_msgs);
     }
+
+    /* Build results table showing all sizes */
+    table_init(&g_table, "Stream (KB/s)", NUM_BUFFER_SIZES, 4);
+    table_set_header(&g_table, 0, "Size", 5, TABLE_ALIGN_RIGHT);
+    table_set_header(&g_table, 1, "Send", 5, TABLE_ALIGN_RIGHT);
+    table_set_header(&g_table, 2, "Recv", 5, TABLE_ALIGN_RIGHT);
+    table_set_header(&g_table, 3, "Status", 6, TABLE_ALIGN_LEFT);
+
+    for (row = 0; row < (int)NUM_BUFFER_SIZES; row++) {
+        StreamStats *s = &g_test.stats[row];
+        unsigned long send_ms, recv_ms, send_kbps, recv_kbps;
+
+        table_set_cell_int(&g_table, row, 0, s->buffer_size);
+
+        if (row < g_test.current_size_idx) {
+            /* Completed test */
+            send_ms = ticks_to_ms(s->send_end_ticks - s->send_start_ticks);
+            recv_ms = ticks_to_ms(s->recv_end_ticks - s->recv_start_ticks);
+            if (send_ms == 0) send_ms = 1;
+            if (recv_ms == 0) recv_ms = 1;
+            send_kbps = (s->send_bytes * 1000UL) / send_ms;
+            recv_kbps = (s->recv_bytes * 1000UL) / recv_ms;
+            table_set_cell_kbps(&g_table, row, 1, send_kbps);
+            table_set_cell_kbps(&g_table, row, 2, recv_kbps);
+            table_set_cell_str(&g_table, row, 3, "DONE");
+        } else if (row == g_test.current_size_idx) {
+            /* Current test */
+            if (g_test.phase == 0) {
+                /* In send phase */
+                kbps = (s->send_bytes * 1000UL) / elapsed_ms;
+                table_set_cell_kbps(&g_table, row, 1, kbps);
+                table_clear_cell(&g_table, row, 2);
+                table_set_cell_str(&g_table, row, 3, "SEND");
+            } else {
+                /* In recv phase */
+                send_ms = ticks_to_ms(s->send_end_ticks - s->send_start_ticks);
+                if (send_ms == 0) send_ms = 1;
+                send_kbps = (s->send_bytes * 1000UL) / send_ms;
+                kbps = (s->recv_bytes * 1000UL) / elapsed_ms;
+                table_set_cell_kbps(&g_table, row, 1, send_kbps);
+                table_set_cell_kbps(&g_table, row, 2, kbps);
+                table_set_cell_str(&g_table, row, 3, "RECV");
+            }
+        } else {
+            /* Not yet started */
+            table_clear_cell(&g_table, row, 1);
+            table_clear_cell(&g_table, row, 2);
+            table_clear_cell(&g_table, row, 3);
+        }
+    }
+
+    table_set_current_row(&g_table, g_test.current_size_idx);
+    table_render(&g_table);
 }
 
 /* ========================================================================== */
