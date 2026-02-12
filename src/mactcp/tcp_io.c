@@ -529,6 +529,8 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
     if (hot->asr_flags & PT_ASR_CONN_CLOSED) {
         hot->asr_flags &= ~PT_ASR_CONN_CLOSED;
         hot->recv_pending = 0;  /* Cancel pending receive state */
+        hot->rds_outstanding = 0;  /* Cancel any outstanding RDS */
+        hot->rds_copy_idx = 0;
         return -1;  /* Trigger disconnect */
     }
 
@@ -542,8 +544,60 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
      *
      * Loop to drain multiple completions per poll (up to max_recv_loops).
      */
+    /*
+     * RESUME PARTIAL RDS COPY
+     *
+     * If rds_outstanding && !recv_pending, we have RDS data that couldn't
+     * be fully copied on a previous poll due to ibuf overflow. Try to
+     * resume copying now that messages have been processed.
+     */
+    if (hot->rds_outstanding && !hot->recv_pending && hot->rds_copy_idx > 0) {
+        int copied_all = 1;
+        for (rds_idx = hot->rds_copy_idx; rds_idx < PT_MAX_RDS_ENTRIES && cold->rds[rds_idx].length > 0; rds_idx++) {
+            unsigned short chunk_len = cold->rds[rds_idx].length;
+            if (peer->cold.ibuflen + chunk_len > sizeof(peer->cold.ibuf)) {
+                /* Still no room - wait for more processing */
+                PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
+                    "RCV resume: still no room (need %u, have %u)",
+                    (unsigned)chunk_len,
+                    (unsigned)(sizeof(peer->cold.ibuf) - peer->cold.ibuflen));
+                hot->rds_copy_idx = rds_idx;
+                copied_all = 0;
+                break;
+            }
+            pt_memcpy(peer->cold.ibuf + peer->cold.ibuflen,
+                      cold->rds[rds_idx].ptr, chunk_len);
+            peer->cold.ibuflen += chunk_len;
+        }
+
+        if (copied_all) {
+            /* All RDS data copied - return buffers and re-issue */
+            TCPiopb return_pb;
+            pt_memset(&return_pb, 0, sizeof(return_pb));
+            return_pb.csCode = TCPRcvBfrReturn;
+            return_pb.ioCRefNum = md->driver_refnum;
+            return_pb.tcpStream = hot->stream;
+            return_pb.csParam.receive.rdsPtr = (Ptr)cold->rds;
+
+            err = PBControlSync((ParmBlkPtr)&return_pb);
+            if (err != noErr) {
+                PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
+                    "TCPRcvBfrReturn (resume) failed: %d", (int)err);
+            }
+            hot->rds_outstanding = 0;
+            hot->rds_copy_idx = 0;
+            PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
+                "RCV resume complete (ibuflen=%u)", (unsigned)peer->cold.ibuflen);
+
+            /* Re-issue async receive */
+            pt_mactcp_issue_async_recv(ctx, idx);
+        }
+        recv_loops++;  /* Count this as work done */
+    }
+
     while (hot->recv_pending && recv_loops < max_recv_loops) {
         int16_t io_result = cold->recv_pb.ioResult;
+        int copied_all = 1;
 
         if (io_result == 1) {
             /* Still in progress - nothing to do */
@@ -572,14 +626,16 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
 
         /* Success - copy RDS data to ibuf */
         hot->rds_outstanding = 1;
+        hot->rds_copy_idx = 0;
 
         for (rds_idx = 0; rds_idx < PT_MAX_RDS_ENTRIES && cold->rds[rds_idx].length > 0; rds_idx++) {
             unsigned short chunk_len = cold->rds[rds_idx].length;
             if (peer->cold.ibuflen + chunk_len > sizeof(peer->cold.ibuf)) {
                 PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
-                    "RCV: data exceeds ibuf (%u + %u > %u)",
-                    (unsigned)peer->cold.ibuflen, (unsigned)chunk_len,
-                    (unsigned)sizeof(peer->cold.ibuf));
+                    "RCV: ibuf full, deferring %d RDS entries (need %u bytes)",
+                    PT_MAX_RDS_ENTRIES - rds_idx, (unsigned)chunk_len);
+                hot->rds_copy_idx = rds_idx;
+                copied_all = 0;
                 break;
             }
             pt_memcpy(peer->cold.ibuf + peer->cold.ibuflen,
@@ -588,12 +644,13 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
         }
 
         PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_NETWORK,
-            "ASYNC RCV: +%u bytes in %d chunks (ibuflen=%u)",
+            "ASYNC RCV: +%u bytes in %d chunks (ibuflen=%u)%s",
             (unsigned)cold->recv_pb.csParam.receive.rcvBuffLen, rds_idx,
-            (unsigned)peer->cold.ibuflen);
+            (unsigned)peer->cold.ibuflen,
+            copied_all ? "" : " [PARTIAL]");
 
-        /* CRITICAL: Return RDS buffers immediately */
-        if (hot->rds_outstanding) {
+        if (copied_all) {
+            /* All data copied - return RDS buffers immediately */
             TCPiopb return_pb;
             pt_memset(&return_pb, 0, sizeof(return_pb));
             return_pb.csCode = TCPRcvBfrReturn;
@@ -607,10 +664,12 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
                     "TCPRcvBfrReturn failed: %d", (int)err);
             }
             hot->rds_outstanding = 0;
-        }
+            hot->rds_copy_idx = 0;
 
-        /* Immediately re-issue async receive to keep one outstanding */
-        pt_mactcp_issue_async_recv(ctx, idx);
+            /* Immediately re-issue async receive to keep one outstanding */
+            pt_mactcp_issue_async_recv(ctx, idx);
+        }
+        /* If !copied_all: keep RDS, don't re-issue. Next poll will resume. */
     }
 
     /* Also check for ASR-signaled data (fallback path) */

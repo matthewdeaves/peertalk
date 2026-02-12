@@ -272,6 +272,7 @@ int pt_mactcp_tcp_create(struct pt_context *ctx, int idx)
     cold->local_ip = md->local_ip;
     hot->state = PT_STREAM_IDLE;
     hot->rds_outstanding = 0;
+    hot->rds_copy_idx = 0;
     hot->peer_idx = -1;  /* No peer yet */
 
     PT_LOG_INFO(ctx->log, PT_LOG_CAT_CONNECT,
@@ -357,6 +358,7 @@ int pt_mactcp_tcp_create_listener(struct pt_context *ctx)
     cold->local_ip = md->local_ip;
     hot->state = PT_STREAM_IDLE;
     hot->rds_outstanding = 0;
+    hot->rds_copy_idx = 0;
     hot->peer_idx = -1;
 
     PT_LOG_INFO(ctx->log, PT_LOG_CAT_CONNECT,

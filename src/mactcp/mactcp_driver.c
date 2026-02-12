@@ -350,6 +350,7 @@ void pt_mactcp_init_streams(pt_mactcp_data *md)
         md->tcp_hot[i].asr_flags = 0;
         md->tcp_hot[i].async_pending = 0;
         md->tcp_hot[i].rds_outstanding = 0;
+        md->tcp_hot[i].rds_copy_idx = 0;
         md->tcp_hot[i].peer_idx = -1;
         md->tcp_hot[i].log_events = 0;
         md->tcp_cold[i].rcv_buffer = NULL;

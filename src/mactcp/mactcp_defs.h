@@ -131,7 +131,7 @@ typedef struct pt_tcp_stream_hot {
     volatile uint8_t  log_events;       /* 1 byte  - offset 12 (ISR-safe logging) */
     int8_t            peer_idx;         /* 1 byte  - offset 13 (-1 = no peer) */
     volatile uint8_t  recv_pending;     /* 1 byte  - offset 14 (async recv outstanding) */
-    uint8_t           _pad;             /* 1 byte  - offset 15 (alignment padding) */
+    uint8_t           rds_copy_idx;     /* 1 byte  - offset 15 (RDS copy resume index) */
     /* Total: 16 bytes, 2-byte aligned, fits in minimal cache line */
     /* Polling 8 streams loads ~128 bytes */
 } pt_tcp_stream_hot;

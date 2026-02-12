@@ -89,6 +89,11 @@ LIB_OBJS = $(LIB_SRCS:%.c=$(BUILD_DIR)/%.o)
 TEST_SRCS = tests/mac/test_mactcp.c
 TEST_OBJS = $(TEST_SRCS:%.c=$(BUILD_DIR)/%.o)
 
+# Shared UI objects for test apps (must be defined before rules that use them)
+STATUS_WINDOW_OBJ = $(BUILD_DIR)/tests/mac/status_window.o
+TABLE_UI_OBJ = $(BUILD_DIR)/tests/mac/table_ui.o
+TEST_UI_OBJS = $(STATUS_WINDOW_OBJ) $(TABLE_UI_OBJ)
+
 # Performance test sources
 PERF_TESTS = test_latency test_throughput test_stress test_discovery test_stream
 
@@ -153,20 +158,12 @@ $(TEST_BIN) $(TEST_DSK): $(TEST_CODE)
 # Performance Test Applications
 # ============================================================================
 
-# Status window for test apps (provides real-time progress display)
-STATUS_WINDOW_OBJ = $(BUILD_DIR)/tests/mac/status_window.o
-
+# Build rules for shared UI objects
 $(STATUS_WINDOW_OBJ): tests/mac/status_window.c tests/mac/status_window.h | $(BUILD_DIR)/tests/mac
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Table UI for test apps (tabular results display)
-TABLE_UI_OBJ = $(BUILD_DIR)/tests/mac/table_ui.o
-
 $(TABLE_UI_OBJ): tests/mac/table_ui.c tests/mac/table_ui.h tests/mac/status_window.h | $(BUILD_DIR)/tests/mac
 	$(CC) $(CFLAGS) -c $< -o $@
-
-# Combined UI objects for test apps
-TEST_UI_OBJS = $(STATUS_WINDOW_OBJ) $(TABLE_UI_OBJ)
 
 # Generic rule for performance test binaries
 $(BUILD_DIR)/test_%.code.bin: $(BUILD_DIR)/tests/mac/test_%.o $(TEST_UI_OBJS) $(LIBNAME)
