@@ -675,14 +675,18 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
     /* Also check for ASR-signaled data (fallback path) */
     if (hot->asr_flags & PT_ASR_DATA_ARRIVED) {
         hot->asr_flags &= ~PT_ASR_DATA_ARRIVED;
-        /* If no receive pending, issue one now */
-        if (!hot->recv_pending && hot->state == PT_STREAM_CONNECTED) {
+        /* If no receive pending AND no deferred RDS data, issue one now */
+        if (!hot->recv_pending && !hot->rds_outstanding &&
+            hot->state == PT_STREAM_CONNECTED) {
             pt_mactcp_issue_async_recv(ctx, idx);
         }
     }
 
-    /* Ensure we always have a receive outstanding when connected */
-    if (!hot->recv_pending && hot->state == PT_STREAM_CONNECTED) {
+    /* Ensure we always have a receive outstanding when connected.
+     * CRITICAL: Don't issue new receive if we have deferred RDS data -
+     * that would overwrite the deferred buffers and cause data loss! */
+    if (!hot->recv_pending && !hot->rds_outstanding &&
+        hot->state == PT_STREAM_CONNECTED) {
         pt_mactcp_issue_async_recv(ctx, idx);
     }
 
@@ -711,19 +715,12 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
                 PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
                     "Invalid compact header from peer %u (offset %u)",
                     (unsigned)peer->hot.id, (unsigned)bytes_consumed);
-                /* Clear ibuf AND any deferred RDS to prevent discontinuity */
+                /* Clear ibuf - corrupted stream cannot be recovered.
+                 * Don't try to return RDS here - may fail with -23014 and
+                 * leave state inconsistent. Let normal cleanup handle it. */
                 peer->cold.ibuflen = 0;
-                if (hot->rds_outstanding) {
-                    TCPiopb return_pb;
-                    pt_memset(&return_pb, 0, sizeof(return_pb));
-                    return_pb.csCode = TCPRcvBfrReturn;
-                    return_pb.ioCRefNum = md->driver_refnum;
-                    return_pb.tcpStream = hot->stream;
-                    return_pb.csParam.receive.rdsPtr = (Ptr)cold->rds;
-                    PBControlSync((ParmBlkPtr)&return_pb);
-                    hot->rds_outstanding = 0;
-                    hot->rds_copy_idx = 0;
-                }
+                /* Mark stream as needing disconnect - corruption is unrecoverable */
+                hot->asr_flags |= PT_ASR_CONN_CLOSED;
                 return messages_processed > 0 ? messages_processed : 0;
             }
 
@@ -754,19 +751,12 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
                 PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
                     "Invalid message header from peer %u (offset %u)",
                     (unsigned)peer->hot.id, (unsigned)bytes_consumed);
-                /* Clear ibuf AND any deferred RDS to prevent discontinuity */
+                /* Clear ibuf - corrupted stream cannot be recovered.
+                 * Don't try to return RDS here - may fail with -23014 and
+                 * leave state inconsistent. Let normal cleanup handle it. */
                 peer->cold.ibuflen = 0;
-                if (hot->rds_outstanding) {
-                    TCPiopb return_pb;
-                    pt_memset(&return_pb, 0, sizeof(return_pb));
-                    return_pb.csCode = TCPRcvBfrReturn;
-                    return_pb.ioCRefNum = md->driver_refnum;
-                    return_pb.tcpStream = hot->stream;
-                    return_pb.csParam.receive.rdsPtr = (Ptr)cold->rds;
-                    PBControlSync((ParmBlkPtr)&return_pb);
-                    hot->rds_outstanding = 0;
-                    hot->rds_copy_idx = 0;
-                }
+                /* Mark stream as needing disconnect - corruption is unrecoverable */
+                hot->asr_flags |= PT_ASR_CONN_CLOSED;
                 return messages_processed > 0 ? messages_processed : 0;
             }
 
@@ -789,19 +779,12 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
                 PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
                     "CRC mismatch: expected=%04X actual=%04X",
                     (unsigned)crc_expected, (unsigned)crc_actual);
-                /* Clear ibuf AND any deferred RDS to prevent discontinuity */
+                /* Clear ibuf - corrupted stream cannot be recovered.
+                 * Don't try to return RDS here - may fail with -23014 and
+                 * leave state inconsistent. Let normal cleanup handle it. */
                 peer->cold.ibuflen = 0;
-                if (hot->rds_outstanding) {
-                    TCPiopb return_pb;
-                    pt_memset(&return_pb, 0, sizeof(return_pb));
-                    return_pb.csCode = TCPRcvBfrReturn;
-                    return_pb.ioCRefNum = md->driver_refnum;
-                    return_pb.tcpStream = hot->stream;
-                    return_pb.csParam.receive.rdsPtr = (Ptr)cold->rds;
-                    PBControlSync((ParmBlkPtr)&return_pb);
-                    hot->rds_outstanding = 0;
-                    hot->rds_copy_idx = 0;
-                }
+                /* Mark stream as needing disconnect - corruption is unrecoverable */
+                hot->asr_flags |= PT_ASR_CONN_CLOSED;
                 return messages_processed > 0 ? messages_processed : 0;
             }
         }
