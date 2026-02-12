@@ -451,14 +451,62 @@ static void pt_mactcp_poll_connected(struct pt_context *ctx,
 
     /* Flow control: Check for pressure updates to send
      *
-     * When our recv queue pressure crosses a threshold (25%, 50%, 75%),
+     * When our buffer pressure crosses a threshold (25%, 50%, 75%),
      * inform the peer so they can throttle their sends.
      * This is critical on constrained Mac hardware.
+     *
+     * MacTCP-specific: Also check ibuf fill level, not just queues.
+     * During high-speed receive (e.g., stream test RECV phase), ibuf
+     * fills up while recv_queue stays empty (zero-copy path).
      */
-    if (peer->cold.caps.pressure_update_pending ||
-        pt_peer_check_pressure_update(ctx, peer)) {
-        /* Send updated capabilities with new pressure value */
-        pt_mactcp_send_capability(ctx, peer);
+    {
+        int needs_update = peer->cold.caps.pressure_update_pending;
+
+        if (!needs_update) {
+            needs_update = pt_peer_check_pressure_update(ctx, peer);
+        }
+
+        /* MacTCP-specific: Check ibuf pressure threshold crossings.
+         *
+         * CRITICAL: Must handle both INCREASES and DECREASES!
+         * - Increase: Tell peer to back off (throttle sends)
+         * - Decrease: Tell peer to resume sending (unthrottle)
+         *
+         * Without decrease notifications, the peer backs off permanently
+         * after seeing high pressure, even after we drain the buffer.
+         */
+        if (!needs_update) {
+            uint8_t ibuf_pressure = 0;
+            uint8_t ibuf_level = 0;
+            uint8_t last_level;
+
+            /* Calculate current ibuf fill level (0 if empty) */
+            if (peer->cold.ibuflen > 0) {
+                ibuf_pressure = (uint8_t)((peer->cold.ibuflen * 100UL) / PT_FRAME_BUF_SIZE);
+                if (ibuf_pressure > 100) ibuf_pressure = 100;
+                ibuf_level = (ibuf_pressure >= 75) ? 75 :
+                             (ibuf_pressure >= 50) ? 50 :
+                             (ibuf_pressure >= 25) ? 25 : 0;
+            }
+
+            /* Compare against last reported (combined max of queue + ibuf) */
+            last_level = (peer->cold.caps.last_reported_pressure >= 75) ? 75 :
+                         (peer->cold.caps.last_reported_pressure >= 50) ? 50 :
+                         (peer->cold.caps.last_reported_pressure >= 25) ? 25 : 0;
+
+            /* Send update if ibuf crossed a threshold in EITHER direction */
+            if (ibuf_level != last_level) {
+                PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_PROTOCOL,
+                    "ibuf pressure changed: %u%% (level %u -> %u)",
+                    (unsigned)ibuf_pressure, (unsigned)last_level, (unsigned)ibuf_level);
+                needs_update = 1;
+            }
+        }
+
+        if (needs_update) {
+            /* Send updated capabilities with new pressure value */
+            pt_mactcp_send_capability(ctx, peer);
+        }
     }
 
     (void)cold;  /* Unused in this handler */

@@ -461,6 +461,9 @@ static void print_metrics_summary(const TestMetrics *m)
 
 /**
  * Send a stream control acknowledgment
+ *
+ * Uses HIGH priority to bypass flow control - control messages must get through
+ * even when the peer is reporting high buffer pressure during streaming.
  */
 static void stream_test_send_ack(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id)
 {
@@ -472,7 +475,9 @@ static void stream_test_send_ack(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id)
     ack.magic[3] = STREAM_MAGIC_3;
     ack.command = STREAM_CMD_ACK;
 
-    PeerTalk_Error err = PeerTalk_Send(ctx, peer_id, &ack, sizeof(ack));
+    /* CRITICAL priority ensures ACK gets through even at 90%+ pressure */
+    PeerTalk_Error err = PeerTalk_SendEx(ctx, peer_id, &ack, sizeof(ack),
+                                          PT_PRIORITY_CRITICAL, PT_SEND_DEFAULT, 0);
     if (err != PT_OK) {
         printf("[STREAM-TEST] Failed to send ACK: %d\n", err);
     } else if (g_config.verbose) {
@@ -586,7 +591,7 @@ static void stream_test_tick(void)
     now_us = get_time_us();
     elapsed_ms = (now_us - g_stream_test.phase_start_us) / 1000;
     if (elapsed_ms >= g_stream_test.duration_ms) {
-        /* Duration complete - send STOP command */
+        /* Duration complete - send STOP command with HIGH priority */
         StreamControl stop;
         memset(&stop, 0, sizeof(stop));
         stop.magic[0] = STREAM_MAGIC_0;
@@ -595,7 +600,9 @@ static void stream_test_tick(void)
         stop.magic[3] = STREAM_MAGIC_3;
         stop.command = STREAM_CMD_STOP;
 
-        PeerTalk_Send(g_ctx, g_stream_test.peer_id, &stop, sizeof(stop));
+        /* CRITICAL priority ensures STOP gets through even at 90%+ pressure */
+        PeerTalk_SendEx(g_ctx, g_stream_test.peer_id, &stop, sizeof(stop),
+                        PT_PRIORITY_CRITICAL, PT_SEND_DEFAULT, 0);
 
         double elapsed_sec = elapsed_ms / 1000.0;
         double kb_per_sec = (elapsed_sec > 0) ?

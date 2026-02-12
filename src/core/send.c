@@ -429,8 +429,14 @@ PeerTalk_Error PeerTalk_SendEx(PeerTalk_Context *ctx_pub,
      * asymmetry and poor throughput.
      *
      * The window is checked against: pipeline.pending_count + queue.count
+     *
+     * CRITICAL priority bypasses this check - control messages (ACKs,
+     * capability updates) must always get through regardless of flow
+     * control state. Without this, protocol messages could be blocked
+     * by their own flow control feedback.
      * ================================================================ */
-    if (peer->cold.caps.caps_exchanged && peer->cold.caps.send_window > 0) {
+    if (priority < PT_PRIORITY_CRITICAL &&
+        peer->cold.caps.caps_exchanged && peer->cold.caps.send_window > 0) {
         uint16_t in_flight = peer->pipeline.pending_count;
         q = peer->send_queue;
         if (q) {

@@ -1164,15 +1164,41 @@ int pt_mactcp_send_capability(struct pt_context *ctx, struct pt_peer *peer)
         caps.optimal_chunk = 512;  /* Minimum practical chunk */
     }
 
-    /* Calculate current buffer pressure from BOTH queues - report the worse one.
-     * On MacTCP, recv uses zero-copy so recv_queue is often empty.
-     * The real bottleneck shows up in send_queue when echoing back.
-     * By reporting MAX, we capture whichever is the actual constraint.
+    /* Calculate current buffer pressure from queues AND ibuf - report the worst.
+     *
+     * On MacTCP, incoming data arrives via zero-copy into ibuf, not recv_queue.
+     * When ibuf fills up (e.g., during high-speed one-way receive), we MUST
+     * report high pressure to tell the sender to slow down.
+     *
+     * Without ibuf pressure:
+     *   - Stream test RECV phase: partner blasts data, ibuf fills, recv_queue=0
+     *   - Mac reports pressure=0, partner never throttles
+     *   - Data overwhelms Mac, throughput collapses
+     *
+     * With ibuf pressure:
+     *   - Mac reports ibuf fill level as pressure
+     *   - Partner throttles based on feedback
+     *   - Sustainable throughput
      */
     {
         uint8_t send_pressure = peer->send_queue ? pt_queue_pressure(peer->send_queue) : 0;
         uint8_t recv_pressure = peer->recv_queue ? pt_queue_pressure(peer->recv_queue) : 0;
-        caps.buffer_pressure = (send_pressure > recv_pressure) ? send_pressure : recv_pressure;
+        uint8_t ibuf_pressure = 0;
+
+        /* Calculate ibuf pressure: fill level as percentage of capacity */
+        if (peer->cold.ibuflen > 0) {
+            ibuf_pressure = (uint8_t)((peer->cold.ibuflen * 100UL) / PT_FRAME_BUF_SIZE);
+            if (ibuf_pressure > 100) ibuf_pressure = 100;
+        }
+
+        /* Report maximum of all pressure sources */
+        caps.buffer_pressure = send_pressure;
+        if (recv_pressure > caps.buffer_pressure) {
+            caps.buffer_pressure = recv_pressure;
+        }
+        if (ibuf_pressure > caps.buffer_pressure) {
+            caps.buffer_pressure = ibuf_pressure;
+        }
     }
 
     /* Track what we reported for flow control threshold detection */
