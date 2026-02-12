@@ -7,6 +7,8 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     container_name: peertalk-dev
+    # Run as current user to prevent root-owned files in workspace
+    user: "${UID:-1000}:${GID:-1000}"
     volumes:
       # Mount project directory
       - ..:/workspace
