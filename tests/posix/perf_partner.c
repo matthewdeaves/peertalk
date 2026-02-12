@@ -88,6 +88,7 @@ typedef struct {
     uint64_t phase_start_us;   /* Microseconds when phase started */
     uint64_t bytes_sunk;       /* Bytes received in sink phase */
     uint64_t bytes_streamed;   /* Bytes sent in stream phase */
+    uint64_t last_burst_us;    /* Timestamp of last send burst (for rate limiting) */
     PeerTalk_PeerID peer_id;   /* Peer we're testing with */
 } StreamTestState;
 
@@ -557,6 +558,7 @@ static void stream_test_handle_control(PeerTalk_Context *ctx, PeerTalk_PeerID pe
         g_stream_test.duration_ms = ntohl(ctrl->duration_ms);
         g_stream_test.phase_start_us = get_time_us();
         g_stream_test.bytes_streamed = 0;
+        g_stream_test.last_burst_us = 0;  /* Start immediately, then pace */
         g_stream_test.peer_id = peer_id;
 
         /* Allocate stream buffer if needed */
@@ -620,13 +622,27 @@ static int is_stream_control(const void *data, uint16_t len)
 /**
  * Tick function for stream test streaming phase
  * Called from main loop when we're in streaming mode
+ *
+ * RATE LIMITING: Classic Mac can't process data as fast as POSIX can send.
+ * Without rate limiting, POSIX TCP buffers fill up faster than Mac can drain,
+ * causing RDS buffer exhaustion and message loss. We pace sends to ~150 KB/s
+ * which Mac can sustain without buffer overflow.
+ *
+ * Target rates by message size (based on successful Performa 6200 tests):
+ *   256B:  ~50 KB/s (safe margin from 44 KB/s measured RECV)
+ *   512B:  ~50 KB/s
+ *   1024B: ~100 KB/s (safe margin from 89 KB/s measured)
+ *   2048B: ~150 KB/s (safe margin from 174 KB/s measured - was unstable at 214)
+ *   4096B: ~200 KB/s (safe margin from 285 KB/s measured)
  */
 static void stream_test_tick(void)
 {
     int burst_count = 0;
-    const int max_burst = 16;  /* Send in bursts like Mac does */
+    int max_burst;
     uint64_t now_us;
     uint64_t elapsed_ms;
+    uint64_t min_burst_interval_us;
+    uint64_t since_last_burst;
 
     if (!g_stream_test.active || g_stream_test.phase != 1) return;
     if (!g_stream_buffer || g_stream_test.peer_id == 0) return;
@@ -656,6 +672,43 @@ static void stream_test_tick(void)
         return;
     }
 
+    /* Rate limiting: Calculate burst size and interval based on message size.
+     *
+     * The main loop runs at ~30-50Hz due to usleep. We use shorter intervals
+     * for better responsiveness and higher total throughput.
+     *
+     * Target rates (75% of stable rates from successful test):
+     *   - 256B:  33 KB/s (stable: 44 KB/s)
+     *   - 512B:  32 KB/s (stable: 43 KB/s)
+     *   - 1024B: 67 KB/s (stable: 89 KB/s)
+     *   - 2048B: 130 KB/s (stable: 174 KB/s, failed: 214 KB/s)
+     *   - 4096B: 214 KB/s (stable: 285 KB/s)
+     *
+     * Using 20ms intervals with small bursts for smoother flow:
+     */
+    if (g_stream_test.msg_size <= 256) {
+        max_burst = 3;
+        min_burst_interval_us = 20000;  /* ~38 KB/s: 3*256=768B per 20ms */
+    } else if (g_stream_test.msg_size <= 512) {
+        max_burst = 2;
+        min_burst_interval_us = 20000;  /* ~51 KB/s: 2*512=1KB per 20ms */
+    } else if (g_stream_test.msg_size <= 1024) {
+        max_burst = 2;
+        min_burst_interval_us = 20000;  /* ~102 KB/s: 2*1KB per 20ms */
+    } else if (g_stream_test.msg_size <= 2048) {
+        max_burst = 2;
+        min_burst_interval_us = 25000;  /* ~164 KB/s: 2*2KB per 25ms */
+    } else {
+        max_burst = 2;
+        min_burst_interval_us = 30000;  /* ~273 KB/s: 2*4KB per 30ms */
+    }
+
+    /* Check if enough time has passed since last burst */
+    since_last_burst = now_us - g_stream_test.last_burst_us;
+    if (since_last_burst < min_burst_interval_us) {
+        return;  /* Too soon - wait for next tick */
+    }
+
     /* Send data burst */
     while (burst_count < max_burst) {
         PeerTalk_Error err = PeerTalk_Send(g_ctx, g_stream_test.peer_id,
@@ -668,6 +721,11 @@ static void stream_test_tick(void)
         } else {
             break;  /* Error */
         }
+    }
+
+    /* Update burst timestamp */
+    if (burst_count > 0) {
+        g_stream_test.last_burst_us = now_us;
     }
 }
 
