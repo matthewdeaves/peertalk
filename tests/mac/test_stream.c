@@ -70,7 +70,8 @@ typedef struct {
 #define REPORT_INTERVAL_SEC  5        /* Report progress every N seconds */
 #define DISCOVERY_TIMEOUT_TICKS (60 * 60) /* 60 seconds to find a peer */
 #define MAX_CONNECT_RETRIES  5
-#define DRAIN_WAIT_TICKS     (2 * 60) /* 2 seconds between phases */
+#define DRAIN_WAIT_TICKS     (3 * 60) /* 3 seconds between phases */
+#define DRAIN_WAIT_LONG_TICKS (5 * 60) /* 5 seconds after large message RECV phases */
 #define ACK_TIMEOUT_TICKS    (10 * 60) /* 10 seconds to wait for ACK */
 
 /* Buffer sizes to test */
@@ -645,7 +646,7 @@ int main(void)
     unsigned long test_duration_ticks = TEST_DURATION_SEC * 60UL;
     unsigned long report_interval_ticks = REPORT_INTERVAL_SEC * 60UL;
     unsigned long drain_start = 0;
-    int draining = 0;        /* 0=no drain, 1=post-send drain, 2=post-recv drain */
+    int draining = 0;        /* 0=no drain, 1=post-send, 2=post-recv, 3=post-recv-long */
 
     /* Bootstrap PeerTalk first for optimal buffer allocation */
     g_buffer_pool = PeerTalk_Bootstrap(4);
@@ -795,8 +796,14 @@ int main(void)
                     start_recv_phase();
                 }
             } else if (draining == 2) {
-                /* Post-recv drain: wait for pending RDS data before next SEND phase */
+                /* Post-recv drain (normal): wait for pending RDS data before next SEND phase */
                 if ((now - drain_start) >= DRAIN_WAIT_TICKS) {
+                    draining = 0;
+                    start_send_phase();
+                }
+            } else if (draining == 3) {
+                /* Post-recv drain (long): for large message sizes with more RDS accumulation */
+                if ((now - drain_start) >= DRAIN_WAIT_LONG_TICKS) {
                     draining = 0;
                     start_send_phase();
                 }
@@ -827,14 +834,18 @@ int main(void)
 
                 /* Check if phase duration elapsed */
                 if ((now - g_test.phase_start_ticks) >= test_duration_ticks) {
+                    StreamStats *stats = &g_test.stats[g_test.current_size_idx];
+                    int drain_secs;
                     finish_recv_phase();
                     if (!g_test.test_complete) {
                         /* Drain period before starting next size's send phase.
                          * This allows any pending RDS data from high-speed receive
-                         * to be fully processed before we wait for ACK messages. */
-                        status_linef("Draining for 2 seconds...");
-                        PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Draining for 2 seconds...");
-                        draining = 2;  /* Post-recv drain */
+                         * to be fully processed before we wait for ACK messages.
+                         * Use longer drain for larger messages (more RDS accumulation). */
+                        drain_secs = (stats->buffer_size >= 1024) ? 5 : 3;
+                        status_linef("Draining for %d seconds...", drain_secs);
+                        PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Draining for %d seconds...", drain_secs);
+                        draining = (stats->buffer_size >= 1024) ? 3 : 2;  /* 3=long drain, 2=normal */
                         drain_start = now;
                     }
                 }
