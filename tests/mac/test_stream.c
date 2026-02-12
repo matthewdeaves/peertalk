@@ -645,7 +645,7 @@ int main(void)
     unsigned long test_duration_ticks = TEST_DURATION_SEC * 60UL;
     unsigned long report_interval_ticks = REPORT_INTERVAL_SEC * 60UL;
     unsigned long drain_start = 0;
-    int draining = 0;
+    int draining = 0;        /* 0=no drain, 1=post-send drain, 2=post-recv drain */
 
     /* Bootstrap PeerTalk first for optimal buffer allocation */
     g_buffer_pool = PeerTalk_Bootstrap(4);
@@ -788,11 +788,17 @@ int main(void)
 
         /* Test logic */
         if (g_connected_peer && !g_test.test_complete && !g_test.waiting_for_ack) {
-            if (draining) {
-                /* Wait for drain period */
+            if (draining == 1) {
+                /* Post-send drain: wait for pending data before RECV phase */
                 if ((now - drain_start) >= DRAIN_WAIT_TICKS) {
                     draining = 0;
                     start_recv_phase();
+                }
+            } else if (draining == 2) {
+                /* Post-recv drain: wait for pending RDS data before next SEND phase */
+                if ((now - drain_start) >= DRAIN_WAIT_TICKS) {
+                    draining = 0;
+                    start_send_phase();
                 }
             } else if (g_test.phase == 0) {
                 /* Send phase */
@@ -823,8 +829,13 @@ int main(void)
                 if ((now - g_test.phase_start_ticks) >= test_duration_ticks) {
                     finish_recv_phase();
                     if (!g_test.test_complete) {
-                        /* Start next size's send phase */
-                        start_send_phase();
+                        /* Drain period before starting next size's send phase.
+                         * This allows any pending RDS data from high-speed receive
+                         * to be fully processed before we wait for ACK messages. */
+                        status_linef("Draining for 2 seconds...");
+                        PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Draining for 2 seconds...");
+                        draining = 2;  /* Post-recv drain */
+                        drain_start = now;
                     }
                 }
             }
