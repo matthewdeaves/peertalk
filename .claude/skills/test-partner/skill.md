@@ -5,7 +5,7 @@ Manage POSIX test partner containers for hardware testing. Uses named containers
 ## Usage
 
 ```
-/test-partner start [mode]   # Start partner (echo|stream|stress)
+/test-partner start          # Start partner (auto-handles ALL test types)
 /test-partner stop           # Stop partner
 /test-partner status         # Check if running
 /test-partner logs           # Show recent logs
@@ -16,8 +16,13 @@ Manage POSIX test partner containers for hardware testing. Uses named containers
 ### Starting a Partner
 
 1. Check if the partner container is already running
-2. If not, start with the specified mode (default: echo)
+2. If not, start in echo mode (handles ALL tests via auto-detection)
 3. Use a named container `perf-partner` that persists
+
+**Key Insight:** The partner now auto-detects test type from Mac control messages:
+- Regular messages → echoed back (works for latency AND throughput tests)
+- STRM control messages → auto-switch to one-way streaming mode
+- No manual mode switching required!
 
 ### Container Management
 
@@ -36,20 +41,21 @@ docker ps -q | grep -v $(docker ps -q --filter "name=perf-partner") | xargs -r d
 
 ### Commands
 
-**Start partner:**
+**Start partner (recommended - no mode needed):**
 ```bash
 # Check if already running
 docker ps --filter "name=perf-partner" --format "{{.Names}}" | grep -q perf-partner && echo "Already running"
 
-# Start if not running
-docker run -d --name perf-partner --rm --network host \
+# Start if not running - echo mode auto-detects all test types
+docker run -d --name perf-partner --network host \
     -v "$(pwd)":/workspace -w /workspace \
-    peertalk-posix:latest ./build/bin/perf_partner --mode echo --verbose
+    -e MACHINE_REGISTRY="10.188.1.55:macse,10.188.1.213:performa6200" \
+    peertalk-posix:latest ./build/bin/perf_partner --verbose
 ```
 
 **Stop partner:**
 ```bash
-docker stop perf-partner 2>/dev/null || echo "Not running"
+docker stop perf-partner && docker rm perf-partner 2>/dev/null || echo "Not running"
 ```
 
 **Check status:**
@@ -67,13 +73,19 @@ docker logs perf-partner --tail 50
 docker logs -f perf-partner
 ```
 
-## Modes
+## Modes (mostly automatic now)
 
-| Mode | Purpose | Use Case |
-|------|---------|----------|
-| echo | Echo back received data | Latency testing |
-| stream | Continuous data streaming | Throughput testing |
-| stress | Rapid connect/disconnect | Stress testing |
+| Mode | Purpose | When Used |
+|------|---------|-----------|
+| echo (default) | Universal partner | ALL tests (auto-detects stream test commands) |
+| stress | Stress testing | Only if Mac sends stress-specific protocol |
+| stream | Legacy streaming | Deprecated - use echo mode instead |
+
+**IMPORTANT:** Just use the default (no `--mode` flag). The partner auto-detects:
+- Latency tests → echoes messages back
+- Throughput tests → echoes messages back
+- Stream tests → detects STRM magic, switches to sink/stream mode
+- Discovery tests → responds to discovery, counts packets
 
 ## Important Notes
 
@@ -85,10 +97,10 @@ docker logs -f perf-partner
 ## Example Session
 
 ```bash
-# Start partner for throughput testing
-/test-partner start stream
+# Start partner (handles ALL test types automatically)
+/test-partner start
 
-# ... user runs Mac test app ...
+# ... user runs ANY Mac test app (latency, throughput, stream, etc.) ...
 
 # Check if still running
 /test-partner status

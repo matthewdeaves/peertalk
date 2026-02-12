@@ -16,7 +16,8 @@
 #   build/mac/libpeertalk_<platform>.a    - Static library
 #   build/mac/test_mactcp.bin             - Basic test app
 #   build/mac/test_latency.bin            - Latency measurement
-#   build/mac/test_throughput.bin         - Throughput measurement
+#   build/mac/test_throughput.bin         - Throughput measurement (echo-based)
+#   build/mac/test_stream.bin             - One-way streaming (unidirectional)
 #   build/mac/test_stress.bin             - Stress testing
 #   build/mac/test_discovery.bin          - Discovery testing
 #

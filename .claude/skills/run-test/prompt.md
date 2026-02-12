@@ -10,7 +10,7 @@ Parse format:
 ```
 <test> [machine] [--skip-build] [--skip-analysis] [--verbose]
 
-test:     latency | throughput | stress | discovery | mactcp | all
+test:     latency | throughput | stream | stress | discovery | mactcp | all
 machine:  Machine ID from machines.json (default: performa6200)
 ```
 
@@ -19,8 +19,8 @@ Examples:
 $ARGUMENTS = "latency performa6200"
   → test="latency", machine="performa6200"
 
-$ARGUMENTS = "all macse --skip-build"
-  → test="all", machine="macse", skip_build=true
+$ARGUMENTS = "stream macse --skip-build"
+  → test="stream", machine="macse", skip_build=true
 
 $ARGUMENTS = "throughput --verbose"
   → test="throughput", machine="performa6200", verbose=true
@@ -32,7 +32,7 @@ $ARGUMENTS = "throughput --verbose"
 
 ```
 1. Parse test name (required):
-   - latency, throughput, stress, discovery, mactcp, all
+   - latency, throughput, stream, stress, discovery, mactcp, all
 
 2. Parse machine (optional, default: performa6200):
    - Read .claude/mcp-servers/classic-mac-hardware/machines.json
@@ -80,55 +80,43 @@ If build fails:
 
 ### Step 3: Start Test Partner
 
-Determine partner mode from test type:
+**SIMPLIFIED:** Echo mode now auto-detects ALL test types. No mode switching needed!
 
-| Test | Partner Mode |
-|------|--------------|
-| latency | echo |
-| throughput | echo |
-| stress | stress |
-| discovery | echo |
-| mactcp | echo |
-| all | (varies per test) |
+| Test | Partner Mode | Notes |
+|------|--------------|-------|
+| latency | echo | Echoes pings back |
+| throughput | echo | Echoes data back for bidirectional measurement |
+| stream | echo | Auto-detects STRM control messages |
+| stress | echo | Standard echo works for stress |
+| discovery | echo | Responds to discovery |
+| mactcp | echo | Basic connectivity test |
+| all | echo | Same partner for all tests |
 
-**IMPORTANT:** Most tests use echo mode. Only stress uses stress mode.
-Throughput uses echo mode (NOT stream) to measure bidirectional SEND/RECV.
+**KEY INSIGHT:** The partner auto-detects stream test control messages (STRM magic).
+When Mac sends START_SEND, partner sinks. When Mac sends START_RECV, partner streams.
+No manual mode switching required!
 
 ```
 1. Check if perf-partner container already running:
    docker ps --filter name=perf-partner --format "{{.Names}}"
 
-2. If running, DETECT CURRENT MODE:
-   docker logs perf-partner 2>&1 | grep -E "^Mode:" | head -1
+2. If running with echo mode: Partner is ready for ALL test types
+   No restart needed!
 
-   This shows: "Mode: echo" or "Mode: stream" or "Mode: stress"
-
-3. COMPARE required mode vs running mode:
-   - If mode matches: Partner is ready, skip restart
-   - If mode differs: Must restart with correct mode
-   - If can't detect mode: Restart to be safe
-
-   Examples:
-   - Running "Mode: echo", need latency → KEEP (echo matches)
-   - Running "Mode: echo", need throughput → KEEP (throughput needs echo!)
-   - Running "Mode: echo", need stress → RESTART (need stress mode)
-   - Running "Mode: stream", need throughput → RESTART (need echo, not stream!)
-
-4. If restart needed, stop old partner:
-   docker stop perf-partner && docker rm perf-partner 2>/dev/null
-
-5. Start partner with correct mode:
+3. If NOT running, start partner:
    docker run -d --name perf-partner --network host \
      -v "$(pwd)":/workspace -w /workspace \
      -e MACHINE_REGISTRY="10.188.1.55:macse,10.188.1.213:performa6200" \
-     peertalk-posix:latest ./build/bin/perf_partner --mode <mode> --verbose
+     peertalk-posix:latest ./build/bin/perf_partner --verbose
 
-6. Wait 2 seconds for partner to start
+   Note: No --mode flag needed. Echo is default and handles everything.
 
-7. Verify partner mode is correct:
-   docker logs perf-partner 2>&1 | grep -E "^Mode:"
+4. Wait 2 seconds for partner to start
 
-   Confirm output shows expected mode (e.g., "Mode: echo" for throughput)
+5. Verify partner is running:
+   docker logs perf-partner 2>&1 | head -10
+
+   Look for: "PeerTalk Performance Test Partner" and "Mode: echo"
 
 If partner fails to start:
   Show logs
@@ -166,6 +154,7 @@ The test continues running on the Mac beyond the timeout.
 Test timeout values:
   latency: 5 minutes
   throughput: 5 minutes
+  stream: 8 minutes (30s send + 30s recv per size × 5 sizes)
   stress: 8 minutes
   discovery: 3 minutes
   mactcp: 2 minutes
@@ -399,8 +388,9 @@ When test="all", run in this order (matching test complexity):
 1. **mactcp** (60s) - Basic connectivity validation
 2. **discovery** (2min) - Discovery packet counting
 3. **latency** (3min) - RTT measurements
-4. **throughput** (3min) - Streaming performance
-5. **stress** (5min) - Connection stability
+4. **throughput** (3min) - Bidirectional streaming performance
+5. **stream** (5min) - One-way streaming (true unidirectional capacity)
+6. **stress** (5min) - Connection stability
 
 If any test fails critically, ask user whether to continue with remaining tests.
 
@@ -408,11 +398,10 @@ If any test fails critically, ask user whether to continue with remaining tests.
 
 1. **One test at a time** - Mac test apps bind network ports. Never run multiple tests concurrently on the same machine.
 
-2. **Partner mode MUST match test type**:
-   - Most tests need **echo mode**: latency, throughput, discovery, mactcp
-   - Only stress test needs **stress mode**
-   - **NEVER use stream mode for throughput** (gives RECV=0)
-   - Always verify mode with: `docker logs perf-partner 2>&1 | grep "^Mode:"`
+2. **Partner auto-detects all test types** - Just start the partner once with default settings (no `--mode` flag). It handles:
+   - Echo for latency/throughput tests
+   - Auto-switches to sink/stream mode when Mac sends STRM control messages
+   - No manual mode switching needed between tests
 
 3. **Lowmem builds** - Mac SE REQUIRES lowmem builds. Check machine's `build` field in machines.json.
 
@@ -421,3 +410,8 @@ If any test fails critically, ask user whether to continue with remaining tests.
 5. **Log streaming** - Mac apps stream logs to partner at completion. Ensure partner stays running until logs are saved.
 
 6. **Canonical log location** - All logs go to `plan/performance/mactcp/<machine>/` with timestamp naming.
+
+7. **Stream test vs throughput test**:
+   - `throughput` - bidirectional echo-based test (Mac sends, partner echoes back)
+   - `stream` - one-way streaming test (Mac→Partner then Partner→Mac, no echo)
+   - Stream test shows true unidirectional capacity (typically 50-100% higher)

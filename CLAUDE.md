@@ -158,7 +158,8 @@ scripts/                      # Build and utility scripts
 |-----|----------|---------|
 | `test_mactcp` | `PT_Log` | Basic discovery test - verifies UDP broadcast works |
 | `test_latency` | `PT_Latency` | RTT measurement with various message sizes (16-4096 bytes) |
-| `test_throughput` | `PT_Throughput` | Streaming throughput measurement |
+| `test_throughput` | `PT_Throughput` | Bidirectional throughput (echo-based) |
+| `test_stream` | `PT_Stream` | One-way streaming (true unidirectional capacity) |
 | `test_stress` | `PT_Stress` | Rapid connect/disconnect cycles |
 | `test_discovery` | `PT_Discovery` | Extended discovery packet counting |
 
@@ -183,11 +184,10 @@ mcp__classic-mac-hardware__upload_file(machine="performa6200", local_path="build
 
 ### POSIX Test Partners
 
-| App | Mode | Purpose |
-|-----|------|---------|
-| `test_partner` | - | Basic discovery partner, sends canned responses |
-| `perf_partner` | `--mode echo` | **Echo server** for latency AND throughput tests (default) |
-| `perf_partner` | `--mode stress` | Stress test partner |
+| App | Purpose |
+|-----|---------|
+| `test_partner` | Basic discovery partner, sends canned responses |
+| `perf_partner` | **Universal test partner** - auto-detects ALL test types |
 
 **Build:**
 ```bash
@@ -196,55 +196,53 @@ docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make 
 
 **Run (must use host networking for UDP broadcast):**
 ```bash
-# Echo mode for latency AND throughput tests
-docker run --rm --network host -v "$(pwd)":/workspace -w /workspace \
-    peertalk-posix:latest ./build/bin/perf_partner --mode echo --verbose
+# Start once - handles ALL test types automatically
+docker run -d --name perf-partner --network host \
+    -v "$(pwd)":/workspace -w /workspace \
+    -e MACHINE_REGISTRY="10.188.1.55:macse,10.188.1.213:performa6200" \
+    peertalk-posix:latest ./build/bin/perf_partner --verbose
 ```
 
-**IMPORTANT:** Throughput test uses echo mode (not stream). Stream mode gives RECV=0
-because messages aren't echoed back. Use echo mode for proper bidirectional measurement.
+**Auto-detection:** The partner detects test type from Mac messages:
+- Regular messages → echoed back (latency, throughput tests)
+- STRM control messages → auto-switches to sink/stream mode (stream test)
+- No manual `--mode` switching needed between tests!
 
 ### Testing Workflow
 
-**Complete end-to-end hardware test:**
+**Simplest approach - use the /run-test skill:**
+```bash
+/run-test throughput performa6200   # Run throughput test on Performa 6200
+/run-test stream macse              # Run one-way stream test on Mac SE
+/run-test all performa6200          # Run all tests sequentially
+```
 
-1. **Build Mac test apps** (using build script):
-   ```bash
-   ./scripts/build-mac-tests.sh mactcp
-   # Output: build/mac/test_*.bin
-   ```
+**Manual workflow:**
 
-2. **Build and start POSIX partner** (in named container):
+1. **Build and start partner once** (handles ALL tests):
    ```bash
-   # Build first
    docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make build/bin/perf_partner
-
-   # Start partner (stays running)
    docker run -d --name perf-partner --network host \
        -v "$(pwd)":/workspace -w /workspace \
-       peertalk-posix:latest ./build/bin/perf_partner --mode echo --verbose
+       peertalk-posix:latest ./build/bin/perf_partner --verbose
    ```
 
-3. **Deploy to Mac** (via MCP):
+2. **Build Mac test apps:**
    ```bash
-   mcp__classic-mac-hardware__upload_file(machine="performa6200",
-       local_path="build/mac/test_throughput.bin", remote_path="test_throughput.bin")
+   ./scripts/build-mac-tests.sh mactcp
    ```
 
-4. **Run Mac test** (on real hardware):
-   - Double-click the test app
-   - Wait for test to complete
-   - Press any key to exit
-
-5. **Fetch and view logs**:
+3. **Run any test via LaunchAPPL:**
    ```bash
-   # Option A: Via FTP (if machine has FTP configured)
-   mcp__classic-mac-hardware__download_file(machine="performa6200",
-       remote_path="PT_Throughput", local_path="downloads/performa6200/PT_Throughput")
+   mcp__classic-mac-hardware__execute_binary(machine="performa6200",
+       platform="mactcp", binary_path="build/mac/test_throughput.bin")
+   ```
 
-   # Option B: From perf_partner container (REQUIRED for LaunchAPPL-only machines)
-   # Mac test apps stream their logs to the partner at test completion
-   docker logs perf-partner 2>&1 | tee plan/performance/mactcp/macse_throughput_$(date +%Y%m%d_%H%M%S).log
+4. **Logs auto-saved** to `plan/performance/mactcp/<machine>/`
+
+5. **Stop partner when done:**
+   ```bash
+   docker stop perf-partner && docker rm perf-partner
    ```
 
 6. **Stop partner when done**:
@@ -262,9 +260,10 @@ Mac test apps automatically stream their logs to the POSIX perf_partner at the e
 
 **Skill shortcuts:**
 ```
-/test-partner start echo     # Start partner container
+/test-partner start          # Start partner (auto-handles all test types)
 /test-partner status         # Check if running
 /test-partner stop           # Stop when done
+/run-test throughput         # Full automated test workflow
 /fetch-logs performa6200     # Get PT_Log from Mac
 ```
 
@@ -285,7 +284,7 @@ Mac test apps automatically stream their logs to the POSIX perf_partner at the e
 | Script | Purpose | Output |
 |--------|---------|--------|
 | `./scripts/build-mac-tests.sh mactcp` | Build all Mac test apps | `build/mac/test_*.bin` |
-| `./scripts/build-mac-tests.sh mactcp perf` | Build perf tests only | `build/mac/test_{latency,throughput,stress,discovery}.bin` |
+| `./scripts/build-mac-tests.sh mactcp perf` | Build perf tests only | `build/mac/test_{latency,throughput,stream,stress,discovery}.bin` |
 | `./scripts/build-launcher.sh mactcp` | Build LaunchAPPLServer (68k) | `LaunchAPPL-build/LaunchAPPLServer-MacTCP.bin` |
 | `./scripts/build-launcher.sh ot` | Build LaunchAPPLServer (PPC) | `LaunchAPPL-build/LaunchAPPLServer-OpenTransport.bin` |
 | `./tools/build/build_all.sh all` | Build PeerTalk SDK for all platforms | `build/`, `packages/` |
@@ -345,7 +344,7 @@ Platform rules are automatically loaded when editing files in the corresponding 
 | `/build package` | Create Mac binaries for hardware transfer |
 | `/run-test <test> [machine]` | Full hardware test workflow: build, execute, collect logs, analyze |
 | `/hw-test generate X.Y` | Create hardware test plan for Classic Mac |
-| `/test-partner start [mode]` | Start POSIX test partner (echo/stream/stress) in named container |
+| `/test-partner start` | Start POSIX test partner (auto-handles all test types) |
 | `/test-partner stop` | Stop test partner container |
 | `/test-partner status` | Check if partner is running |
 
