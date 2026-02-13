@@ -273,6 +273,26 @@ int pt_peer_check_pressure_update(struct pt_context *ctx, struct pt_peer *peer);
  */
 int pt_peer_should_throttle(struct pt_peer *peer, uint8_t priority);
 
+/* Check rate limit using token bucket algorithm
+ *
+ * Checks if sending 'bytes' would exceed the peer's rate limit.
+ * If rate limiting is active (rate_limit_bytes_per_sec > 0), the
+ * function refills tokens based on elapsed time and checks if
+ * enough tokens are available for this send.
+ *
+ * Call from the send path after pressure-based throttling. Returns
+ * non-zero if the send should be rate-limited.
+ *
+ * Args:
+ *   ctx   - Context (for pt_get_ticks())
+ *   peer  - Peer to check
+ *   bytes - Number of bytes to send
+ *
+ * Returns: 0 if send is allowed, 1 if rate limited
+ */
+int pt_peer_check_rate_limit(struct pt_context *ctx, struct pt_peer *peer,
+                              uint16_t bytes);
+
 /* ========================================================================
  * Adaptive Performance Tuning
  * ======================================================================== */

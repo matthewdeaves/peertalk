@@ -83,6 +83,14 @@ const char *PeerTalk_ErrorString(PeerTalk_Error error)
     case PT_ERR_NOT_POWER2:
         return "Size must be power of 2";
 
+    /* Operation Errors (continued) */
+    case PT_ERR_BUSY:
+        return "Resource busy";
+    case PT_ERR_CANCELLED:
+        return "Operation cancelled";
+    case PT_ERR_RATE_LIMITED:
+        return "Rate limited - peer under pressure";
+
     /* System Errors */
     case PT_ERR_PLATFORM:
         return "Platform-specific error";

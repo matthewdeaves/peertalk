@@ -540,8 +540,12 @@ void pt_check_queue_isr_flags(struct pt_context *ctx, pt_queue *q);
  */
 #define PT_PRESSURE_LOW      25  /* Below this: safe to send freely */
 #define PT_PRESSURE_MEDIUM   50  /* Above this: reduce send rate (skip LOW priority) */
+#define PT_PRESSURE_FRAG_THRESHOLD 75  /* Above this: fragment large msgs proactively */
 #define PT_PRESSURE_HIGH     85  /* Above this: heavy throttle (skip NORMAL priority) */
 #define PT_PRESSURE_CRITICAL 95  /* Above this: blocking (only CRITICAL passes) */
+
+/* Reduced max message size when fragmenting due to pressure */
+#define PT_PRESSURE_REDUCED_MAX 2048
 
 typedef enum {
     PT_BACKPRESSURE_NONE = 0,

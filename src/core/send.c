@@ -418,6 +418,23 @@ PeerTalk_Error PeerTalk_SendEx(PeerTalk_Context *ctx_pub,
     }
 
     /* ================================================================
+     * RATE LIMITING: Token bucket based on peer pressure
+     *
+     * When peer reports high buffer pressure, we automatically enable
+     * rate limiting to prevent flooding. The rate is auto-adjusted
+     * based on pressure level (set in pt_peer_update_adaptive_params).
+     *
+     * Returns PT_ERR_RATE_LIMITED so apps know to back off - this is
+     * different from WOULD_BLOCK (buffer busy) vs rate limited (pacing).
+     * ================================================================ */
+    if (pt_peer_check_rate_limit(ctx, peer, length)) {
+        PT_CTX_DEBUG(ctx, PT_LOG_CAT_SEND,
+                    "Rate limited: peer %u at %u KB/s, msg=%u bytes",
+                    peer_id, peer->cold.caps.rate_limit_bytes_per_sec / 1024, length);
+        return PT_ERR_RATE_LIMITED;
+    }
+
+    /* ================================================================
      * FLOW CONTROL: Check send window based on peer's buffer capacity
      *
      * After capability exchange, we know the peer's recv_buffer_size.
@@ -458,6 +475,11 @@ PeerTalk_Error PeerTalk_SendEx(PeerTalk_Context *ctx_pub,
      * split into fragments. Each fragment is queued separately and
      * reassembled by the receiver before delivery to app callback.
      *
+     * PRESSURE-TRIGGERED FRAGMENTATION: When peer reports high buffer
+     * pressure (>= PT_PRESSURE_FRAG_THRESHOLD), we proactively fragment
+     * even messages that would fit, using a reduced max size. This gives
+     * the receiver smaller chunks to process, reducing buffer pressure.
+     *
      * The app developer never sees this - they just call PeerTalk_Send()
      * and the SDK handles everything.
      * ================================================================ */
@@ -470,9 +492,29 @@ PeerTalk_Error PeerTalk_SendEx(PeerTalk_Context *ctx_pub,
         peer->cold.caps.first_send_logged = 1;
     }
 
-    if (ctx->enable_fragmentation &&
-        peer->hot.effective_max_msg > 0 &&
-        length > peer->hot.effective_max_msg) {
+    /* Determine if we need to fragment */
+    {
+        int needs_fragmentation = 0;
+        uint16_t frag_max = peer->hot.effective_max_msg;
+
+        if (ctx->enable_fragmentation && frag_max > 0) {
+            /* Always fragment if over effective max */
+            if (length > frag_max) {
+                needs_fragmentation = 1;
+            }
+            /* Fragment large messages when peer is under pressure
+             * Use configurable threshold from ctx->pressure_frag if available */
+            else if (peer->cold.caps.buffer_pressure >= ctx->pressure_frag &&
+                     length > PT_PRESSURE_REDUCED_MAX) {
+                needs_fragmentation = 1;
+                frag_max = PT_PRESSURE_REDUCED_MAX;  /* Use reduced max for this send */
+                PT_CTX_DEBUG(ctx, PT_LOG_CAT_SEND,
+                    "Pressure-triggered fragmentation: peer %u at %u%% pressure, msg %u bytes",
+                    peer_id, peer->cold.caps.buffer_pressure, length);
+            }
+        }
+
+    if (needs_fragmentation) {
 
         const uint8_t *src = (const uint8_t *)data;
         uint16_t max_frag_data;
@@ -487,19 +529,21 @@ PeerTalk_Error PeerTalk_SendEx(PeerTalk_Context *ctx_pub,
 
         /* Determine optimal fragment size:
          * 1. Use peer's optimal_chunk if negotiated (fills 25% of MacTCP buffer)
-         * 2. Fall back to effective_max_msg minus overhead
+         * 2. Fall back to frag_max minus overhead (may be reduced due to pressure)
          * 3. Cap by queue slot size */
-        if (peer->cold.caps.caps_exchanged && peer->cold.caps.optimal_chunk > 0) {
+        if (peer->cold.caps.caps_exchanged && peer->cold.caps.optimal_chunk > 0 &&
+            peer->cold.caps.optimal_chunk < frag_max) {
             /* Use peer's advertised optimal chunk for best receive performance */
             max_frag_data = peer->cold.caps.optimal_chunk;
         } else {
-            /* Default: peer's max minus fragment header overhead */
-            max_frag_data = peer->hot.effective_max_msg - PT_FRAGMENT_HEADER_SIZE;
+            /* Default: frag_max minus fragment header overhead
+             * frag_max may be reduced from effective_max_msg due to pressure */
+            max_frag_data = frag_max - PT_FRAGMENT_HEADER_SIZE;
         }
 
-        /* Cap by peer's max message size (fragments can't exceed this) */
+        /* Cap by frag_max (may be pressure-reduced) */
         {
-            uint16_t max_peer = peer->hot.effective_max_msg - PT_FRAGMENT_HEADER_SIZE;
+            uint16_t max_peer = frag_max - PT_FRAGMENT_HEADER_SIZE;
             if (max_frag_data > max_peer) {
                 max_frag_data = max_peer;
             }
@@ -516,14 +560,14 @@ PeerTalk_Error PeerTalk_SendEx(PeerTalk_Context *ctx_pub,
         if (max_frag_data < 64) {
             /* Peer's max is too small for practical fragmentation */
             PT_CTX_ERR(ctx, PT_LOG_CAT_SEND,
-                "Peer max %u too small for fragmentation",
-                peer->hot.effective_max_msg);
+                "Frag max %u too small for fragmentation",
+                frag_max);
             return PT_ERR_MESSAGE_TOO_LARGE;
         }
 
         PT_CTX_INFO(ctx, PT_LOG_CAT_SEND,
             "Fragmenting %u bytes for peer %u (chunk=%u, max=%u, count=%u)",
-            length, peer_id, max_frag_data, peer->hot.effective_max_msg,
+            length, peer_id, max_frag_data, frag_max,
             (length + max_frag_data - 1) / max_frag_data);
 
         while (remaining > 0) {
@@ -566,6 +610,7 @@ PeerTalk_Error PeerTalk_SendEx(PeerTalk_Context *ctx_pub,
 
         return PT_OK;
     }
+    }  /* End of fragmentation decision block */
 
     /* Route unreliable sends to UDP if available */
     if (flags & PT_SEND_UNRELIABLE) {

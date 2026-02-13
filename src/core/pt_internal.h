@@ -178,6 +178,14 @@ typedef struct {
     uint8_t  last_ibuf_pressure; /* MacTCP: ibuf level when last update sent */
     uint8_t  peak_ibuf_pressure; /* MacTCP: peak ibuf during this poll cycle */
     uint8_t  last_reported_ibuf_level; /* MacTCP: last threshold level (0/25/50/75) */
+
+    /* Rate limiting state (token bucket algorithm)
+     * When peer reports high pressure, we auto-throttle sends to avoid
+     * overwhelming them. rate_limit_bytes_per_sec=0 means no rate limit. */
+    uint32_t rate_limit_bytes_per_sec;  /* 0 = unlimited */
+    uint32_t rate_bucket_tokens;        /* Available tokens (bytes) */
+    uint32_t rate_bucket_max;           /* Max token accumulation */
+    pt_tick_t rate_last_update;         /* Last token refill time */
 } pt_peer_caps;
 
 /* ========================================================================== */
@@ -352,6 +360,15 @@ struct pt_context {
     uint16_t            local_capability_flags; /* Our PT_CAPFLAG_* */
     uint8_t             enable_fragmentation;   /* 1=auto-fragment (default 1) */
     uint8_t             owns_buffer_pool;       /* 1=we allocated buffer_pool, must free */
+
+    /* Configurable pressure thresholds (from config, with defaults applied) */
+    uint8_t             pressure_medium;        /* Default: PT_PRESSURE_MEDIUM (50) */
+    uint8_t             pressure_high;          /* Default: PT_PRESSURE_HIGH (85) */
+    uint8_t             pressure_critical;      /* Default: PT_PRESSURE_CRITICAL (95) */
+    uint8_t             pressure_frag;          /* Default: PT_PRESSURE_FRAG_THRESHOLD (75) */
+
+    /* Connection timeout (ms) */
+    uint16_t            connect_timeout;        /* Default: 30000 */
 
     /* Platform-specific data follows (allocated via pt_plat_extra_size) */
 };

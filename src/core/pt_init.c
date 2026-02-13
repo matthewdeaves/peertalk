@@ -109,6 +109,20 @@ PeerTalk_Context *PeerTalk_Init(const PeerTalk_Config *config) {
     ctx->local_capability_flags = PT_CAPFLAG_FRAGMENTATION | PT_CAPFLAG_COMPACT_HEADER;
     ctx->enable_fragmentation = (ctx->config.enable_fragmentation == 1) ? 1 : 0;
 
+    /* Pressure thresholds - use defaults if zero */
+    ctx->pressure_medium = ctx->config.pressure_medium ?
+        ctx->config.pressure_medium : PT_PRESSURE_MEDIUM;
+    ctx->pressure_high = ctx->config.pressure_high ?
+        ctx->config.pressure_high : PT_PRESSURE_HIGH;
+    ctx->pressure_critical = ctx->config.pressure_critical ?
+        ctx->config.pressure_critical : PT_PRESSURE_CRITICAL;
+    ctx->pressure_frag = ctx->config.pressure_frag ?
+        ctx->config.pressure_frag : PT_PRESSURE_FRAG_THRESHOLD;
+
+    /* Connection timeout - default 30 seconds */
+    ctx->connect_timeout = ctx->config.connect_timeout ?
+        ctx->config.connect_timeout : 30000;
+
     /* Initialize PT_Log from Phase 0 */
     ctx->log = PT_LogCreate();
     if (ctx->log) {

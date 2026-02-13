@@ -637,6 +637,10 @@ int pt_peer_check_pressure_update(struct pt_context *ctx, struct pt_peer *peer)
 
 int pt_peer_should_throttle(struct pt_peer *peer, uint8_t priority)
 {
+    /* NOTE: This version uses hardcoded thresholds for backward compatibility.
+     * The context-aware version pt_peer_should_throttle_ctx() uses configurable
+     * thresholds from ctx->pressure_*. The send path uses this simpler version
+     * which relies on the PT_PRESSURE_* constants. */
     uint8_t peer_pressure;
 
     if (!peer || peer->hot.magic != PT_PEER_MAGIC) {
@@ -676,6 +680,58 @@ int pt_peer_should_throttle(struct pt_peer *peer, uint8_t priority)
     }
 
     return 0;  /* Don't throttle - send normally */
+}
+
+int pt_peer_check_rate_limit(struct pt_context *ctx, struct pt_peer *peer,
+                              uint16_t bytes)
+{
+    pt_tick_t now, elapsed;
+    uint32_t tokens_to_add;
+
+    if (!peer || peer->hot.magic != PT_PEER_MAGIC) {
+        return 0;  /* Don't rate limit invalid peer */
+    }
+
+    /* No rate limit if disabled */
+    if (peer->cold.caps.rate_limit_bytes_per_sec == 0) {
+        return 0;
+    }
+
+    /* Get current time */
+    if (ctx && ctx->plat && ctx->plat->get_ticks) {
+        now = ctx->plat->get_ticks();
+    } else {
+        return 0;  /* Can't rate limit without timer */
+    }
+
+    /* Refill tokens based on elapsed time
+     * tokens_to_add = elapsed_ms * bytes_per_sec / 1000
+     * Avoid overflow by doing division first for large values */
+    elapsed = now - peer->cold.caps.rate_last_update;
+    if (elapsed > 0) {
+        /* Calculate tokens to add (milliseconds * bytes/sec / 1000)
+         * Use 64-bit intermediate to avoid overflow */
+        uint32_t rate = peer->cold.caps.rate_limit_bytes_per_sec;
+        tokens_to_add = (uint32_t)(((uint32_t)elapsed * rate) / 1000);
+
+        peer->cold.caps.rate_bucket_tokens += tokens_to_add;
+
+        /* Cap at bucket max */
+        if (peer->cold.caps.rate_bucket_tokens > peer->cold.caps.rate_bucket_max) {
+            peer->cold.caps.rate_bucket_tokens = peer->cold.caps.rate_bucket_max;
+        }
+
+        peer->cold.caps.rate_last_update = now;
+    }
+
+    /* Check if we have enough tokens */
+    if (peer->cold.caps.rate_bucket_tokens < bytes) {
+        return 1;  /* Rate limited - not enough tokens */
+    }
+
+    /* Consume tokens */
+    peer->cold.caps.rate_bucket_tokens -= bytes;
+    return 0;  /* OK to send */
 }
 
 /* ========================================================================== */
@@ -833,6 +889,9 @@ void pt_peer_update_adaptive_params(struct pt_context *ctx, struct pt_peer *peer
     uint16_t new_chunk;
     uint16_t peer_optimal;
     uint8_t new_pipeline;
+    uint16_t new_window;
+    uint32_t new_rate_limit;
+    uint8_t peer_pressure;
 
     if (!peer || peer->hot.magic != PT_PEER_MAGIC) {
         return;
@@ -840,6 +899,7 @@ void pt_peer_update_adaptive_params(struct pt_context *ctx, struct pt_peer *peer
 
     rtt = peer->hot.latency_ms;
     peer_optimal = peer->cold.caps.optimal_chunk;
+    peer_pressure = peer->cold.caps.buffer_pressure;
 
     /* Tuning logic based on measured RTT
      *
@@ -851,19 +911,27 @@ void pt_peer_update_adaptive_params(struct pt_context *ctx, struct pt_peer *peer
         /* Fast LAN - maximize throughput */
         new_chunk = 4096;
         new_pipeline = 4;
+        new_window = 6;   /* Larger window for better utilization */
     } else if (rtt < 100) {
         /* Good connection */
         new_chunk = 2048;
         new_pipeline = 3;
+        new_window = 4;   /* Normal */
     } else if (rtt < 200) {
         /* Moderate latency */
         new_chunk = 1024;
         new_pipeline = 2;
+        new_window = 3;   /* Moderate latency */
     } else {
         /* Slow/lossy - minimize in-flight data */
         new_chunk = 512;
         new_pipeline = 1;
+        new_window = 2;   /* High latency - smaller window */
     }
+
+    /* Clamp window to protocol limits */
+    if (new_window < PT_FLOW_WINDOW_MIN) new_window = PT_FLOW_WINDOW_MIN;
+    if (new_window > PT_FLOW_WINDOW_MAX) new_window = PT_FLOW_WINDOW_MAX;
 
     /* Incorporate peer's optimal_chunk from capability exchange.
      * The peer advertises their 25% threshold - the ideal chunk size
@@ -879,7 +947,72 @@ void pt_peer_update_adaptive_params(struct pt_context *ctx, struct pt_peer *peer
         }
     }
 
-    /* Only log if parameters actually changed */
+    /* ================================================================
+     * AUTO RATE LIMITING: Adjust rate based on peer's reported pressure
+     *
+     * When peer reports high buffer pressure, we automatically enable
+     * rate limiting to prevent overwhelming them. This replaces manual
+     * rate limiting in application code (e.g., perf_partner's sleep).
+     *
+     * Uses configurable thresholds from ctx->pressure_* if available,
+     * otherwise falls back to PT_PRESSURE_* constants.
+     * ================================================================ */
+    {
+        uint8_t thresh_high = ctx ? ctx->pressure_high : PT_PRESSURE_HIGH;
+        uint8_t thresh_med = ctx ? ctx->pressure_medium : PT_PRESSURE_MEDIUM;
+
+        if (peer_pressure >= thresh_high) {
+            /* High pressure: aggressive rate limiting */
+            new_rate_limit = 50 * 1024;  /* 50 KB/s */
+        } else if (peer_pressure >= thresh_med) {
+            /* Medium pressure: moderate rate limiting */
+            new_rate_limit = 100 * 1024; /* 100 KB/s */
+        } else {
+            /* Low/no pressure: unlimited */
+            new_rate_limit = 0;
+        }
+    }
+
+    /* Update rate limit if changed */
+    if (peer->cold.caps.rate_limit_bytes_per_sec != new_rate_limit) {
+        peer->cold.caps.rate_limit_bytes_per_sec = new_rate_limit;
+
+        /* Initialize/reset token bucket when rate limit changes */
+        if (new_rate_limit > 0) {
+            /* Bucket max = 2x rate (allows small bursts) */
+            peer->cold.caps.rate_bucket_max = new_rate_limit * 2;
+            /* Start with full bucket */
+            peer->cold.caps.rate_bucket_tokens = peer->cold.caps.rate_bucket_max;
+            /* Initialize timer */
+            if (ctx && ctx->plat && ctx->plat->get_ticks) {
+                peer->cold.caps.rate_last_update = ctx->plat->get_ticks();
+            }
+        }
+
+        if (ctx) {
+            if (new_rate_limit > 0) {
+                PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,
+                    "Rate limit enabled for peer %u: %u KB/s (pressure=%u%%)",
+                    peer->hot.id, new_rate_limit / 1024, peer_pressure);
+            } else {
+                PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+                    "Rate limit disabled for peer %u (pressure=%u%%)",
+                    peer->hot.id, peer_pressure);
+            }
+        }
+    }
+
+    /* Update send window if changed */
+    if (peer->cold.caps.send_window != new_window) {
+        if (ctx) {
+            PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+                "Adaptive window for peer %u: %u -> %u (RTT=%ums)",
+                peer->hot.id, peer->cold.caps.send_window, new_window, rtt);
+        }
+        peer->cold.caps.send_window = new_window;
+    }
+
+    /* Only log chunk/pipeline if they actually changed */
     if (peer->hot.effective_chunk != new_chunk ||
         peer->hot.pipeline_depth != new_pipeline) {
 

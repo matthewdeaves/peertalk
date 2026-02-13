@@ -180,6 +180,7 @@ typedef enum {
     /* Operation Errors */
     PT_ERR_BUSY                 = -27,  /* Resource busy (e.g., stream already active) */
     PT_ERR_CANCELLED            = -28,  /* Operation was cancelled */
+    PT_ERR_RATE_LIMITED         = -29,  /* Throttled due to peer pressure - wait before retry */
 
     /* System Errors */
     PT_ERR_PLATFORM             = -14,
@@ -587,7 +588,17 @@ typedef struct {
     uint8_t         log_level;              /* 0=off, 1=err, 2=warn, 3=info, 4=debug */
     uint8_t         enable_fragmentation;   /* Auto-fragment large messages, default = 1 */
     uint8_t         auto_buffers;           /* Auto-allocate optimal buffers, default = 0 */
-    uint8_t         _pad8[3];               /* Alignment padding */
+
+    /* Flow control thresholds (0 = use defaults)
+     * These control when the SDK throttles sends based on peer-reported pressure.
+     * Default values tuned for Classic Mac ↔ POSIX peer communication. */
+    uint8_t         pressure_medium;        /* 0 = 50, light throttle threshold */
+    uint8_t         pressure_high;          /* 0 = 85, heavy throttle threshold */
+    uint8_t         pressure_critical;      /* 0 = 95, blocking threshold */
+    uint8_t         pressure_frag;          /* 0 = 75, pressure-triggered fragmentation */
+
+    /* Connection timeout (ms, 0 = default) */
+    uint16_t        connect_timeout;        /* ms, 0 = 30000 (MacTCP) */
 
     /* Pre-allocated buffer pool (MacTCP optimization)
      *
