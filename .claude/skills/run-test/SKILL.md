@@ -229,6 +229,34 @@ Stop with: docker stop perf-partner && docker rm perf-partner
   ```
 - Verify mode: `docker logs perf-partner 2>&1 | grep "^Mode:"`
 
+## Structured Metrics Output
+
+After analysis, outputs structured JSON metrics for automation:
+
+```
+========================================
+METRICS (JSON)
+========================================
+{
+  "test": "throughput",
+  "machine": "performa6200",
+  "status": "pass",
+  "metrics": {
+    "send_kbps": {"256": 17, "1024": 61, "2048": 94, "4096": 9},
+    "peak_kbps": 94,
+    "optimal_chunk": 2048
+  }
+}
+========================================
+```
+
+This enables `/perf-optimize` to:
+- Establish performance baselines
+- Track improvements across optimization cycles
+- Detect regressions automatically
+
+See [metrics-output.md](references/metrics-output.md) for complete format.
+
 ## Related Skills
 
 - `/build test` - Build POSIX tests
@@ -236,6 +264,7 @@ Stop with: docker stop perf-partner && docker rm perf-partner
 - `/fetch-logs` - Manually fetch logs
 - `/execute` - Manual test execution
 - `/test-partner` - Manage partner container
+- `/perf-optimize` - Autonomous optimization using these tests
 
 ## See Also
 

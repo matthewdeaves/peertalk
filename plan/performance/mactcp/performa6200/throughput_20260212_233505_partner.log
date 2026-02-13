@@ -1,0 +1,200 @@
+[05431336][INF] Processing msg from peer 1: type=7 flags=0x00 len=23 compact=0
+[05431336][INF] Received capabilities from peer 1: max=8192 chunk=1024 pressure=0 compact=1 recv_buf=16384 optimal=4096 push=1
+[05431406][INF] Header bytes [50 10 10 00], received=4
+[05431410][INF] Processing msg from peer 1: type=1 flags=0x00 len=4096 compact=1
+[05431415][INF] Header bytes [50 10 10 00], received=4
+[05431423][INF] Processing msg from peer 1: type=1 flags=0x00 len=4096 compact=1
+[05431427][INF] Header bytes [50 10 10 00], received=4
+[05431431][INF] Processing msg from peer 1: type=1 flags=0x00 len=4096 compact=1
+[05431475][INF] Header bytes [50 10 10 00], received=4
+[05431478][INF] Processing msg from peer 1: type=1 flags=0x00 len=4096 compact=1
+[05431483][INF] Header bytes [50 10 10 00], received=4
+[05431487][INF] Processing msg from peer 1: type=1 flags=0x00 len=4096 compact=1
+[05431507][INF] Header bytes [50 10 10 00], received=4
+[05431522][INF] Processing msg from peer 1: type=1 flags=0x00 len=4096 compact=1
+[05431546][INF] Header bytes [50 10 10 00], received=4
+[05431546][INF] Processing msg from peer 1: type=1 flags=0x00 len=4096 compact=1
+[05431553][INF] Header bytes [50 10 10 00], received=4
+[05431556][INF] Processing msg from peer 1: type=1 flags=0x00 len=4096 compact=1
+[05431576][INF] Header bytes [50 10 10 00], received=4
+[05431580][INF] Processing msg from peer 1: type=1 flags=0x00 len=4096 compact=1
+[05431620][INF] Header bytes [50 10 10 00], received=4
+[05431620][INF] Processing msg from peer 1: type=1 flags=0x00 len=4096 compact=1
+[05431628][INF] Header bytes [50 10 10 00], received=4
+[05431630][INF] Processing msg from peer 1: type=1 flags=0x00 len=4096 compact=1
+[05431649][INF] Header bytes [50 10 10 00], received=4
+[05431652][INF] Processing msg from peer 1: type=1 flags=0x00 len=4096 compact=1
+[05431718][INF] Header bytes [50 54 4D 47], received=4
+[05431719][INF] Processing msg from peer 1: type=7 flags=0x00 len=23 compact=0
+[05431719][INF] Received capabilities from peer 1: max=8192 chunk=1024 pressure=85 compact=1 recv_buf=16384 optimal=4096 push=1
+[05431785][INF] Header bytes [50 10 10 00], received=4
+[05431785][INF] Processing msg from peer 1: type=1 flags=0x00 len=4096 compact=1
+[05431786][INF] Header bytes [50 10 10 00], received=4
+[05431787][INF] Processing msg from peer 1: type=1 flags=0x00 len=4096 compact=1
+[05431788][INF] Header bytes [50 10 10 00], received=4
+[05431801][INF] Processing msg from peer 1: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[ECHO] 15000 messages echoed
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 2048 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[MESSAGE] From peer 1: 4096 bytes
+[05431820][INF] Header bytes [50 54 4D 47], received=4
+[05431822][INF] Processing msg from peer 1: type=7 flags=0x00 len=23 compact=0
+[05431822][INF] Received capabilities from peer 1: max=8192 chunk=1024 pressure=0 compact=1 recv_buf=16384 optimal=4096 push=1
+[05437764][INF] Discovery ANNOUNCE received from 10.188.1.213:7354 (MacThroughput)
+[05437764][INF] Processing packet type 1
+[05437764][INF] Handling ANNOUNCE packet
+[05437764][INF] pt_peer_find_by_addr returned: (nil)
+[05437764][INF] Creating new peer: MacThroughput at 10.188.1.213:7354
+[05437764][INF] Peer created: id=2 name='MacThroughput' addr=0x0ABC01D5 port=7354
+[05437764][INF] Peer created successfully, firing callback
+[05437764][INF] Calling on_peer_discovered callback
+[05437764][INF] Peer 2 () timed out after 30 seconds
+[05437764][INF] Peer destroyed: id=2 name='MacThroughput'
+[05440035][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[05450042][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[05452713][INF] Discovery ANNOUNCE received from 10.188.1.213:7354 (MacThroughput)
+[05452713][INF] Processing packet type 1
+[05452713][INF] Handling ANNOUNCE packet
+[05452714][INF] pt_peer_find_by_addr returned: (nil)
+[05452714][INF] Creating new peer: MacThroughput at 10.188.1.213:7354
+[05452714][INF] Peer created: id=2 name='MacThroughput' addr=0x0ABC01D5 port=7354
+[05452715][INF] Peer created successfully, firing callback
+[05452715][INF] Calling on_peer_discovered callback
+[05452715][INF] Peer 2 () timed out after 30 seconds
+[05452715][INF] Peer destroyed: id=2 name='MacThroughput'
+[05460043][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[05460497][INF] Header bytes [50 10 04 00], received=4
+[05460497][INF] Processing msg from peer 1: type=1 flags=0x00 len=1024 compact=1
+[05460557][INF] Header bytes [50 10 04 00], received=4
+[05460557][INF] Processing msg from peer 1: type=1 flags=0x00 len=1024 compact=1
+[05460575][INF] Header bytes [50 10 04 00], received=4
+[05460575][INF] Processing msg from peer 1: type=1 flags=0x00 len=1024 compact=1
+[05460592][INF] Header bytes [50 10 04 00], received=4
+[05460592][INF] Processing msg from peer 1: type=1 flags=0x00 len=1024 compact=1
+[05460608][INF] Header bytes [50 10 01 42], received=4
+[05460608][INF] Processing msg from peer 1: type=1 flags=0x00 len=322 compact=1
+[05460682][ERR] Header recv error for peer 1: Connection reset by peer
+[05460682][INF] Closing connection to peer 1
+[05460682][INF] Peer destroyed: id=1 name=''
+[05460702][INF] Discovery GOODBYE received from 10.188.1.213:7354 (MacThroughput)
+[05460702][INF] Processing packet type 3
+[05470049][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[05480057][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[05490067][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)

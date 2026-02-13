@@ -422,3 +422,39 @@ If any test fails critically, ask user whether to continue with remaining tests.
    - `throughput` - bidirectional echo-based test (Mac sends, partner echoes back)
    - `stream` - one-way streaming test (Mac→Partner then Partner→Mac, no echo)
    - Stream test shows true unidirectional capacity (typically 50-100% higher)
+
+8. **Structured metrics output** - Always include the JSON metrics block at end of analysis.
+   See [metrics-output.md](references/metrics-output.md) for format.
+
+## Structured Metrics Output
+
+After analysis, ALWAYS output a structured metrics block for automation:
+
+```
+========================================
+METRICS (JSON)
+========================================
+{
+  "test": "<test>",
+  "machine": "<machine>",
+  "platform": "mactcp",
+  "timestamp": "<ISO8601>",
+  "duration_seconds": <N>,
+  "status": "pass|warn|fail|error",
+  "metrics": {
+    <test-specific metrics - see references/metrics-output.md>
+  },
+  "logs": {
+    "mac": "<path to mac log>",
+    "partner": "<path to partner log>"
+  }
+}
+========================================
+```
+
+This structured output enables:
+- `/perf-optimize` to establish baselines and track improvements
+- Automated regression detection
+- Historical trend analysis
+
+**Always include this block even when providing human-readable analysis.**

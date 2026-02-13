@@ -228,6 +228,16 @@ Run checks:
 # Transfer packages/*.bin to Mac
 ```
 
+### Performance Optimization Cycle
+```
+/perf-optimize performa6200    # Autonomous optimization cycle
+# Or step by step:
+/run-test all performa6200     # Establish baseline
+# Analyze results, implement changes
+/build test                     # Verify changes
+/run-test throughput            # Verify improvement
+```
+
 ### Full Release
 ```
 /build release

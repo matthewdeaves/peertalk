@@ -342,6 +342,7 @@ Platform rules are automatically loaded when editing files in the corresponding 
 | `/build test` | Compile and run POSIX tests with coverage |
 | `/build package` | Create Mac binaries for hardware transfer |
 | `/run-test <test> [machine]` | Full hardware test workflow: build, execute, collect logs, analyze |
+| `/perf-optimize [machine]` | Autonomous optimization cycle: test → analyze → implement → verify |
 | `/hw-test generate X.Y` | Create hardware test plan for Classic Mac |
 | `/test-partner start` | Start POSIX test partner (auto-handles all test types) |
 | `/test-partner stop` | Stop test partner container |
