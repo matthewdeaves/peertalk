@@ -65,58 +65,25 @@ This prevents "Directory not found" errors during upload.
 
 ### 3. Build LaunchAPPLServer
 
-**CRITICAL:** Build, copy from Server/ subdirectory, and list artifacts in a SINGLE docker run command.
+**Use the build script (preferred):**
 
-**For MacTCP (68k):**
 ```bash
-docker compose -f docker/docker-compose.yml run --rm peertalk-dev bash -c "
-set -e
-cd /opt/Retro68/LaunchAPPL
-rm -rf build-mactcp
-mkdir -p build-mactcp
-cd build-mactcp
+# For MacTCP (68k):
+./scripts/build-launcher.sh mactcp
+# Output: LaunchAPPL-build/LaunchAPPLServer-MacTCP.bin
 
-echo 'Building LaunchAPPLServer for MacTCP...'
-cmake .. \
-    -DCMAKE_TOOLCHAIN_FILE=/opt/Retro68-build/toolchain/m68k-apple-macos/cmake/retro68.toolchain.cmake \
-    -DCMAKE_BUILD_TYPE=Release > /dev/null 2>&1
-
-make -j\$(nproc) > /dev/null 2>&1
-
-echo 'Copying artifacts from Server/ subdirectory...'
-mkdir -p /workspace/LaunchAPPL-build
-cp Server/LaunchAPPLServer.bin /workspace/LaunchAPPL-build/
-cp Server/LaunchAPPLServer.dsk /workspace/LaunchAPPL-build/
-
-echo 'LaunchAPPLServer build complete!'
-ls -lh /workspace/LaunchAPPL-build/LaunchAPPLServer.*
-"
+# For Open Transport (PPC):
+./scripts/build-launcher.sh ot
+# Output: LaunchAPPL-build/LaunchAPPLServer-OpenTransport.bin
 ```
 
-**For Open Transport (PPC):**
+The script handles all Docker commands, artifact copying, and provides clear output.
+
+**Rename for deployment:**
+After building, rename to match expected path:
 ```bash
-docker compose -f docker/docker-compose.yml run --rm peertalk-dev bash -c "
-set -e
-cd /opt/Retro68/LaunchAPPL
-rm -rf build-ppc
-mkdir -p build-ppc
-cd build-ppc
-
-echo 'Building LaunchAPPLServer for Open Transport...'
-cmake .. \
-    -DCMAKE_TOOLCHAIN_FILE=/opt/Retro68-build/toolchain/powerpc-apple-macos/cmake/retroppc.toolchain.cmake \
-    -DCMAKE_BUILD_TYPE=Release > /dev/null 2>&1
-
-make -j\$(nproc) > /dev/null 2>&1
-
-echo 'Copying artifacts from Server/ subdirectory...'
-mkdir -p /workspace/LaunchAPPL-build
-cp Server/LaunchAPPLServer.bin /workspace/LaunchAPPL-build/
-cp Server/LaunchAPPLServer.dsk /workspace/LaunchAPPL-build/
-
-echo 'LaunchAPPLServer build complete!'
-ls -lh /workspace/LaunchAPPL-build/LaunchAPPLServer.*
-"
+cp LaunchAPPL-build/LaunchAPPLServer-MacTCP.bin LaunchAPPL-build/LaunchAPPLServer.bin
+cp LaunchAPPL-build/LaunchAPPLServer-MacTCP.dsk LaunchAPPL-build/LaunchAPPLServer.dsk
 ```
 
 ### 4. Build Demo App

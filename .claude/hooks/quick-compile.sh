@@ -87,7 +87,7 @@ run_compile() {
     local includes="$2"
 
     cd "$PROJECT_DIR"
-    docker compose -f docker/docker-compose.yml run --rm -T peertalk-dev \
+    docker compose -f docker/docker-compose.yml run --rm -T --user "$(id -u):$(id -g)" peertalk-dev \
         $compiler -fsyntax-only -Wall $includes "/workspace/$REL_PATH" 2>&1
 }
 

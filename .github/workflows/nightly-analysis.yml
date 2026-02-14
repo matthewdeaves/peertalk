@@ -1,0 +1,47 @@
+name: Nightly Analysis
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'
+
+jobs:
+  cppcheck-full:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build POSIX Docker image (with cache)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.posix
+          push: false
+          load: true
+          tags: peertalk-posix:latest
+          cache-from: type=gha,scope=posix
+          cache-to: type=gha,mode=max,scope=posix
+
+      - name: Run cppcheck with --force
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace \
+            -u $(id -u):$(id -g) peertalk-posix:latest bash -c "
+              mkdir -p build/analysis
+              echo 'Running cppcheck with --force (all configurations)...'
+              cppcheck --force --enable=all --xml --xml-version=2 \
+                --suppress=missingIncludeSystem --suppress=unusedFunction \
+                --suppress=unmatchedSuppression --inline-suppr \
+                -I include -I src/core --platform=unix64 \
+                src include 2> build/analysis/cppcheck-full.xml || true
+              python3 tools/metrics/cppcheck_full_report.py build/analysis/cppcheck-full.xml
+            "
+
+      - name: Upload cppcheck XML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppcheck-full-report
+          path: build/analysis/cppcheck-full.xml
+          retention-days: 30
