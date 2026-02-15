@@ -98,6 +98,7 @@ typedef struct {
 
 static PeerTalk_Context *g_ctx = NULL;
 static PT_Log *g_log = NULL;
+static PeerTalk_BufferPool *g_buffer_pool = NULL;
 static StressTest g_test;
 static int g_running = 1;
 
@@ -460,6 +461,17 @@ int main(void)
     PeerTalk_Callbacks callbacks;
     EventRecord event;
 
+    /**
+     * CRITICAL: PeerTalk_Bootstrap() MUST be called BEFORE init_toolbox().
+     *
+     * This allocates TCP receive buffers while heap is contiguous,
+     * and automatically scales based on available memory:
+     *   - Mac SE (4MB): Gets 2 buffers
+     *   - Performa (8MB): Gets 4 buffers
+     */
+    g_buffer_pool = PeerTalk_Bootstrap(4);  /* SDK auto-scales for low-memory */
+
+    /* NOW safe to initialize Toolbox */
     init_toolbox();
 
     /* Initialize status window for user feedback */
@@ -495,6 +507,22 @@ int main(void)
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Target: %d cycles", TARGET_CYCLES);
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
 
+    /* Log buffer pool info */
+    {
+        uint16_t pool_count = 0;
+        uint32_t pool_size = 0;
+        PeerTalk_GetBufferPoolInfo(g_buffer_pool, &pool_count, &pool_size);
+        if (g_buffer_pool) {
+            PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+                "Buffer pool: %u buffers × %luKB (25%% threshold=%luB)",
+                (unsigned)pool_count, (unsigned long)(pool_size/1024),
+                (unsigned long)(pool_size/4));
+        } else {
+            PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                "Buffer pool allocation failed - using on-demand");
+        }
+    }
+
     /* Initialize test state */
     memset(&g_test, 0, sizeof(g_test));
     g_test.state = STATE_DISCOVERING;
@@ -505,6 +533,7 @@ int main(void)
     config.max_peers = 4;
     config.discovery_port = 7353;
     config.tcp_port = 7354;
+    config.buffer_pool = g_buffer_pool;
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Initializing PeerTalk...");
     g_ctx = PeerTalk_Init(&config);
@@ -610,6 +639,9 @@ cleanup:
 
     if (g_ctx) {
         PeerTalk_Shutdown(g_ctx);
+    }
+    if (g_buffer_pool) {
+        PeerTalk_FreeBuffers(g_buffer_pool);
     }
     if (g_log) {
         PT_LogDestroy(g_log);

@@ -127,7 +127,6 @@ static unsigned long g_ack_wait_start = 0;
 static int g_ack_retries = 0;
 #define MAX_ACK_RETRIES 3
 static TableUI g_table;
-static unsigned long g_log_stream_start = 0;
 
 /* ========================================================================== */
 /* Utility Functions                                                           */
@@ -427,7 +426,7 @@ static void report_progress(void)
 
     for (row = 0; row < (int)NUM_BUFFER_SIZES; row++) {
         StreamStats *s = &g_test.stats[row];
-        unsigned long send_ms, recv_ms, send_kbps, recv_kbps;
+        unsigned long send_ms, recv_ms, send_bytes_per_sec, recv_bytes_per_sec;
 
         table_set_cell_int(&g_table, row, 0, s->buffer_size);
 
@@ -437,16 +436,16 @@ static void report_progress(void)
             recv_ms = ticks_to_ms(s->recv_end_ticks - s->recv_start_ticks);
             if (send_ms == 0) send_ms = 1;
             if (recv_ms == 0) recv_ms = 1;
-            send_kbps = (s->send_bytes / 1024UL) * 1000UL / send_ms;
-            recv_kbps = (s->recv_bytes / 1024UL) * 1000UL / recv_ms;
-            table_set_cell_kbps(&g_table, row, 1, send_kbps);
-            table_set_cell_kbps(&g_table, row, 2, recv_kbps);
+            send_bytes_per_sec = (s->send_bytes * 1000UL) / send_ms;
+            recv_bytes_per_sec = (s->recv_bytes * 1000UL) / recv_ms;
+            table_set_cell_kbps(&g_table, row, 1, send_bytes_per_sec);
+            table_set_cell_kbps(&g_table, row, 2, recv_bytes_per_sec);
             table_set_cell_str(&g_table, row, 3, "DONE");
         } else if (row == g_test.current_size_idx) {
             /* Current test */
             if (g_test.phase == 0) {
                 /* In send phase */
-                kbps = (s->send_bytes / 1024UL) * 1000UL / elapsed_ms;
+                kbps = (s->send_bytes * 1000UL) / elapsed_ms;
                 table_set_cell_kbps(&g_table, row, 1, kbps);
                 table_clear_cell(&g_table, row, 2);
                 table_set_cell_str(&g_table, row, 3, "SEND");
@@ -454,9 +453,9 @@ static void report_progress(void)
                 /* In recv phase */
                 send_ms = ticks_to_ms(s->send_end_ticks - s->send_start_ticks);
                 if (send_ms == 0) send_ms = 1;
-                send_kbps = (s->send_bytes / 1024UL) * 1000UL / send_ms;
-                kbps = (s->recv_bytes / 1024UL) * 1000UL / elapsed_ms;
-                table_set_cell_kbps(&g_table, row, 1, send_kbps);
+                send_bytes_per_sec = (s->send_bytes * 1000UL) / send_ms;
+                kbps = (s->recv_bytes * 1000UL) / elapsed_ms;
+                table_set_cell_kbps(&g_table, row, 1, send_bytes_per_sec);
                 table_set_cell_kbps(&g_table, row, 2, kbps);
                 table_set_cell_str(&g_table, row, 3, "RECV");
             }
@@ -875,38 +874,48 @@ int main(void)
             }
         }
 
-        /* Test complete - print results and stream logs */
-        if (g_test.test_complete && !g_log_stream.streaming && !g_log_stream.complete) {
-            print_results();
-
-            status_clear();
-            status_line("Test complete!");
-            status_line("");
-
-            if (g_connected_peer) {
-                status_line("Streaming logs to partner...");
-                PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
-                    "Streaming %lu bytes of logs to partner...",
-                    (unsigned long)g_log_stream.length);
-                log_stream_send(g_ctx, g_connected_peer);
-                g_log_stream_start = TickCount();
-            } else {
-                status_line("No peer - cannot stream logs");
-                g_running = 0;
-            }
-        }
-
+        /* Test complete - exit main loop */
         if (g_test.test_complete) {
-            if (g_log_stream.complete) {
-                g_running = 0;
-            } else if (g_log_stream.streaming && g_connected_peer == 0) {
-                g_running = 0;
-            } else if (g_log_stream.streaming &&
-                       (now - g_log_stream_start) >= LOG_STREAM_TIMEOUT_TICKS) {
-                /* Log streaming timed out - exit anyway */
+            g_running = 0;
+        }
+    }
+
+    /* Print results after main loop completes */
+    print_results();
+
+    /* Stream logs to test partner - AFTER main loop, BEFORE cleanup */
+    if (g_ctx && g_connected_peer != 0) {
+        PeerTalk_Error stream_err;
+
+        status_clear();
+        status_line("Test complete!");
+        status_line("Streaming logs to partner...");
+
+        PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+            "Streaming %lu bytes of logs to partner...",
+            (unsigned long)g_log_stream.length);
+
+        stream_err = log_stream_send(g_ctx, g_connected_peer);
+        if (stream_err == PT_OK) {
+            /* Poll until streaming complete or peer disconnects */
+            while (!log_stream_complete() && g_connected_peer != 0) {
+                EventRecord evt;
+                if (WaitNextEvent(everyEvent, &evt, 1, NULL)) {
+                    if (evt.what == keyDown) break;
+                }
+                PeerTalk_Poll(g_ctx);
+            }
+
+            if (g_connected_peer == 0) {
                 PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
-                    "Log streaming timed out after 30s, exiting");
-                g_running = 0;
+                    "Peer disconnected during log streaming");
+            } else if (log_stream_result() == PT_OK) {
+                PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+                    "Log stream complete: %lu bytes sent",
+                    (unsigned long)log_stream_bytes_sent());
+            } else {
+                PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                    "Log stream failed: error %d", log_stream_result());
             }
         }
     }
