@@ -37,8 +37,8 @@ int pt_queue_init(struct pt_context *ctx, pt_queue *q, uint16_t capacity)
     if (!q->slots) {
         if (ctx) {
             PT_CTX_ERR(ctx, PT_LOG_CAT_MEMORY,
-                      "Failed to allocate %zu bytes for %u queue slots",
-                      alloc_size, capacity);
+                      "Failed to allocate %lu bytes for %u queue slots",
+                      (unsigned long)alloc_size, capacity);
         }
         return PT_ERR_NO_MEMORY;
     }

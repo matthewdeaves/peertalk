@@ -499,17 +499,16 @@ int main(void)
      *   - 4KB buffer = 1KB threshold (slow)
      *   - 16KB buffer = 4KB threshold (4x better)
      *   - 32KB buffer = 8KB threshold (8x better)
+     *
+     * PeerTalk_Bootstrap() automatically scales peer count based on available
+     * memory, so the same code works on both Mac SE (4MB) and larger systems.
      */
-    g_buffer_pool = PeerTalk_Bootstrap(4);  /* 4 peers, auto-size */
+    g_buffer_pool = PeerTalk_Bootstrap(4);  /* SDK auto-scales for low-memory */
 
     /* NOW safe to initialize Toolbox */
     init_toolbox();
 
-    /* Initialize status window for user feedback */
-    status_init("PeerTalk Throughput Test");
-    status_line("Initializing...");
-
-    /* Create PT_Log */
+    /* Create PT_Log FIRST so diagnostic logging works */
     g_log = PT_LogCreate();
     if (g_log) {
         PT_LogSetLevel(g_log, PT_LOG_DEBUG);
@@ -520,6 +519,10 @@ int main(void)
         /* Initialize log streaming (captures logs for sending to partner) */
         log_stream_init(g_log);
     }
+
+    /* Initialize status window for user feedback (after log so diagnostics work) */
+    status_init("PeerTalk Throughput Test");
+    status_line("Initializing...");
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "PeerTalk Throughput Test");

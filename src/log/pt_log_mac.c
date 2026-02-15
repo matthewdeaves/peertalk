@@ -123,39 +123,28 @@ static void c_to_pstr(const char *c_str, Str255 p_str) {
 
 static OSErr pt_create_file(ConstStr255Param name, short vRefNum,
                             OSType creator, OSType fileType) {
-    HParamBlockRec pb;
     OSErr err;
 
-    memset(&pb, 0, sizeof(pb));
-    pb.fileParam.ioNamePtr = (StringPtr)name;
-    pb.fileParam.ioVRefNum = vRefNum;
-    pb.fileParam.ioDirID = 0;
-    err = PBHCreateSync(&pb);
-
-    (void)creator;
-    (void)fileType;
+    /* Use simple Create() for System 6.0.8 compatibility instead of PBHCreateSync
+     * Create() works on both MFS and HFS, while PBH* calls may fail on older systems */
+    err = Create(name, vRefNum, creator, fileType);
 
     return err;
 }
 
 static OSErr pt_set_file_info(ConstStr255Param name, short vRefNum,
                                OSType creator, OSType fileType) {
-    HParamBlockRec pb;
+    FInfo fInfo;
     OSErr err;
 
-    memset(&pb, 0, sizeof(pb));
-    pb.fileParam.ioNamePtr = (StringPtr)name;
-    pb.fileParam.ioVRefNum = vRefNum;
-    pb.fileParam.ioFDirIndex = 0;
-    pb.fileParam.ioDirID = 0;
-
-    err = PBHGetFInfoSync(&pb);
+    /* Use GetFInfo/SetFInfo for System 6.0.8 compatibility instead of PBH* calls */
+    err = GetFInfo(name, vRefNum, &fInfo);
     if (err != noErr) return err;
 
-    pb.fileParam.ioFlFndrInfo.fdType = fileType;
-    pb.fileParam.ioFlFndrInfo.fdCreator = creator;
+    fInfo.fdType = fileType;
+    fInfo.fdCreator = creator;
 
-    return PBHSetFInfoSync(&pb);
+    return SetFInfo(name, vRefNum, &fInfo);
 }
 
 static OSErr pt_seek_to_end(short refNum) {

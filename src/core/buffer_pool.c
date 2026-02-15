@@ -67,6 +67,10 @@ struct PeerTalk_BufferPool {
 PeerTalk_BufferPool *PeerTalk_Bootstrap(uint16_t max_peers)
 {
 #if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)
+    PeerTalk_BufferPool *pool;
+    unsigned long free_mem;
+    uint16_t scaled_peers;
+
     /*
      * Classic Mac heap preparation:
      *
@@ -84,8 +88,43 @@ PeerTalk_BufferPool *PeerTalk_Bootstrap(uint16_t max_peers)
     MoreMasters();
     MoreMasters();  /* 4 calls = plenty of master pointers */
 
+    /* Auto-scale peer count based on available memory.
+     *
+     * Each peer needs:
+     *   - TCP receive buffer (4-32KB, auto-sized)
+     *   - Send queue (~4KB)
+     *   - Receive queue (~4KB)
+     *   - Direct buffers (optional, ~16KB)
+     *   Total: ~12-56KB per peer
+     *
+     * Memory tiers (based on FreeMem after MaxApplZone):
+     *   < 200KB: 1 peer  (very low memory - Mac Plus with apps loaded)
+     *   < 400KB: 2 peers (low memory - Mac SE 4MB, Classic)
+     *   < 800KB: 3 peers (moderate - Mac SE/30, LC)
+     *   >= 800KB: Use requested peer count (high memory - Mac II, Quadra, PPC)
+     */
+    free_mem = (unsigned long)FreeMem();
+
+    if (free_mem < 200UL * 1024UL) {
+        scaled_peers = 1;  /* Absolute minimum */
+    } else if (free_mem < 400UL * 1024UL) {
+        scaled_peers = 2;  /* Low memory (Mac SE) */
+    } else if (free_mem < 800UL * 1024UL) {
+        scaled_peers = 3;  /* Moderate memory */
+    } else {
+        scaled_peers = max_peers;  /* High memory - use requested count */
+    }
+
     /* Now allocate buffers while heap is still contiguous */
-    return PeerTalk_AllocateBuffersAuto(max_peers);
+    pool = PeerTalk_AllocateBuffersAuto(scaled_peers);
+
+    /* Log scaling decision (if allocation succeeded and we scaled down) */
+    if (pool && scaled_peers < max_peers) {
+        /* Note: Can't log here since PT_Log isn't initialized yet.
+         * The test app will log buffer pool info after PT_LogCreate(). */
+    }
+
+    return pool;
 
 #else
     /* POSIX: Buffer allocation is not needed (no 25% threshold issue) */

@@ -50,16 +50,17 @@ void status_init(const char *test_name)
     title[0] = (unsigned char)len;
     memcpy(title + 1, test_name, len);
 
-    /* Create window - noGrowDocProc is a simple document window */
+    /* Create window - documentProc for System 6.0.8 compatibility
+     * (noGrowDocProc may not be available on older systems) */
     g_status_win = NewWindow(NULL, &bounds, title, true,
-                              noGrowDocProc, (WindowPtr)-1L, false, 0);
+                              documentProc, (WindowPtr)-1L, false, 0);
     if (!g_status_win) {
         return;
     }
 
-    /* Set up drawing */
+    /* Set up drawing - System 6.0.8 compatible
+     * Use TextSize/TextFace instead of TextFont for better compatibility */
     SetPort(g_status_win);
-    TextFont(4);       /* Monaco font (ID 4) is a good monospace font */
     TextSize(9);       /* 9pt is readable on all systems */
     g_line_height = 12;
     g_status_y = STATUS_TEXT_TOP;
@@ -105,7 +106,9 @@ void status_linef(const char *fmt, ...)
     va_list args;
 
     va_start(args, fmt);
-    vsnprintf(buf, sizeof(buf), fmt, args);
+    /* Use vsprintf instead of vsnprintf for System 6.0.8 compatibility.
+     * CRITICAL: Caller must ensure formatted output < 256 bytes! */
+    vsprintf(buf, fmt, args);
     va_end(args);
 
     status_line(buf);
