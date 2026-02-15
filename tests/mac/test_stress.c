@@ -591,8 +591,6 @@ int main(void)
                     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
                         "Log stream complete: %lu bytes sent",
                         (unsigned long)log_stream_bytes_sent());
-                    /* Clean up log files now that they've been streamed */
-                    test_cleanup_files("PT_Stress");
                 } else {
                     PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
                         "Log stream failed: error %d", log_stream_result());
@@ -616,6 +614,9 @@ cleanup:
     if (g_log) {
         PT_LogDestroy(g_log);
     }
+
+    /* Clean up log files AFTER logging is complete */
+    test_cleanup_files("PT_Stress");
 
     status_cleanup();
     return 0;
