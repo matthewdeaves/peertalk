@@ -36,6 +36,7 @@
 /* Log streaming helper - implementation in this file */
 #define LOG_STREAM_IMPLEMENTATION
 #include "log_stream.h"
+#include "test_cleanup.h"
 
 /* ========================================================================== */
 /* Configuration                                                               */
@@ -719,6 +720,8 @@ int main(void)
                     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
                         "Log streaming complete: %lu bytes sent",
                         (unsigned long)log_stream_bytes_sent());
+                    /* Clean up log files now that they've been streamed */
+                    test_cleanup_files("PT_Latency");
                 }
                 g_running = 0;
             } else if (g_log_stream.streaming && g_connected_peer == 0) {

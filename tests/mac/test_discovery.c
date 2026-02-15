@@ -33,6 +33,7 @@
 /* Log streaming - sends logs to test partner at completion */
 #define LOG_STREAM_IMPLEMENTATION
 #include "log_stream.h"
+#include "test_cleanup.h"
 
 /* ========================================================================== */
 /* Configuration                                                               */
@@ -607,6 +608,8 @@ int main(void)
                     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
                         "Log stream complete: %lu bytes sent",
                         (unsigned long)log_stream_bytes_sent());
+                    /* Clean up log files now that they've been streamed */
+                    test_cleanup_files("PT_Discovery");
                 } else {
                     PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
                         "Log stream failed: error %d", log_stream_result());

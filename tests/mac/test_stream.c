@@ -36,6 +36,7 @@
 /* Log streaming helper - implementation in this file */
 #define LOG_STREAM_IMPLEMENTATION
 #include "log_stream.h"
+#include "test_cleanup.h"
 
 /* ========================================================================== */
 /* Stream Test Protocol                                                        */
@@ -897,6 +898,10 @@ int main(void)
 
         if (g_test.test_complete) {
             if (g_log_stream.complete) {
+                /* Clean up log files now that they've been streamed */
+                if (log_stream_bytes_sent() > 0) {
+                    test_cleanup_files("PT_Stream");
+                }
                 g_running = 0;
             } else if (g_log_stream.streaming && g_connected_peer == 0) {
                 g_running = 0;

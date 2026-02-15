@@ -765,7 +765,9 @@ class ClassicMacHardwareServer:
 
         try:
             cmd = [launchappl, "-e", "tcp", "--tcp-address", machine_ip, binary_path]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            # Run from /tmp to prevent LaunchAPPL's temp directories from polluting workspace
+            # LaunchAPPL creates UUID-named temp dirs that aren't cleaned up on timeout
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, cwd="/tmp")
 
             if result.returncode == 0:
                 return [TextContent(type="text", text=f"✅ Executed on {machine['name']}:\n\n{result.stdout}")]
