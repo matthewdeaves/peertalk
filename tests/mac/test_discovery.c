@@ -33,7 +33,7 @@
 /* Log streaming - sends logs to test partner at completion */
 #define LOG_STREAM_IMPLEMENTATION
 #include "log_stream.h"
-#include "test_cleanup.h"
+/* #include "test_cleanup.h" */
 
 /* ========================================================================== */
 /* Configuration                                                               */

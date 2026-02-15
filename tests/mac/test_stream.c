@@ -36,7 +36,7 @@
 /* Log streaming helper - implementation in this file */
 #define LOG_STREAM_IMPLEMENTATION
 #include "log_stream.h"
-#include "test_cleanup.h"
+/* #include "test_cleanup.h" */
 
 /* ========================================================================== */
 /* Stream Test Protocol                                                        */
