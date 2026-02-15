@@ -14,7 +14,6 @@
 #
 # Output:
 #   build/mac/libpeertalk_<platform>.a    - Static library
-#   build/mac/test_mactcp.bin             - Basic test app
 #   build/mac/test_latency.bin            - Latency measurement
 #   build/mac/test_throughput.bin         - Throughput measurement (echo-based)
 #   build/mac/test_stream.bin             - One-way streaming (unidirectional)
@@ -46,8 +45,8 @@ case "$PLATFORM" in
         echo "  ot     - PPC Open Transport build (System 7.6.1+)"
         echo ""
         echo "Targets:"
-        echo "  all   - Build library, test app, and performance tests (default)"
-        echo "  test  - Build library and basic test app only"
+        echo "  all   - Build library and all test apps (default)"
+        echo "  test  - Build library and all test apps"
         echo "  perf  - Build library and performance tests only"
         exit 1
         ;;

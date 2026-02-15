@@ -7,8 +7,8 @@
 #   build/mac/libpeertalk_mactcp.a      - MacTCP-only library (TCP/IP)
 #   build/mac/libpeertalk_at.a          - AppleTalk-only library
 #   build/mac/libpeertalk_mactcp_at.a   - Unified library (both transports)
-#   build/mac/test_mactcp.bin           - Test application (BinHex)
-#   build/mac/test_mactcp.dsk           - Test application (disk image)
+#   build/mac/test_latency.bin          - Latency test (BinHex)
+#   build/mac/test_throughput.bin       - Throughput test (BinHex)
 
 RETRO68 ?= /opt/Retro68-build/toolchain
 
@@ -85,9 +85,7 @@ APPLETALK_SRCS = \
 LIB_SRCS = $(CORE_SRCS) $(LOG_SRCS) $(PLAT_SRCS)
 LIB_OBJS = $(LIB_SRCS:%.c=$(BUILD_DIR)/%.o)
 
-# Test application sources
-TEST_SRCS = tests/mac/test_mactcp.c
-TEST_OBJS = $(TEST_SRCS:%.c=$(BUILD_DIR)/%.o)
+# Test applications are now individual performance tests (test_latency, etc.)
 
 # Shared UI objects for test apps (must be defined before rules that use them)
 STATUS_WINDOW_OBJ = $(BUILD_DIR)/tests/mac/status_window.o
@@ -99,14 +97,11 @@ PERF_TESTS = test_latency test_throughput test_stress test_discovery test_stream
 
 # Output files
 LIBNAME = $(BUILD_DIR)/libpeertalk_$(PLATFORM).a
-TEST_CODE = $(BUILD_DIR)/test_mactcp.code.bin
-TEST_BIN = $(BUILD_DIR)/test_mactcp.bin
-TEST_DSK = $(BUILD_DIR)/test_mactcp.dsk
 
 # Targets
 all: $(LIBNAME)
 
-test: $(TEST_BIN) $(TEST_DSK)
+test: perf_tests
 
 # Performance test targets
 perf_tests: $(PERF_TESTS:%=$(BUILD_DIR)/%.bin)
@@ -138,21 +133,6 @@ $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
 $(LIBNAME): $(LIB_OBJS) | $(BUILD_DIR)
 	$(AR) rcs $@ $^
 	@echo "Built: $@"
-
-# Test application (code segment)
-$(TEST_CODE): $(TEST_OBJS) $(TEST_UI_OBJS) $(LIBNAME)
-	$(CC) $(CFLAGS) -o $@ $(TEST_OBJS) $(TEST_UI_OBJS) -L$(BUILD_DIR) -lpeertalk_$(PLATFORM)
-	@echo "Built: $@"
-
-# Test application (.bin and .dsk via Rez)
-$(TEST_BIN) $(TEST_DSK): $(TEST_CODE)
-	$(REZ) $(REZ_TEMPLATES)/Retro68APPL.r \
-		--copy $(TEST_CODE) \
-		-o $(TEST_BIN) \
-		-t "APPL" -c "PTTK" \
-		--cc $(TEST_DSK)
-	@echo "Built: $(TEST_BIN) (transfer this to Mac)"
-	@echo "Built: $(TEST_DSK) (mount on Mac or use with emulator)"
 
 # ============================================================================
 # Performance Test Applications
@@ -285,18 +265,17 @@ info:
 	@echo "Toolchain: $(PREFIX)"
 	@echo "Rez: $(REZ)"
 	@echo "Library sources: $(LIB_SRCS)"
-	@echo "Test sources: $(TEST_SRCS)"
 	@echo "Output library: $(LIBNAME)"
-	@echo "Output test app: $(TEST_BIN)"
-	@echo "Output disk image: $(TEST_DSK)"
+	@echo "Performance tests: $(PERF_TESTS)"
 
 help:
 	@echo "PeerTalk Retro68 Build System"
 	@echo ""
 	@echo "Usage:"
-	@echo "  make -f Makefile.retro68 PLATFORM=mactcp        Build MacTCP library"
-	@echo "  make -f Makefile.retro68 PLATFORM=mactcp test   Build MacTCP test app"
-	@echo "  make -f Makefile.retro68 PLATFORM=mactcp unified Build unified library"
+	@echo "  make -f Makefile.retro68 PLATFORM=mactcp             Build MacTCP library"
+	@echo "  make -f Makefile.retro68 PLATFORM=mactcp test        Build all test apps"
+	@echo "  make -f Makefile.retro68 PLATFORM=mactcp perf_tests  Build perf test apps"
+	@echo "  make -f Makefile.retro68 PLATFORM=mactcp unified     Build unified library"
 	@echo ""
 	@echo "Libraries:"
 	@echo "  libpeertalk_mactcp.a      MacTCP-only (TCP/IP)"
@@ -304,7 +283,10 @@ help:
 	@echo "  libpeertalk_mactcp_at.a   Unified (both transports)"
 	@echo ""
 	@echo "Test Applications:"
-	@echo "  test_mactcp.bin           MacTCP test (BinHex format)"
-	@echo "  test_mactcp.dsk           MacTCP test (disk image)"
+	@echo "  test_latency.bin          RTT measurement test"
+	@echo "  test_throughput.bin       Throughput test"
+	@echo "  test_stress.bin           Connect/disconnect stress test"
+	@echo "  test_discovery.bin        Discovery stability test"
+	@echo "  test_stream.bin           Unidirectional streaming test"
 
 .PHONY: all test clean info help unified

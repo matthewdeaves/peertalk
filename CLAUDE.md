@@ -156,7 +156,6 @@ scripts/                      # Build and utility scripts
 
 | App | Log File | Purpose |
 |-----|----------|---------|
-| `test_mactcp` | `PT_Log` | Basic discovery test - verifies UDP broadcast works |
 | `test_latency` | `PT_Latency` | RTT measurement with various message sizes (16-4096 bytes) |
 | `test_throughput` | `PT_Throughput` | Bidirectional throughput (echo-based) |
 | `test_stream` | `PT_Stream` | One-way streaming (true unidirectional capacity) |
@@ -176,10 +175,10 @@ docker-compose -f docker/docker-compose.yml run --rm peertalk-dev \
 **Deploy to Mac:**
 ```bash
 # Via MCP (preferred)
-mcp__classic-mac-hardware__deploy_binary(machine="performa6200", platform="mactcp", binary_path="build/mac/test_mactcp.bin")
-
-# Or upload individual test apps
 mcp__classic-mac-hardware__upload_file(machine="performa6200", local_path="build/mac/test_latency.bin", remote_path="test_latency.bin")
+
+# Or execute directly via LaunchAPPL
+mcp__classic-mac-hardware__execute_binary(machine="performa6200", platform="mactcp", binary_path="build/mac/test_latency.bin")
 ```
 
 ### POSIX Test Partners
