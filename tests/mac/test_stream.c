@@ -127,6 +127,7 @@ static unsigned long g_ack_wait_start = 0;
 static int g_ack_retries = 0;
 #define MAX_ACK_RETRIES 3
 static TableUI g_table;
+static unsigned long g_log_stream_start = 0;
 
 /* ========================================================================== */
 /* Utility Functions                                                           */
@@ -874,48 +875,42 @@ int main(void)
             }
         }
 
-        /* Test complete - exit main loop */
-        if (g_test.test_complete) {
-            g_running = 0;
-        }
-    }
+        /* Test complete - print results and stream logs */
+        if (g_test.test_complete && !g_log_stream.streaming && !g_log_stream.complete) {
+            print_results();
 
-    /* Print results after main loop completes */
-    print_results();
+            status_clear();
+            status_line("Test complete!");
+            status_line("");
 
-    /* Stream logs to test partner - AFTER main loop, BEFORE cleanup */
-    if (g_ctx && g_connected_peer != 0) {
-        PeerTalk_Error stream_err;
-
-        status_clear();
-        status_line("Test complete!");
-        status_line("Streaming logs to partner...");
-
-        PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
-            "Streaming %lu bytes of logs to partner...",
-            (unsigned long)g_log_stream.length);
-
-        stream_err = log_stream_send(g_ctx, g_connected_peer);
-        if (stream_err == PT_OK) {
-            /* Poll until streaming complete or peer disconnects */
-            while (!log_stream_complete() && g_connected_peer != 0) {
-                EventRecord evt;
-                if (WaitNextEvent(everyEvent, &evt, 1, NULL)) {
-                    if (evt.what == keyDown) break;
-                }
-                PeerTalk_Poll(g_ctx);
-            }
-
-            if (g_connected_peer == 0) {
-                PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
-                    "Peer disconnected during log streaming");
-            } else if (log_stream_result() == PT_OK) {
+            if (g_connected_peer) {
+                status_line("Streaming logs to partner...");
                 PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
-                    "Log stream complete: %lu bytes sent",
-                    (unsigned long)log_stream_bytes_sent());
+                    "Streaming %lu bytes of logs to partner...",
+                    (unsigned long)g_log_stream.length);
+                log_stream_send(g_ctx, g_connected_peer);
+                g_log_stream_start = TickCount();
             } else {
+                status_line("No peer - cannot stream logs");
+                g_running = 0;
+            }
+        }
+
+        /* Wait for log streaming to complete, or exit if peer disconnected or timeout */
+        if (g_test.test_complete) {
+            if (g_log_stream.complete) {
+                g_running = 0;
+            } else if (g_log_stream.streaming && g_connected_peer == 0) {
+                /* Peer disconnected during streaming - abort and exit */
                 PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
-                    "Log stream failed: error %d", log_stream_result());
+                    "Peer disconnected during log streaming - exiting");
+                g_running = 0;
+            } else if (g_log_stream.streaming &&
+                       (now - g_log_stream_start) >= LOG_STREAM_TIMEOUT_TICKS) {
+                /* Log streaming timed out - exit anyway */
+                PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                    "Log streaming timed out after 30s, exiting");
+                g_running = 0;
             }
         }
     }
@@ -940,7 +935,7 @@ cleanup:
     }
 
     /* Clean up log files AFTER logging is complete */
-    test_cleanup_files("PT_Stream");
+    /* test_cleanup_files("PT_Stream"); */
 
     status_cleanup();
     return 0;

@@ -751,7 +751,7 @@ cleanup:
     }
 
     /* Clean up log files AFTER logging is complete */
-    test_cleanup_files("PT_Latency");
+    /* test_cleanup_files("PT_Latency"); */
 
     status_cleanup();
     return 0;

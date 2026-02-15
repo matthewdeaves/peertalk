@@ -88,6 +88,7 @@ static PeerTalk_BufferPool *g_buffer_pool = NULL;
 static DiscoveryStats g_stats;
 static unsigned long g_last_report = 0;
 static int g_running = 1;
+static int g_test_complete = 0;
 static PeerTalk_PeerID g_first_peer = 0;
 static PeerTalk_PeerID g_connected_peer = 0;
 static TableUI g_table;
@@ -584,67 +585,53 @@ int main(void)
         }
 
         /* Check duration */
-        if (now >= test_end_ticks) {
+        if (now >= test_end_ticks && !g_test_complete) {
             PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Test duration complete");
-            g_running = 0;
+            g_test_complete = 1;
         }
-    }
 
-    print_results();
+        /* Test complete - print results and stream logs */
+        if (g_test_complete && !g_log_stream.streaming && !g_log_stream.complete) {
+            print_results();
 
-    /* Stream logs to test partner if we have a discovered peer */
-    if (g_ctx && (g_connected_peer != 0 || g_first_peer != 0)) {
-        PeerTalk_PeerID stream_peer = g_connected_peer ? g_connected_peer : g_first_peer;
-        PeerTalk_Error stream_err;
+            status_clear();
+            status_line("Test complete!");
+            status_line("");
 
-        /* Connect if not already connected */
-        if (g_connected_peer == 0 && g_first_peer != 0) {
-            PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Connecting for log stream...");
-            if (PeerTalk_Connect(g_ctx, g_first_peer) == PT_OK) {
-                /* Wait for connection (up to 5 seconds) */
-                unsigned long connect_start = TickCount();
-                while (g_connected_peer == 0 && (TickCount() - connect_start) < 300) {
-                    EventRecord evt;
-                    if (WaitNextEvent(everyEvent, &evt, 1, NULL)) {
-                        if (evt.what == keyDown) break;
-                    }
-                    PeerTalk_Poll(g_ctx);
-                }
-                if (g_connected_peer != 0) {
-                    stream_peer = g_connected_peer;
-                }
+            /* Stream logs if we have a connected peer */
+            if (g_connected_peer) {
+                status_line("Streaming logs to partner...");
+                PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+                    "Streaming %lu bytes of logs to partner...",
+                    (unsigned long)g_log_stream.length);
+                log_stream_send(g_ctx, g_connected_peer);
+            } else {
+                status_line("No peer - cannot stream logs");
+                PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                    "No connected peer for log streaming");
+                g_running = 0;
             }
         }
 
-        if (g_connected_peer != 0) {
-            PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Streaming logs to test partner...");
-
-            stream_err = log_stream_send(g_ctx, stream_peer);
-            if (stream_err == PT_OK) {
-                /* Poll until streaming complete or peer disconnects */
-                while (!log_stream_complete() && g_connected_peer != 0) {
-                    EventRecord evt;
-                    if (WaitNextEvent(everyEvent, &evt, 1, NULL)) {
-                        if (evt.what == keyDown) break;
-                    }
-                    PeerTalk_Poll(g_ctx);
-                }
-
-                if (g_connected_peer == 0) {
-                    PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
-                        "Peer disconnected during log streaming");
-                } else if (log_stream_result() == PT_OK) {
+        /* Wait for log streaming to complete */
+        if (g_test_complete) {
+            if (g_log_stream.complete) {
+                if (log_stream_bytes_sent() > 0) {
                     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
-                        "Log stream complete: %lu bytes sent",
+                        "Log streaming complete: %lu bytes sent",
                         (unsigned long)log_stream_bytes_sent());
-                } else {
-                    PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
-                        "Log stream failed: error %d", log_stream_result());
                 }
+                g_running = 0;
+            } else if (g_log_stream.streaming && g_connected_peer == 0) {
+                /* Peer disconnected during streaming - abort and exit */
+                PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                    "Peer disconnected during log streaming - exiting");
+                g_running = 0;
             }
         }
-        log_stream_cleanup();
     }
+
+    log_stream_cleanup();
 
 cleanup:
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
@@ -665,7 +652,7 @@ cleanup:
     }
 
     /* Clean up log files AFTER logging is complete */
-    test_cleanup_files("PT_Discovery");
+    /* test_cleanup_files("PT_Discovery"); */
 
     status_cleanup();
     return 0;

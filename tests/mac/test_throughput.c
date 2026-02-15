@@ -732,7 +732,7 @@ cleanup:
     }
 
     /* Clean up log files AFTER logging is complete */
-    test_cleanup_files("PT_Throughput");
+    /* test_cleanup_files("PT_Throughput"); */
 
     status_cleanup();
     return 0;

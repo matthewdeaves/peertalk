@@ -290,7 +290,7 @@ static void stress_poll(void)
         break;
 
     case STATE_COMPLETE:
-        g_running = 0;
+        /* Test complete - log streaming will be handled in main loop */
         break;
     }
 }
@@ -578,56 +578,49 @@ int main(void)
 
         PeerTalk_Poll(g_ctx);
         stress_poll();
-    }
 
-    print_results();
+        /* Test complete - print results and stream logs */
+        if (g_test.state == STATE_COMPLETE && !g_log_stream.streaming && !g_log_stream.complete) {
+            print_results();
 
-    /* Stream logs to test partner if we have a connected peer */
-    if (g_ctx && g_test.target_peer != 0) {
-        PeerTalk_Error stream_err;
+            status_clear();
+            status_line("Test complete!");
+            status_line("");
 
-        /* Reconnect if needed for log streaming */
-        if (g_test.state != STATE_CONNECTED) {
-            PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Reconnecting for log stream...");
-            if (PeerTalk_Connect(g_ctx, g_test.target_peer) == PT_OK) {
-                /* Wait for connection (up to 5 seconds) */
-                unsigned long connect_start = TickCount();
-                while (g_test.state != STATE_CONNECTED &&
-                       (TickCount() - connect_start) < 300) {
-                    PeerTalk_Poll(g_ctx);
-                }
+            /* Stream logs if we have a connected peer */
+            if (g_test.target_peer != 0 && g_test.state == STATE_CONNECTED) {
+                status_line("Streaming logs to partner...");
+                PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+                    "Streaming %lu bytes of logs to partner...",
+                    (unsigned long)g_log_stream.length);
+                log_stream_send(g_ctx, g_test.target_peer);
+            } else {
+                status_line("No peer - cannot stream logs");
+                PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                    "Test completed but not connected - skipping log streaming");
+                g_running = 0;
             }
         }
 
-        if (g_test.state == STATE_CONNECTED) {
-            PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Streaming logs to test partner...");
-
-            stream_err = log_stream_send(g_ctx, g_test.target_peer);
-            if (stream_err == PT_OK) {
-                /* Poll until streaming complete or peer disconnects */
-                while (!log_stream_complete() && g_test.target_peer != 0) {
-                    EventRecord evt;
-                    if (WaitNextEvent(everyEvent, &evt, 1, NULL)) {
-                        if (evt.what == keyDown) break;
-                    }
-                    PeerTalk_Poll(g_ctx);
-                }
-
-                if (g_test.target_peer == 0) {
-                    PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
-                        "Peer disconnected during log streaming");
-                } else if (log_stream_result() == PT_OK) {
+        /* Wait for log streaming to complete */
+        if (g_test.state == STATE_COMPLETE) {
+            if (g_log_stream.complete) {
+                if (log_stream_bytes_sent() > 0) {
                     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
-                        "Log stream complete: %lu bytes sent",
+                        "Log streaming complete: %lu bytes sent",
                         (unsigned long)log_stream_bytes_sent());
-                } else {
-                    PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
-                        "Log stream failed: error %d", log_stream_result());
                 }
+                g_running = 0;
+            } else if (g_log_stream.streaming && g_test.target_peer == 0) {
+                /* Peer disconnected during streaming - abort and exit */
+                PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                    "Peer disconnected during log streaming - exiting");
+                g_running = 0;
             }
         }
-        log_stream_cleanup();
     }
+
+    log_stream_cleanup();
 
 cleanup:
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
@@ -648,7 +641,7 @@ cleanup:
     }
 
     /* Clean up log files AFTER logging is complete */
-    test_cleanup_files("PT_Stress");
+    /* test_cleanup_files("PT_Stress"); */
 
     status_cleanup();
     return 0;
