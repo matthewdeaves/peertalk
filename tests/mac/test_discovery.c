@@ -588,10 +588,27 @@ int main(void)
         if (now >= test_end_ticks && !g_test_complete) {
             PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Test duration complete");
             g_test_complete = 1;
+
+            /* Connect to first peer for log streaming */
+            if (g_first_peer && !g_connected_peer) {
+                PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+                    "Connecting to peer %u for log streaming...",
+                    (unsigned)g_first_peer);
+                if (PeerTalk_Connect(g_ctx, g_first_peer) != 0) {
+                    PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                        "Failed to connect to peer %u", (unsigned)g_first_peer);
+                }
+            }
         }
 
         /* Test complete - print results and stream logs */
         if (g_test_complete && !g_log_stream.streaming && !g_log_stream.complete) {
+            /* Wait for connection to complete before streaming */
+            if (g_first_peer && !g_connected_peer) {
+                /* Still connecting... wait */
+                continue;
+            }
+
             print_results();
 
             status_clear();

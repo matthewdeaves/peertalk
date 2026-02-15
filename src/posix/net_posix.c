@@ -2678,8 +2678,12 @@ int pt_posix_poll(struct pt_context *ctx) {
                                                         ctx->callbacks.user_data);
                 }
 
-                /* Destroy peer */
-                pt_peer_destroy(ctx, peer);
+                /* Transition back to DISCOVERED state for reconnection support.
+                 * Don't destroy the peer - it may reconnect or continue sending
+                 * discovery announcements. The peer will timeout after 30s if
+                 * no further announcements are received. */
+                pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCOVERED);
+                peer->hot.last_seen = ctx->plat->get_ticks();
             }
         }
     }
@@ -2791,11 +2795,14 @@ periodic_work:
     for (uint8_t i = 0; i < ctx->max_peers; i++) {
         struct pt_peer *peer = &ctx->peers[i];
 
+        /* Skip peers updated in this poll iteration (last_seen >= poll_time)
+         * to avoid false timeouts when discovery packet arrived this iteration */
         if (peer->hot.state == PT_PEER_DISCOVERED &&
+            peer->hot.last_seen < poll_time &&
             (poll_time - peer->hot.last_seen >= 30000)) {
             PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY,
                 "Peer %u (%s) timed out after 30 seconds",
-                peer->hot.id, peer->cold.name);
+                peer->hot.id, ctx->peer_names[peer->hot.name_idx]);
 
             /* Fire on_peer_lost callback before destroying */
             if (ctx->callbacks.on_peer_lost) {
@@ -2910,7 +2917,12 @@ int pt_posix_poll_fast(struct pt_context *ctx) {
                                                         ctx->callbacks.user_data);
                 }
 
-                pt_peer_destroy(ctx, peer);
+                /* Transition back to DISCOVERED state for reconnection support.
+                 * Don't destroy the peer - it may reconnect or continue sending
+                 * discovery announcements. The peer will timeout after 30s if
+                 * no further announcements are received. */
+                pt_peer_set_state(ctx, peer, PT_PEER_STATE_DISCOVERED);
+                peer->hot.last_seen = ctx->plat->get_ticks();
             }
         }
     }
