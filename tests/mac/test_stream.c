@@ -74,7 +74,7 @@ typedef struct {
 #define DRAIN_WAIT_TICKS     (10 * 60) /* 10 seconds between phases - allows TCP backlog to clear */
 #define DRAIN_WAIT_LONG_TICKS (20 * 60) /* 20 seconds after large message RECV phases */
 #define ACK_TIMEOUT_TICKS    (30 * 60) /* 30 seconds to wait for ACK */
-#define LOG_STREAM_TIMEOUT_TICKS (30 * 60) /* 30 seconds to stream logs */
+#define LOG_STREAM_TIMEOUT_TICKS (120 * 60) /* 120 seconds to stream logs (increased from 30s) */
 
 /* Buffer sizes to test */
 static const int g_buffer_sizes[] = { 256, 512, 1024, 2048, 4096 };
@@ -898,6 +898,9 @@ int main(void)
 
         /* Wait for log streaming to complete, or exit if peer disconnected or timeout */
         if (g_test.test_complete) {
+            /* Update 'now' to prevent unsigned underflow on first iteration */
+            now = TickCount();
+
             if (g_log_stream.complete) {
                 g_running = 0;
             } else if (g_log_stream.streaming && g_connected_peer == 0) {
@@ -909,7 +912,7 @@ int main(void)
                        (now - g_log_stream_start) >= LOG_STREAM_TIMEOUT_TICKS) {
                 /* Log streaming timed out - exit anyway */
                 PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
-                    "Log streaming timed out after 30s, exiting");
+                    "Log streaming timed out after 120s, exiting");
                 g_running = 0;
             }
         }

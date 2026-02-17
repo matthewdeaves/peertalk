@@ -144,6 +144,9 @@ tools/testing/results/
 # Downloaded logs from Classic Mac hardware
 downloads/
 
+# Temporary Mac test log files (streamed from hardware, no extension)
+PT_*
+
 # -----------------------------------------------------------------------------
 # Python
 # -----------------------------------------------------------------------------
