@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2026-02-08 17:06:22</td>
+            <td class="headerValue">2026-02-21 16:44:54</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">1</td>
@@ -106,7 +106,7 @@
 <a name="44"><span class="lineNum">      44 </span>            :  */</a>
 <a name="45"><span class="lineNum">      45 </span>            : typedef struct {</a>
 <a name="46"><span class="lineNum">      46 </span>            :     pt_recv_state state;           /* 1 byte at offset 0 */</a>
-<a name="47"><span class="lineNum">      47 </span>            :     uint8_t       _pad0;           /* 1 byte at offset 1: CRITICAL for 68k alignment */</a>
+<a name="47"><span class="lineNum">      47 </span>            :     uint8_t       is_compact;      /* 1 byte at offset 1: 1 if current msg is compact header */</a>
 <a name="48"><span class="lineNum">      48 </span>            :     uint16_t      bytes_needed;    /* 2 bytes at offset 2 */</a>
 <a name="49"><span class="lineNum">      49 </span>            :     uint16_t      bytes_received;  /* 2 bytes at offset 4 */</a>
 <a name="50"><span class="lineNum">      50 </span>            :     uint16_t      _pad1;           /* 2 bytes at offset 6: align to 8 bytes */</a>
@@ -197,8 +197,8 @@
 <a name="135"><span class="lineNum">     135 </span>            :  *</a>
 <a name="136"><span class="lineNum">     136 </span>            :  * The platform data is allocated immediately after the context structure.</a>
 <a name="137"><span class="lineNum">     137 </span>            :  */</a>
-<a name="138"><span class="lineNum">     138 </span><span class="lineCov">       2180 : static inline pt_posix_data *pt_posix_get(struct pt_context *ctx) {</span></a>
-<a name="139"><span class="lineNum">     139 </span><span class="lineCov">       2180 :     return (pt_posix_data *)((char *)ctx + sizeof(struct pt_context));</span></a>
+<a name="138"><span class="lineNum">     138 </span><span class="lineCov">       1965 : static inline pt_posix_data *pt_posix_get(struct pt_context *ctx) {</span></a>
+<a name="139"><span class="lineNum">     139 </span><span class="lineCov">       1965 :     return (pt_posix_data *)((char *)ctx + sizeof(struct pt_context));</span></a>
 <a name="140"><span class="lineNum">     140 </span>            : }</a>
 <a name="141"><span class="lineNum">     141 </span>            : </a>
 <a name="142"><span class="lineNum">     142 </span>            : /* ========================================================================== */</a>
@@ -408,7 +408,28 @@
 <a name="346"><span class="lineNum">     346 </span>            :  */</a>
 <a name="347"><span class="lineNum">     347 </span>            : int pt_posix_poll(struct pt_context *ctx);</a>
 <a name="348"><span class="lineNum">     348 </span>            : </a>
-<a name="349"><span class="lineNum">     349 </span>            : #endif /* PT_NET_POSIX_H */</a>
+<a name="349"><span class="lineNum">     349 </span>            : /**</a>
+<a name="350"><span class="lineNum">     350 </span>            :  * Fast POSIX poll function</a>
+<a name="351"><span class="lineNum">     351 </span>            :  *</a>
+<a name="352"><span class="lineNum">     352 </span>            :  * Only handles TCP I/O for connected peers - no discovery, UDP, listen,</a>
+<a name="353"><span class="lineNum">     353 </span>            :  * periodic announces, or peer timeouts. Use for tight game loops.</a>
+<a name="354"><span class="lineNum">     354 </span>            :  *</a>
+<a name="355"><span class="lineNum">     355 </span>            :  * Performs:</a>
+<a name="356"><span class="lineNum">     356 </span>            :  * - TCP send queue drain for connected peers</a>
+<a name="357"><span class="lineNum">     357 </span>            :  * - TCP receive for connected peers</a>
+<a name="358"><span class="lineNum">     358 </span>            :  *</a>
+<a name="359"><span class="lineNum">     359 </span>            :  * Does NOT:</a>
+<a name="360"><span class="lineNum">     360 </span>            :  * - Poll discovery socket</a>
+<a name="361"><span class="lineNum">     361 </span>            :  * - Poll UDP message socket</a>
+<a name="362"><span class="lineNum">     362 </span>            :  * - Poll listen socket for new connections</a>
+<a name="363"><span class="lineNum">     363 </span>            :  * - Send periodic discovery announces</a>
+<a name="364"><span class="lineNum">     364 </span>            :  * - Check peer timeouts</a>
+<a name="365"><span class="lineNum">     365 </span>            :  *</a>
+<a name="366"><span class="lineNum">     366 </span>            :  * Returns: 0 on success, -1 on error</a>
+<a name="367"><span class="lineNum">     367 </span>            :  */</a>
+<a name="368"><span class="lineNum">     368 </span>            : int pt_posix_poll_fast(struct pt_context *ctx);</a>
+<a name="369"><span class="lineNum">     369 </span>            : </a>
+<a name="370"><span class="lineNum">     370 </span>            : #endif /* PT_NET_POSIX_H */</a>
 </pre>
       </td>
     </tr>
