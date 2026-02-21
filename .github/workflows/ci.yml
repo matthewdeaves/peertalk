@@ -183,15 +183,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pull Retro68 image
-        run: docker pull ghcr.io/matthewdeaves/retro68:latest
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull PeerTalk dev image
+        run: docker pull ghcr.io/${{ github.repository_owner }}/peertalk-dev:develop
 
       - name: Build PeerTalk SDK for 68k (MacTCP)
         run: |
           if [ -f "Makefile.retro68" ]; then
             docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace \
-              -e RETRO68=/Retro68-build/toolchain \
-              ghcr.io/matthewdeaves/retro68:latest \
+              ghcr.io/${{ github.repository_owner }}/peertalk-dev:develop \
               make -f Makefile.retro68 PLATFORM=mactcp
           else
             echo "No Makefile.retro68 yet - skipping SDK build for 68k"
@@ -201,8 +207,7 @@ jobs:
         run: |
           if [ -f "Makefile.retro68" ]; then
             docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace \
-              -e RETRO68=/Retro68-build/toolchain \
-              ghcr.io/matthewdeaves/retro68:latest \
+              ghcr.io/${{ github.repository_owner }}/peertalk-dev:develop \
               make -f Makefile.retro68 PLATFORM=ot
           else
             echo "No Makefile.retro68 yet - skipping SDK build for PPC"
