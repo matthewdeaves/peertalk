@@ -190,6 +190,7 @@ jobs:
         run: |
           if [ -f "Makefile.retro68" ]; then
             docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace \
+              -e RETRO68=/Retro68-build/toolchain \
               ghcr.io/matthewdeaves/retro68:latest \
               make -f Makefile.retro68 PLATFORM=mactcp
           else
@@ -200,6 +201,7 @@ jobs:
         run: |
           if [ -f "Makefile.retro68" ]; then
             docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace \
+              -e RETRO68=/Retro68-build/toolchain \
               ghcr.io/matthewdeaves/retro68:latest \
               make -f Makefile.retro68 PLATFORM=ot
           else
