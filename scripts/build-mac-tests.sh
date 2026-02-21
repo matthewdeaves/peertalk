@@ -8,9 +8,10 @@
 #   ot     - PPC Open Transport build (System 7.6.1+)
 #
 # Targets:
-#   all   - Build library, test app, and performance tests (default)
-#   test  - Build library and basic test app only
-#   perf  - Build library and performance tests only
+#   all    - Build library, test app, and performance tests (default)
+#   test   - Build library and basic test app only
+#   perf   - Build library and performance tests only
+#   lowmem - Build library and low-memory tests (for 4MB Macs)
 #
 # Output:
 #   build/mac/libpeertalk_<platform>.a    - Static library
@@ -45,20 +46,21 @@ case "$PLATFORM" in
         echo "  ot     - PPC Open Transport build (System 7.6.1+)"
         echo ""
         echo "Targets:"
-        echo "  all   - Build library and all test apps (default)"
-        echo "  test  - Build library and all test apps"
-        echo "  perf  - Build library and performance tests only"
+        echo "  all    - Build library and all test apps (default)"
+        echo "  test   - Build library and all test apps"
+        echo "  perf   - Build library and performance tests only"
+        echo "  lowmem - Build library and low-memory tests (for 4MB Macs)"
         exit 1
         ;;
 esac
 
 # Validate target
 case "$TARGET" in
-    all|test|perf)
+    all|test|perf|lowmem)
         ;;
     *)
         echo "Invalid target: $TARGET"
-        echo "Valid targets: all, test, perf"
+        echo "Valid targets: all, test, perf, lowmem"
         exit 1
         ;;
 esac
@@ -88,6 +90,9 @@ case "$TARGET" in
         ;;
     perf)
         MAKE_TARGETS="perf_tests"
+        ;;
+    lowmem)
+        MAKE_TARGETS="lowmem_tests"
         ;;
 esac
 

@@ -65,9 +65,7 @@ For standard builds (most machines):
   Run: ./scripts/build-mac-tests.sh mactcp perf
 
 For lowmem builds (Mac SE, machines with build: "lowmem"):
-  Run:
-  docker compose -f docker/docker-compose.yml run --rm peertalk-dev \
-    make -f Makefile.retro68 PLATFORM=mactcp lowmem_tests
+  Run: ./scripts/build-mac-tests.sh mactcp lowmem
 
 Also build perf_partner:
   docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest \

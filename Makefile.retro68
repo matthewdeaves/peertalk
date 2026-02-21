@@ -189,7 +189,7 @@ test_stream: $(BUILD_DIR)/test_stream.bin
 # Low-Memory Performance Tests (for 4MB Macs like SE, Plus, Classic)
 # ============================================================================
 
-LOWMEM_TESTS = test_throughput_lowmem test_latency_lowmem test_discovery_lowmem
+LOWMEM_TESTS = test_latency_lowmem test_throughput_lowmem test_stream_lowmem test_stress_lowmem test_discovery_lowmem
 
 lowmem_tests: $(LOWMEM_TESTS:%=$(BUILD_DIR)/%.bin)
 	@echo "Low-memory tests built (512KB-768KB heap):"
