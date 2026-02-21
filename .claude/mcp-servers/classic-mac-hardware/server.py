@@ -894,7 +894,7 @@ class ClassicMacHardwareServer:
         if name == "deploy-and-test":
             machine = arguments.get("machine", "performa6200")
             platform = arguments.get("platform", "mactcp")
-            binary = arguments.get("binary_path", "build/mac/test_mactcp.bin")
+            binary = arguments.get("binary_path", "build/mac/test_latency.bin")
 
             return {
                 "messages": [{

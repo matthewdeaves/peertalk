@@ -67,7 +67,7 @@ make docker-analyze
 ### quick
 Fast syntax check without full compilation:
 ```bash
-docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest \
+docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest \
     gcc -fsyntax-only -Wall -Wextra -I include -I src/core \
     src/core/*.c src/posix/*.c src/log/*.c
 ```
@@ -75,7 +75,7 @@ docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest \
 ### compile
 Full compilation with warnings as errors:
 ```bash
-docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-dev make clean all
+docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd)":/workspace -w /workspace peertalk-dev make clean all
 ```
 
 ### valgrind
@@ -135,7 +135,7 @@ Build LaunchAPPLServer for Open Transport (PPC):
 Build Mac test applications (requires MacTCP platform):
 ```bash
 ./scripts/build-mac-tests.sh mactcp
-# Output: build/mac/test_mactcp.bin, test_latency.bin, test_throughput.bin, etc.
+# Output: build/mac/test_latency.bin, test_throughput.bin, test_stream.bin, etc.
 ```
 
 ### mac-tests-perf
@@ -269,9 +269,9 @@ docker compose -f docker/docker-compose.yml build
 ```
 
 ### Permission denied on build artifacts
-The Makefile uses `-u $(id -u):$(id -g)` to match host user. If issues persist:
+The Makefile uses `-u $(id -u):$(id -g)` to match host user. If root-owned files exist from a previous Docker run:
 ```bash
-sudo chown -R $(id -u):$(id -g) build/
+docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest chown -R $(id -u):$(id -g) /workspace/build/
 ```
 
 ### Mac builds fail with "Retro68 not available"

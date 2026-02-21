@@ -32,7 +32,7 @@ Pattern: `{test}_{YYYYMMDD}_{HHMMSS}.log`
 | test_throughput | throughput_YYYYMMDD_HHMMSS.log |
 | test_stress | stress_YYYYMMDD_HHMMSS.log |
 | test_discovery | discovery_YYYYMMDD_HHMMSS.log |
-| test_mactcp | mactcp_YYYYMMDD_HHMMSS.log |
+| test_stream | stream_YYYYMMDD_HHMMSS.log |
 
 ## Staging Directories (Gitignored)
 

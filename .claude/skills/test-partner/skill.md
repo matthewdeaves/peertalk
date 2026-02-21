@@ -48,7 +48,7 @@ docker ps --filter "name=perf-partner" --format "{{.Names}}" | grep -q perf-part
 
 # Start if not running - echo mode auto-detects all test types
 docker run -d --name perf-partner --network host \
-    -v "$(pwd)":/workspace -w /workspace \
+    -u "$(id -u):$(id -g)" -v "$(pwd)":/workspace -w /workspace \
     -e MACHINE_REGISTRY="10.188.1.55:macse,10.188.1.213:performa6200" \
     peertalk-posix:latest ./build/bin/perf_partner --verbose
 ```
@@ -118,7 +118,7 @@ When running other Docker commands during a test session:
 
 ```bash
 # SAFE - build in separate container
-docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make test
+docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make test
 
 # DANGEROUS - kills partner!
 docker stop $(docker ps -q)
