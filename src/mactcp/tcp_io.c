@@ -550,8 +550,14 @@ int pt_mactcp_tcp_recv(struct pt_context *ctx, struct pt_peer *peer)
      * If rds_outstanding && !recv_pending, we have RDS data that couldn't
      * be fully copied on a previous poll due to ibuf overflow. Try to
      * resume copying now that messages have been processed.
+     *
+     * CRITICAL: rds_copy_idx may be 0 when the very first RDS chunk failed
+     * to fit (ibuf 100% full). The original > 0 guard was wrong - it caused
+     * a permanent deadlock where the RDS buffer was held forever and MacTCP
+     * could not accept any more data. Now we enter resume for any rds_copy_idx
+     * (including 0) as long as rds_outstanding is set.
      */
-    if (hot->rds_outstanding && !hot->recv_pending && hot->rds_copy_idx > 0) {
+    if (hot->rds_outstanding && !hot->recv_pending) {
         int copied_all = 1;
         for (rds_idx = hot->rds_copy_idx; rds_idx < PT_MAX_RDS_ENTRIES && cold->rds[rds_idx].length > 0; rds_idx++) {
             unsigned short chunk_len = cold->rds[rds_idx].length;
@@ -1158,6 +1164,35 @@ int pt_mactcp_send_capability(struct pt_context *ctx, struct pt_peer *peer)
 
     if (hot->state != PT_STREAM_CONNECTED)
         return PT_ERR_INVALID_STATE;
+
+    /* Rate-limit capability sends to prevent flooding the peer's receive buffer.
+     *
+     * When the peer is under heavy receive load (e.g., a one-way stream test),
+     * their ibuf may be congested. Sending many capability messages (even 23-byte
+     * ones) in rapid succession causes fragmented TCP segments that pile up in
+     * an already-full ibuf, triggering "dropping incomplete reassembly" errors
+     * and potentially crashing the Mac.
+     *
+     * We enforce a minimum interval of PT_CAP_MIN_INTERVAL_TICKS between sends.
+     * If a send is rate-limited, we keep pressure_update_pending=1 so it retries.
+     * The first send (cap_last_sent=0) is always allowed.
+     */
+    {
+        unsigned long now_ticks = (unsigned long)TickCount();
+        if (peer->cold.caps.cap_last_sent != 0 &&
+            (now_ticks - peer->cold.caps.cap_last_sent) < PT_CAP_MIN_INTERVAL_TICKS) {
+            /* Too soon - keep pending flag so we retry next poll */
+            peer->cold.caps.pressure_update_pending = 1;
+            PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_PROTOCOL,
+                "Cap send rate-limited for peer %u (last=%lu, now=%lu, interval=%lu)",
+                (unsigned)peer->hot.id,
+                (unsigned long)peer->cold.caps.cap_last_sent,
+                now_ticks,
+                (unsigned long)PT_CAP_MIN_INTERVAL_TICKS);
+            return PT_OK;  /* Not an error - just deferred */
+        }
+        peer->cold.caps.cap_last_sent = (pt_tick_t)now_ticks;
+    }
 
     /* Fill in our capabilities */
     caps.max_message_size = ctx->local_max_message;

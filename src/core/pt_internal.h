@@ -186,6 +186,13 @@ typedef struct {
     uint32_t rate_bucket_tokens;        /* Available tokens (bytes) */
     uint32_t rate_bucket_max;           /* Max token accumulation */
     pt_tick_t rate_last_update;         /* Last token refill time */
+
+    /* Capability send rate limiting.
+     * We must not flood the peer with capability messages, especially when
+     * their ibuf is congested (e.g., after a heavy receive phase). Cap updates
+     * are rate-limited to at most one per PT_CAP_MIN_INTERVAL_TICKS ticks.
+     * Units match platform get_ticks(): TickCount on Mac, ms on POSIX. */
+    pt_tick_t cap_last_sent;            /* Tick count when last capability was sent */
 } pt_peer_caps;
 
 /* ========================================================================== */

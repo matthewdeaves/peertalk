@@ -1,0 +1,224 @@
+========================================
+PeerTalk One-Way Stream Test
+Version: 1.0.0
+========================================
+Memory after pool alloc: FreeMem=2781872 MaxBlock=2780192
+Buffer pool: 4 buffers × 32KB
+Initializing PeerTalk...
+Waiting for peer...
+Press any key to exit.
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+Connecting to peer...
+CONNECTED to peer 1
+Peer capabilities: max_msg=4096 recv_buf=8192
+=== SEND PHASE: 256 bytes ===
+Sent control: cmd=1 size=256 duration=30000
+MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+SEND 256: 29 KB/s (598 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+SEND 256: 30 KB/s (1221 msgs) errs=0
+SEND 256: 29 KB/s (1777 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+SEND 256: 28 KB/s (2302 msgs) errs=0
+SEND 256: 28 KB/s (2831 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+SEND COMPLETE 256 bytes: 27 KB/s (3363 msgs, 0 errors)
+Sent control: cmd=3 size=0 duration=0
+Draining for 2 seconds...
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+=== RECV PHASE: 256 bytes ===
+Sent control: cmd=2 size=256 duration=30000
+MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+RECV 256: 22 KB/s (447 msgs)
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+RECV 256: 22 KB/s (891 msgs)
+RECV 256: 22 KB/s (1336 msgs)
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+RECV 256: 22 KB/s (1781 msgs)
+RECV 256: 22 KB/s (2225 msgs)
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+RECV 256: 22 KB/s (2665 msgs)
+RECV COMPLETE 256 bytes: 22 KB/s (2665 msgs)
+Sent control: cmd=3 size=0 duration=0
+Draining for 10 seconds...
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+=== SEND PHASE: 512 bytes ===
+Sent control: cmd=1 size=512 duration=30000
+MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+SEND 512: 78 KB/s (784 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+SEND 512: 81 KB/s (1636 msgs) errs=0
+SEND 512: 84 KB/s (2523 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+SEND 512: 82 KB/s (3309 msgs) errs=0
+SEND 512: 82 KB/s (4107 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+SEND 512: 81 KB/s (4915 msgs) errs=0
+SEND COMPLETE 512 bytes: 81 KB/s (4915 msgs, 0 errors)
+Sent control: cmd=3 size=0 duration=0
+Draining for 2 seconds...
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+=== RECV PHASE: 512 bytes ===
+Sent control: cmd=2 size=512 duration=30000
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+RECV 512: 22 KB/s (225 msgs)
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+RECV 512: 22 KB/s (447 msgs)
+RECV 512: 22 KB/s (669 msgs)
+RECV 512: 22 KB/s (892 msgs)
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+RECV 512: 22 KB/s (1114 msgs)
+RECV 512: 22 KB/s (1336 msgs)
+RECV COMPLETE 512 bytes: 22 KB/s (1336 msgs)
+Sent control: cmd=3 size=0 duration=0
+Draining for 15 seconds...
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+Control msg: cmd=3 size=0 duration=0
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+=== SEND PHASE: 1024 bytes ===
+Sent control: cmd=1 size=1024 duration=30000
+MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+SEND 1024: 162 KB/s (814 msgs) errs=0
+SEND 1024: 144 KB/s (1486 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+SEND 1024: 148 KB/s (2272 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+SEND 1024: 152 KB/s (3088 msgs) errs=0
+SEND 1024: 153 KB/s (3896 msgs) errs=0
+SEND COMPLETE 1024 bytes: 156 KB/s (4686 msgs, 0 errors)
+Sent control: cmd=3 size=0 duration=0
+Draining for 2 seconds...
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+=== RECV PHASE: 1024 bytes ===
+Sent control: cmd=2 size=1024 duration=30000
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+RECV 1024: 44 KB/s (223 msgs)
+RECV 1024: 44 KB/s (443 msgs)
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+RECV 1024: 43 KB/s (657 msgs)
+RECV 1024: 44 KB/s (885 msgs)
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+RECV 1024: 44 KB/s (1107 msgs)
+RECV COMPLETE 1024 bytes: 44 KB/s (1328 msgs)
+Sent control: cmd=3 size=0 duration=0
+Draining for 15 seconds...
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+=== SEND PHASE: 2048 bytes ===
+Sent control: cmd=1 size=2048 duration=30000
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+SEND 2048: 278 KB/s (695 msgs) errs=0
+SEND 2048: 267 KB/s (1349 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+SEND 2048: 272 KB/s (2055 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+SEND 2048: 275 KB/s (2770 msgs) errs=0
+SEND 2048: 274 KB/s (3445 msgs) errs=0
+SEND COMPLETE 2048 bytes: 275 KB/s (4137 msgs, 0 errors)
+Sent control: cmd=3 size=0 duration=0
+Draining for 2 seconds...
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+=== RECV PHASE: 2048 bytes ===
+Sent control: cmd=2 size=2048 duration=30000
+MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+RECV 2048: 59 KB/s (149 msgs)
+RECV 2048: 59 KB/s (296 msgs)
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+RECV 2048: 59 KB/s (445 msgs)
+RECV 2048: 59 KB/s (593 msgs)
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+RECV 2048: 59 KB/s (741 msgs)
+RECV 2048: 59 KB/s (889 msgs)
+RECV COMPLETE 2048 bytes: 59 KB/s (889 msgs)
+Sent control: cmd=3 size=0 duration=0
+Draining for 15 seconds...
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+=== SEND PHASE: 4096 bytes ===
+Sent control: cmd=1 size=4096 duration=30000
+MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+SEND 4096: 400 KB/s (502 msgs) errs=0
+SEND 4096: 416 KB/s (1042 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+SEND 4096: 422 KB/s (1585 msgs) errs=0
+SEND 4096: 426 KB/s (2130 msgs) errs=0
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+SEND 4096: 426 KB/s (2666 msgs) errs=0
+SEND 4096: 425 KB/s (3192 msgs) errs=0
+SEND COMPLETE 4096 bytes: 424 KB/s (3192 msgs, 0 errors)
+Sent control: cmd=3 size=0 duration=0
+Draining for 2 seconds...
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+=== RECV PHASE: 4096 bytes ===
+Sent control: cmd=2 size=4096 duration=30000
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+RECV 4096: 118 KB/s (148 msgs)
+RECV 4096: 86 KB/s (217 msgs)
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+RECV 4096: 82 KB/s (308 msgs)
+RECV 4096: 73 KB/s (366 msgs)
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+RECV 4096: 75 KB/s (471 msgs)
+RECV COMPLETE 4096 bytes: 78 KB/s (592 msgs)
+Sent control: cmd=3 size=0 duration=0
+All stream tests complete
+Draining TCP buffers for 20s before log streaming...
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+Control msg: cmd=4 size=0 duration=0
+Received ACK from partner
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+========================================
+ONE-WAY STREAMING TEST RESULTS
+========================================
+ 256 bytes: SEND   27 KB/s  RECV   22 KB/s
+ 512 bytes: SEND   81 KB/s  RECV   22 KB/s
+1024 bytes: SEND  156 KB/s  RECV   44 KB/s
+2048 bytes: SEND  275 KB/s  RECV   59 KB/s
+4096 bytes: SEND  424 KB/s  RECV   78 KB/s
+========================================
+Memory: FreeMem=2571472 MaxBlock=2569984
+Streaming 8663 bytes of logs to partner...

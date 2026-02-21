@@ -1461,6 +1461,27 @@ int pt_posix_send_capability(struct pt_context *ctx, struct pt_peer *peer) {
     if (sock < 0)
         return PT_ERR_INVALID_STATE;
 
+    /* Rate-limit capability sends to prevent flooding the peer's receive buffer.
+     *
+     * When the peer (e.g., a Classic Mac) is under heavy receive load, sending
+     * many capability messages in rapid succession causes small TCP segments that
+     * pile up in an already-congested ibuf. This causes "dropping incomplete
+     * reassembly" errors and can crash MacTCP.
+     *
+     * We enforce PT_CAP_MIN_INTERVAL_MS between sends. If rate-limited, we keep
+     * pressure_update_pending=1 so the next poll retries. The first send
+     * (cap_last_sent=0) is always allowed.
+     */
+    {
+        pt_tick_t now_ms = ctx->plat->get_ticks();
+        if (peer->cold.caps.cap_last_sent != 0 &&
+            (now_ms - peer->cold.caps.cap_last_sent) < PT_CAP_MIN_INTERVAL_MS) {
+            peer->cold.caps.pressure_update_pending = 1;  /* Retry later */
+            return PT_OK;
+        }
+        peer->cold.caps.cap_last_sent = now_ms;
+    }
+
     /* Fill in our capabilities */
     caps.max_message_size = ctx->local_max_message;
     caps.preferred_chunk = ctx->local_preferred_chunk;

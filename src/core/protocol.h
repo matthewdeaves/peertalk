@@ -120,6 +120,22 @@ struct pt_peer;
 #define PT_CAP_MIN_MAX_MSG          256     /* Minimum supported */
 #define PT_CAP_MAX_MAX_MSG          8192    /* Maximum supported */
 
+/* Capability send rate limiting.
+ *
+ * Minimum interval between capability message sends, in platform ticks.
+ * On Classic Mac: TickCount() may be 60Hz (nominal) or higher in practice.
+ * We use 15 ticks which gives ~250ms at 60Hz and is still safe at higher rates.
+ *
+ * For POSIX (millisecond ticks), see PT_CAP_MIN_INTERVAL_MS in net_posix.c.
+ *
+ * This prevents flooding a congested peer with capability messages during
+ * heavy load phases. After a large receive, ibuf drains through 5+ threshold
+ * levels (CRITICAL→HIGH→MEDIUM→LOW→NONE), each normally triggering a send.
+ * Rate limiting coalesces these into at most one send per interval.
+ */
+#define PT_CAP_MIN_INTERVAL_TICKS   15      /* ~250ms at 60Hz TickCount */
+#define PT_CAP_MIN_INTERVAL_MS      200     /* 200ms for POSIX ms-based ticks */
+
 /* Fragment header constants */
 #define PT_FRAGMENT_HEADER_SIZE     8       /* Size of fragment header */
 #define PT_FRAGMENT_FLAG_FIRST      0x01    /* First fragment */

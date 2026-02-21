@@ -43,7 +43,20 @@ typedef struct {
     uint8_t     complete;         /* 1 if stream completed */
     uint8_t     overflow;         /* 1 if buffer overflowed */
     uint8_t     reserved;
+    unsigned long complete_tick;  /* TickCount when complete first became 1 */
 } LogStreamState;
+
+/* Post-stream drain: time to wait after MacTCP ACKs all log bytes before
+ * calling PeerTalk_Shutdown(). MacTCP ACKs data before the POSIX application
+ * reads it from the kernel socket buffer. Without this delay, PeerTalk_Shutdown
+ * fires TCPAbort (RST) immediately, which causes POSIX to discard any bytes it
+ * hasn't yet dequeued from its kernel TCP receive buffer.
+ *
+ * 10*60 = 600 ticks:
+ *   - At 60Hz TickCount:   600/60 = 10 seconds (conservative)
+ *   - At 1000Hz TickCount: 600ms  (ample for perf_partner to drain socket)
+ */
+#define LOG_STREAM_POST_DRAIN_TICKS (10 * 60)
 
 /* Global state (one instance per app) */
 extern LogStreamState g_log_stream;
@@ -94,6 +107,18 @@ PeerTalk_Error log_stream_result(void);
  * Get bytes sent so far
  */
 uint32_t log_stream_bytes_sent(void);
+
+/**
+ * Check if post-stream drain period has elapsed
+ *
+ * Call this instead of checking g_log_stream.complete directly.
+ * Returns 1 only after complete AND enough time has elapsed for POSIX to
+ * drain its kernel TCP receive buffer (see LOG_STREAM_POST_DRAIN_TICKS).
+ *
+ * @param now  Current TickCount value
+ * @return 1 if safe to call PeerTalk_Shutdown, 0 if still waiting
+ */
+int log_stream_post_drain_done(unsigned long now);
 
 /**
  * Cleanup log streaming state
@@ -280,6 +305,19 @@ PeerTalk_Error log_stream_result(void)
 uint32_t log_stream_bytes_sent(void)
 {
     return g_stream_bytes;
+}
+
+int log_stream_post_drain_done(unsigned long now)
+{
+    if (!g_log_stream.complete) {
+        return 0;
+    }
+    if (g_log_stream.complete_tick == 0) {
+        /* First time we see complete - record tick and keep waiting */
+        g_log_stream.complete_tick = now;
+        return 0;
+    }
+    return (now - g_log_stream.complete_tick) >= LOG_STREAM_POST_DRAIN_TICKS;
 }
 
 void log_stream_cleanup(void)

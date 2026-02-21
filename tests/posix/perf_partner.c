@@ -1124,6 +1124,7 @@ static const char *extract_test_name(const uint8_t *buffer, uint32_t len)
         { "Stress Test", "stress" },
         { "Discovery Test", "discovery" },
         { "MacTCP Test", "mactcp" },
+        { "Stream Test", "stream" },
         { NULL, NULL }
     };
     int i;
@@ -1516,6 +1517,9 @@ int main(int argc, char *argv[])
     PeerTalk_Callbacks callbacks;
     time_t start_time, now;
     time_t last_status = 0;
+
+    /* Line-buffer stdout so printf output appears promptly in Docker */
+    setvbuf(stdout, NULL, _IOLBF, 0);
 
     /* Default configuration */
     memset(&g_config, 0, sizeof(g_config));

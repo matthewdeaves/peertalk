@@ -128,6 +128,7 @@ static int g_ack_retries = 0;
 #define MAX_ACK_RETRIES 3
 static TableUI g_table;
 static unsigned long g_log_stream_start = 0;
+static unsigned long g_pre_stream_drain_start = 0;
 
 /* ========================================================================== */
 /* Utility Functions                                                           */
@@ -273,9 +274,16 @@ static void start_recv_phase(void)
 
 static void on_ack_received(void)
 {
-    StreamStats *stats = &g_test.stats[g_test.current_size_idx];
+    StreamStats *stats;
 
     g_test.waiting_for_ack = 0;
+
+    /* Guard against out-of-bounds access when ACK arrives after test complete */
+    if (g_test.current_size_idx >= (int)NUM_BUFFER_SIZES) {
+        return;
+    }
+
+    stats = &g_test.stats[g_test.current_size_idx];
 
     if (g_test.phase == 0) {
         /* Starting send phase */
@@ -875,24 +883,34 @@ int main(void)
             }
         }
 
-        /* Test complete - print results and stream logs */
+        /* Test complete - drain TCP buffers, then print results and stream logs */
         if (g_test.test_complete && !g_log_stream.streaming && !g_log_stream.complete) {
-            print_results();
-
-            status_clear();
-            status_line("Test complete!");
-            status_line("");
-
-            if (g_connected_peer) {
-                status_line("Streaming logs to partner...");
+            /* After the final RECV phase, drain for 20s before streaming logs.
+             * 30 seconds of high-speed incoming data fills TCP receive buffers;
+             * starting log streaming immediately causes the connection to fail. */
+            if (g_pre_stream_drain_start == 0) {
+                g_pre_stream_drain_start = now;
+                status_line("Draining...");
                 PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
-                    "Streaming %lu bytes of logs to partner...",
-                    (unsigned long)g_log_stream.length);
-                log_stream_send(g_ctx, g_connected_peer);
-                g_log_stream_start = TickCount();
-            } else {
-                status_line("No peer - cannot stream logs");
-                g_running = 0;
+                    "Draining TCP buffers for 20s before log streaming...");
+            } else if ((now - g_pre_stream_drain_start) >= DRAIN_WAIT_LONG_TICKS) {
+                print_results();
+
+                status_clear();
+                status_line("Test complete!");
+                status_line("");
+
+                if (g_connected_peer) {
+                    status_line("Streaming logs to partner...");
+                    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+                        "Streaming %lu bytes of logs to partner...",
+                        (unsigned long)g_log_stream.length);
+                    log_stream_send(g_ctx, g_connected_peer);
+                    g_log_stream_start = TickCount();
+                } else {
+                    status_line("No peer - cannot stream logs");
+                    g_running = 0;
+                }
             }
         }
 
@@ -901,7 +919,12 @@ int main(void)
             /* Update 'now' to prevent unsigned underflow on first iteration */
             now = TickCount();
 
-            if (g_log_stream.complete) {
+            if (log_stream_post_drain_done(now)) {
+                if (log_stream_bytes_sent() > 0) {
+                    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+                        "Log streaming complete: %lu bytes sent",
+                        (unsigned long)log_stream_bytes_sent());
+                }
                 g_running = 0;
             } else if (g_log_stream.streaming && g_connected_peer == 0) {
                 /* Peer disconnected during streaming - abort and exit */

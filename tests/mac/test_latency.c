@@ -715,7 +715,7 @@ int main(void)
 
         /* Wait for log streaming to complete, or exit if peer disconnected */
         if (g_test.test_complete) {
-            if (g_log_stream.complete) {
+            if (log_stream_post_drain_done(now)) {
                 if (log_stream_bytes_sent() > 0) {
                     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
                         "Log streaming complete: %lu bytes sent",
