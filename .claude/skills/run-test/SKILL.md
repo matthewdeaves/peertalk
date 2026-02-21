@@ -14,7 +14,7 @@ Orchestrates complete hardware testing workflow: build, deploy, execute, collect
 /run-test <test> [machine] [options]
 
 Arguments:
-  test      latency | throughput | stress | discovery | mactcp | all
+  test      latency | throughput | stream | stress | discovery | mactcp | all
   machine   Machine ID (default: performa6200)
 
 Options:
@@ -28,6 +28,9 @@ Options:
 ```bash
 # Run latency test on Performa 6200
 /run-test latency performa6200
+
+# Run one-way stream test
+/run-test stream performa6200
 
 # Run all tests on Mac SE (uses lowmem builds automatically)
 /run-test all macse
@@ -57,25 +60,19 @@ make -f Makefile.retro68 PLATFORM=mactcp lowmem_tests
 
 ### Step 2: Check/Start Test Partner
 
-Verifies the POSIX perf_partner is running in the correct mode:
+The perf_partner **auto-detects all test types**. Start it once — no mode switching needed.
 
-| Test | Partner Mode | Duration |
-|------|--------------|----------|
-| latency | echo | 2-3 min |
-| throughput | echo | 2-3 min |
-| stress | stress | ~5 min |
-| discovery | echo | 2 min |
-| mactcp | echo | 60 sec |
-
-**Mode detection:** If partner is already running, checks its mode with:
 ```bash
-docker logs perf-partner 2>&1 | grep "^Mode:"
+docker run -d --name perf-partner --network host \
+  -v "$(pwd)":/workspace -w /workspace \
+  -e MACHINE_REGISTRY="10.188.1.55:macse,10.188.1.213:performa6200" \
+  peertalk-posix:latest ./build/bin/perf_partner --verbose
 ```
 
-If mode doesn't match the required mode, restarts partner automatically.
-
-**Common mistake:** Throughput uses **echo mode** (not stream). Stream mode
-gives RECV=0 because the partner doesn't echo messages back.
+Auto-detection:
+- Echo mode (default) handles latency, throughput, stress, discovery, mactcp
+- Stream control messages (STRM magic) auto-switch to sink/stream for one-way tests
+- No `--mode` flag or restarts needed between tests
 
 ### Step 3: Execute Test
 
@@ -89,44 +86,96 @@ mcp__classic-mac-hardware__execute_binary(
 )
 ```
 
+A 60-second LaunchAPPL timeout is **normal** — tests run longer than the command timeout.
+
 ### Step 4: Monitor Completion
 
-Polls for test completion by watching for:
-- `"TEST EXITING - cleaning up..."` in partner logs
-- Log file appearing in `plan/performance/mactcp/<machine>/`
-- Timeout based on test type
+**Use short polling intervals, NOT a single long sleep.** After an initial wait, poll every 15s for new log files.
+
+| Test | Initial Wait | Max Wait |
+|------|-------------|----------|
+| latency | 90s | 4 min |
+| throughput | 90s | 4 min |
+| stream | 180s | 8 min |
+| stress | 60s | 2 min |
+| discovery | 90s | 3 min |
+| mactcp | 45s | 2 min |
+
+Completion signal: new log file in `plan/performance/mactcp/<machine>/`
 
 ### Step 5: Collect BOTH Logs
 
-Each test produces TWO logs that should be analyzed together:
+Each test produces TWO logs. **Both MUST be saved and analyzed.**
 
-1. **Mac test app log** (streamed from Mac to partner, auto-saved)
-   - Contains test results, RTT/throughput data, completion status
-   - Saved as: `plan/performance/mactcp/<machine>/<test>_YYYYMMDD_HHMMSS.log`
-   - Mac apps clear their logs at startup (fresh each run)
+1. **Mac test app log** (auto-saved by partner)
+   - Contains test results, RTT/throughput data, memory stats, verdict
+   - Auto-saved as: `plan/performance/mactcp/<machine>/<test>_YYYYMMDD_HHMMSS.log`
 
-2. **Partner log** (POSIX perf_partner output)
-   - Contains echo counts, errors, connection events
-   - Save with: `docker logs perf-partner > <test>_<timestamp>_partner.log`
+2. **Partner log** (save manually after each test)
+   - Contains echo counts, stream phase KB/s, errors, connection events
+   - Save with: `docker logs --since <start_time> perf-partner > <test>_YYYYMMDD_HHMMSS_partner.log`
+   - Save to same directory as Mac log
 
-### Step 6: Analyze BOTH Logs Together
+### Step 6: Display Summary Table
 
-Analysis should cross-reference both logs:
-1. **From Mac log**: Extract statistics (RTT, KB/s, success rates)
-2. **From Partner log**: Verify message counts, check for errors
-3. **Cross-reference**: Mac sent count should match partner echo count
-4. Compare to previous runs and suggest improvements
+**CRITICAL: Always display a formatted summary table after every test.**
+
+See [summary-tables.md](references/summary-tables.md) for the exact table format per test type.
+
+Tables combine data from BOTH logs:
+- Mac log provides: test metrics, memory stats, verdict
+- Partner log provides: POSIX-side measurements, byte counts, error verification
+
+When previous runs exist, include a comparison section showing changes.
+
+### Step 7: Output JSON Metrics
+
+**Always output a structured JSON metrics block** for `/perf-optimize` consumption:
+
+```
+========================================
+METRICS (JSON)
+========================================
+{
+  "test": "throughput",
+  "machine": "performa6200",
+  "platform": "mactcp",
+  "timestamp": "2026-02-21T14:32:10Z",
+  "status": "pass",
+  "metrics": { ... },
+  "logs": {
+    "mac": "plan/performance/mactcp/performa6200/throughput_20260221_143210.log",
+    "partner": "plan/performance/mactcp/performa6200/throughput_20260221_143210_partner.log"
+  }
+}
+========================================
+```
+
+See [metrics-output.md](references/metrics-output.md) for test-specific metric formats.
 
 ## Test Descriptions
 
 | Test | Purpose | Measures |
 |------|---------|----------|
-| latency | RTT measurement | Min/avg/max RTT per message size |
-| throughput | Streaming performance | KB/s sustained throughput |
+| latency | RTT measurement | Min/avg/max RTT per message size (16-4096B) |
+| throughput | Bidirectional echo | KB/s sustained throughput per buffer size |
+| stream | One-way streaming | True unidirectional capacity (Mac→POSIX, POSIX→Mac) |
 | stress | Connection stability | Connect/disconnect cycles, memory leaks |
-| discovery | Peer discovery | Discovery packets, unique peers |
+| discovery | Peer discovery | Discovery rate, unique peers, lost events |
 | mactcp | Basic connectivity | UDP broadcast, TCP connection |
-| all | Run all tests | Complete test suite |
+| all | Run all tests | Complete test suite sequentially |
+
+## Test Sequence for "all"
+
+Run in this order (see [test-modes.md](references/test-modes.md)):
+
+1. **latency** (~2 min) — RTT measurements
+2. **throughput** (~2.5 min) — Bidirectional echo throughput
+3. **stream** (~6 min) — One-way streaming capacity
+4. **stress** (~1 min) — Connection stability
+5. **discovery** (~2 min) — Discovery observation
+
+Display individual summary tables after each test, then an overall summary at the end.
 
 ## Machine Requirements
 
@@ -138,59 +187,6 @@ Machines are auto-detected from `machines.json`:
 | macse | 4MB | lowmem |
 
 **Mac SE requires lowmem builds!** Standard builds request 2-3MB heap and won't launch.
-
-## Output Example
-
-```
-Running Latency Test on Performa 6200
-=====================================
-
-[1/6] Building test apps...
-      ./scripts/build-mac-tests.sh mactcp perf
-      Built: test_latency.bin (45KB)
-
-[2/6] Starting test partner (echo mode)...
-      docker run -d --name perf-partner ...
-      Partner running on ports 7353/7354
-
-[3/6] Executing test via LaunchAPPL...
-      Connecting to 10.188.1.213:1984...
-      Binary transferred, executing...
-      (60s timeout - test runs longer, this is normal)
-
-[4/6] Waiting for test completion...
-      Polling partner logs every 30s...
-      Test running: 0/100 pings complete
-      Test running: 50/100 pings complete
-      Test complete! (2m 15s)
-
-[5/6] Collecting logs...
-      Mac log:     plan/performance/mactcp/performa6200/latency_20260211_143215.log
-      Partner log: plan/performance/mactcp/performa6200/latency_20260211_143215_partner.log
-
-[6/6] Analyzing results...
-
-      LATENCY RESULTS (Performa 6200)
-      ===============================
-      Size    Min    Avg    Max    Loss
-       16B    12ms   18ms   45ms   0%
-       64B    14ms   21ms   52ms   0%
-      256B    18ms   28ms   78ms   1%
-      1024B   25ms   42ms  125ms   2%
-      4096B   45ms   85ms  245ms   3%
-
-      OBSERVATIONS:
-      - RTT scales ~linearly with message size (good)
-      - Loss increases at larger sizes (expected for 68k)
-      - Max RTT spikes suggest occasional retransmits
-
-      RECOMMENDATIONS:
-      - Consider reducing default message size for reliability
-      - Buffer pressure at 4KB - check TCP_NODELAY
-
-Test complete. Partner still running for additional tests.
-Stop with: docker stop perf-partner && docker rm perf-partner
-```
 
 ## Troubleshooting
 
@@ -210,64 +206,26 @@ Stop with: docker stop perf-partner && docker rm perf-partner
 
 - Mac disconnected before log stream completed
 - Check partner logs: `docker logs perf-partner`
-- Fetch manually: `/fetch-logs <machine>`
+- Try running the test again (logs stream at end of each run)
 
 ### "Build failed"
 
 - Docker container issue
 - Rebuild container: `docker build -t peertalk-posix -f docker/Dockerfile.posix .`
 
-### "RECV=0 in throughput test"
-
-- Partner is in wrong mode (stream instead of echo)
-- Fix: Restart partner in echo mode
-  ```bash
-  docker stop perf-partner && docker rm perf-partner
-  docker run -d --name perf-partner --network host \
-    -v "$(pwd)":/workspace -w /workspace \
-    peertalk-posix:latest ./build/bin/perf_partner --mode echo --verbose
-  ```
-- Verify mode: `docker logs perf-partner 2>&1 | grep "^Mode:"`
-
-## Structured Metrics Output
-
-After analysis, outputs structured JSON metrics for automation:
-
-```
-========================================
-METRICS (JSON)
-========================================
-{
-  "test": "throughput",
-  "machine": "performa6200",
-  "status": "pass",
-  "metrics": {
-    "send_kbps": {"256": 17, "1024": 61, "2048": 94, "4096": 9},
-    "peak_kbps": 94,
-    "optimal_chunk": 2048
-  }
-}
-========================================
-```
-
-This enables `/perf-optimize` to:
-- Establish performance baselines
-- Track improvements across optimization cycles
-- Detect regressions automatically
-
-See [metrics-output.md](references/metrics-output.md) for complete format.
-
 ## Related Skills
 
 - `/build test` - Build POSIX tests
 - `/test-machine` - Verify LaunchAPPL connectivity
-- `/fetch-logs` - Manually fetch logs
 - `/execute` - Manual test execution
 - `/test-partner` - Manage partner container
 - `/perf-optimize` - Autonomous optimization using these tests
 
 ## See Also
 
+- [Summary Tables](references/summary-tables.md) - Exact table formats per test type
+- [Log Parsing](references/log-parsing.md) - Metric extraction patterns
+- [Metrics Output](references/metrics-output.md) - JSON metrics format
+- [Test Modes](references/test-modes.md) - Test durations and partner behavior
 - [Test Log Management](../../../rules/test-logs.md)
 - [Classic Mac Hardware Rules](../../../rules/classic-mac-hardware.md)
-- [machines.json](../../mcp-servers/classic-mac-hardware/machines.json)

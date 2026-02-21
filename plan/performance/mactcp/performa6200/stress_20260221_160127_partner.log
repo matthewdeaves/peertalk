@@ -1,0 +1,58 @@
+[STATUS] 8170 sec: peers=11, msgs=62834, connected=no
+[DISCOVERED] Peer 1: "MacStress" at 10.188.1.213:7354
+[STATUS] 8180 sec: peers=12, msgs=62834, connected=no
+[CONNECTED] Peer 2
+[CAPS] Peer 2: max_msg=4096 chunk=1024 pressure=0 [FRAG]
+[CAPS] Peer buffer: recv_buf=8192 optimal_chunk=2048
+[CAPS] Effective max message: 4096 bytes
+[CAPS] Optimal chunk for peer: 1024 bytes
+[MESSAGE] From peer 2: 8 bytes
+[DISCONNECTED] Peer 2 (reason=0)
+[CONNECTED] Peer 3
+[CAPS] Peer 3: max_msg=4096 chunk=1024 pressure=0 [FRAG]
+[CAPS] Peer buffer: recv_buf=8192 optimal_chunk=2048
+[CAPS] Effective max message: 4096 bytes
+[CAPS] Optimal chunk for peer: 1024 bytes
+[MESSAGE] From peer 3: 8 bytes
+[DISCONNECTED] Peer 3 (reason=0)
+[CONNECTED] Peer 4
+[CAPS] Peer 4: max_msg=4096 chunk=1024 pressure=0 [FRAG]
+[CAPS] Peer buffer: recv_buf=8192 optimal_chunk=2048
+[CAPS] Effective max message: 4096 bytes
+[CAPS] Optimal chunk for peer: 1024 bytes
+[MESSAGE] From peer 4: 8 bytes
+[DISCONNECTED] Peer 4 (reason=0)
+[CONNECTED] Peer 5
+[CAPS] Peer 5: max_msg=4096 chunk=1024 pressure=0 [FRAG]
+[CAPS] Peer buffer: recv_buf=8192 optimal_chunk=2048
+[CAPS] Effective max message: 4096 bytes
+[CAPS] Optimal chunk for peer: 1024 bytes
+[MESSAGE] From peer 5: 8 bytes
+[DISCONNECTED] Peer 5 (reason=0)
+[CONNECTED] Peer 6
+[CAPS] Peer 6: max_msg=4096 chunk=1024 pressure=0 [FRAG]
+[CAPS] Peer buffer: recv_buf=8192 optimal_chunk=2048
+[CAPS] Effective max message: 4096 bytes
+[CAPS] Optimal chunk for peer: 1024 bytes
+[DISCONNECTED] Peer 6 (reason=0)
+[CONNECTED] Peer 7
+[CAPS] Peer 7: max_msg=4096 chunk=1024 pressure=0 [FRAG]
+[CAPS] Peer buffer: recv_buf=8192 optimal_chunk=2048
+[CAPS] Effective max message: 4096 bytes
+[CAPS] Optimal chunk for peer: 1024 bytes
+[MESSAGE] From peer 7: 1024 bytes
+[LOG] Detected log stream marker from peer 7 (IP 0x0ABC01D5)
+[LOG] Started receiving logs from MacStress (IP 0x0ABC01D5, 2461 bytes expected)
+[MESSAGE] From peer 7: 1024 bytes
+[LOG] Received 2048/2461 bytes
+[MESSAGE] From peer 7: 413 bytes
+[LOG] Received 2461/2461 bytes
+[LOG] Saved 2453 bytes to plan/performance/mactcp/performa6200/stress_20260221_160127.log
+
+========== stress METRICS ==========
+=====================================
+
+[STATUS] 8190 sec: peers=12, msgs=62841, connected=yes
+[DISCONNECTED] Peer 7 (reason=0)
+[STATUS] 8200 sec: peers=12, msgs=62841, connected=no
+[STATUS] 8210 sec: peers=12, msgs=62841, connected=no

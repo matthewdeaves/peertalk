@@ -1,70 +1,48 @@
-# Test-to-Partner Mode Mapping
+# Test Apps and Partner Behavior
 
-Maps test app names to the required perf_partner mode and expected duration.
+Reference for test apps, expected durations, and partner auto-detection.
 
-## Mode Reference
+## Partner Auto-Detection
 
-| Test App | Partner Mode | Duration | Description |
-|----------|--------------|----------|-------------|
-| test_latency | echo | 2-3 min | RTT measurement with various message sizes |
-| test_throughput | echo | 2-3 min | Bidirectional throughput measurement |
-| test_stress | stress | ~5 min | Rapid connect/disconnect cycles |
-| test_discovery | echo | 2 min | Extended discovery packet counting |
-| test_mactcp | echo | 60 sec | Basic connectivity test |
+**The perf_partner auto-detects ALL test types.** Start it once — no mode switching needed.
 
-**IMPORTANT:** Throughput uses **echo mode** (not stream). The Mac test sends messages
-and measures both SEND and RECV rates. Echo mode returns messages for proper RECV
-measurement. Stream mode gives RECV=0 because the partner sends its own data instead
-of echoing.
-
-## Partner Mode Details
-
-### Echo Mode (--mode echo)
-
-Used for: **latency, throughput, discovery, mactcp**
-
-Behavior:
-- Echoes all received messages back unchanged
-- Preserves timestamp for RTT calculation
-- Uses retry queue for backpressure handling
-- No sleep in fast mode for minimal latency
-
-Command:
 ```bash
-./build/bin/perf_partner --mode echo --verbose
+docker run -d --name perf-partner --network host \
+  -v "$(pwd)":/workspace -w /workspace \
+  -e MACHINE_REGISTRY="10.188.1.55:macse,10.188.1.213:performa6200" \
+  peertalk-posix:latest ./build/bin/perf_partner --verbose
 ```
 
-### Stream Mode (--mode stream)
+How auto-detection works:
+- **Echo mode** is the default — handles latency, throughput, stress, discovery, mactcp
+- **Stream mode** activates automatically when Mac sends STRM control messages
+  - `START_SEND` command → partner switches to sink (receives one-way data)
+  - `START_RECV` command → partner switches to stream (sends one-way data)
+  - `DONE` command → partner switches back to echo mode
+- No `--mode` flag needed. No restarts between tests.
 
-Used for: **NOT USED by current tests** (reserved for future one-way streaming tests)
+## Test Reference
 
-Behavior:
-- Streams data continuously to connected peer
-- Does NOT echo received messages
-- Configurable message size (--size)
-- Reports KB/s when complete
+| Test App | Duration | Initial Wait | Description | Partner Behavior |
+|----------|----------|-------------|-------------|------------------|
+| test_latency | ~2 min | 90s | RTT per message size (16-4096B) | Echoes pings back |
+| test_throughput | ~2.5 min | 90s | Bidirectional echo throughput | Echoes data back |
+| test_stream | ~6 min | 180s | One-way streaming capacity | Auto-detects STRM: sinks/streams |
+| test_stress | ~1 min | 60s | Rapid connect/disconnect cycles | Echoes, handles reconnects |
+| test_discovery | ~2 min | 90s | Discovery packet counting | Responds to UDP broadcasts |
+| test_mactcp | ~45 sec | 45s | Basic connectivity validation | Echoes test messages |
 
-Command:
-```bash
-./build/bin/perf_partner --mode stream --size 4096 --verbose
-```
+## Test Sequence for "all"
 
-**WARNING:** Using stream mode with test_throughput gives RECV=0 because the partner
-doesn't echo messages back.
+Run in this order (connectivity first, then performance, then stability):
 
-### Stress Mode (--mode stress)
+1. **latency** (3 min) — RTT measurements across message sizes
+2. **throughput** (3 min) — Bidirectional echo throughput
+3. **stream** (5-8 min) — One-way streaming (true unidirectional capacity)
+4. **stress** (1-2 min) — Connection stability and memory leaks
+5. **discovery** (2 min) — Extended discovery observation
 
-Used for: stress
-
-Behavior:
-- Accepts rapid connections
-- ACKs messages immediately
-- Tracks connect/disconnect cycles
-
-Command:
-```bash
-./build/bin/perf_partner --mode stress --verbose
-```
+No partner restarts needed between tests.
 
 ## Binary Paths
 
@@ -73,6 +51,7 @@ Command:
 ```
 build/mac/test_latency.bin
 build/mac/test_throughput.bin
+build/mac/test_stream.bin
 build/mac/test_stress.bin
 build/mac/test_discovery.bin
 build/mac/test_mactcp.bin
@@ -83,42 +62,25 @@ build/mac/test_mactcp.bin
 ```
 build/mac/test_latency_lowmem.bin
 build/mac/test_throughput_lowmem.bin
+build/mac/test_stream_lowmem.bin
 build/mac/test_stress_lowmem.bin
 build/mac/test_discovery_lowmem.bin
 build/mac/test_mactcp_lowmem.bin
 ```
 
-## Test Sequence for "all"
+## LaunchAPPL Timeout Expectations
 
-Run in this order (by complexity):
+| Test | LaunchAPPL Timeout? | Reason |
+|------|---------------------|--------|
+| test_latency | Yes (60s timeout) | Runs 2-3 min total |
+| test_throughput | Yes (60s timeout) | Runs 2-3 min total |
+| test_stream | Yes (60s timeout) | Runs 5-8 min total |
+| test_stress | Sometimes | 5 cycles ~30-60s, may finish in time |
+| test_discovery | Yes (60s timeout) | Fixed 120s duration |
+| test_mactcp | No | Completes within 60s |
 
-1. mactcp (60s) - Validates basic connectivity first
-2. discovery (2min) - Tests UDP broadcast
-3. latency (3min) - Measures RTT
-4. throughput (3min) - Bidirectional throughput
-5. stress (5min) - Tests stability last
-
-Switch partner mode between tests as needed:
-- mactcp → echo
-- discovery → echo (same mode, no restart)
-- latency → echo (same mode, no restart)
-- throughput → echo (same mode, no restart)
-- stress → stress (restart partner)
-
-## Mode Detection
-
-To detect the current partner mode, check startup logs:
-
-```bash
-docker logs perf-partner 2>&1 | grep -E "^Mode:"
-```
-
-Output: `Mode: echo` or `Mode: stream` or `Mode: stress`
-
-**Always verify mode before running a test.** Wrong mode causes:
-- Echo mode for stress test → connection state issues
-- Stream mode for throughput → RECV=0 (no echoes)
-- Stress mode for latency → incorrect timing data
+A 60-second LaunchAPPL timeout is **normal and expected** for long-running tests.
+The test continues running on the Mac beyond the timeout.
 
 ## Port Usage
 
@@ -127,3 +89,17 @@ All tests use:
 - TCP: 7354
 
 Partner must bind to these ports. Use `--network host` in Docker.
+**Run only ONE test at a time** — they share the same ports.
+
+## Verifying Partner Status
+
+```bash
+# Check if running
+docker ps --filter name=perf-partner --format "{{.Names}} {{.Status}}"
+
+# Check startup output
+docker logs perf-partner 2>&1 | head -10
+
+# Check recent activity
+docker logs --tail 20 perf-partner 2>&1
+```
