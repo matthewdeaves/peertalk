@@ -652,10 +652,10 @@ int pt_peer_should_throttle(struct pt_peer *peer, uint8_t priority)
 
     /* Decision thresholds based on peer's reported pressure:
      *
-     * 0-50:  No throttle (send normally)
-     * 50-75: Light throttle (skip LOW priority)
-     * 75-90: Heavy throttle (skip NORMAL and LOW)
-     * 90+:   Blocking (only CRITICAL passes)
+     * 0-49:  No throttle (send normally)
+     * 50-84: Light throttle (skip LOW priority)
+     * 85-94: Heavy throttle (skip NORMAL and LOW)
+     * 95+:   Blocking (only CRITICAL passes)
      *
      * This implements sender-side flow control based on receiver feedback.
      * The receiver reports its queue pressure via capability updates,

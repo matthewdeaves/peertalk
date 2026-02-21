@@ -977,37 +977,37 @@ static void test_flow_control(void) {
         return;
     }
 
-    /* Test 3: High pressure (75%) - throttle LOW and NORMAL */
-    peer.cold.caps.buffer_pressure = 75;
+    /* Test 3: High pressure (85%) - throttle LOW and NORMAL */
+    peer.cold.caps.buffer_pressure = 85;
     if (!pt_peer_should_throttle(&peer, PT_PRIORITY_LOW)) {
-        FAIL("Should throttle LOW at 75%% pressure");
+        FAIL("Should throttle LOW at 85%% pressure");
         return;
     }
     if (!pt_peer_should_throttle(&peer, PT_PRIORITY_NORMAL)) {
-        FAIL("Should throttle NORMAL at 75%% pressure");
+        FAIL("Should throttle NORMAL at 85%% pressure");
         return;
     }
     if (pt_peer_should_throttle(&peer, PT_PRIORITY_HIGH)) {
-        FAIL("Should not throttle HIGH at 75%% pressure");
+        FAIL("Should not throttle HIGH at 85%% pressure");
         return;
     }
 
-    /* Test 4: Critical pressure (90%) - only CRITICAL passes */
-    peer.cold.caps.buffer_pressure = 90;
+    /* Test 4: Critical pressure (95%) - only CRITICAL passes */
+    peer.cold.caps.buffer_pressure = 95;
     if (!pt_peer_should_throttle(&peer, PT_PRIORITY_LOW)) {
-        FAIL("Should throttle LOW at 90%% pressure");
+        FAIL("Should throttle LOW at 95%% pressure");
         return;
     }
     if (!pt_peer_should_throttle(&peer, PT_PRIORITY_NORMAL)) {
-        FAIL("Should throttle NORMAL at 90%% pressure");
+        FAIL("Should throttle NORMAL at 95%% pressure");
         return;
     }
     if (!pt_peer_should_throttle(&peer, PT_PRIORITY_HIGH)) {
-        FAIL("Should throttle HIGH at 90%% pressure");
+        FAIL("Should throttle HIGH at 95%% pressure");
         return;
     }
     if (pt_peer_should_throttle(&peer, PT_PRIORITY_CRITICAL)) {
-        FAIL("Should NOT throttle CRITICAL at 90%% pressure");
+        FAIL("Should NOT throttle CRITICAL at 95%% pressure");
         return;
     }
 
