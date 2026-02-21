@@ -101,6 +101,8 @@ static PT_Log *g_log = NULL;
 static PeerTalk_BufferPool *g_buffer_pool = NULL;
 static StressTest g_test;
 static int g_running = 1;
+static int g_results_printed = 0;
+static int g_log_peer_connected = 0;
 
 /* ========================================================================== */
 /* Memory Tracking                                                             */
@@ -402,6 +404,14 @@ static void on_peer_connected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
     (void)ctx;
     (void)user_data;
 
+    if (g_test.state == STATE_COMPLETE) {
+        /* Reconnected for log streaming */
+        PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+            "CONNECTED to peer %u for log streaming", (unsigned)peer_id);
+        g_log_peer_connected = 1;
+        return;
+    }
+
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
         "CONNECTED to peer %u (cycle %d)", (unsigned)peer_id, g_test.cycle_count + 1);
 
@@ -419,7 +429,10 @@ static void on_peer_disconnected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
         "DISCONNECTED from peer %u (reason=%d)", (unsigned)peer_id, reason);
 
-    if (g_test.state == STATE_DISCONNECTING || g_test.state == STATE_CONNECTED) {
+    if (g_test.state == STATE_COMPLETE) {
+        /* Disconnected during log streaming reconnect */
+        g_log_peer_connected = 0;
+    } else if (g_test.state == STATE_DISCONNECTING || g_test.state == STATE_CONNECTED) {
         complete_cycle();
     }
 }
@@ -581,24 +594,45 @@ int main(void)
 
         /* Test complete - print results and stream logs */
         if (g_test.state == STATE_COMPLETE && !g_log_stream.streaming && !g_log_stream.complete) {
-            print_results();
+            if (!g_results_printed) {
+                print_results();
+                g_results_printed = 1;
 
-            status_clear();
-            status_line("Test complete!");
-            status_line("");
+                status_clear();
+                status_line("Test complete!");
+                status_line("");
 
-            /* Stream logs if we have a connected peer */
-            if (g_test.target_peer != 0 && g_test.state == STATE_CONNECTED) {
+                /* Reconnect to peer for log streaming */
+                if (g_test.target_peer != 0) {
+                    status_line("Reconnecting for logs...");
+                    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+                        "Reconnecting to peer %u for log streaming...",
+                        (unsigned)g_test.target_peer);
+                    if (PeerTalk_Connect(g_ctx, g_test.target_peer) != PT_OK) {
+                        PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                            "Failed to reconnect - skipping log streaming");
+                        g_running = 0;
+                    }
+                } else {
+                    status_line("No peer - cannot stream logs");
+                    PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                        "No target peer for log streaming");
+                    g_running = 0;
+                }
+            }
+
+            /* Wait for reconnection before streaming */
+            if (g_test.target_peer != 0 && !g_log_peer_connected) {
+                continue;
+            }
+
+            /* Connected - stream logs */
+            if (g_log_peer_connected) {
                 status_line("Streaming logs to partner...");
                 PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
                     "Streaming %lu bytes of logs to partner...",
                     (unsigned long)g_log_stream.length);
                 log_stream_send(g_ctx, g_test.target_peer);
-            } else {
-                status_line("No peer - cannot stream logs");
-                PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
-                    "Test completed but not connected - skipping log streaming");
-                g_running = 0;
             }
         }
 
@@ -611,7 +645,7 @@ int main(void)
                         (unsigned long)log_stream_bytes_sent());
                 }
                 g_running = 0;
-            } else if (g_log_stream.streaming && g_test.target_peer == 0) {
+            } else if (g_log_stream.streaming && !g_log_peer_connected) {
                 /* Peer disconnected during streaming - abort and exit */
                 PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
                     "Peer disconnected during log streaming - exiting");

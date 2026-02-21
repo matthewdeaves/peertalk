@@ -28,7 +28,6 @@
 #include "peertalk.h"
 #include "pt_log.h"
 #include "status_window.h"
-#include "table_ui.h"
 
 /* Log streaming - sends logs to test partner at completion */
 #define LOG_STREAM_IMPLEMENTATION
@@ -91,7 +90,6 @@ static int g_running = 1;
 static int g_test_complete = 0;
 static PeerTalk_PeerID g_first_peer = 0;
 static PeerTalk_PeerID g_connected_peer = 0;
-static TableUI g_table;
 
 /* ========================================================================== */
 /* Utility Functions                                                           */
@@ -158,7 +156,6 @@ static void report_progress(void)
     unsigned long elapsed_sec = elapsed_ticks / 60;
     int i;
     int present_count = 0;
-    int table_rows;
 
     /* Count currently present peers */
     for (i = 0; i < g_stats.peer_count; i++) {
@@ -176,47 +173,28 @@ static void report_progress(void)
         g_stats.peer_lost_events,
         g_stats.peer_recovered_events);
 
-    /* Build peer tracking table */
-    table_rows = g_stats.peer_count > 0 ? g_stats.peer_count : 1;
-    if (table_rows > 8) table_rows = 8;  /* Limit rows for display */
-
-    table_init(&g_table, NULL, table_rows, 4);
-    table_set_header(&g_table, 0, "Name", 12, TABLE_ALIGN_LEFT);
-    table_set_header(&g_table, 1, "IP", 15, TABLE_ALIGN_LEFT);
-    table_set_header(&g_table, 2, "#", 4, TABLE_ALIGN_RIGHT);
-    table_set_header(&g_table, 3, "Status", 6, TABLE_ALIGN_LEFT);
+    /* Update display */
+    status_clear();
+    status_linef("Elapsed: %lu/%d sec", elapsed_sec, TEST_DURATION_SEC);
+    status_linef("Discoveries: %d  Unique: %d",
+                 g_stats.total_discoveries, g_stats.unique_peers_found);
+    status_line("");
 
     if (g_stats.peer_count == 0) {
-        /* No peers discovered yet */
-        table_set_cell_str(&g_table, 0, 0, "(waiting)");
-        table_clear_cell(&g_table, 0, 1);
-        table_clear_cell(&g_table, 0, 2);
-        table_clear_cell(&g_table, 0, 3);
+        status_line("Waiting for peers...");
     } else {
         for (i = 0; i < g_stats.peer_count && i < 8; i++) {
             TrackedPeer *peer = &g_stats.peers[i];
             char ip_str[20];
-            char name_short[13];
-
-            /* Truncate name to fit column */
-            strncpy(name_short, peer->name, 12);
-            name_short[12] = '\0';
 
             ip_to_str(peer->address, ip_str, sizeof(ip_str));
 
-            table_set_cell_str(&g_table, i, 0, name_short);
-            table_set_cell_str(&g_table, i, 1, ip_str);
-            table_set_cell_int(&g_table, i, 2, peer->discovery_count);
-            table_set_cell_str(&g_table, i, 3, peer->is_present ? "OK" : "LOST");
+            status_linef("%s (%s)", peer->name, ip_str);
+            status_linef("  Seen: %d  Lost: %d  %s",
+                         peer->discovery_count, peer->lost_count,
+                         peer->is_present ? "OK" : "LOST");
         }
     }
-
-    table_set_current_row(&g_table, -1);  /* No current row marker */
-    table_render(&g_table);
-
-    /* Show summary below table */
-    status_linef("Elapsed: %lu/%d sec  Total: %d",
-                 elapsed_sec, TEST_DURATION_SEC, g_stats.total_discoveries);
 
     /* Log per-peer stats */
     for (i = 0; i < g_stats.peer_count; i++) {
