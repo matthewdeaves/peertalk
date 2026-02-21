@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2026-02-21 16:44:54</td>
+            <td class="headerValue">2026-02-21 16:53:58</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">22</td>
@@ -339,7 +339,7 @@
 <a name="277"><span class="lineNum">     277 </span>            :  * Logging</a>
 <a name="278"><span class="lineNum">     278 </span>            :  *============================================================================*/</a>
 <a name="279"><span class="lineNum">     279 </span>            : </a>
-<a name="280"><span class="lineNum">     280 </span><span class="lineCov">      19165 : void PT_LogWrite(</span></a>
+<a name="280"><span class="lineNum">     280 </span><span class="lineCov">      19147 : void PT_LogWrite(</span></a>
 <a name="281"><span class="lineNum">     281 </span>            :     PT_Log         *log,</a>
 <a name="282"><span class="lineNum">     282 </span>            :     PT_LogLevel     level,</a>
 <a name="283"><span class="lineNum">     283 </span>            :     PT_LogCategory  category,</a>
@@ -347,25 +347,25 @@
 <a name="285"><span class="lineNum">     285 </span>            :     ...</a>
 <a name="286"><span class="lineNum">     286 </span>            : ) {</a>
 <a name="287"><span class="lineNum">     287 </span>            :     va_list args;</a>
-<a name="288"><span class="lineNum">     288 </span><span class="lineCov">      19165 :     va_start(args, fmt);</span></a>
-<a name="289"><span class="lineNum">     289 </span><span class="lineCov">      19165 :     PT_LogWriteV(log, level, category, fmt, args);</span></a>
-<a name="290"><span class="lineNum">     290 </span><span class="lineCov">      19204 :     va_end(args);</span></a>
-<a name="291"><span class="lineNum">     291 </span><span class="lineCov">      19204 : }</span></a>
+<a name="288"><span class="lineNum">     288 </span><span class="lineCov">      19147 :     va_start(args, fmt);</span></a>
+<a name="289"><span class="lineNum">     289 </span><span class="lineCov">      19147 :     PT_LogWriteV(log, level, category, fmt, args);</span></a>
+<a name="290"><span class="lineNum">     290 </span><span class="lineCov">      19198 :     va_end(args);</span></a>
+<a name="291"><span class="lineNum">     291 </span><span class="lineCov">      19198 : }</span></a>
 <a name="292"><span class="lineNum">     292 </span>            : </a>
-<a name="293"><span class="lineNum">     293 </span><span class="lineCov">      19137 : void PT_LogWriteV(</span></a>
+<a name="293"><span class="lineNum">     293 </span><span class="lineCov">      19139 : void PT_LogWriteV(</span></a>
 <a name="294"><span class="lineNum">     294 </span>            :     PT_Log         *log,</a>
 <a name="295"><span class="lineNum">     295 </span>            :     PT_LogLevel     level,</a>
 <a name="296"><span class="lineNum">     296 </span>            :     PT_LogCategory  category,</a>
 <a name="297"><span class="lineNum">     297 </span>            :     const char     *fmt,</a>
 <a name="298"><span class="lineNum">     298 </span>            :     va_list         args</a>
 <a name="299"><span class="lineNum">     299 </span>            : ) {</a>
-<a name="300"><span class="lineNum">     300 </span><span class="lineCov">      19465 :     if (!log) return;</span></a>
+<a name="300"><span class="lineNum">     300 </span><span class="lineCov">      19467 :     if (!log) return;</span></a>
 <a name="301"><span class="lineNum">     301 </span>            : </a>
 <a name="302"><span class="lineNum">     302 </span>            :     /* Filter by level (early exit before allocation) */</a>
-<a name="303"><span class="lineNum">     303 </span><span class="lineCov">      19074 :     if (level &gt; log-&gt;level) return;</span></a>
+<a name="303"><span class="lineNum">     303 </span><span class="lineCov">      19076 :     if (level &gt; log-&gt;level) return;</span></a>
 <a name="304"><span class="lineNum">     304 </span>            : </a>
 <a name="305"><span class="lineNum">     305 </span>            :     /* Filter by category (early exit before allocation) */</a>
-<a name="306"><span class="lineNum">     306 </span><span class="lineCov">      18750 :     if (!(category &amp; log-&gt;categories)) return;</span></a>
+<a name="306"><span class="lineNum">     306 </span><span class="lineCov">      18752 :     if (!(category &amp; log-&gt;categories)) return;</span></a>
 <a name="307"><span class="lineNum">     307 </span>            : </a>
 <a name="308"><span class="lineNum">     308 </span>            :     /* Now allocate stack buffer (only if passing filters) */</a>
 <a name="309"><span class="lineNum">     309 </span>            :     char line[PT_LOG_LINE_MAX];</a>
@@ -373,7 +373,7 @@
 <a name="311"><span class="lineNum">     311 </span>            :     const char *level_name;</a>
 <a name="312"><span class="lineNum">     312 </span>            :     int prefix_len, total_len;</a>
 <a name="313"><span class="lineNum">     313 </span>            : </a>
-<a name="314"><span class="lineNum">     314 </span><span class="lineCov">      18746 :     pthread_mutex_lock(&amp;log-&gt;mutex);</span></a>
+<a name="314"><span class="lineNum">     314 </span><span class="lineCov">      18748 :     pthread_mutex_lock(&amp;log-&gt;mutex);</span></a>
 <a name="315"><span class="lineNum">     315 </span>            : </a>
 <a name="316"><span class="lineNum">     316 </span>            :     /* Get timestamp */</a>
 <a name="317"><span class="lineNum">     317 </span>            :     struct timeval now;</a>
@@ -486,15 +486,15 @@
 <a name="424"><span class="lineNum">     424 </span>            :     );</a>
 <a name="425"><span class="lineNum">     425 </span>            : }</a>
 <a name="426"><span class="lineNum">     426 </span>            : </a>
-<a name="427"><span class="lineNum">     427 </span><span class="lineCov">       8004 : uint32_t PT_LogNextSeq(PT_Log *log) {</span></a>
-<a name="428"><span class="lineNum">     428 </span><span class="lineCov">       8004 :     if (!log) return 0;</span></a>
+<a name="427"><span class="lineNum">     427 </span><span class="lineCov">       7991 : uint32_t PT_LogNextSeq(PT_Log *log) {</span></a>
+<a name="428"><span class="lineNum">     428 </span><span class="lineCov">       7991 :     if (!log) return 0;</span></a>
 <a name="429"><span class="lineNum">     429 </span>            : </a>
 <a name="430"><span class="lineNum">     430 </span>            :     uint32_t seq;</a>
-<a name="431"><span class="lineNum">     431 </span><span class="lineCov">       8004 :     pthread_mutex_lock(&amp;log-&gt;mutex);</span></a>
+<a name="431"><span class="lineNum">     431 </span><span class="lineCov">       7991 :     pthread_mutex_lock(&amp;log-&gt;mutex);</span></a>
 <a name="432"><span class="lineNum">     432 </span><span class="lineCov">       8015 :     seq = log-&gt;next_seq++;</span></a>
 <a name="433"><span class="lineNum">     433 </span><span class="lineCov">       8015 :     pthread_mutex_unlock(&amp;log-&gt;mutex);</span></a>
 <a name="434"><span class="lineNum">     434 </span>            : </a>
-<a name="435"><span class="lineNum">     435 </span><span class="lineCov">       8008 :     return seq;</span></a>
+<a name="435"><span class="lineNum">     435 </span><span class="lineCov">       8004 :     return seq;</span></a>
 <a name="436"><span class="lineNum">     436 </span>            : }</a>
 <a name="437"><span class="lineNum">     437 </span>            : </a>
 <a name="438"><span class="lineNum">     438 </span><span class="lineCov">      18856 : const char *PT_LogLevelName(PT_LogLevel level) {</span></a>
