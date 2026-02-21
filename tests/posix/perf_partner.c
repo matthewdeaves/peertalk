@@ -1123,6 +1123,7 @@ static const char *extract_test_name(const uint8_t *buffer, uint32_t len)
         { "Throughput Test", "throughput" },
         { "Stress Test", "stress" },
         { "Discovery Test", "discovery" },
+        { "Discovery started", "discovery" },
         { "MacTCP Test", "mactcp" },
         { "Stream Test", "stream" },
         { NULL, NULL }
