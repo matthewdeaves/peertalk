@@ -414,7 +414,8 @@ coverage-local:
 	        $(BIN_DIR)/test_tcp_send_recv $(BIN_DIR)/test_discovery_recv \
 	        $(BIN_DIR)/test_error_strings $(BIN_DIR)/test_perf_benchmarks \
 	        $(BIN_DIR)/test_protocol_fuzz $(BIN_DIR)/test_direct_buffer \
-	        $(BIN_DIR)/test_two_tier_queue $(BIN_DIR)/test_compact_header
+	        $(BIN_DIR)/test_two_tier_queue $(BIN_DIR)/test_compact_header \
+	        $(BIN_DIR)/test_streaming
 	$(MAKE) test-local
 	lcov --capture --directory $(OBJ_DIR) --output-file $(COV_DIR)/coverage.info
 	lcov --remove $(COV_DIR)/coverage.info '/usr/*' --ignore-errors unused --output-file $(COV_DIR)/coverage.info
