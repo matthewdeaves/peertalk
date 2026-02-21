@@ -14,7 +14,7 @@ Orchestrates complete hardware testing workflow: build, deploy, execute, collect
 /run-test <test> [machine] [options]
 
 Arguments:
-  test      latency | throughput | stream | stress | discovery | mactcp | all
+  test      latency | throughput | stream | stress | discovery | all
   machine   Machine ID (default: performa6200)
 
 Options:
@@ -55,7 +55,7 @@ Automatically builds the correct variant based on machine memory:
 ./scripts/build-mac-tests.sh mactcp perf
 
 # Lowmem (Mac SE)
-make -f Makefile.retro68 PLATFORM=mactcp lowmem_tests
+./scripts/build-mac-tests.sh mactcp lowmem
 ```
 
 ### Step 2: Check/Start Test Partner
@@ -64,13 +64,13 @@ The perf_partner **auto-detects all test types**. Start it once — no mode swit
 
 ```bash
 docker run -d --name perf-partner --network host \
-  -v "$(pwd)":/workspace -w /workspace \
+  -u "$(id -u):$(id -g)" -v "$(pwd)":/workspace -w /workspace \
   -e MACHINE_REGISTRY="10.188.1.55:macse,10.188.1.213:performa6200" \
   peertalk-posix:latest ./build/bin/perf_partner --verbose
 ```
 
 Auto-detection:
-- Echo mode (default) handles latency, throughput, stress, discovery, mactcp
+- Echo mode (default) handles latency, throughput, stress, discovery
 - Stream control messages (STRM magic) auto-switch to sink/stream for one-way tests
 - No `--mode` flag or restarts needed between tests
 
@@ -99,7 +99,6 @@ A 60-second LaunchAPPL timeout is **normal** — tests run longer than the comma
 | stream | 180s | 8 min |
 | stress | 60s | 2 min |
 | discovery | 90s | 3 min |
-| mactcp | 45s | 2 min |
 
 Completion signal: new log file in `plan/performance/mactcp/<machine>/`
 
@@ -162,7 +161,6 @@ See [metrics-output.md](references/metrics-output.md) for test-specific metric f
 | stream | One-way streaming | True unidirectional capacity (Mac→POSIX, POSIX→Mac) |
 | stress | Connection stability | Connect/disconnect cycles, memory leaks |
 | discovery | Peer discovery | Discovery rate, unique peers, lost events |
-| mactcp | Basic connectivity | UDP broadcast, TCP connection |
 | all | Run all tests | Complete test suite sequentially |
 
 ## Test Sequence for "all"

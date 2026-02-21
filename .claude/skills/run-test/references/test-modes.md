@@ -8,13 +8,13 @@ Reference for test apps, expected durations, and partner auto-detection.
 
 ```bash
 docker run -d --name perf-partner --network host \
-  -v "$(pwd)":/workspace -w /workspace \
+  -u "$(id -u):$(id -g)" -v "$(pwd)":/workspace -w /workspace \
   -e MACHINE_REGISTRY="10.188.1.55:macse,10.188.1.213:performa6200" \
   peertalk-posix:latest ./build/bin/perf_partner --verbose
 ```
 
 How auto-detection works:
-- **Echo mode** is the default — handles latency, throughput, stress, discovery, mactcp
+- **Echo mode** is the default — handles latency, throughput, stress, discovery
 - **Stream mode** activates automatically when Mac sends STRM control messages
   - `START_SEND` command → partner switches to sink (receives one-way data)
   - `START_RECV` command → partner switches to stream (sends one-way data)
@@ -30,7 +30,6 @@ How auto-detection works:
 | test_stream | ~6 min | 180s | One-way streaming capacity | Auto-detects STRM: sinks/streams |
 | test_stress | ~1 min | 60s | Rapid connect/disconnect cycles | Echoes, handles reconnects |
 | test_discovery | ~2 min | 90s | Discovery packet counting | Responds to UDP broadcasts |
-| test_mactcp | ~45 sec | 45s | Basic connectivity validation | Echoes test messages |
 
 ## Test Sequence for "all"
 
@@ -54,7 +53,6 @@ build/mac/test_throughput.bin
 build/mac/test_stream.bin
 build/mac/test_stress.bin
 build/mac/test_discovery.bin
-build/mac/test_mactcp.bin
 ```
 
 ### Lowmem Builds (4MB machines)
@@ -65,7 +63,6 @@ build/mac/test_throughput_lowmem.bin
 build/mac/test_stream_lowmem.bin
 build/mac/test_stress_lowmem.bin
 build/mac/test_discovery_lowmem.bin
-build/mac/test_mactcp_lowmem.bin
 ```
 
 ## LaunchAPPL Timeout Expectations
@@ -77,7 +74,6 @@ build/mac/test_mactcp_lowmem.bin
 | test_stream | Yes (60s timeout) | Runs 5-8 min total |
 | test_stress | Sometimes | 5 cycles ~30-60s, may finish in time |
 | test_discovery | Yes (60s timeout) | Fixed 120s duration |
-| test_mactcp | No | Completes within 60s |
 
 A 60-second LaunchAPPL timeout is **normal and expected** for long-running tests.
 The test continues running on the Mac beyond the timeout.

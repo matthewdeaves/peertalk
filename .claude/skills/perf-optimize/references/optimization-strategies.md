@@ -296,5 +296,5 @@ Use Edit tool with:
 
 Always verify tests pass after rollback:
 ```bash
-docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make test
+docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make test
 ```

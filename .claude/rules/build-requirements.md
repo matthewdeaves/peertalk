@@ -9,6 +9,12 @@
 3. **Clean isolation** - No pollution of host system with build artifacts
 4. **CI parity** - Local builds match exactly what runs in GitHub Actions
 
+## CRITICAL: Always Use --user Flag
+
+**Every `docker run` command MUST include `-u "$(id -u):$(id -g)"`** to prevent build artifacts from being owned by root. Without this flag, Docker runs as root inside the container, creating root-owned files on the host that cannot be cleaned or overwritten without `sudo`.
+
+Prefer the Makefile docker targets (`make docker-test`, `make docker-coverage`, etc.) which already include the correct `--user` flag.
+
 ## Prohibited: Direct Host Commands
 
 **NEVER run these directly on the host:**
@@ -26,8 +32,8 @@
 **POSIX binaries MUST run inside Docker** (they're compiled for the container environment):
 
 ```bash
-# CORRECT - run POSIX test binary in Docker
-docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest ./build/bin/test_partner
+# CORRECT - run POSIX test binary in Docker (--user prevents root-owned files)
+docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest ./build/bin/test_partner
 
 # WRONG - never run POSIX binaries directly on host
 ./build/bin/test_partner       # NO!
@@ -53,8 +59,8 @@ See `.claude/rules/classic-mac-hardware.md` for MCP enforcement rules.
 ## Compiling Individual Files
 
 ```bash
-# CORRECT - compile in Docker
-docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest \
+# CORRECT - compile in Docker (--user prevents root-owned files)
+docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest \
     gcc -Wall -std=c99 -I./include -o build/bin/test_partner tests/posix/test_partner.c
 
 # WRONG - never compile on host
@@ -73,10 +79,13 @@ If Docker doesn't work:
 ### POSIX Builds and Tests
 
 ```bash
-# Correct - use Docker
-docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make test
-docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make coverage
-docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make cppcheck
+# Correct - use Makefile docker targets (preferred, already includes --user)
+make docker-test
+make docker-coverage
+make docker-analyze
+
+# Or use raw docker run with --user flag
+docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make test
 
 # WRONG - never do this
 make test        # NO! Uses host toolchain
@@ -98,7 +107,7 @@ make -C src/mactcp  # NO! Will fail or use wrong toolchain
 
 ```bash
 # Correct - use Docker
-docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make cppcheck
+docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make cppcheck
 
 # WRONG
 cppcheck src/     # NO! Different version than CI
@@ -108,11 +117,11 @@ cppcheck src/     # NO! Different version than CI
 
 | Task | Command |
 |------|---------|
-| Run tests | `docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make test` |
-| Coverage | `docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make coverage` |
-| Cppcheck | `docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make cppcheck` |
-| Clean | `docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make clean` |
-| All checks | `docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make ci` |
+| Run tests | `make docker-test` |
+| Coverage | `make docker-coverage` |
+| Analyze | `make docker-analyze` |
+| Build only | `make docker-build` |
+| Clean | `docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make clean` |
 
 ## The /build Skill
 

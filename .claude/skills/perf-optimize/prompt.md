@@ -153,7 +153,7 @@ Otherwise:
 3. Log change in cycle report
 
 4. Run unit tests:
-   docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make test
+   docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest make test
 
    If tests fail:
      Rollback change

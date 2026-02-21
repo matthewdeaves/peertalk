@@ -15,7 +15,7 @@ Parse format:
 ```
 <test> [machine] [--skip-build] [--skip-analysis] [--verbose]
 
-test:     latency | throughput | stream | stress | discovery | mactcp | all
+test:     latency | throughput | stream | stress | discovery | all
 machine:  Machine ID from machines.json (default: performa6200)
 ```
 
@@ -37,7 +37,7 @@ $ARGUMENTS = "throughput --verbose"
 
 ```
 1. Parse test name (required):
-   - latency, throughput, stream, stress, discovery, mactcp, all
+   - latency, throughput, stream, stress, discovery, all
 
 2. Parse machine (optional, default: performa6200):
    - Read .claude/mcp-servers/classic-mac-hardware/machines.json
@@ -68,7 +68,7 @@ For lowmem builds (Mac SE, machines with build: "lowmem"):
   Run: ./scripts/build-mac-tests.sh mactcp lowmem
 
 Also build perf_partner:
-  docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest \
+  docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest \
     make build/bin/perf_partner
 
 Expected outputs:
@@ -93,7 +93,7 @@ The perf_partner auto-detects ALL test types. Start once, no restarts needed.
 
 3. If NOT running, start partner:
    docker run -d --name perf-partner --network host \
-     -v "$(pwd)":/workspace -w /workspace \
+     -u "$(id -u):$(id -g)" -v "$(pwd)":/workspace -w /workspace \
      -e MACHINE_REGISTRY="10.188.1.55:macse,10.188.1.213:performa6200" \
      peertalk-posix:latest ./build/bin/perf_partner --verbose
 
@@ -146,7 +146,6 @@ Initial wait before first poll (just enough for test to get going):
   stream: sleep 180
   stress: sleep 60
   discovery: sleep 90
-  mactcp: sleep 45
 
 Max wait (give up after this):
   latency: 4 minutes
@@ -154,7 +153,6 @@ Max wait (give up after this):
   stream: 8 minutes
   stress: 2 minutes
   discovery: 3 minutes
-  mactcp: 2 minutes
 
 BEFORE polling, note existing log files:
   BEFORE_COUNT=$(ls plan/performance/mactcp/<machine>/<test>_*.log 2>/dev/null | wc -l)
