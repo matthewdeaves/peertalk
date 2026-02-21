@@ -81,6 +81,12 @@ struct pt_log {
 };
 
 /*============================================================================
+ * Forward Declarations
+ *============================================================================*/
+
+static void flush_buffer(PT_Log *log);
+
+/*============================================================================
  * Static Data
  *============================================================================*/
 
@@ -117,39 +123,28 @@ static void c_to_pstr(const char *c_str, Str255 p_str) {
 
 static OSErr pt_create_file(ConstStr255Param name, short vRefNum,
                             OSType creator, OSType fileType) {
-    HParamBlockRec pb;
     OSErr err;
 
-    memset(&pb, 0, sizeof(pb));
-    pb.fileParam.ioNamePtr = (StringPtr)name;
-    pb.fileParam.ioVRefNum = vRefNum;
-    pb.fileParam.ioDirID = 0;
-    err = PBHCreateSync(&pb);
-
-    (void)creator;
-    (void)fileType;
+    /* Use simple Create() for System 6.0.8 compatibility instead of PBHCreateSync
+     * Create() works on both MFS and HFS, while PBH* calls may fail on older systems */
+    err = Create(name, vRefNum, creator, fileType);
 
     return err;
 }
 
 static OSErr pt_set_file_info(ConstStr255Param name, short vRefNum,
                                OSType creator, OSType fileType) {
-    HParamBlockRec pb;
+    FInfo fInfo;
     OSErr err;
 
-    memset(&pb, 0, sizeof(pb));
-    pb.fileParam.ioNamePtr = (StringPtr)name;
-    pb.fileParam.ioVRefNum = vRefNum;
-    pb.fileParam.ioFDirIndex = 0;
-    pb.fileParam.ioDirID = 0;
-
-    err = PBHGetFInfoSync(&pb);
+    /* Use GetFInfo/SetFInfo for System 6.0.8 compatibility instead of PBH* calls */
+    err = GetFInfo(name, vRefNum, &fInfo);
     if (err != noErr) return err;
 
-    pb.fileParam.ioFlFndrInfo.fdType = fileType;
-    pb.fileParam.ioFlFndrInfo.fdCreator = creator;
+    fInfo.fdType = fileType;
+    fInfo.fdCreator = creator;
 
-    return PBHSetFInfoSync(&pb);
+    return SetFInfo(name, vRefNum, &fInfo);
 }
 
 static OSErr pt_seek_to_end(short refNum) {
@@ -173,10 +168,11 @@ PT_Log *PT_LogCreate(void) {
     log = (PT_Log *)NewPtrClear(sizeof(PT_Log));
     if (!log) return NULL;
 
-    /* Defaults */
+    /* Defaults - Mac has NO console, so default to FILE output.
+     * User must call PT_LogSetFile() to specify filename. */
     log->level = PT_LOG_INFO;
     log->categories = PT_LOG_CAT_ALL;
-    log->outputs = PT_LOG_OUT_CONSOLE;
+    log->outputs = PT_LOG_OUT_FILE;
     log->auto_flush = 0;
     log->next_seq = 1;
     log->file_refnum = 0;
@@ -267,6 +263,32 @@ int PT_LogSetFile(PT_Log *log, const char *filename) {
 
     log->file_refnum = refnum;
     log->outputs |= PT_LOG_OUT_FILE;
+
+    return 0;
+}
+
+int PT_LogClearFile(PT_Log *log) {
+    OSErr err;
+
+    if (!log || !log->file_refnum) return -1;
+
+    /* Flush any buffered content first */
+    flush_buffer(log);
+
+    /* Seek to beginning of file */
+    {
+        ParamBlockRec pb;
+        memset(&pb, 0, sizeof(pb));
+        pb.ioParam.ioRefNum = log->file_refnum;
+        pb.ioParam.ioPosMode = fsFromStart;
+        pb.ioParam.ioPosOffset = 0;
+        err = PBSetFPosSync(&pb);
+        if (err != noErr) return -1;
+    }
+
+    /* Truncate file to 0 bytes using SetEOF */
+    err = SetEOF(log->file_refnum, 0);
+    if (err != noErr) return -1;
 
     return 0;
 }
@@ -433,7 +455,7 @@ void PT_LogWriteV(
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-overflow"
         /* Use sprintf RETURN VALUE (not strlen) */
-        len = sprintf(line, "[%08lu][%s] %s\r",
+        len = sprintf(line, "[%08lu][%s] %s\r\n",
                       (unsigned long)timestamp, level_name, formatted);
 #pragma GCC diagnostic pop
 
@@ -473,7 +495,7 @@ void PT_LogPerf(PT_Log *log, const PT_LogPerfEntry *entry, const char *label) {
         /* Use sprintf return value instead of strlen() */
         if (label && *label) {
             len = sprintf(line,
-                "[%08lu][INF] PERF %s: seq=%lu type=%u v1=%u v2=%u flags=0x%02X cat=0x%04X\r",
+                "[%08lu][INF] PERF %s: seq=%lu type=%u v1=%u v2=%u flags=0x%02X cat=0x%04X\r\n",
                 (unsigned long)entry->timestamp_ms,
                 label,
                 (unsigned long)entry->seq_num,
@@ -484,7 +506,7 @@ void PT_LogPerf(PT_Log *log, const PT_LogPerfEntry *entry, const char *label) {
                 (unsigned)entry->category);
         } else {
             len = sprintf(line,
-                "[%08lu][INF] PERF seq=%lu type=%u v1=%u v2=%u flags=0x%02X cat=0x%04X\r",
+                "[%08lu][INF] PERF seq=%lu type=%u v1=%u v2=%u flags=0x%02X cat=0x%04X\r\n",
                 (unsigned long)entry->timestamp_ms,
                 (unsigned long)entry->seq_num,
                 (unsigned)entry->event_type,

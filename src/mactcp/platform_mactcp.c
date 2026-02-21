@@ -11,6 +11,7 @@
 
 #include "pt_internal.h"
 #include "pt_compat.h"
+#include "mactcp_defs.h"
 
 #if defined(PT_PLATFORM_MACTCP)
 
@@ -18,6 +19,21 @@
 #include <MacTCP.h>
 #include <MacMemory.h>
 #include <OSUtils.h>
+
+/* Forward declaration for mactcp_driver.c functions */
+extern size_t pt_mactcp_extra_size(void);
+extern int pt_mactcp_data_init(struct pt_context *ctx);
+
+/* Forward declarations for ASR callbacks (implemented in udp_mactcp.c and tcp_mactcp.c) */
+extern pascal void pt_udp_asr(StreamPtr udpStream, unsigned short eventCode,
+                              Ptr userDataPtr, struct ICMPReport *icmpMsg);
+extern pascal void pt_tcp_asr(StreamPtr tcpStream, unsigned short eventCode,
+                              Ptr userDataPtr, unsigned short terminReason,
+                              struct ICMPReport *icmpMsg);
+
+/* Note: Completion routines (pt_tcp_*_completion) are NOT used.
+ * We poll pb.ioResult directly instead of using callbacks to avoid
+ * shutdown crashes. See comments in mactcp_init(). */
 
 /* ========================================================================== */
 /* MacTCP Driver and UPPs                                                     */
@@ -53,68 +69,10 @@ static short g_mactcp_refnum = 0;
 static TCPNotifyUPP g_tcp_notify_upp = NULL;
 static UDPNotifyUPP g_udp_notify_upp = NULL;
 
-/* ========================================================================== */
-/* ASR Callback Stubs (Interrupt Level)                                       */
-/* ========================================================================== */
-
-/**
- * Forward declarations for ASR callbacks - implemented in Phase 5.
- *
- * CRITICAL: The `pascal` keyword is REQUIRED. MacTCP.h defines these
- * callbacks using CALLBACK_API which implies pascal calling convention.
- * Without `pascal`, the stack frame will be corrupted when MacTCP calls
- * these routines, causing crashes or incorrect parameter values.
- *
- * From MacTCP.h:
- *   typedef CALLBACK_API(void, TCPNotifyProcPtr)(...);  // implies pascal
- *   typedef CALLBACK_API(void, UDPNotifyProcPtr)(...);  // implies pascal
+/* ASR callbacks are implemented in:
+ * - tcp_mactcp.c (pt_tcp_asr) - Session 5.4
+ * - udp_mactcp.c (pt_udp_asr) - Session 5.2
  */
-static pascal void pt_tcp_asr(StreamPtr tcpStream, unsigned short eventCode,
-                              Ptr userDataPtr, unsigned short terminReason,
-                              struct ICMPReport *icmpMsg);
-static pascal void pt_udp_asr(StreamPtr udpStream, unsigned short eventCode,
-                              Ptr userDataPtr, struct ICMPReport *icmpMsg);
-
-/**
- * MacTCP TCP ASR callback stub.
- *
- * IMPORTANT: This runs at INTERRUPT TIME. Follow ISR safety rules:
- * - NO memory allocation (NewPtr, malloc)
- * - NO Toolbox calls
- * - NO file I/O
- * - Set flags only, process in main loop
- * - Use pt_memcpy_isr() for data copying
- * - Preserve registers D3-D7, A3-A7 (A0-A2, D0-D2 may be modified)
- *
- * Implemented in Phase 5 (MacTCP Networking).
- */
-static pascal void pt_tcp_asr(StreamPtr tcpStream, unsigned short eventCode,
-                              Ptr userDataPtr, unsigned short terminReason,
-                              struct ICMPReport *icmpMsg) {
-    /* Stub - implemented in Phase 5 */
-    (void)tcpStream;
-    (void)eventCode;
-    (void)userDataPtr;
-    (void)terminReason;
-    (void)icmpMsg;
-}
-
-/**
- * MacTCP UDP ASR callback stub.
- *
- * IMPORTANT: This runs at INTERRUPT TIME. Follow ISR safety rules.
- * Note: UDP ASR has 4 params (no terminReason), unlike TCP's 5 params.
- *
- * Implemented in Phase 5 (MacTCP Networking).
- */
-static pascal void pt_udp_asr(StreamPtr udpStream, unsigned short eventCode,
-                              Ptr userDataPtr, struct ICMPReport *icmpMsg) {
-    /* Stub - implemented in Phase 5 */
-    (void)udpStream;
-    (void)eventCode;
-    (void)userDataPtr;
-    (void)icmpMsg;
-}
 
 /* ========================================================================== */
 /* Platform Operations                                                        */
@@ -137,7 +95,7 @@ static int mactcp_init(struct pt_context *ctx) {
 
     err = PBOpenSync(&pb);
     if (err != noErr) {
-        PT_LOG_ERR(ctx->log, PT_LOG_CAT_GENERAL,
+        PT_LOG_ERR(ctx->log, PT_LOG_CAT_PLATFORM,
             "Failed to open MacTCP driver (.IPP): %d", (int)err);
         /**
          * Common errors:
@@ -148,7 +106,7 @@ static int mactcp_init(struct pt_context *ctx) {
     }
 
     g_mactcp_refnum = pb.ioParam.ioRefNum;
-    PT_LOG_INFO(ctx->log, PT_LOG_CAT_GENERAL,
+    PT_LOG_INFO(ctx->log, PT_LOG_CAT_INIT,
         "MacTCP driver opened, refnum=%d", (int)g_mactcp_refnum);
 
     /**
@@ -158,28 +116,99 @@ static int mactcp_init(struct pt_context *ctx) {
      */
     g_tcp_notify_upp = NewTCPNotifyUPP(pt_tcp_asr);
     if (g_tcp_notify_upp == NULL) {
-        PT_LOG_ERR(ctx->log, PT_LOG_CAT_GENERAL,
+        PT_LOG_ERR(ctx->log, PT_LOG_CAT_MEMORY,
             "Failed to create TCP notify UPP");
         return -1;
     }
 
     g_udp_notify_upp = NewUDPNotifyUPP(pt_udp_asr);
     if (g_udp_notify_upp == NULL) {
-        PT_LOG_ERR(ctx->log, PT_LOG_CAT_GENERAL,
+        PT_LOG_ERR(ctx->log, PT_LOG_CAT_MEMORY,
             "Failed to create UDP notify UPP");
         DisposeTCPNotifyUPP(g_tcp_notify_upp);
         g_tcp_notify_upp = NULL;
         return -1;
     }
 
-    PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_GENERAL, "MacTCP UPPs created");
+    PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_INIT, "MacTCP UPPs created");
+
+    /* Initialize MacTCP platform data (streams, limits, local IP) */
+    if (pt_mactcp_data_init(ctx) < 0) {
+        PT_LOG_ERR(ctx->log, PT_LOG_CAT_INIT,
+            "Failed to initialize MacTCP platform data");
+        /* Clean up UPPs on failure */
+        DisposeTCPNotifyUPP(g_tcp_notify_upp);
+        g_tcp_notify_upp = NULL;
+        DisposeUDPNotifyUPP(g_udp_notify_upp);
+        g_udp_notify_upp = NULL;
+        return -1;
+    }
+
+    /* Store ASR UPPs in platform data for stream creation.
+     *
+     * NOTE: We do NOT create completion routine UPPs (tcp_*_completion_upp).
+     * Using ioCompletion callbacks causes shutdown crashes because:
+     * - TCPAbort cancels pending async operations
+     * - Completion routines fire at interrupt time during abort
+     * - UPP calls into corrupted or freed memory
+     *
+     * Instead, we poll pb.ioResult directly in the main loop (csend pattern).
+     * This is safer and matches the proven approach from the csend project.
+     */
+    {
+        pt_mactcp_data *md = pt_mactcp_get(ctx);
+        md->tcp_notify_upp = g_tcp_notify_upp;
+        md->udp_notify_upp = g_udp_notify_upp;
+
+        /* Completion routine UPPs intentionally not created - poll ioResult instead */
+        md->tcp_listen_completion_upp = NULL;
+        md->tcp_connect_completion_upp = NULL;
+        md->tcp_close_completion_upp = NULL;
+    }
+
+    PT_LOG_INFO(ctx->log, PT_LOG_CAT_INIT, "MacTCP platform initialized");
 
     return 0;
 }
 
+/* Forward declarations for cleanup functions */
+extern void pt_mactcp_discovery_stop(struct pt_context *ctx);
+extern void pt_mactcp_tcp_release_all(struct pt_context *ctx);
+
 static void mactcp_shutdown(struct pt_context *ctx) {
+    pt_mactcp_data *md = pt_mactcp_get(ctx);
+
     /**
-     * Dispose of Universal Procedure Pointers.
+     * CRITICAL: Release network streams BEFORE disposing UPPs.
+     * This ensures ports are unbound and MacTCP buffers are returned.
+     * Order matters: streams use the UPPs, so release streams first.
+     *
+     * pt_mactcp_tcp_release_all() properly:
+     * 1. Aborts all streams (including listener)
+     * 2. Waits for pending async operations to complete
+     * 3. Releases all streams
+     *
+     * This follows the LaunchAPPL cleanup pattern from Retro68.
+     */
+    if (ctx->discovery_active) {
+        pt_mactcp_discovery_stop(ctx);
+        ctx->discovery_active = 0;
+    }
+
+    /* Release ALL TCP streams (listener + peer connections) */
+    pt_mactcp_tcp_release_all(ctx);
+
+    /* Note: Buffer pool cleanup is handled by application calling
+     * PeerTalk_FreeBuffers() - the pool is app-owned memory. */
+
+    /* Note: Completion routine UPPs were intentionally not created.
+     * We poll pb.ioResult directly instead of using callbacks.
+     * Nothing to dispose here.
+     */
+    (void)md;
+
+    /**
+     * Dispose of ASR Universal Procedure Pointers.
      * This must be done AFTER all streams using these UPPs are closed.
      */
     if (g_tcp_notify_upp != NULL) {
@@ -195,14 +224,20 @@ static void mactcp_shutdown(struct pt_context *ctx) {
      * We don't actually close the MacTCP driver - it's a shared
      * system resource. Just clear our refnum and log shutdown.
      */
-    PT_LOG_INFO(ctx->log, PT_LOG_CAT_GENERAL, "MacTCP platform shutdown");
+    PT_LOG_INFO(ctx->log, PT_LOG_CAT_INIT, "MacTCP platform shutdown");
     g_mactcp_refnum = 0;
 }
 
+/* Forward declarations for poll functions (implemented in poll_mactcp.c) */
+extern int pt_mactcp_poll(struct pt_context *ctx);
+extern int pt_mactcp_poll_fast(struct pt_context *ctx);
+
 static int mactcp_poll(struct pt_context *ctx) {
-    /* Stub - implemented in Phase 5 (MacTCP Networking) */
-    (void)ctx;
-    return 0;
+    return pt_mactcp_poll(ctx);
+}
+
+static int mactcp_poll_fast(struct pt_context *ctx) {
+    return pt_mactcp_poll_fast(ctx);
 }
 
 static pt_tick_t mactcp_get_ticks(void) {
@@ -231,15 +266,145 @@ static unsigned long mactcp_get_max_block(void) {
     return (unsigned long)MaxBlock();
 }
 
+/* ========================================================================== */
+/* Async Send Pipeline (Session 3 & 4)                                        */
+/* ========================================================================== */
+
+/* Forward declarations for core pipeline functions */
+extern int pt_pipeline_init(struct pt_context *ctx, struct pt_peer *peer);
+extern void pt_pipeline_cleanup(struct pt_context *ctx, struct pt_peer *peer);
+extern pt_send_slot *pt_pipeline_get_slot(struct pt_context *ctx, struct pt_peer *peer);
+
+/* Forward declaration for async send (implemented in tcp_io.c) */
+extern int pt_mactcp_tcp_send_async(struct pt_context *ctx, struct pt_peer *peer,
+                                    const void *data, uint16_t len, uint8_t flags);
+
+/**
+ * Poll for send completions - check ioResult of pending async sends.
+ *
+ * Per MacTCP Guide (Lines 712-713):
+ *   ioResult > 0: still in progress (typically 1)
+ *   ioResult == 0: success (noErr)
+ *   ioResult < 0: error code
+ */
+static int mactcp_poll_send_completions(struct pt_context *ctx, struct pt_peer *peer) {
+    int i;
+    int completions = 0;
+
+    if (!peer || !peer->pipeline.initialized || peer->pipeline.pending_count == 0) {
+        return 0;
+    }
+
+    for (i = 0; i < PT_SEND_PIPELINE_DEPTH; i++) {
+        pt_send_slot *slot = &peer->pipeline.slots[i];
+        TCPiopb *pb;
+
+        if (!slot->in_use) continue;
+
+        pb = (TCPiopb *)slot->platform_data;
+        if (!pb) continue;
+
+        /* Cache ioResult for polling efficiency */
+        slot->ioResult = pb->ioResult;
+
+        if (slot->ioResult <= 0) {
+            /* Completed (success or error) */
+            slot->in_use = 0;
+            slot->completed = 1;
+            if (peer->pipeline.pending_count > 0) {
+                peer->pipeline.pending_count--;
+            }
+            completions++;
+
+            if (slot->ioResult != noErr) {
+                PT_LOG_WARN(ctx->log, PT_LOG_CAT_NETWORK,
+                    "Async send slot %d error: %d", i, (int)slot->ioResult);
+            }
+        }
+    }
+
+    return completions;
+}
+
+static int mactcp_send_slots_available(struct pt_context *ctx, struct pt_peer *peer) {
+    (void)ctx;
+    if (!peer || !peer->pipeline.initialized) {
+        return 0;
+    }
+    return PT_SEND_PIPELINE_DEPTH - peer->pipeline.pending_count;
+}
+
+static int mactcp_pipeline_init(struct pt_context *ctx, struct pt_peer *peer) {
+    int i;
+    int err;
+
+    /* Allocate core buffers first */
+    err = pt_pipeline_init(ctx, peer);
+    if (err != PT_OK) {
+        return err;
+    }
+
+    /* Allocate TCPiopb for each slot */
+    for (i = 0; i < PT_SEND_PIPELINE_DEPTH; i++) {
+        pt_send_slot *slot = &peer->pipeline.slots[i];
+
+        slot->platform_data = (void *)NewPtrClear(sizeof(TCPiopb));
+        if (slot->platform_data == NULL) {
+            PT_LOG_WARN(ctx->log, PT_LOG_CAT_MEMORY,
+                "Failed to allocate TCPiopb for pipeline slot %d", i);
+            /* Cleanup already allocated slots */
+            while (--i >= 0) {
+                if (peer->pipeline.slots[i].platform_data) {
+                    DisposePtr((Ptr)peer->pipeline.slots[i].platform_data);
+                    peer->pipeline.slots[i].platform_data = NULL;
+                }
+            }
+            pt_pipeline_cleanup(ctx, peer);
+            return PT_ERR_NO_MEMORY;
+        }
+    }
+
+    PT_LOG_DEBUG(ctx->log, PT_LOG_CAT_MEMORY,
+        "Pipeline TCPiopb allocated: peer=%u depth=%d",
+        peer->hot.id, PT_SEND_PIPELINE_DEPTH);
+
+    return PT_OK;
+}
+
+static void mactcp_pipeline_cleanup(struct pt_context *ctx, struct pt_peer *peer) {
+    int i;
+
+    if (!peer) return;
+
+    /* Free TCPiopb for each slot */
+    for (i = 0; i < PT_SEND_PIPELINE_DEPTH; i++) {
+        pt_send_slot *slot = &peer->pipeline.slots[i];
+        if (slot->platform_data) {
+            DisposePtr((Ptr)slot->platform_data);
+            slot->platform_data = NULL;
+        }
+    }
+
+    /* Free core buffers */
+    pt_pipeline_cleanup(ctx, peer);
+}
+
 /* Platform operations structure */
 pt_platform_ops pt_mactcp_ops = {
     mactcp_init,
     mactcp_shutdown,
     mactcp_poll,
+    mactcp_poll_fast,
     mactcp_get_ticks,
     mactcp_get_free_mem,
     mactcp_get_max_block,
-    NULL  /* send_udp - set by Phase 5 to pt_mactcp_send_udp */
+    NULL,  /* send_udp - set by Phase 5 to pt_mactcp_send_udp */
+    /* Async send pipeline ops */
+    pt_mactcp_tcp_send_async,  /* Implemented in tcp_io.c */
+    mactcp_poll_send_completions,
+    mactcp_send_slots_available,
+    mactcp_pipeline_init,
+    mactcp_pipeline_cleanup
 };
 
 /* ========================================================================== */
@@ -287,10 +452,13 @@ void pt_plat_free(void *ptr) {
 size_t pt_plat_extra_size(void) {
     /**
      * MacTCP platform needs extra space in the context for:
-     * - TCP/UDP stream handles and state (allocated in Phase 5)
-     * For now, return 0 - will be updated when networking is implemented.
+     * - TCP/UDP stream handles and state
+     * - Local IP and network info
+     * - Buffer management
+     *
+     * The pt_mactcp_data struct is defined in mactcp_defs.h
      */
-    return 0;
+    return pt_mactcp_extra_size();
 }
 
 #endif /* PT_PLATFORM_MACTCP */

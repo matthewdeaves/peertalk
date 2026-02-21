@@ -31,9 +31,11 @@ fi
 # Check if container exists
 if ! docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
     # Container doesn't exist - create it
+    # Run as current user to avoid root-owned files in workspace
     docker run -d \
         --name "$CONTAINER_NAME" \
         --network host \
+        -u "$(id -u):$(id -g)" \
         -v "$PROJECT_DIR:/workspace" \
         "$IMAGE_NAME" \
         sleep infinity >/dev/null

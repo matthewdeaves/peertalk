@@ -301,7 +301,7 @@ int pt_message_decode_header(struct pt_context *ctx, const uint8_t *buf,
 
     /* Extract type */
     hdr->type = buf[5];
-    if (hdr->type < PT_MSG_TYPE_DATA || hdr->type > PT_MSG_TYPE_REJECT) {
+    if (hdr->type < PT_MSG_TYPE_DATA || hdr->type > PT_MSG_TYPE_CAPABILITY) {
         if (ctx) {
             PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
                     "Invalid message type: 0x%02X", hdr->type);
@@ -320,6 +320,68 @@ int pt_message_decode_header(struct pt_context *ctx, const uint8_t *buf,
         PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
                      "Message header decoded: type=%u, seq=%u, len=%u",
                      hdr->type, hdr->sequence, hdr->payload_len);
+    }
+
+    return 0;
+}
+
+/* ========================================================================
+ * Compact Header Functions
+ * ======================================================================== */
+
+int pt_message_encode_compact(const pt_compact_header *hdr, uint8_t *buf)
+{
+    /* Marker byte: 'P' (0x50) */
+    buf[0] = PT_COMPACT_MARKER;
+
+    /* TypeFlags: high nibble = type (0-7), low nibble = flags (0-15) */
+    buf[1] = ((hdr->type & 0x0F) << 4) | (hdr->flags & 0x0F);
+
+    /* Payload Length (big-endian) */
+    buf[2] = (hdr->payload_len >> 8) & 0xFF;
+    buf[3] = hdr->payload_len & 0xFF;
+
+    return PT_COMPACT_HEADER_SIZE;
+}
+
+int pt_message_decode_compact(const uint8_t *buf, size_t len, pt_compact_header *hdr)
+{
+    /* Minimum size check */
+    if (len < PT_COMPACT_HEADER_SIZE) {
+        return PT_ERR_TRUNCATED;
+    }
+
+    /* Marker validation */
+    if (buf[0] != PT_COMPACT_MARKER) {
+        return PT_ERR_MAGIC;
+    }
+
+    /* Extract type and flags from TypeFlags byte */
+    hdr->type = (buf[1] >> 4) & 0x0F;
+    hdr->flags = buf[1] & 0x0F;
+
+    /* Validate type */
+    if (hdr->type < PT_MSG_TYPE_DATA || hdr->type > PT_MSG_TYPE_CAPABILITY) {
+        return PT_ERR_INVALID;
+    }
+
+    /* Extract payload length (big-endian) */
+    hdr->payload_len = ((uint16_t)buf[2] << 8) | buf[3];
+
+    return 0;
+}
+
+int pt_message_is_compact(const uint8_t *buf, size_t len)
+{
+    if (len < 2) {
+        return 0;
+    }
+
+    /* Compact header starts with 'P' (0x50) followed by TypeFlags byte.
+     * Full header starts with 'P' 'T' 'M' 'G'.
+     * If second byte is NOT 'T', it's a compact header. */
+    if (buf[0] == PT_COMPACT_MARKER && buf[1] != 'T') {
+        return 1;
     }
 
     return 0;
@@ -414,4 +476,376 @@ int pt_udp_decode(struct pt_context *ctx, const uint8_t *buf, size_t len,
     }
 
     return 0;
+}
+
+/* ========================================================================
+ * Capability Message Functions
+ * ======================================================================== */
+
+int pt_capability_encode(const pt_capability_msg *caps, uint8_t *buf, size_t buf_len)
+{
+    size_t offset = 0;
+
+    /* Calculate required size: 6 TLVs
+     * - MAX_MESSAGE: 1 + 1 + 2 = 4
+     * - PREFERRED_CHUNK: 1 + 1 + 2 = 4
+     * - BUFFER_PRESSURE: 1 + 1 + 1 = 3
+     * - FLAGS: 1 + 1 + 2 = 4
+     * - RECV_BUFFER_SIZE: 1 + 1 + 2 = 4
+     * - OPTIMAL_CHUNK: 1 + 1 + 2 = 4
+     * Total: 23 bytes
+     */
+    if (buf_len < 23) {
+        return PT_ERR_BUFFER_FULL;
+    }
+
+    /* TLV 1: Max message size (2 bytes) */
+    buf[offset++] = PT_CAP_MAX_MESSAGE;
+    buf[offset++] = 2;
+    buf[offset++] = (caps->max_message_size >> 8) & 0xFF;
+    buf[offset++] = caps->max_message_size & 0xFF;
+
+    /* TLV 2: Preferred chunk (2 bytes) */
+    buf[offset++] = PT_CAP_PREFERRED_CHUNK;
+    buf[offset++] = 2;
+    buf[offset++] = (caps->preferred_chunk >> 8) & 0xFF;
+    buf[offset++] = caps->preferred_chunk & 0xFF;
+
+    /* TLV 3: Buffer pressure (1 byte) */
+    buf[offset++] = PT_CAP_BUFFER_PRESSURE;
+    buf[offset++] = 1;
+    buf[offset++] = caps->buffer_pressure;
+
+    /* TLV 4: Capability flags (2 bytes) */
+    buf[offset++] = PT_CAP_FLAGS;
+    buf[offset++] = 2;
+    buf[offset++] = (caps->capability_flags >> 8) & 0xFF;
+    buf[offset++] = caps->capability_flags & 0xFF;
+
+    /* TLV 5: Receive buffer size (2 bytes) */
+    buf[offset++] = PT_CAP_RECV_BUFFER_SIZE;
+    buf[offset++] = 2;
+    buf[offset++] = (caps->recv_buffer_size >> 8) & 0xFF;
+    buf[offset++] = caps->recv_buffer_size & 0xFF;
+
+    /* TLV 6: Optimal chunk size (2 bytes)
+     * This is 25% of recv_buffer - the MacTCP completion threshold.
+     * Tells sender the ideal per-send size for this receiver. */
+    buf[offset++] = PT_CAP_OPTIMAL_CHUNK;
+    buf[offset++] = 2;
+    buf[offset++] = (caps->optimal_chunk >> 8) & 0xFF;
+    buf[offset++] = caps->optimal_chunk & 0xFF;
+
+    return (int)offset;
+}
+
+int pt_capability_decode(struct pt_context *ctx, const uint8_t *buf, size_t len,
+                         pt_capability_msg *caps)
+{
+    size_t offset = 0;
+    int tlvs_parsed = 0;
+
+    /* Initialize with defaults (for missing TLVs) */
+    caps->max_message_size = PT_CAP_DEFAULT_MAX_MSG;
+    caps->preferred_chunk = PT_CAP_DEFAULT_CHUNK;
+    caps->buffer_pressure = PT_CAP_DEFAULT_PRESSURE;
+    caps->capability_flags = 0;
+    caps->recv_buffer_size = 8192;  /* Default to typical TCP buffer */
+    caps->optimal_chunk = 2048;     /* Default: 25% of 8KB buffer */
+    caps->reserved = 0;
+
+    /* Log payload info for debugging capability exchange issues */
+    if (ctx && len < 23) {
+        /* Expected payload is 23 bytes (6 TLVs). Log if shorter. */
+        PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+            "Capability payload short: len=%zu (expected 23), bytes: %02X %02X %02X %02X",
+            len,
+            (len > 0) ? buf[0] : 0, (len > 1) ? buf[1] : 0,
+            (len > 2) ? buf[2] : 0, (len > 3) ? buf[3] : 0);
+    }
+
+    /* Parse TLVs */
+    while (offset + 2 <= len) {
+        uint8_t type = buf[offset++];
+        uint8_t tlv_len = buf[offset++];
+
+        /* Check TLV fits in buffer */
+        if (offset + tlv_len > len) {
+            if (ctx) {
+                PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+                    "Capability TLV truncated: type=%u, len=%u, remaining=%zu",
+                    type, tlv_len, len - offset);
+            }
+            return PT_ERR_TRUNCATED;
+        }
+
+        switch (type) {
+        case PT_CAP_MAX_MESSAGE:
+            if (tlv_len >= 2) {
+                caps->max_message_size = ((uint16_t)buf[offset] << 8) | buf[offset + 1];
+                /* Clamp to valid range */
+                if (caps->max_message_size < PT_CAP_MIN_MAX_MSG) {
+                    caps->max_message_size = PT_CAP_MIN_MAX_MSG;
+                }
+                if (caps->max_message_size > PT_CAP_MAX_MAX_MSG) {
+                    caps->max_message_size = PT_CAP_MAX_MAX_MSG;
+                }
+                tlvs_parsed++;
+            }
+            break;
+
+        case PT_CAP_PREFERRED_CHUNK:
+            if (tlv_len >= 2) {
+                caps->preferred_chunk = ((uint16_t)buf[offset] << 8) | buf[offset + 1];
+            }
+            break;
+
+        case PT_CAP_BUFFER_PRESSURE:
+            if (tlv_len >= 1) {
+                caps->buffer_pressure = buf[offset];
+                if (caps->buffer_pressure > 100) {
+                    caps->buffer_pressure = 100;
+                }
+            }
+            break;
+
+        case PT_CAP_FLAGS:
+            if (tlv_len >= 2) {
+                caps->capability_flags = ((uint16_t)buf[offset] << 8) | buf[offset + 1];
+            }
+            break;
+
+        case PT_CAP_RECV_BUFFER_SIZE:
+            if (tlv_len >= 2) {
+                caps->recv_buffer_size = ((uint16_t)buf[offset] << 8) | buf[offset + 1];
+                /* Minimum 4KB, maximum 64KB */
+                if (caps->recv_buffer_size < 4096) {
+                    caps->recv_buffer_size = 4096;
+                }
+            }
+            break;
+
+        case PT_CAP_OPTIMAL_CHUNK:
+            if (tlv_len >= 2) {
+                caps->optimal_chunk = ((uint16_t)buf[offset] << 8) | buf[offset + 1];
+                /* Minimum 512 bytes, maximum 16KB */
+                if (caps->optimal_chunk < 512) {
+                    caps->optimal_chunk = 512;
+                }
+                if (caps->optimal_chunk > 16384) {
+                    caps->optimal_chunk = 16384;
+                }
+            }
+            break;
+
+        default:
+            /* Unknown TLV - skip it (forward compatibility) */
+            if (ctx) {
+                PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+                    "Unknown capability TLV: type=%u, len=%u", type, tlv_len);
+            }
+            break;
+        }
+
+        offset += tlv_len;
+    }
+
+    /* Warn if no TLVs were parsed - indicates empty or malformed payload */
+    if (ctx && tlvs_parsed == 0 && len > 0) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+            "Capability decode: no MAX_MESSAGE TLV found in %zu bytes", len);
+    }
+
+    if (ctx) {
+        PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+            "Capability decoded: max=%u, chunk=%u, pressure=%u, flags=0x%04X, recv_buf=%u, optimal=%u",
+            caps->max_message_size, caps->preferred_chunk,
+            caps->buffer_pressure, caps->capability_flags,
+            caps->recv_buffer_size, caps->optimal_chunk);
+    }
+
+    return 0;
+}
+
+/* ========================================================================
+ * Fragment Header Functions
+ * ======================================================================== */
+
+int pt_fragment_encode(const pt_fragment_header *hdr, uint8_t *buf)
+{
+    /* Message ID (big-endian) */
+    buf[0] = (hdr->message_id >> 8) & 0xFF;
+    buf[1] = hdr->message_id & 0xFF;
+
+    /* Total length (big-endian) */
+    buf[2] = (hdr->total_length >> 8) & 0xFF;
+    buf[3] = hdr->total_length & 0xFF;
+
+    /* Fragment offset (big-endian) */
+    buf[4] = (hdr->fragment_offset >> 8) & 0xFF;
+    buf[5] = hdr->fragment_offset & 0xFF;
+
+    /* Flags and reserved */
+    buf[6] = hdr->fragment_flags;
+    buf[7] = 0;  /* Reserved */
+
+    return PT_FRAGMENT_HEADER_SIZE;
+}
+
+int pt_fragment_decode(const uint8_t *buf, size_t len, pt_fragment_header *hdr)
+{
+    if (len < PT_FRAGMENT_HEADER_SIZE) {
+        return PT_ERR_TRUNCATED;
+    }
+
+    /* Message ID (big-endian) */
+    hdr->message_id = ((uint16_t)buf[0] << 8) | buf[1];
+
+    /* Total length (big-endian) */
+    hdr->total_length = ((uint16_t)buf[2] << 8) | buf[3];
+
+    /* Fragment offset (big-endian) */
+    hdr->fragment_offset = ((uint16_t)buf[4] << 8) | buf[5];
+
+    /* Flags and reserved */
+    hdr->fragment_flags = buf[6];
+    hdr->reserved = buf[7];
+
+    return 0;
+}
+
+/* ========================================================================
+ * Fragment Reassembly
+ *
+ * These functions handle transparent fragment reassembly. When fragments
+ * arrive, they're accumulated in the peer's recv_direct buffer. When the
+ * last fragment arrives, the complete message is delivered to the app
+ * callback. Applications never see individual fragments.
+ *
+ * DOD: Reassembly state is stored in pt_peer_cold (rarely accessed after
+ * negotiation). The actual data goes in recv_direct buffer.
+ * ======================================================================== */
+
+int pt_reassembly_process(struct pt_context *ctx, struct pt_peer *peer,
+                          const uint8_t *fragment_data, uint16_t fragment_len,
+                          const pt_fragment_header *frag_hdr,
+                          const uint8_t **complete_data, uint16_t *complete_len)
+{
+    pt_reassembly_state *rs = &peer->cold.reassembly;
+    pt_direct_buffer *buf = &peer->recv_direct;
+    const uint8_t *payload;
+    uint16_t payload_len;
+
+    /* Extract fragment payload (skip fragment header in data) */
+    if (fragment_len < PT_FRAGMENT_HEADER_SIZE) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+            "Fragment too short: %u bytes", fragment_len);
+        return PT_ERR_TRUNCATED;
+    }
+    payload = fragment_data + PT_FRAGMENT_HEADER_SIZE;
+    payload_len = fragment_len - PT_FRAGMENT_HEADER_SIZE;
+
+    /* Validate fragment offset + length doesn't exceed total */
+    if (frag_hdr->fragment_offset + payload_len > frag_hdr->total_length) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+            "Fragment exceeds total: offset=%u len=%u total=%u",
+            frag_hdr->fragment_offset, payload_len, frag_hdr->total_length);
+        rs->active = 0;
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Check if this is the first fragment */
+    if (frag_hdr->fragment_flags & PT_FRAGMENT_FLAG_FIRST) {
+        /* Start new reassembly */
+        if (rs->active && rs->message_id != frag_hdr->message_id) {
+            PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+                "Dropping incomplete reassembly for msg %u (new msg %u)",
+                rs->message_id, frag_hdr->message_id);
+        }
+
+        /* Validate total length fits in buffer */
+        if (frag_hdr->total_length > buf->capacity) {
+            PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+                "Reassembly too large: %u > %u",
+                frag_hdr->total_length, buf->capacity);
+            return PT_ERR_MESSAGE_TOO_LARGE;
+        }
+
+        /* Initialize reassembly state */
+        rs->message_id = frag_hdr->message_id;
+        rs->total_length = frag_hdr->total_length;
+        rs->received_length = 0;
+        rs->active = 1;
+
+        PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+            "Starting reassembly: msg_id=%u total=%u",
+            frag_hdr->message_id, frag_hdr->total_length);
+    }
+
+    /* Validate we're reassembling the right message */
+    if (!rs->active) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+            "Fragment received without FIRST: msg_id=%u offset=%u",
+            frag_hdr->message_id, frag_hdr->fragment_offset);
+        return PT_ERR_INVALID_STATE;
+    }
+
+    if (rs->message_id != frag_hdr->message_id) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+            "Fragment msg_id mismatch: expected %u got %u",
+            rs->message_id, frag_hdr->message_id);
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Validate offset matches what we've received */
+    if (frag_hdr->fragment_offset != rs->received_length) {
+        PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+            "Fragment offset mismatch: expected %u got %u",
+            rs->received_length, frag_hdr->fragment_offset);
+        /* Could be out-of-order - for now, abort reassembly */
+        rs->active = 0;
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Copy fragment data to buffer */
+    pt_memcpy(buf->data + rs->received_length, payload, payload_len);
+    rs->received_length += payload_len;
+
+    PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+        "Fragment received: msg_id=%u offset=%u len=%u (%u/%u)",
+        frag_hdr->message_id, frag_hdr->fragment_offset, payload_len,
+        rs->received_length, rs->total_length);
+
+    /* Check if this is the last fragment */
+    if (frag_hdr->fragment_flags & PT_FRAGMENT_FLAG_LAST) {
+        if (rs->received_length != rs->total_length) {
+            PT_CTX_WARN(ctx, PT_LOG_CAT_PROTOCOL,
+                "LAST fragment but length mismatch: received=%u total=%u",
+                rs->received_length, rs->total_length);
+            rs->active = 0;
+            return PT_ERR_TRUNCATED;
+        }
+
+        /* Reassembly complete! */
+        *complete_data = buf->data;
+        *complete_len = rs->total_length;
+
+        PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,
+            "Reassembly complete: msg_id=%u total=%u bytes",
+            rs->message_id, rs->total_length);
+
+        rs->active = 0;
+        return 1;  /* Complete message ready */
+    }
+
+    /* More fragments expected */
+    *complete_data = NULL;
+    *complete_len = 0;
+    return 0;  /* Not complete yet */
+}
+
+void pt_reassembly_reset(struct pt_peer *peer)
+{
+    peer->cold.reassembly.active = 0;
+    peer->cold.reassembly.received_length = 0;
 }

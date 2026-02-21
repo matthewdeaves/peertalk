@@ -83,6 +83,20 @@
 #define PT_DISCOVERY_MAGIC  "PTLK"      /* UDP discovery packets */
 #define PT_MESSAGE_MAGIC    "PTMG"      /* TCP message frames */
 
+/**
+ * Framing buffer size for peer I/O.
+ *
+ * This is the staging buffer for TCP receive/send framing. Must be large
+ * enough to hold the largest expected message plus header (10) + CRC (2).
+ *
+ * 16KB allows buffering 3+ 4KB messages during high-speed receive.
+ * Without this, deferred RDS stalls the TCP connection when large
+ * messages arrive faster than they can be processed.
+ *
+ * With PT_MAX_PEERS=8, ibuf+obuf = 32KB per peer = 256KB total.
+ */
+#define PT_FRAME_BUF_SIZE   16384
+
 /* ========================================================================== */
 /* Internal Types                                                             */
 /* ========================================================================== */

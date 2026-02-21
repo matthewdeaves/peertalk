@@ -272,6 +272,16 @@ uint8_t PT_LogGetOutput(PT_Log *log);
 int PT_LogSetFile(PT_Log *log, const char *filename);
 
 /*
+ * Clear (truncate) the current log file.
+ *
+ * Removes all existing content from the log file, giving a fresh start.
+ * Useful for test apps that want clean logs each run.
+ *
+ * Returns: 0 on success, -1 on error (no file open or truncate failed).
+ */
+int PT_LogClearFile(PT_Log *log);
+
+/*
  * Set the message callback.
  *
  * Callback is invoked for each log message when PT_LOG_OUT_CALLBACK is set.

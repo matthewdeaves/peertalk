@@ -39,6 +39,8 @@ struct pt_peer;
 typedef struct {
     uint16_t used;                       /* HOT: accessed every pt_batch_add() */
     uint16_t count;                      /* HOT: accessed every pt_batch_add() */
+    uint8_t  is_fragment;                /* Set if batch contains a fragment */
+    uint8_t  reserved;                   /* Padding */
     uint8_t  buffer[PT_BATCH_MAX_SIZE];  /* COLD: sequential writes only */
 } pt_batch;
 
@@ -104,6 +106,24 @@ typedef int (*pt_batch_send_fn)(struct pt_context *ctx,
                                  pt_batch *batch);
 
 /*
+ * Platform-specific direct send callback type.
+ *
+ * Used for Tier 2 large message sends. Sends raw data directly.
+ *
+ * Args:
+ *   ctx    - PeerTalk context
+ *   peer   - Target peer
+ *   data   - Data buffer
+ *   length - Data length
+ *
+ * Returns: 0 on success, -1 on error
+ */
+typedef int (*pt_direct_send_fn)(struct pt_context *ctx,
+                                  struct pt_peer *peer,
+                                  const void *data,
+                                  uint16_t length);
+
+/*
  * Drain send queue in batches
  *
  * Called from poll loop - combines queued messages into batches.
@@ -119,5 +139,21 @@ typedef int (*pt_batch_send_fn)(struct pt_context *ctx,
  */
 int pt_drain_send_queue(struct pt_context *ctx, struct pt_peer *peer,
                         pt_batch_send_fn send_fn);
+
+/*
+ * Drain Tier 2 direct buffer (large messages)
+ *
+ * Called from poll loop BEFORE draining Tier 1 queue.
+ * Large messages have priority to complete before batching small ones.
+ *
+ * Args:
+ *   ctx     - PeerTalk context
+ *   peer    - Target peer
+ *   send_fn - Platform-specific direct send callback
+ *
+ * Returns: 1 if message sent, 0 if nothing to send, -1 on error
+ */
+int pt_drain_direct_buffer(struct pt_context *ctx, struct pt_peer *peer,
+                           pt_direct_send_fn send_fn);
 
 #endif /* PT_SEND_H */

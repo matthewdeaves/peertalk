@@ -9,6 +9,8 @@
 #include "pt_compat.h"
 #include "peer.h"
 #include "queue.h"
+#include "direct_buffer.h"
+#include "protocol.h"
 #include <string.h>
 
 /* ========================================================================== */
@@ -71,6 +73,55 @@ PeerTalk_Context *PeerTalk_Init(const PeerTalk_Config *config) {
     if (ctx->config.peer_timeout == 0) {
         ctx->config.peer_timeout = 15000;  /* 15 seconds */
     }
+    if (ctx->config.direct_buffer_size == 0) {
+        ctx->config.direct_buffer_size = PT_DIRECT_DEFAULT_SIZE;
+    }
+
+    /* Auto-allocate buffer pool if requested and not already provided */
+#if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)
+    if (ctx->config.auto_buffers && ctx->config.buffer_pool == NULL) {
+        uint16_t peer_count = ctx->config.max_peers > 0 ? ctx->config.max_peers : PT_MAX_PEERS;
+        ctx->config.buffer_pool = PeerTalk_AllocateBuffersAuto(peer_count);
+        /* Mark that we own this pool and should free it on shutdown */
+        ctx->owns_buffer_pool = (ctx->config.buffer_pool != NULL) ? 1 : 0;
+    }
+#endif
+
+    /* Apply two-tier queue configuration */
+    ctx->direct_threshold = PT_DIRECT_THRESHOLD;
+    ctx->direct_buffer_size = ctx->config.direct_buffer_size;
+
+    /* Apply capability negotiation defaults */
+    if (ctx->config.max_message_size == 0) {
+        ctx->config.max_message_size = PT_CAP_MAX_MAX_MSG;  /* 8192 */
+    }
+    if (ctx->config.preferred_chunk == 0) {
+        ctx->config.preferred_chunk = 1024;
+    }
+    /* enable_fragmentation: 0 or 0xFF = unset (default enabled), 1 = enabled, 2+ = disabled
+     * This allows memset(&config, 0, ...) to get sensible defaults */
+    if (ctx->config.enable_fragmentation == 0 || ctx->config.enable_fragmentation == 0xFF) {
+        ctx->config.enable_fragmentation = 1;  /* Default to enabled */
+    }
+    ctx->local_max_message = ctx->config.max_message_size;
+    ctx->local_preferred_chunk = ctx->config.preferred_chunk;
+    /* We support fragmentation and compact headers */
+    ctx->local_capability_flags = PT_CAPFLAG_FRAGMENTATION | PT_CAPFLAG_COMPACT_HEADER;
+    ctx->enable_fragmentation = (ctx->config.enable_fragmentation == 1) ? 1 : 0;
+
+    /* Pressure thresholds - use defaults if zero */
+    ctx->pressure_medium = ctx->config.pressure_medium ?
+        ctx->config.pressure_medium : PT_PRESSURE_MEDIUM;
+    ctx->pressure_high = ctx->config.pressure_high ?
+        ctx->config.pressure_high : PT_PRESSURE_HIGH;
+    ctx->pressure_critical = ctx->config.pressure_critical ?
+        ctx->config.pressure_critical : PT_PRESSURE_CRITICAL;
+    ctx->pressure_frag = ctx->config.pressure_frag ?
+        ctx->config.pressure_frag : PT_PRESSURE_FRAG_THRESHOLD;
+
+    /* Connection timeout - default 30 seconds */
+    ctx->connect_timeout = ctx->config.connect_timeout ?
+        ctx->config.connect_timeout : 30000;
 
     /* Initialize PT_Log from Phase 0 */
     ctx->log = PT_LogCreate();
@@ -80,7 +131,13 @@ PeerTalk_Context *PeerTalk_Init(const PeerTalk_Config *config) {
             PT_LogSetLevel(ctx->log, (PT_LogLevel)config->log_level);
         }
         PT_LogSetCategories(ctx->log, PT_LOG_CAT_ALL);
+#if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)
+        /* Mac has no console - use file output */
+        PT_LogSetOutput(ctx->log, PT_LOG_OUT_FILE);
+        PT_LogSetFile(ctx->log, "PT_Log");
+#else
         PT_LogSetOutput(ctx->log, PT_LOG_OUT_CONSOLE);
+#endif
     }
 
     /* Initialize local peer info */
@@ -146,6 +203,78 @@ PeerTalk_Context *PeerTalk_Init(const PeerTalk_Config *config) {
 }
 
 /* ========================================================================== */
+/* PeerTalk_QuickStart - Zero-Config Initialization                           */
+/* ========================================================================== */
+
+PeerTalk_Context *PeerTalk_QuickStart(
+    const char *name,
+    uint16_t max_peers,
+    const PeerTalk_Callbacks *callbacks)
+{
+    return PeerTalk_QuickStartWithPool(name, max_peers, NULL, callbacks);
+}
+
+PeerTalk_Context *PeerTalk_QuickStartWithPool(
+    const char *name,
+    uint16_t max_peers,
+    PeerTalk_BufferPool *pool,
+    const PeerTalk_Callbacks *callbacks)
+{
+    PeerTalk_Config config;
+    PeerTalk_Context *ctx;
+    size_t name_len;
+
+    /* Validate parameters */
+    if (!name || !name[0]) {
+        return NULL;
+    }
+
+    /* Initialize config with zeros */
+    pt_memset(&config, 0, sizeof(config));
+
+    /* Copy name safely */
+    name_len = 0;
+    while (name[name_len] && name_len < PT_MAX_PEER_NAME) {
+        config.local_name[name_len] = name[name_len];
+        name_len++;
+    }
+    config.local_name[name_len] = '\0';
+
+    /* Set sensible defaults */
+    config.max_peers = (max_peers > 0 && max_peers <= PT_MAX_PEERS)
+                       ? max_peers : 4;
+    config.transports = PT_TRANSPORT_ALL;
+    config.discovery_port = PT_DEFAULT_DISCOVERY_PORT;
+    config.tcp_port = PT_DEFAULT_TCP_PORT;
+    config.udp_port = PT_DEFAULT_UDP_PORT;
+    config.max_message_size = PT_MAX_MESSAGE_SIZE;
+    config.preferred_chunk = 1024;
+    config.enable_fragmentation = 1;
+
+    /* Buffer handling: use provided pool or enable auto-allocation */
+    if (pool != NULL) {
+        config.buffer_pool = pool;
+        config.auto_buffers = 0;
+    } else {
+        config.buffer_pool = NULL;
+        config.auto_buffers = 1;  /* SDK allocates optimal buffers */
+    }
+
+    /* Initialize PeerTalk */
+    ctx = PeerTalk_Init(&config);
+    if (ctx == NULL) {
+        return NULL;
+    }
+
+    /* Set callbacks if provided */
+    if (callbacks != NULL) {
+        PeerTalk_SetCallbacks(ctx, callbacks);
+    }
+
+    return ctx;
+}
+
+/* ========================================================================== */
 /* PeerTalk_Shutdown - Clean Up and Free Resources                           */
 /* ========================================================================== */
 
@@ -166,6 +295,17 @@ void PeerTalk_Shutdown(PeerTalk_Context *ctx_handle) {
     if (ctx->plat && ctx->plat->shutdown) {
         ctx->plat->shutdown(ctx);
     }
+
+    /* Free peer list */
+    pt_peer_list_free(ctx);
+
+    /* Free auto-allocated buffer pool */
+#if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)
+    if (ctx->owns_buffer_pool && ctx->config.buffer_pool != NULL) {
+        PeerTalk_FreeBuffers(ctx->config.buffer_pool);
+        ctx->config.buffer_pool = NULL;
+    }
+#endif
 
     /* Destroy PT_Log context last (need it for shutdown logging) */
     if (ctx->log) {
@@ -196,6 +336,28 @@ PeerTalk_Error PeerTalk_Poll(PeerTalk_Context *ctx_handle) {
     /* Call platform-specific poll */
     if (ctx->plat && ctx->plat->poll) {
         if (ctx->plat->poll(ctx) != 0) {
+            return PT_ERR_NETWORK;
+        }
+    }
+
+    return PT_OK;
+}
+
+/* ========================================================================== */
+/* PeerTalk_PollFast - Fast Poll for Tight Game Loops                         */
+/* ========================================================================== */
+
+PeerTalk_Error PeerTalk_PollFast(PeerTalk_Context *ctx_handle) {
+    struct pt_context *ctx = (struct pt_context *)ctx_handle;
+
+    /* Validate context */
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Call platform-specific fast poll */
+    if (ctx->plat && ctx->plat->poll_fast) {
+        if (ctx->plat->poll_fast(ctx) != 0) {
             return PT_ERR_NETWORK;
         }
     }
@@ -254,6 +416,10 @@ const char *pt_get_peer_name(struct pt_context *ctx, uint8_t name_idx) {
 /* Forward declarations from net_posix.h */
 extern int pt_posix_discovery_start(struct pt_context *ctx);
 extern void pt_posix_discovery_stop(struct pt_context *ctx);
+#elif defined(PT_PLATFORM_MACTCP)
+/* Forward declarations from discovery_mactcp.c */
+extern int pt_mactcp_discovery_start(struct pt_context *ctx);
+extern void pt_mactcp_discovery_stop(struct pt_context *ctx);
 #endif
 
 PeerTalk_Error PeerTalk_StartDiscovery(PeerTalk_Context *ctx_public) {
@@ -267,12 +433,16 @@ PeerTalk_Error PeerTalk_StartDiscovery(PeerTalk_Context *ctx_public) {
     if (pt_posix_discovery_start(ctx) < 0) {
         return PT_ERR_NETWORK;
     }
+#elif defined(PT_PLATFORM_MACTCP)
+    if (pt_mactcp_discovery_start(ctx) < 0) {
+        return PT_ERR_NETWORK;
+    }
 #else
-    /* TODO: Mac platform discovery */
     (void)ctx;
     return PT_ERR_NOT_SUPPORTED;
 #endif
 
+    ctx->discovery_active = 1;
     PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY, "Discovery started");
     return PT_OK;
 }
@@ -286,11 +456,13 @@ PeerTalk_Error PeerTalk_StopDiscovery(PeerTalk_Context *ctx_public) {
 
 #if defined(PT_PLATFORM_POSIX)
     pt_posix_discovery_stop(ctx);
+#elif defined(PT_PLATFORM_MACTCP)
+    pt_mactcp_discovery_stop(ctx);
 #else
-    /* TODO: Mac platform discovery */
     (void)ctx;
 #endif
 
+    ctx->discovery_active = 0;
     PT_CTX_INFO(ctx, PT_LOG_CAT_DISCOVERY, "Discovery stopped");
     return PT_OK;
 }
@@ -305,6 +477,12 @@ extern int pt_posix_listen_start(struct pt_context *ctx);
 extern void pt_posix_listen_stop(struct pt_context *ctx);
 extern int pt_posix_connect(struct pt_context *ctx, struct pt_peer *peer);
 extern int pt_posix_disconnect(struct pt_context *ctx, struct pt_peer *peer);
+#elif defined(PT_PLATFORM_MACTCP)
+/* Forward declarations from tcp_listen.c, tcp_connect.c */
+extern int pt_mactcp_listen_start(struct pt_context *ctx);
+extern void pt_mactcp_listen_stop(struct pt_context *ctx);
+extern int pt_mactcp_connect(struct pt_context *ctx, struct pt_peer *peer);
+extern int pt_mactcp_disconnect(struct pt_context *ctx, struct pt_peer *peer);
 #endif
 
 PeerTalk_Error PeerTalk_StartListening(PeerTalk_Context *ctx_public) {
@@ -318,8 +496,11 @@ PeerTalk_Error PeerTalk_StartListening(PeerTalk_Context *ctx_public) {
     if (pt_posix_listen_start(ctx) < 0) {
         return PT_ERR_NETWORK;
     }
+#elif defined(PT_PLATFORM_MACTCP)
+    if (pt_mactcp_listen_start(ctx) < 0) {
+        return PT_ERR_NETWORK;
+    }
 #else
-    /* TODO: Mac platform TCP listening */
     (void)ctx;
     return PT_ERR_NOT_SUPPORTED;
 #endif
@@ -337,8 +518,9 @@ PeerTalk_Error PeerTalk_StopListening(PeerTalk_Context *ctx_public) {
 
 #if defined(PT_PLATFORM_POSIX)
     pt_posix_listen_stop(ctx);
+#elif defined(PT_PLATFORM_MACTCP)
+    pt_mactcp_listen_stop(ctx);
 #else
-    /* TODO: Mac platform TCP listening */
     (void)ctx;
 #endif
 
@@ -365,8 +547,9 @@ PeerTalk_Error PeerTalk_Connect(PeerTalk_Context *ctx_public,
 
 #if defined(PT_PLATFORM_POSIX)
     return pt_posix_connect(ctx, peer);
+#elif defined(PT_PLATFORM_MACTCP)
+    return pt_mactcp_connect(ctx, peer);
 #else
-    /* TODO: Mac platform TCP connect */
     (void)peer;
     return PT_ERR_NOT_SUPPORTED;
 #endif
@@ -391,8 +574,9 @@ PeerTalk_Error PeerTalk_Disconnect(PeerTalk_Context *ctx_public,
 
 #if defined(PT_PLATFORM_POSIX)
     return pt_posix_disconnect(ctx, peer);
+#elif defined(PT_PLATFORM_MACTCP)
+    return pt_mactcp_disconnect(ctx, peer);
 #else
-    /* TODO: Mac platform TCP disconnect */
     (void)peer;
     return PT_ERR_NOT_SUPPORTED;
 #endif
@@ -724,4 +908,133 @@ PeerTalk_Error PeerTalk_GetQueueStatus(PeerTalk_Context *ctx_pub,
     }
 
     return PT_OK;
+}
+
+/* ========================================================================== */
+/* PeerTalk_GetLog - Get Library Logger for Configuration                     */
+/* ========================================================================== */
+
+PT_Log *PeerTalk_GetLog(PeerTalk_Context *ctx_handle) {
+    struct pt_context *ctx = (struct pt_context *)ctx_handle;
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return NULL;
+    }
+    return ctx->log;
+}
+
+/* ========================================================================== */
+/* Capability Negotiation (Phase 6+)                                          */
+/* ========================================================================== */
+
+/**
+ * Get negotiated capabilities for a peer
+ *
+ * Returns information about peer's constraints and negotiated parameters.
+ * Useful for adapting message sizes to peer capabilities.
+ */
+PeerTalk_Error PeerTalk_GetPeerCapabilities(PeerTalk_Context *ctx_pub,
+                                             PeerTalk_PeerID peer_id,
+                                             PeerTalk_Capabilities *caps) {
+    struct pt_context *ctx = (struct pt_context *)ctx_pub;
+    struct pt_peer *peer;
+
+    /* Validate parameters */
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return PT_ERR_INVALID_STATE;
+    }
+    if (!caps) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Find peer */
+    peer = pt_peer_find_by_id(ctx, peer_id);
+    if (!peer) {
+        return PT_ERR_PEER_NOT_FOUND;
+    }
+
+    /* Fill in capabilities.
+     * If capability exchange hasn't completed yet (caps_exchanged==0), return
+     * sensible defaults rather than uninitialized zeros. This commonly happens
+     * when called from on_peer_connected callback before first message exchange. */
+    caps->max_message_size = peer->hot.effective_max_msg;
+    caps->fragmentation_active = (ctx->enable_fragmentation &&
+                                  peer->hot.effective_max_msg < ctx->local_max_message) ? 1 : 0;
+
+    if (peer->cold.caps.caps_exchanged) {
+        /* Peer sent capabilities - use negotiated values */
+        caps->preferred_chunk = peer->cold.caps.preferred_chunk;
+        caps->capability_flags = peer->cold.caps.capability_flags;
+        caps->recv_buffer_size = peer->cold.caps.recv_buffer_size;
+        caps->optimal_chunk = peer->cold.caps.optimal_chunk;
+        caps->buffer_pressure = peer->cold.caps.buffer_pressure;
+    } else {
+        /* Not yet exchanged - return conservative defaults */
+        caps->preferred_chunk = ctx->local_preferred_chunk;
+        caps->capability_flags = 0;
+        caps->recv_buffer_size = 8192;      /* Typical TCP buffer */
+        caps->optimal_chunk = 2048;         /* 25% of 8KB buffer */
+        caps->buffer_pressure = 0;
+    }
+
+    return PT_OK;
+}
+
+/**
+ * Get effective max message size for a peer
+ *
+ * Quick accessor for the negotiated maximum message size.
+ * Returns min(our_max, peer_max) for connected peers.
+ */
+uint16_t PeerTalk_GetPeerMaxMessage(PeerTalk_Context *ctx_pub,
+                                     PeerTalk_PeerID peer_id) {
+    struct pt_context *ctx = (struct pt_context *)ctx_pub;
+    struct pt_peer *peer;
+
+    /* Validate parameters */
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return 0;
+    }
+
+    /* Find peer */
+    peer = pt_peer_find_by_id(ctx, peer_id);
+    if (!peer) {
+        return 0;
+    }
+
+    return peer->hot.effective_max_msg;
+}
+
+/**
+ * Get optimal send chunk size for a peer
+ *
+ * Returns the ideal message size for sending to this peer. For Classic Mac
+ * peers, this is 25% of their receive buffer (the MacTCP completion threshold).
+ */
+uint16_t PeerTalk_GetPeerOptimalChunk(PeerTalk_Context *ctx_pub,
+                                       PeerTalk_PeerID peer_id) {
+    struct pt_context *ctx = (struct pt_context *)ctx_pub;
+    struct pt_peer *peer;
+
+    /* Validate parameters */
+    if (!ctx || ctx->magic != PT_CONTEXT_MAGIC) {
+        return 1024;  /* Default chunk */
+    }
+
+    /* Find peer */
+    peer = pt_peer_find_by_id(ctx, peer_id);
+    if (!peer) {
+        return 1024;  /* Default chunk */
+    }
+
+    /* Return peer's optimal chunk if known, otherwise default */
+    if (peer->cold.caps.caps_exchanged && peer->cold.caps.optimal_chunk > 0) {
+        return peer->cold.caps.optimal_chunk;
+    }
+
+    /* Fall back to effective_chunk (adaptive based on RTT) or default */
+    if (peer->hot.effective_chunk > 0) {
+        return peer->hot.effective_chunk;
+    }
+
+    return 1024;  /* Default chunk */
 }

@@ -1,0 +1,80 @@
+========================================
+PeerTalk Stress Test
+Version: 1.0.0
+Target: 5 cycles
+========================================
+Initializing PeerTalk...
+Waiting for peer...
+Press any key to abort.
+DISCOVERED: "PerfPartner" at 10.188.1.173:7354
+Selected peer 1 as stress test target
+Initial: MaxBlock=704 (+0) FreeMem=704 (+0)
+Cycle 1: Connecting to peer 1...
+State: DISCOVERING -> CONNECTING
+CONNECTED to peer 1 (cycle 1)
+State: CONNECTING -> CONNECTED
+Sent test message
+Cycle 1: Disconnecting...
+State: CONNECTED -> DISCONNECTING
+DISCONNECTED from peer 1 (reason=0)
+State: DISCONNECTING -> WAITING
+Cycle 2: Connecting to peer 1...
+State: WAITING -> CONNECTING
+CONNECTED to peer 1 (cycle 2)
+State: CONNECTING -> CONNECTED
+Sent test message
+Cycle 2: Disconnecting...
+State: CONNECTED -> DISCONNECTING
+DISCONNECTED from peer 1 (reason=0)
+State: DISCONNECTING -> WAITING
+Cycle 3: Connecting to peer 1...
+State: WAITING -> CONNECTING
+CONNECTED to peer 1 (cycle 3)
+State: CONNECTING -> CONNECTED
+Sent test message
+Cycle 3: Disconnecting...
+State: CONNECTED -> DISCONNECTING
+DISCONNECTED from peer 1 (reason=0)
+State: DISCONNECTING -> WAITING
+Cycle 4: Connecting to peer 1...
+State: WAITING -> CONNECTING
+CONNECTED to peer 1 (cycle 4)
+State: CONNECTING -> CONNECTED
+Sent test message
+Cycle 4: Disconnecting...
+State: CONNECTED -> DISCONNECTING
+DISCONNECTED from peer 1 (reason=0)
+State: DISCONNECTING -> WAITING
+Cycle 5: Connecting to peer 1...
+State: WAITING -> CONNECTING
+CONNECTED to peer 1 (cycle 5)
+State: CONNECTING -> CONNECTED
+Sent test message
+Cycle 5: Disconnecting...
+State: CONNECTED -> DISCONNECTING
+DISCONNECTED from peer 1 (reason=0)
+State: DISCONNECTING -> COMPLETE
+========================================
+STRESS TEST RESULTS
+========================================
+Connection Cycles: 5
+  Successes: 5
+  Failures: 0
+  Disconnects: 5
+  Success rate: 100%
+Messages: sent=5 recv=0
+
+Memory Analysis:
+  Initial MaxBlock: 704
+  Final MaxBlock:   4096 (+0)
+  Min MaxBlock:     704
+  Initial FreeMem:  704
+  Final FreeMem:    5664 (+0)
+  Min FreeMem:      704
+
+VERDICT: PASS - No significant memory leaks detected
+========================================
+Reconnecting for log stream...
+CONNECTED to peer 1 (cycle 6)
+State: COMPLETE -> CONNECTED
+Streaming logs to test partner...

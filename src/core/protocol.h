@@ -12,8 +12,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
-/* Forward declaration */
+/* Forward declarations */
 struct pt_context;
+struct pt_peer;
 
 /* ========================================================================
  * Protocol Constants
@@ -31,6 +32,7 @@ struct pt_context;
 #define PT_PEER_NAME_MAX        31
 #define PT_MESSAGE_MAX_PAYLOAD  65535
 #define PT_MESSAGE_HEADER_SIZE  10
+#define PT_COMPACT_HEADER_SIZE  4   /* Compact header: [P][TypeFlags][Len16] */
 #define PT_UDP_HEADER_SIZE      8
 
 /* Discovery packet types */
@@ -45,6 +47,7 @@ struct pt_context;
 #define PT_MSG_TYPE_DISCONNECT  0x04
 #define PT_MSG_TYPE_ACK         0x05
 #define PT_MSG_TYPE_REJECT      0x06
+#define PT_MSG_TYPE_CAPABILITY  0x07
 
 /* Discovery transport flags (bitmask) */
 #define PT_DISC_TRANSPORT_TCP       0x01
@@ -56,16 +59,127 @@ struct pt_context;
 #define PT_DISC_FLAG_ACCEPTING  0x0002
 #define PT_DISC_FLAG_SPECTATOR  0x0004
 #define PT_DISC_FLAG_READY      0x0008
+#define PT_DISC_FLAG_HAS_CAPS   0x0010  /* Peer supports capability exchange */
 
-/* Message flags (match PT_SEND_* from peertalk.h) */
+/* Message flags (match PT_SEND_* from peertalk.h)
+ *
+ * Delivery semantics:
+ * - NO_DELAY: Send immediately, set TCP PSH flag
+ * - BATCH: Allow receiver to buffer (no PSH) - use for streaming bulk data
+ * - FLUSH: End of batch - send with PSH to flush receiver buffers
+ *
+ * For Classic Mac receivers:
+ * - BATCH or no flags: pushFlag=0 if peer allows batching
+ * - NO_DELAY or FLUSH: pushFlag=1 for immediate TCPNoCopyRcv completion
+ */
 #define PT_MSG_FLAG_UNRELIABLE  0x01
 #define PT_MSG_FLAG_COALESCABLE 0x02
-#define PT_MSG_FLAG_NO_DELAY    0x04
-#define PT_MSG_FLAG_BATCH       0x08
+#define PT_MSG_FLAG_NO_DELAY    0x04  /* Low latency - immediate send */
+#define PT_MSG_FLAG_BATCH       0x08  /* High throughput - allow batching */
+#define PT_MSG_FLAG_FRAGMENT    0x10  /* Message is fragmented */
+#define PT_MSG_FLAG_FLUSH       0x20  /* End of batch - flush receiver */
+
+/* ========================================================================
+ * Capability Negotiation Protocol
+ * ======================================================================== */
+
+/* Capability TLV types (for PT_MSG_TYPE_CAPABILITY payload) */
+#define PT_CAP_MAX_MESSAGE      0x01  /* 2 bytes: max efficient message size */
+#define PT_CAP_PREFERRED_CHUNK  0x02  /* 2 bytes: optimal streaming chunk */
+#define PT_CAP_BUFFER_PRESSURE  0x03  /* 1 byte: 0-100 constraint level */
+#define PT_CAP_FLAGS            0x04  /* 2 bytes: capability flags */
+#define PT_CAP_RECV_BUFFER_SIZE 0x05  /* 2 bytes: receive buffer size in bytes */
+#define PT_CAP_OPTIMAL_CHUNK    0x06  /* 2 bytes: optimal chunk for this receiver */
+
+/* Capability flags (sent in PT_CAP_FLAGS TLV)
+ *
+ * Feature flags (what peer supports):
+ * - FRAGMENTATION: Peer can receive and reassemble fragmented messages
+ * - STREAMING: Peer supports PeerTalk_StreamSend() for large transfers
+ * - COMPACT_HEADER: Peer supports 4-byte headers (reduced overhead)
+ *
+ * Performance hint flags (how sender should behave):
+ * - PUSH_PREFERRED: Peer has small buffers, sender should use pushFlag=1 always
+ *   (triggers immediate TCPNoCopyRcv completion, bypassing 25% threshold)
+ * - LARGE_BUFFERS: Peer has 16KB+ receive buffers, can handle bigger chunks
+ * - ASYNC_ENABLED: Peer uses async I/O, sender can pipeline more aggressively
+ */
+#define PT_CAPFLAG_FRAGMENTATION   0x0001  /* Peer supports fragmentation */
+#define PT_CAPFLAG_STREAMING       0x0002  /* Peer supports streaming */
+#define PT_CAPFLAG_COMPACT_HEADER  0x0004  /* Peer supports compact 4-byte headers */
+#define PT_CAPFLAG_PUSH_PREFERRED  0x0008  /* Peer prefers pushed data (low latency) */
+#define PT_CAPFLAG_LARGE_BUFFERS   0x0010  /* Peer has large (16KB+) receive buffers */
+#define PT_CAPFLAG_ASYNC_ENABLED   0x0020  /* Peer uses async I/O pattern */
+
+/* Capability defaults (for legacy peers without PT_DISC_FLAG_HAS_CAPS) */
+#define PT_CAP_DEFAULT_MAX_MSG      4096    /* Optimized for LAN performance */
+#define PT_CAP_DEFAULT_CHUNK        1024    /* Optimized for LAN performance */
+#define PT_CAP_DEFAULT_PRESSURE     50      /* Moderate constraint */
+
+/* Capability limits */
+#define PT_CAP_MIN_MAX_MSG          256     /* Minimum supported */
+#define PT_CAP_MAX_MAX_MSG          8192    /* Maximum supported */
+
+/* Capability send rate limiting.
+ *
+ * Minimum interval between capability message sends, in platform ticks.
+ * On Classic Mac: TickCount() may be 60Hz (nominal) or higher in practice.
+ * We use 15 ticks which gives ~250ms at 60Hz and is still safe at higher rates.
+ *
+ * For POSIX (millisecond ticks), see PT_CAP_MIN_INTERVAL_MS in net_posix.c.
+ *
+ * This prevents flooding a congested peer with capability messages during
+ * heavy load phases. After a large receive, ibuf drains through 5+ threshold
+ * levels (CRITICAL→HIGH→MEDIUM→LOW→NONE), each normally triggering a send.
+ * Rate limiting coalesces these into at most one send per interval.
+ */
+#define PT_CAP_MIN_INTERVAL_TICKS   15      /* ~250ms at 60Hz TickCount */
+#define PT_CAP_MIN_INTERVAL_MS      200     /* 200ms for POSIX ms-based ticks */
+
+/* Fragment header constants */
+#define PT_FRAGMENT_HEADER_SIZE     8       /* Size of fragment header */
+#define PT_FRAGMENT_FLAG_FIRST      0x01    /* First fragment */
+#define PT_FRAGMENT_FLAG_LAST       0x02    /* Last fragment */
 
 /* ========================================================================
  * Data Structures
  * ======================================================================== */
+
+/* Fragment header (prepended to each fragment)
+ *
+ * Wire format (8 bytes):
+ * - Message ID (2, big-endian): Links fragments together
+ * - Total Length (2, big-endian): Original message size
+ * - Fragment Offset (2, big-endian): Byte offset in original
+ * - Fragment Flags (1): FIRST=0x01, LAST=0x02
+ * - Reserved (1)
+ */
+typedef struct {
+    uint16_t message_id;        /* Links fragments together */
+    uint16_t total_length;      /* Original message size */
+    uint16_t fragment_offset;   /* Byte offset in original */
+    uint8_t  fragment_flags;    /* PT_FRAGMENT_FLAG_* */
+    uint8_t  reserved;
+} pt_fragment_header;
+
+/* Capability message (for parsing PT_MSG_TYPE_CAPABILITY)
+ *
+ * Sent after TCP connection established. Peers exchange capabilities
+ * and negotiate effective_max_msg = min(local, remote).
+ *
+ * Performance hints help sender optimize for receiver:
+ * - recv_buffer_size: Sender can tune chunk sizes (bigger = faster, if buffers allow)
+ * - capability_flags with PUSH_PREFERRED: Sender uses pushFlag=1 always
+ */
+typedef struct {
+    uint16_t max_message_size;   /* Max efficient message size (256-8192) */
+    uint16_t preferred_chunk;    /* Optimal streaming chunk size */
+    uint16_t capability_flags;   /* PT_CAPFLAG_* */
+    uint16_t recv_buffer_size;   /* Receive buffer size in bytes (0 = default 8192) */
+    uint16_t optimal_chunk;      /* 25% of recv_buffer (optimal per-send size for receiver) */
+    uint8_t  buffer_pressure;    /* 0-100 constraint level */
+    uint8_t  reserved;
+} pt_capability_msg;
 
 /* Parsed discovery packet
  *
@@ -102,6 +216,25 @@ typedef struct {
     uint8_t  sequence;
     uint16_t payload_len;
 } pt_message_header;
+
+/* Compact message header (4 bytes, no magic/seq/CRC)
+ *
+ * Wire format (4 bytes):
+ * - Marker (1): 'P' (0x50) - distinguishes from full header 'PTMG'
+ * - TypeFlags (1): High nibble = type (0-15), Low nibble = flags (0-15)
+ * - Payload Length (2, big-endian)
+ *
+ * Used when both peers support PT_CAPFLAG_COMPACT_HEADER.
+ * Reduces overhead from 12 bytes (10 header + 2 CRC) to 4 bytes.
+ */
+typedef struct {
+    uint8_t  type;              /* PT_MSG_TYPE_* (from high nibble) */
+    uint8_t  flags;             /* PT_MSG_FLAG_* (from low nibble) */
+    uint16_t payload_len;
+} pt_compact_header;
+
+/* Compact header marker byte */
+#define PT_COMPACT_MARKER  0x50  /* 'P' - first byte, distinguishes from 'PTMG' */
 
 /* ========================================================================
  * CRC-16 Functions
@@ -233,6 +366,53 @@ int pt_message_decode_header(struct pt_context *ctx, const uint8_t *buf,
                              size_t len, pt_message_header *hdr);
 
 /* ========================================================================
+ * Compact Header Functions
+ * ======================================================================== */
+
+/* Encode compact message header to wire format
+ *
+ * Note: Caller must append payload (no CRC needed for compact headers)
+ *
+ * Args:
+ *   hdr - Parsed compact header
+ *   buf - Output buffer (at least PT_COMPACT_HEADER_SIZE bytes)
+ *
+ * Returns: PT_COMPACT_HEADER_SIZE (4) on success
+ */
+int pt_message_encode_compact(const pt_compact_header *hdr, uint8_t *buf);
+
+/* Decode compact message header from wire format
+ *
+ * Validates:
+ * - Marker byte ('P')
+ * - Type is valid (0x01-0x07)
+ *
+ * Args:
+ *   buf - Wire format data
+ *   len - Data length
+ *   hdr - Output parsed compact header
+ *
+ * Returns: 0 on success, negative error code on failure
+ *   PT_ERR_MAGIC if marker is incorrect
+ *   PT_ERR_TRUNCATED if packet is too short
+ *   PT_ERR_INVALID if type is invalid
+ */
+int pt_message_decode_compact(const uint8_t *buf, size_t len, pt_compact_header *hdr);
+
+/* Check if buffer starts with compact header marker
+ *
+ * Used to distinguish between full headers (starts with 'PTMG') and
+ * compact headers (starts with 'P' followed by non-'T' byte).
+ *
+ * Args:
+ *   buf - Wire format data (at least 2 bytes)
+ *   len - Data length
+ *
+ * Returns: 1 if compact header, 0 if full header or unknown
+ */
+int pt_message_is_compact(const uint8_t *buf, size_t len);
+
+/* ========================================================================
  * UDP Message Functions
  * ======================================================================== */
 
@@ -280,5 +460,96 @@ int pt_udp_encode(const void *payload, uint16_t payload_len,
 int pt_udp_decode(struct pt_context *ctx, const uint8_t *buf, size_t len,
                   uint16_t *sender_port_out, const void **payload_out,
                   uint16_t *payload_len_out);
+
+/* ========================================================================
+ * Capability Message Functions
+ * ======================================================================== */
+
+/* Encode capability message to wire format (TLV encoding)
+ *
+ * Args:
+ *   caps    - Capability message to encode
+ *   buf     - Output buffer
+ *   buf_len - Buffer size
+ *
+ * Returns: Payload size on success, negative error code on failure
+ */
+int pt_capability_encode(const pt_capability_msg *caps, uint8_t *buf, size_t buf_len);
+
+/* Decode capability message from wire format (TLV decoding)
+ *
+ * Args:
+ *   ctx     - Context for logging (can be NULL)
+ *   buf     - Wire format data (payload only, no header)
+ *   len     - Data length
+ *   caps    - Output parsed capability message
+ *
+ * Returns: 0 on success, negative error code on failure
+ */
+int pt_capability_decode(struct pt_context *ctx, const uint8_t *buf, size_t len,
+                         pt_capability_msg *caps);
+
+/* ========================================================================
+ * Fragment Header Functions
+ * ======================================================================== */
+
+/* Encode fragment header to wire format
+ *
+ * Args:
+ *   hdr - Fragment header to encode
+ *   buf - Output buffer (at least PT_FRAGMENT_HEADER_SIZE bytes)
+ *
+ * Returns: PT_FRAGMENT_HEADER_SIZE on success
+ */
+int pt_fragment_encode(const pt_fragment_header *hdr, uint8_t *buf);
+
+/* Decode fragment header from wire format
+ *
+ * Args:
+ *   buf - Wire format data
+ *   len - Data length
+ *   hdr - Output parsed fragment header
+ *
+ * Returns: 0 on success, negative error code on failure
+ */
+int pt_fragment_decode(const uint8_t *buf, size_t len, pt_fragment_header *hdr);
+
+/* ========================================================================
+ * Fragment Reassembly API
+ *
+ * These functions handle transparent fragment reassembly. Applications
+ * never see fragments - the SDK accumulates them and delivers complete
+ * messages to the callback.
+ * ======================================================================== */
+
+/* Process a received fragment
+ *
+ * Accumulates fragment data in peer's recv_direct buffer. When the last
+ * fragment arrives, returns the complete reassembled message.
+ *
+ * Args:
+ *   ctx           - PeerTalk context
+ *   peer          - Peer that sent the fragment
+ *   fragment_data - Raw fragment data (includes fragment header)
+ *   fragment_len  - Length of fragment data
+ *   frag_hdr      - Decoded fragment header
+ *   complete_data - OUTPUT: pointer to complete message data (if ready)
+ *   complete_len  - OUTPUT: length of complete message (if ready)
+ *
+ * Returns:
+ *   1 - Complete message ready (check complete_data/complete_len)
+ *   0 - Fragment received, more expected
+ *   <0 - Error code (PT_ERR_*)
+ */
+int pt_reassembly_process(struct pt_context *ctx, struct pt_peer *peer,
+                          const uint8_t *fragment_data, uint16_t fragment_len,
+                          const pt_fragment_header *frag_hdr,
+                          const uint8_t **complete_data, uint16_t *complete_len);
+
+/* Reset reassembly state for a peer
+ *
+ * Called on disconnect or error to clean up partial reassembly.
+ */
+void pt_reassembly_reset(struct pt_peer *peer);
 
 #endif /* PT_PROTOCOL_H */

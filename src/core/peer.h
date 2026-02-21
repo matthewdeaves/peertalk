@@ -229,4 +229,148 @@ int pt_peer_check_canaries(struct pt_context *ctx, struct pt_peer *peer);
  */
 void pt_peer_get_info(struct pt_peer *peer, PeerTalk_PeerInfo *info);
 
+/* ========================================================================
+ * Flow Control
+ * ======================================================================== */
+
+/* Pressure change threshold for sending updates.
+ * When local pressure crosses these thresholds, we send a capability update
+ * to inform the peer. This avoids sending updates on minor fluctuations.
+ */
+#define PT_PRESSURE_UPDATE_THRESHOLD 25  /* Report when crossing 25%, 50%, 75% */
+
+/* Check if pressure update needed for a peer
+ *
+ * Compares current recv queue pressure against last_reported_pressure.
+ * If pressure crossed a threshold (25%, 50%, 75%), marks update pending.
+ *
+ * Call this from poll loop after processing received data.
+ *
+ * Args:
+ *   ctx  - Context
+ *   peer - Peer to check
+ *
+ * Returns: 1 if update needed, 0 if not
+ */
+int pt_peer_check_pressure_update(struct pt_context *ctx, struct pt_peer *peer);
+
+/* Get pressure-based throttle decision
+ *
+ * Checks peer's reported buffer_pressure and returns whether sending
+ * should be throttled. Used in send path for flow control.
+ *
+ * Decision thresholds:
+ *   0-50:  No throttle (send normally)
+ *   50-75: Light throttle (skip LOW priority)
+ *   75-90: Heavy throttle (skip NORMAL and LOW)
+ *   90+:   Blocking (only CRITICAL passes)
+ *
+ * Args:
+ *   peer     - Peer to check
+ *   priority - Message priority (PT_PRIORITY_*)
+ *
+ * Returns: 1 if should throttle (skip send), 0 if should send
+ */
+int pt_peer_should_throttle(struct pt_peer *peer, uint8_t priority);
+
+/* Check rate limit using token bucket algorithm
+ *
+ * Checks if sending 'bytes' would exceed the peer's rate limit.
+ * If rate limiting is active (rate_limit_bytes_per_sec > 0), the
+ * function refills tokens based on elapsed time and checks if
+ * enough tokens are available for this send.
+ *
+ * Call from the send path after pressure-based throttling. Returns
+ * non-zero if the send should be rate-limited.
+ *
+ * Args:
+ *   ctx   - Context (for pt_get_ticks())
+ *   peer  - Peer to check
+ *   bytes - Number of bytes to send
+ *
+ * Returns: 0 if send is allowed, 1 if rate limited
+ */
+int pt_peer_check_rate_limit(struct pt_context *ctx, struct pt_peer *peer,
+                              uint16_t bytes);
+
+/* ========================================================================
+ * Adaptive Performance Tuning
+ * ======================================================================== */
+
+/* Update adaptive chunk size based on RTT
+ *
+ * Adjusts effective_chunk and pipeline_depth based on measured RTT.
+ * Call this after updating peer->hot.latency_ms.
+ *
+ * Tuning logic:
+ *   RTT < 50ms:  chunk=4096, pipeline=4 (Fast LAN)
+ *   RTT < 100ms: chunk=2048, pipeline=3
+ *   RTT < 200ms: chunk=1024, pipeline=2
+ *   RTT >= 200ms: chunk=512, pipeline=1 (Slow/lossy)
+ *
+ * Args:
+ *   ctx  - Context (for logging)
+ *   peer - Peer to update
+ */
+void pt_peer_update_adaptive_params(struct pt_context *ctx, struct pt_peer *peer);
+
+/* ========================================================================
+ * Async Send Pipeline
+ * ======================================================================== */
+
+/* Initialize async send pipeline for a peer
+ *
+ * Allocates send buffers for pipelined async sends. Call when peer
+ * transitions to CONNECTED state. On MacTCP, also allocates TCPiopb
+ * structures for each slot.
+ *
+ * Memory per peer (standard build, depth=4):
+ *   - 4 x buffer (~4KB each) = 16,448 bytes
+ *   - 4 x pt_send_slot = 96 bytes
+ *   Total: ~17KB per peer
+ *
+ * Memory per peer (lowmem build, depth=2):
+ *   - 2 x buffer (~1KB each) = 2,080 bytes
+ *   - 2 x pt_send_slot = 48 bytes
+ *   Total: ~2.3KB per peer
+ *
+ * Args:
+ *   ctx  - Context
+ *   peer - Peer to initialize pipeline for
+ *
+ * Returns: PT_OK on success, PT_ERR_NO_MEMORY if allocation fails
+ */
+int pt_pipeline_init(struct pt_context *ctx, struct pt_peer *peer);
+
+/* Cleanup async send pipeline for a peer
+ *
+ * Frees send buffers. Call when peer disconnects or is destroyed.
+ * Safe to call on uninitialized pipeline.
+ *
+ * Note: If sends are pending (in_use == 1), they are abandoned.
+ * The platform layer should ensure async operations complete before
+ * calling this (e.g., TCPAbort on MacTCP).
+ *
+ * Args:
+ *   ctx  - Context (for logging, can be NULL)
+ *   peer - Peer to cleanup
+ */
+void pt_pipeline_cleanup(struct pt_context *ctx, struct pt_peer *peer);
+
+/* Get a free pipeline slot for sending
+ *
+ * Finds and returns a free send slot. On PT_LOWMEM builds, allocates
+ * the buffer lazily on first use to save memory.
+ *
+ * Use this instead of directly iterating peer->pipeline.slots to
+ * ensure proper lazy allocation on low-memory systems.
+ *
+ * Args:
+ *   ctx  - Context (for logging and allocation)
+ *   peer - Peer to get slot from
+ *
+ * Returns: Pointer to free slot, or NULL if all slots busy or alloc failed
+ */
+pt_send_slot *pt_pipeline_get_slot(struct pt_context *ctx, struct pt_peer *peer);
+
 #endif /* PT_PEER_H */

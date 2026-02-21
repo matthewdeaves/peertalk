@@ -1,7 +1,10 @@
 /* peer.c - Peer management implementation */
 
 #include "peer.h"
+#include "queue.h"
 #include "pt_compat.h"
+#include "direct_buffer.h"
+#include "protocol.h"
 #include "../../include/peertalk.h"
 
 /* ========================================================================
@@ -278,6 +281,36 @@ struct pt_peer *pt_peer_create(struct pt_context *ctx,
     peer->hot.send_seq = 0;
     peer->hot.recv_seq = 0;
 
+    /* Initialize capabilities with conservative defaults for pre-exchange.
+     * These are used if the peer doesn't support capability negotiation
+     * (legacy peer) or until the capability message arrives. Values update
+     * when PT_MSG_TYPE_CAPABILITY is received in poll loop. */
+    peer->cold.caps.max_message_size = PT_CAP_DEFAULT_MAX_MSG;  /* 512 = conservative */
+    peer->cold.caps.preferred_chunk = PT_CAP_DEFAULT_CHUNK;     /* 1024 */
+    peer->cold.caps.capability_flags = 0;
+    peer->cold.caps.buffer_pressure = 0;
+    peer->cold.caps.caps_exchanged = 0;
+    peer->cold.caps.send_window = PT_FLOW_WINDOW_DEFAULT;  /* Updated after cap exchange */
+    peer->hot.effective_max_msg = PT_CAP_DEFAULT_MAX_MSG;  /* Conservative default */
+    peer->hot.effective_chunk = 1024;  /* Default chunk for unknown RTT */
+    peer->hot.pipeline_depth = 2;      /* Conservative pipeline depth */
+
+    /* Initialize reassembly state */
+    peer->cold.reassembly.message_id = 0;
+    peer->cold.reassembly.total_length = 0;
+    peer->cold.reassembly.received_length = 0;
+    peer->cold.reassembly.active = 0;
+    peer->cold.reassembly.reserved = 0;
+
+    /* Initialize stream state */
+    peer->stream.data = NULL;
+    peer->stream.user_data = NULL;
+    peer->stream.on_complete = NULL;
+    peer->stream.total_length = 0;
+    peer->stream.bytes_sent = 0;
+    peer->stream.active = 0;
+    peer->stream.cancelled = 0;
+
     /* Clear connection handle */
     peer->hot.connection = NULL;
 
@@ -291,6 +324,26 @@ struct pt_peer *pt_peer_create(struct pt_context *ctx,
         ctx->peer_names[peer->hot.name_idx][name_len] = '\0';
     } else {
         ctx->peer_names[peer->hot.name_idx][0] = '\0';
+    }
+
+    /* Initialize Tier 2 direct buffers for large messages */
+    {
+        uint16_t buf_size = ctx->direct_buffer_size;
+        if (buf_size == 0) {
+            buf_size = PT_DIRECT_DEFAULT_SIZE;
+        }
+        if (pt_direct_buffer_init(&peer->send_direct, buf_size) != 0) {
+            PT_CTX_WARN(ctx, PT_LOG_CAT_MEMORY,
+                       "Failed to allocate send direct buffer for peer %u",
+                       peer->hot.id);
+            /* Non-fatal: peer can still use Tier 1 queue */
+        }
+        if (pt_direct_buffer_init(&peer->recv_direct, buf_size) != 0) {
+            PT_CTX_WARN(ctx, PT_LOG_CAT_MEMORY,
+                       "Failed to allocate recv direct buffer for peer %u",
+                       peer->hot.id);
+            /* Non-fatal: small messages still work */
+        }
     }
 
     /* Increment peer count */
@@ -312,6 +365,13 @@ void pt_peer_destroy(struct pt_context *ctx, struct pt_peer *peer)
     PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT,
                "Peer destroyed: id=%u name='%s'",
                peer->hot.id, ctx->peer_names[peer->hot.name_idx]);
+
+    /* Cleanup async send pipeline */
+    pt_pipeline_cleanup(ctx, peer);
+
+    /* Free Tier 2 direct buffers */
+    pt_direct_buffer_free(&peer->send_direct);
+    pt_direct_buffer_free(&peer->recv_direct);
 
     /* Clear sensitive data */
     peer->hot.magic = 0;
@@ -370,7 +430,9 @@ int pt_peer_set_state(struct pt_context *ctx, struct pt_peer *peer,
         break;
 
     case PT_PEER_STATE_DISCONNECTING:
-        valid_transition = (new_state == PT_PEER_STATE_UNUSED);
+        /* Allow transition to DISCOVERED for reconnection support */
+        valid_transition = (new_state == PT_PEER_STATE_UNUSED ||
+                           new_state == PT_PEER_STATE_DISCOVERED);
         break;
 
     case PT_PEER_STATE_FAILED:
@@ -504,4 +566,463 @@ void pt_peer_get_info(struct pt_peer *peer, PeerTalk_PeerInfo *info)
 
     /* Update connected field based on current state */
     info->connected = (peer->hot.state == PT_PEER_STATE_CONNECTED) ? 1 : 0;
+}
+
+/* ========================================================================
+ * Flow Control
+ * ======================================================================== */
+
+/**
+ * Get the pressure threshold level (0, 25, 50, 75, 100) for a pressure value
+ */
+static uint8_t pt_pressure_level(uint8_t pressure)
+{
+    if (pressure >= 75) return 75;
+    if (pressure >= 50) return 50;
+    if (pressure >= 25) return 25;
+    return 0;
+}
+
+int pt_peer_check_pressure_update(struct pt_context *ctx, struct pt_peer *peer)
+{
+    uint8_t send_pressure;
+    uint8_t recv_pressure;
+    uint8_t current_pressure;
+    uint8_t current_level;
+    uint8_t last_level;
+
+    if (!ctx || !peer || peer->hot.magic != PT_PEER_MAGIC) {
+        return 0;
+    }
+
+    /* Only check for connected peers */
+    if (peer->hot.state != PT_PEER_STATE_CONNECTED) {
+        return 0;
+    }
+
+    /* Get pressure from BOTH queues - report the worse one.
+     *
+     * This captures the actual constraint regardless of where it is:
+     * - High send_pressure: "I can't transmit fast enough" (echo backlog)
+     * - High recv_pressure: "I can't receive fast enough" (processing backlog)
+     *
+     * On MacTCP, recv uses zero-copy so recv_queue is often empty.
+     * The real bottleneck shows up in send_queue when echoing back.
+     * By reporting MAX, we capture whichever is the actual constraint.
+     */
+    send_pressure = peer->send_queue ? pt_queue_pressure(peer->send_queue) : 0;
+    recv_pressure = peer->recv_queue ? pt_queue_pressure(peer->recv_queue) : 0;
+    current_pressure = (send_pressure > recv_pressure) ? send_pressure : recv_pressure;
+
+    /* Quantize to threshold levels for hysteresis */
+    current_level = pt_pressure_level(current_pressure);
+    last_level = pt_pressure_level(peer->cold.caps.last_reported_pressure);
+
+    /* Check if we crossed a threshold */
+    if (current_level != last_level) {
+        PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+            "Pressure threshold crossed for peer %u: %u%% -> %u%% (level %u -> %u)",
+            peer->hot.id, peer->cold.caps.last_reported_pressure,
+            current_pressure, last_level, current_level);
+
+        /* Mark update pending - poll loop will send capability message */
+        peer->cold.caps.pressure_update_pending = 1;
+        peer->cold.caps.last_reported_pressure = current_pressure;
+
+        return 1;
+    }
+
+    return 0;
+}
+
+int pt_peer_should_throttle(struct pt_peer *peer, uint8_t priority)
+{
+    /* NOTE: This version uses hardcoded thresholds for backward compatibility.
+     * The context-aware version pt_peer_should_throttle_ctx() uses configurable
+     * thresholds from ctx->pressure_*. The send path uses this simpler version
+     * which relies on the PT_PRESSURE_* constants. */
+    uint8_t peer_pressure;
+
+    if (!peer || peer->hot.magic != PT_PEER_MAGIC) {
+        return 0;  /* Don't throttle on invalid peer */
+    }
+
+    /* Get peer's reported buffer pressure */
+    peer_pressure = peer->cold.caps.buffer_pressure;
+
+    /* Decision thresholds based on peer's reported pressure:
+     *
+     * 0-49:  No throttle (send normally)
+     * 50-84: Light throttle (skip LOW priority)
+     * 85-94: Heavy throttle (skip NORMAL and LOW)
+     * 95+:   Blocking (only CRITICAL passes)
+     *
+     * This implements sender-side flow control based on receiver feedback.
+     * The receiver reports its queue pressure via capability updates,
+     * and we back off accordingly to prevent overwhelming it.
+     */
+
+    if (peer_pressure >= PT_PRESSURE_CRITICAL) {
+        /* Blocking: only CRITICAL priority passes */
+        if (priority < PT_PRIORITY_CRITICAL) {
+            return 1;  /* Throttle */
+        }
+    } else if (peer_pressure >= PT_PRESSURE_HIGH) {
+        /* Heavy throttle: skip NORMAL and LOW */
+        if (priority < PT_PRIORITY_HIGH) {
+            return 1;  /* Throttle */
+        }
+    } else if (peer_pressure >= PT_PRESSURE_MEDIUM) {
+        /* Light throttle: skip LOW priority */
+        if (priority < PT_PRIORITY_NORMAL) {
+            return 1;  /* Throttle */
+        }
+    }
+
+    return 0;  /* Don't throttle - send normally */
+}
+
+int pt_peer_check_rate_limit(struct pt_context *ctx, struct pt_peer *peer,
+                              uint16_t bytes)
+{
+    pt_tick_t now, elapsed;
+    uint32_t tokens_to_add;
+
+    if (!peer || peer->hot.magic != PT_PEER_MAGIC) {
+        return 0;  /* Don't rate limit invalid peer */
+    }
+
+    /* No rate limit if disabled */
+    if (peer->cold.caps.rate_limit_bytes_per_sec == 0) {
+        return 0;
+    }
+
+    /* Get current time */
+    if (ctx && ctx->plat && ctx->plat->get_ticks) {
+        now = ctx->plat->get_ticks();
+    } else {
+        return 0;  /* Can't rate limit without timer */
+    }
+
+    /* Refill tokens based on elapsed time
+     * tokens_to_add = elapsed_ms * bytes_per_sec / 1000
+     * Avoid overflow by doing division first for large values */
+    elapsed = now - peer->cold.caps.rate_last_update;
+    if (elapsed > 0) {
+        /* Calculate tokens to add (milliseconds * bytes/sec / 1000)
+         * Use 64-bit intermediate to avoid overflow */
+        uint32_t rate = peer->cold.caps.rate_limit_bytes_per_sec;
+        tokens_to_add = (uint32_t)(((uint32_t)elapsed * rate) / 1000);
+
+        peer->cold.caps.rate_bucket_tokens += tokens_to_add;
+
+        /* Cap at bucket max */
+        if (peer->cold.caps.rate_bucket_tokens > peer->cold.caps.rate_bucket_max) {
+            peer->cold.caps.rate_bucket_tokens = peer->cold.caps.rate_bucket_max;
+        }
+
+        peer->cold.caps.rate_last_update = now;
+    }
+
+    /* Check if we have enough tokens */
+    if (peer->cold.caps.rate_bucket_tokens < bytes) {
+        return 1;  /* Rate limited - not enough tokens */
+    }
+
+    /* Consume tokens */
+    peer->cold.caps.rate_bucket_tokens -= bytes;
+    return 0;  /* OK to send */
+}
+
+/* ========================================================================== */
+/* Async Send Pipeline Management                                             */
+/* ========================================================================== */
+
+/**
+ * Calculate buffer size for a pipeline slot
+ */
+static size_t pt_pipeline_buf_size(void)
+{
+    return (size_t)PT_PIPELINE_MAX_PAYLOAD + PT_MESSAGE_HEADER_SIZE + 4;
+}
+
+int pt_pipeline_init(struct pt_context *ctx, struct pt_peer *peer)
+{
+    int i;
+    size_t buf_size;
+
+    if (!ctx || !peer || peer->hot.magic != PT_PEER_MAGIC) {
+        return PT_ERR_INVALID_PARAM;
+    }
+
+    /* Already initialized? */
+    if (peer->pipeline.initialized) {
+        return PT_OK;
+    }
+
+    buf_size = pt_pipeline_buf_size();
+
+    /* Initialize slot metadata */
+    for (i = 0; i < PT_SEND_PIPELINE_DEPTH; i++) {
+        peer->pipeline.slots[i].in_use = 0;
+        peer->pipeline.slots[i].completed = 0;
+        peer->pipeline.slots[i].platform_data = NULL;
+
+        /* Initialize WDS sentinel */
+        peer->pipeline.slots[i].wds[1].length = 0;
+        peer->pipeline.slots[i].wds[1].ptr = NULL;
+
+#ifdef PT_LOWMEM
+        /* Lazy allocation: defer buffer allocation until first use.
+         * This saves ~2KB per peer on Mac SE (4MB RAM) when peers
+         * aren't actively sending data. */
+        peer->pipeline.slots[i].buffer = NULL;
+        peer->pipeline.slots[i].buffer_size = (uint16_t)buf_size;  /* Remember target size */
+#else
+        /* Eager allocation: allocate all buffers upfront.
+         * Better for high-throughput scenarios. */
+        peer->pipeline.slots[i].buffer = (uint8_t *)pt_alloc(buf_size);
+        if (!peer->pipeline.slots[i].buffer) {
+            PT_CTX_WARN(ctx, PT_LOG_CAT_MEMORY,
+                "Pipeline init failed: slot %d alloc (%zu bytes)", i, buf_size);
+            pt_pipeline_cleanup(ctx, peer);
+            return PT_ERR_NO_MEMORY;
+        }
+        peer->pipeline.slots[i].buffer_size = (uint16_t)buf_size;
+#endif
+    }
+
+    peer->pipeline.pending_count = 0;
+    peer->pipeline.next_slot = 0;
+    peer->pipeline.initialized = 1;
+
+#ifdef PT_LOWMEM
+    PT_CTX_DEBUG(ctx, PT_LOG_CAT_MEMORY,
+        "Pipeline init (lazy): peer=%u depth=%d buf_size=%zu",
+        peer->hot.id, PT_SEND_PIPELINE_DEPTH, buf_size);
+#else
+    PT_CTX_DEBUG(ctx, PT_LOG_CAT_MEMORY,
+        "Pipeline init: peer=%u depth=%d buf_size=%zu",
+        peer->hot.id, PT_SEND_PIPELINE_DEPTH, buf_size);
+#endif
+
+    return PT_OK;
+}
+
+pt_send_slot *pt_pipeline_get_slot(struct pt_context *ctx, struct pt_peer *peer)
+{
+    int i;
+
+    if (!peer || !peer->pipeline.initialized) {
+        return NULL;
+    }
+
+    /* Find a free slot */
+    for (i = 0; i < PT_SEND_PIPELINE_DEPTH; i++) {
+        pt_send_slot *slot = &peer->pipeline.slots[i];
+
+        if (!slot->in_use) {
+#ifdef PT_LOWMEM
+            /* Lazy allocation: allocate buffer on first use */
+            if (!slot->buffer) {
+                size_t buf_size = pt_pipeline_buf_size();
+                slot->buffer = (uint8_t *)pt_alloc(buf_size);
+                if (!slot->buffer) {
+                    PT_CTX_WARN(ctx, PT_LOG_CAT_MEMORY,
+                        "Pipeline lazy alloc failed: slot %d (%zu bytes)",
+                        i, buf_size);
+                    return NULL;  /* Allocation failed */
+                }
+                PT_CTX_DEBUG(ctx, PT_LOG_CAT_MEMORY,
+                    "Pipeline lazy alloc: peer=%u slot=%d", peer->hot.id, i);
+            }
+#else
+            (void)ctx;  /* Unused in non-lowmem builds */
+#endif
+            return slot;
+        }
+    }
+
+    return NULL;  /* All slots busy */
+}
+
+void pt_pipeline_cleanup(struct pt_context *ctx, struct pt_peer *peer)
+{
+    int i;
+    uint8_t pending;
+
+    if (!peer) {
+        return;
+    }
+
+    pending = peer->pipeline.pending_count;
+
+    /* Free buffers */
+    for (i = 0; i < PT_SEND_PIPELINE_DEPTH; i++) {
+        if (peer->pipeline.slots[i].buffer) {
+            pt_free(peer->pipeline.slots[i].buffer);
+            peer->pipeline.slots[i].buffer = NULL;
+        }
+        /* Note: platform_data cleanup is platform's responsibility */
+        peer->pipeline.slots[i].in_use = 0;
+        peer->pipeline.slots[i].completed = 0;
+    }
+
+    peer->pipeline.pending_count = 0;
+    peer->pipeline.next_slot = 0;
+    peer->pipeline.initialized = 0;
+
+    if (ctx && pending > 0) {
+        PT_CTX_DEBUG(ctx, PT_LOG_CAT_MEMORY,
+            "Pipeline cleanup: peer=%u pending=%u",
+            peer->hot.id, pending);
+    }
+}
+
+/* ========================================================================== */
+/* Adaptive Performance Tuning                                                */
+/* ========================================================================== */
+
+void pt_peer_update_adaptive_params(struct pt_context *ctx, struct pt_peer *peer)
+{
+    uint16_t rtt;
+    uint16_t new_chunk;
+    uint16_t peer_optimal;
+    uint8_t new_pipeline;
+    uint16_t new_window;
+    uint32_t new_rate_limit;
+    uint8_t peer_pressure;
+
+    if (!peer || peer->hot.magic != PT_PEER_MAGIC) {
+        return;
+    }
+
+    rtt = peer->hot.latency_ms;
+    peer_optimal = peer->cold.caps.optimal_chunk;
+    peer_pressure = peer->cold.caps.buffer_pressure;
+
+    /* Tuning logic based on measured RTT
+     *
+     * Larger chunks reduce per-message overhead but increase latency.
+     * Smaller chunks are better for slow/lossy links.
+     * Pipeline depth controls how many messages in flight.
+     */
+    if (rtt < 50) {
+        /* Fast LAN - maximize throughput */
+        new_chunk = 4096;
+        new_pipeline = 4;
+        new_window = 6;   /* Larger window for better utilization */
+    } else if (rtt < 100) {
+        /* Good connection */
+        new_chunk = 2048;
+        new_pipeline = 3;
+        new_window = 4;   /* Normal */
+    } else if (rtt < 200) {
+        /* Moderate latency */
+        new_chunk = 1024;
+        new_pipeline = 2;
+        new_window = 3;   /* Moderate latency */
+    } else {
+        /* Slow/lossy - minimize in-flight data */
+        new_chunk = 512;
+        new_pipeline = 1;
+        new_window = 2;   /* High latency - smaller window */
+    }
+
+    /* Clamp window to protocol limits */
+    if (new_window < PT_FLOW_WINDOW_MIN) new_window = PT_FLOW_WINDOW_MIN;
+    if (new_window > PT_FLOW_WINDOW_MAX) new_window = PT_FLOW_WINDOW_MAX;
+
+    /* Incorporate peer's optimal_chunk from capability exchange.
+     * The peer advertises their 25% threshold - the ideal chunk size
+     * that triggers efficient receive completion on their end.
+     * Use the smaller of RTT-based and peer-optimal to be safe. */
+    if (peer_optimal > 0 && peer_optimal < new_chunk) {
+        uint16_t rtt_based_chunk = new_chunk;  /* Save RTT-based value for logging */
+        new_chunk = peer_optimal;
+        if (ctx) {
+            PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+                "Using peer %u optimal_chunk=%u (smaller than RTT-based %u)",
+                peer->hot.id, peer_optimal, rtt_based_chunk);
+        }
+    }
+
+    /* ================================================================
+     * AUTO RATE LIMITING: Adjust rate based on peer's reported pressure
+     *
+     * When peer reports high buffer pressure, we automatically enable
+     * rate limiting to prevent overwhelming them. This replaces manual
+     * rate limiting in application code (e.g., perf_partner's sleep).
+     *
+     * Uses configurable thresholds from ctx->pressure_* if available,
+     * otherwise falls back to PT_PRESSURE_* constants.
+     * ================================================================ */
+    {
+        uint8_t thresh_high = ctx ? ctx->pressure_high : PT_PRESSURE_HIGH;
+        uint8_t thresh_med = ctx ? ctx->pressure_medium : PT_PRESSURE_MEDIUM;
+
+        if (peer_pressure >= thresh_high) {
+            /* High pressure: aggressive rate limiting */
+            new_rate_limit = 50 * 1024;  /* 50 KB/s */
+        } else if (peer_pressure >= thresh_med) {
+            /* Medium pressure: moderate rate limiting */
+            new_rate_limit = 100 * 1024; /* 100 KB/s */
+        } else {
+            /* Low/no pressure: unlimited */
+            new_rate_limit = 0;
+        }
+    }
+
+    /* Update rate limit if changed */
+    if (peer->cold.caps.rate_limit_bytes_per_sec != new_rate_limit) {
+        peer->cold.caps.rate_limit_bytes_per_sec = new_rate_limit;
+
+        /* Initialize/reset token bucket when rate limit changes */
+        if (new_rate_limit > 0) {
+            /* Bucket max = 2x rate (allows small bursts) */
+            peer->cold.caps.rate_bucket_max = new_rate_limit * 2;
+            /* Start with full bucket */
+            peer->cold.caps.rate_bucket_tokens = peer->cold.caps.rate_bucket_max;
+            /* Initialize timer */
+            if (ctx && ctx->plat && ctx->plat->get_ticks) {
+                peer->cold.caps.rate_last_update = ctx->plat->get_ticks();
+            }
+        }
+
+        if (ctx) {
+            if (new_rate_limit > 0) {
+                PT_CTX_INFO(ctx, PT_LOG_CAT_PROTOCOL,
+                    "Rate limit enabled for peer %u: %u KB/s (pressure=%u%%)",
+                    peer->hot.id, new_rate_limit / 1024, peer_pressure);
+            } else {
+                PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+                    "Rate limit disabled for peer %u (pressure=%u%%)",
+                    peer->hot.id, peer_pressure);
+            }
+        }
+    }
+
+    /* Update send window if changed */
+    if (peer->cold.caps.send_window != new_window) {
+        if (ctx) {
+            PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+                "Adaptive window for peer %u: %u -> %u (RTT=%ums)",
+                peer->hot.id, peer->cold.caps.send_window, new_window, rtt);
+        }
+        peer->cold.caps.send_window = new_window;
+    }
+
+    /* Only log chunk/pipeline if they actually changed */
+    if (peer->hot.effective_chunk != new_chunk ||
+        peer->hot.pipeline_depth != new_pipeline) {
+
+        peer->hot.effective_chunk = new_chunk;
+        peer->hot.pipeline_depth = new_pipeline;
+
+        if (ctx) {
+            PT_CTX_DEBUG(ctx, PT_LOG_CAT_PROTOCOL,
+                "Adaptive tuning for peer %u: RTT=%ums chunk=%u pipeline=%u peer_optimal=%u",
+                peer->hot.id, rtt, new_chunk, new_pipeline, peer_optimal);
+        }
+    }
 }

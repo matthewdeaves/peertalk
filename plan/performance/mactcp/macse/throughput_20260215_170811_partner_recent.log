@@ -1,0 +1,50 @@
+[02261188][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[02266120][INF] Discovery ANNOUNCE received from 10.188.1.55:7354 (MacThroughput)
+[02266120][INF] Processing packet type 1
+[02266120][INF] Handling ANNOUNCE packet
+[02266120][INF] pt_peer_find_by_addr returned: (nil)
+[02266120][INF] Creating new peer: MacThroughput at 10.188.1.55:7354
+[02266120][INF] Peer created: id=1 name='MacThroughput' addr=0x0ABC0137 port=7354
+[02266120][INF] Peer created successfully, firing callback
+[02266120][INF] Calling on_peer_discovered callback
+[02266120][INF] Peer 1 () timed out after 30 seconds
+[02266120][INF] Peer destroyed: id=1 name='MacThroughput'
+[02271187][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[02281071][INF] Discovery ANNOUNCE received from 10.188.1.55:7354 (MacThroughput)
+[02281071][INF] Processing packet type 1
+[02281071][INF] Handling ANNOUNCE packet
+[02281071][INF] pt_peer_find_by_addr returned: (nil)
+[02281071][INF] Creating new peer: MacThroughput at 10.188.1.55:7354
+[02281071][INF] Peer created: id=1 name='MacThroughput' addr=0x0ABC0137 port=7354
+[02281071][INF] Peer created successfully, firing callback
+[02281071][INF] Calling on_peer_discovered callback
+[02281071][INF] Peer 1 () timed out after 30 seconds
+[02281071][INF] Peer destroyed: id=1 name='MacThroughput'
+[02281187][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[02291198][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[02296021][INF] Discovery ANNOUNCE received from 10.188.1.55:7354 (MacThroughput)
+[02296021][INF] Processing packet type 1
+[02296021][INF] Handling ANNOUNCE packet
+[02296021][INF] pt_peer_find_by_addr returned: (nil)
+[02296021][INF] Creating new peer: MacThroughput at 10.188.1.55:7354
+[02296021][INF] Peer created: id=1 name='MacThroughput' addr=0x0ABC0137 port=7354
+[02296021][INF] Peer created successfully, firing callback
+[02296021][INF] Calling on_peer_discovered callback
+[02296021][INF] Peer 1 () timed out after 30 seconds
+[02296021][INF] Peer destroyed: id=1 name='MacThroughput'
+[02301196][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[02301491][INF] Discovery GOODBYE received from 10.188.1.55:7354 (MacThroughput)
+[02301491][INF] Processing packet type 3
+[02311199][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[02321210][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[02331215][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[02341222][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[02351231][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[02361232][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[02371233][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[02381234][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[02391245][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[02401249][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[02411256][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[02421263][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[02431270][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)

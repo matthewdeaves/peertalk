@@ -1,0 +1,35 @@
+[DISCOVERED] Peer 1: "MacDiscovery" at 10.188.1.213:7354
+[STATUS] 9320 sec: peers=17, msgs=65193, connected=no
+[STATUS] 9330 sec: peers=17, msgs=65193, connected=no
+[STATUS] 9340 sec: peers=17, msgs=65193, connected=no
+[STATUS] 9350 sec: peers=17, msgs=65193, connected=no
+[STATUS] 9360 sec: peers=17, msgs=65193, connected=no
+[STATUS] 9370 sec: peers=17, msgs=65193, connected=no
+[STATUS] 9380 sec: peers=17, msgs=65193, connected=no
+[STATUS] 9390 sec: peers=17, msgs=65193, connected=no
+[STATUS] 9400 sec: peers=17, msgs=65193, connected=no
+[STATUS] 9410 sec: peers=17, msgs=65193, connected=no
+[STATUS] 9420 sec: peers=17, msgs=65193, connected=no
+[STATUS] 9430 sec: peers=17, msgs=65193, connected=no
+[CONNECTED] Peer 2
+[CAPS] Peer 2: max_msg=4096 chunk=1024 pressure=0 [FRAG]
+[CAPS] Peer buffer: recv_buf=8192 optimal_chunk=2048
+[CAPS] Effective max message: 4096 bytes
+[CAPS] Optimal chunk for peer: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Detected log stream marker from peer 2 (IP 0x0ABC01D5)
+[LOG] Started receiving logs from MacDiscovery (IP 0x0ABC01D5, 2477 bytes expected)
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 2048/2477 bytes
+[MESSAGE] From peer 2: 429 bytes
+[LOG] Received 2477/2477 bytes
+[LOG] Saved 2469 bytes to plan/performance/mactcp/performa6200/discovery_20260221_162217.log
+
+========== unknown METRICS ==========
+=====================================
+
+[STATUS] 9440 sec: peers=17, msgs=65196, connected=yes
+[DISCONNECTED] Peer 2 (reason=0)
+[STATUS] 9450 sec: peers=17, msgs=65196, connected=no
+[STATUS] 9460 sec: peers=17, msgs=65196, connected=no
+[STATUS] 9470 sec: peers=17, msgs=65196, connected=no

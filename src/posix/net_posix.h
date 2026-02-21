@@ -44,7 +44,7 @@ typedef uint8_t pt_recv_state;
  */
 typedef struct {
     pt_recv_state state;           /* 1 byte at offset 0 */
-    uint8_t       _pad0;           /* 1 byte at offset 1: CRITICAL for 68k alignment */
+    uint8_t       is_compact;      /* 1 byte at offset 1: 1 if current msg is compact header */
     uint16_t      bytes_needed;    /* 2 bytes at offset 2 */
     uint16_t      bytes_received;  /* 2 bytes at offset 4 */
     uint16_t      _pad1;           /* 2 bytes at offset 6: align to 8 bytes */
@@ -289,6 +289,16 @@ int pt_posix_recv(struct pt_context *ctx, struct pt_peer *peer);
 int pt_posix_send_control(struct pt_context *ctx, struct pt_peer *peer,
                           uint8_t msg_type);
 
+/**
+ * Send capability message to peer
+ *
+ * Called after connection established to exchange capability information.
+ * Enables automatic fragmentation for constrained peers.
+ *
+ * Returns: PT_OK on success, error code on failure
+ */
+int pt_posix_send_capability(struct pt_context *ctx, struct pt_peer *peer);
+
 /* ========================================================================== */
 /* UDP Messaging (Session 4.4)                                               */
 /* ========================================================================== */
@@ -335,5 +345,26 @@ int pt_posix_recv_udp(struct pt_context *ctx);
  * Returns: 0 on success, -1 on error
  */
 int pt_posix_poll(struct pt_context *ctx);
+
+/**
+ * Fast POSIX poll function
+ *
+ * Only handles TCP I/O for connected peers - no discovery, UDP, listen,
+ * periodic announces, or peer timeouts. Use for tight game loops.
+ *
+ * Performs:
+ * - TCP send queue drain for connected peers
+ * - TCP receive for connected peers
+ *
+ * Does NOT:
+ * - Poll discovery socket
+ * - Poll UDP message socket
+ * - Poll listen socket for new connections
+ * - Send periodic discovery announces
+ * - Check peer timeouts
+ *
+ * Returns: 0 on success, -1 on error
+ */
+int pt_posix_poll_fast(struct pt_context *ctx);
 
 #endif /* PT_NET_POSIX_H */

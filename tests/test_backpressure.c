@@ -35,14 +35,19 @@ void test_backpressure_levels(void) {
     }
     assert(pt_queue_backpressure(&q) == PT_BACKPRESSURE_LIGHT);
 
-    /* Fill to 75% (24/32) */
-    for (i = 0; i < 8; i++) {
+    /* Fill to ~85% (27/32 = 84.4%) - just below PT_PRESSURE_HIGH (85) */
+    for (i = 0; i < 11; i++) {
         pt_queue_push_coalesce(&q, "x", 1, PT_PRIO_NORMAL, PT_COALESCE_NONE);
     }
+    /* 27/32 = 84.4%, still LIGHT (need >= 85 for HEAVY) */
+    assert(pt_queue_backpressure(&q) == PT_BACKPRESSURE_LIGHT);
+
+    /* Add one more to reach 28/32 = 87.5% -> HEAVY (>= PT_PRESSURE_HIGH 85) */
+    pt_queue_push_coalesce(&q, "x", 1, PT_PRIO_NORMAL, PT_COALESCE_NONE);
     assert(pt_queue_backpressure(&q) == PT_BACKPRESSURE_HEAVY);
 
-    /* Fill to >90% (29/32 = 90.6%) to trigger BLOCKING */
-    for (i = 0; i < 5; i++) {
+    /* Fill to >95% (31/32 = 96.9%) to trigger BLOCKING */
+    for (i = 0; i < 3; i++) {
         pt_queue_push_coalesce(&q, "x", 1, PT_PRIO_NORMAL, PT_COALESCE_NONE);
     }
     assert(pt_queue_backpressure(&q) == PT_BACKPRESSURE_BLOCKING);
@@ -60,8 +65,8 @@ void test_try_push_policy(void) {
     pt_queue_init(NULL, &q, 32);
     pt_queue_ext_init(&q);  /* Initialize O(1) data structures */
 
-    /* Fill to blocking (>90% = 29/32) */
-    for (i = 0; i < 29; i++) {
+    /* Fill to blocking (>95% = 31/32 = 96.9%) to exceed PT_PRESSURE_CRITICAL (95) */
+    for (i = 0; i < 31; i++) {
         pt_queue_push_coalesce(&q, "x", 1, PT_PRIO_NORMAL, PT_COALESCE_NONE);
     }
 

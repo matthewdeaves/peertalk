@@ -7,6 +7,7 @@
 #include "../src/core/peer.h"
 #include "../src/core/pt_internal.h"
 #include "../src/core/pt_compat.h"
+#include "../src/core/queue.h"  /* For PT_PRESSURE_* constants */
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
@@ -626,6 +627,163 @@ static void test_peer_canaries(void)
     PASS();
 }
 
+/* Test rate limiting */
+static void test_peer_rate_limit(void)
+{
+    TEST("test_peer_rate_limit");
+
+    struct pt_context *ctx = create_test_context();
+    struct pt_peer *peer;
+    int limited;
+
+    if (!ctx) {
+        FAIL("Failed to create context");
+        return;
+    }
+
+    pt_peer_list_init(ctx, 8);
+
+    peer = pt_peer_create(ctx, "RateLimitTest", 0xC0A80001, 5010);
+    if (!peer) {
+        FAIL("pt_peer_create failed");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Test 1: No rate limit (default) */
+    limited = pt_peer_check_rate_limit(ctx, peer, 1024);
+    if (limited != 0) {
+        FAIL("Should not be rate limited when rate_limit_bytes_per_sec=0");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Test 2: Enable rate limiting */
+    peer->cold.caps.rate_limit_bytes_per_sec = 10000;  /* 10 KB/s */
+    peer->cold.caps.rate_bucket_max = 20000;           /* 2x rate */
+    peer->cold.caps.rate_bucket_tokens = 5000;         /* 5 KB available */
+    peer->cold.caps.rate_last_update = stub_get_ticks();
+
+    /* Should allow 1KB send (have 5KB tokens) */
+    limited = pt_peer_check_rate_limit(ctx, peer, 1024);
+    if (limited != 0) {
+        FAIL("Should allow 1KB send with 5KB tokens available");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Should have consumed ~1KB of tokens */
+    /* Tokens now ~4KB (5000 - 1024 = 3976) */
+
+    /* Test 3: Request more than available */
+    limited = pt_peer_check_rate_limit(ctx, peer, 5000);
+    if (limited != 1) {
+        FAIL("Should be rate limited when requesting 5KB with ~4KB tokens");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Test 4: Edge case - NULL context */
+    limited = pt_peer_check_rate_limit(NULL, peer, 100);
+    if (limited != 0) {
+        FAIL("NULL context should not rate limit");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Test 5: Edge case - NULL peer */
+    limited = pt_peer_check_rate_limit(ctx, NULL, 100);
+    if (limited != 0) {
+        FAIL("NULL peer should not rate limit");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    destroy_test_context(ctx);
+    PASS();
+}
+
+/* Test pressure-based throttling */
+static void test_peer_throttle(void)
+{
+    TEST("test_peer_throttle");
+
+    struct pt_context *ctx = create_test_context();
+    struct pt_peer *peer;
+    int throttled;
+
+    if (!ctx) {
+        FAIL("Failed to create context");
+        return;
+    }
+
+    pt_peer_list_init(ctx, 8);
+
+    peer = pt_peer_create(ctx, "ThrottleTest", 0xC0A80001, 5011);
+    if (!peer) {
+        FAIL("pt_peer_create failed");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Test 1: No pressure - no throttle */
+    peer->cold.caps.buffer_pressure = 0;
+    throttled = pt_peer_should_throttle(peer, PT_PRIORITY_LOW);
+    if (throttled != 0) {
+        FAIL("No throttle at 0%% pressure");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Test 2: Medium pressure - throttle LOW */
+    peer->cold.caps.buffer_pressure = 55;  /* Above PT_PRESSURE_MEDIUM (50) */
+    throttled = pt_peer_should_throttle(peer, PT_PRIORITY_LOW);
+    if (throttled != 1) {
+        FAIL("Should throttle LOW at 55%% pressure");
+        destroy_test_context(ctx);
+        return;
+    }
+    throttled = pt_peer_should_throttle(peer, PT_PRIORITY_NORMAL);
+    if (throttled != 0) {
+        FAIL("Should not throttle NORMAL at 55%% pressure");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Test 3: High pressure - throttle NORMAL and LOW */
+    peer->cold.caps.buffer_pressure = 90;  /* Above PT_PRESSURE_HIGH (85) */
+    throttled = pt_peer_should_throttle(peer, PT_PRIORITY_NORMAL);
+    if (throttled != 1) {
+        FAIL("Should throttle NORMAL at 90%% pressure");
+        destroy_test_context(ctx);
+        return;
+    }
+    throttled = pt_peer_should_throttle(peer, PT_PRIORITY_HIGH);
+    if (throttled != 0) {
+        FAIL("Should not throttle HIGH at 90%% pressure");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    /* Test 4: Critical pressure - throttle all except CRITICAL */
+    peer->cold.caps.buffer_pressure = 96;  /* Above PT_PRESSURE_CRITICAL (95) */
+    throttled = pt_peer_should_throttle(peer, PT_PRIORITY_HIGH);
+    if (throttled != 1) {
+        FAIL("Should throttle HIGH at 96%% pressure");
+        destroy_test_context(ctx);
+        return;
+    }
+    throttled = pt_peer_should_throttle(peer, PT_PRIORITY_CRITICAL);
+    if (throttled != 0) {
+        FAIL("Should NEVER throttle CRITICAL");
+        destroy_test_context(ctx);
+        return;
+    }
+
+    destroy_test_context(ctx);
+    PASS();
+}
+
 /* Test get_info */
 static void test_peer_get_info(void)
 {
@@ -788,6 +946,8 @@ int main(void)
     test_peer_timeout_edge_cases();
     test_peer_canaries();
     test_peer_get_info();
+    test_peer_rate_limit();
+    test_peer_throttle();
 
     /* Summary */
     printf("\n=== Results ===\n");

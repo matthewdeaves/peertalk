@@ -26,6 +26,8 @@ Build PeerTalk for POSIX, 68k MacTCP, and PPC Open Transport platforms with inte
 | `release` | Full pipeline with all quality gates |
 | `launcher-mactcp` | Build LaunchAPPLServer for 68k |
 | `launcher-ot` | Build LaunchAPPLServer for PPC |
+| `mac-tests` | Build Mac test apps (test_throughput, etc.) |
+| `mac-tests-perf` | Build only performance test apps |
 
 ## Docker Images
 
@@ -129,6 +131,20 @@ Build LaunchAPPLServer for Open Transport (PPC):
 # Output: LaunchAPPL-build/LaunchAPPLServer-OpenTransport.bin
 ```
 
+### mac-tests
+Build Mac test applications (requires MacTCP platform):
+```bash
+./scripts/build-mac-tests.sh mactcp
+# Output: build/mac/test_mactcp.bin, test_latency.bin, test_throughput.bin, etc.
+```
+
+### mac-tests-perf
+Build only performance test apps:
+```bash
+./scripts/build-mac-tests.sh mactcp perf
+# Output: build/mac/test_latency.bin, test_throughput.bin, test_stress.bin, test_discovery.bin
+```
+
 ---
 
 ## Makefile Targets Reference
@@ -210,6 +226,16 @@ Run checks:
 /check-isr            # Validate ISR safety
 /build package        # Create .bin files
 # Transfer packages/*.bin to Mac
+```
+
+### Performance Optimization Cycle
+```
+/perf-optimize performa6200    # Autonomous optimization cycle
+# Or step by step:
+/run-test all performa6200     # Establish baseline
+# Analyze results, implement changes
+/build test                     # Verify changes
+/run-test throughput            # Verify improvement
 ```
 
 ### Full Release

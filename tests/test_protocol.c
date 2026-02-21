@@ -581,6 +581,316 @@ static void test_crc16_error_detection(void)
 }
 
 /* ========================================================================
+ * Capability Negotiation Tests
+ * ======================================================================== */
+
+/* Test capability message encode/decode round-trip */
+static void test_capability_round_trip(void)
+{
+    TEST("test_capability_round_trip");
+
+    pt_capability_msg caps_out, caps_in;
+    uint8_t buf[32];
+    int ret;
+
+    /* Create test capability message */
+    caps_out.max_message_size = 4096;
+    caps_out.preferred_chunk = 512;
+    caps_out.buffer_pressure = 75;
+    caps_out.capability_flags = PT_CAPFLAG_FRAGMENTATION | PT_CAPFLAG_STREAMING;
+    caps_out.reserved = 0;
+
+    /* Encode */
+    ret = pt_capability_encode(&caps_out, buf, sizeof(buf));
+    if (ret < 0) {
+        FAIL("Encode failed: %d", ret);
+        return;
+    }
+
+    /* Decode */
+    ret = pt_capability_decode(NULL, buf, ret, &caps_in);
+    if (ret != 0) {
+        FAIL("Decode failed: %d", ret);
+        return;
+    }
+
+    /* Verify all fields */
+    if (caps_in.max_message_size != caps_out.max_message_size ||
+        caps_in.preferred_chunk != caps_out.preferred_chunk ||
+        caps_in.buffer_pressure != caps_out.buffer_pressure ||
+        caps_in.capability_flags != caps_out.capability_flags) {
+        FAIL("Field mismatch: max=%u/%u chunk=%u/%u pressure=%u/%u flags=0x%04X/0x%04X",
+             caps_in.max_message_size, caps_out.max_message_size,
+             caps_in.preferred_chunk, caps_out.preferred_chunk,
+             caps_in.buffer_pressure, caps_out.buffer_pressure,
+             caps_in.capability_flags, caps_out.capability_flags);
+        return;
+    }
+
+    PASS();
+}
+
+/* Test capability encoding edge cases */
+static void test_capability_edge_cases(void)
+{
+    TEST("test_capability_edge_cases");
+
+    pt_capability_msg caps_out, caps_in;
+    uint8_t buf[32];
+    int ret;
+
+    /* Test minimum values */
+    caps_out.max_message_size = 256;  /* Minimum */
+    caps_out.preferred_chunk = 64;
+    caps_out.buffer_pressure = 0;
+    caps_out.capability_flags = 0;
+    caps_out.reserved = 0;
+
+    ret = pt_capability_encode(&caps_out, buf, sizeof(buf));
+    if (ret < 0) {
+        FAIL("Min encode failed: %d", ret);
+        return;
+    }
+
+    ret = pt_capability_decode(NULL, buf, ret, &caps_in);
+    if (ret != 0 || caps_in.max_message_size != 256) {
+        FAIL("Min decode mismatch");
+        return;
+    }
+
+    /* Test maximum values */
+    caps_out.max_message_size = 8192;  /* Maximum */
+    caps_out.preferred_chunk = 4096;
+    caps_out.buffer_pressure = 100;
+    caps_out.capability_flags = 0xFFFF;
+
+    ret = pt_capability_encode(&caps_out, buf, sizeof(buf));
+    if (ret < 0) {
+        FAIL("Max encode failed: %d", ret);
+        return;
+    }
+
+    ret = pt_capability_decode(NULL, buf, ret, &caps_in);
+    if (ret != 0 || caps_in.max_message_size != 8192) {
+        FAIL("Max decode mismatch");
+        return;
+    }
+
+    PASS();
+}
+
+/* Test capability TLV clamping */
+static void test_capability_clamping(void)
+{
+    TEST("test_capability_clamping");
+
+    pt_capability_msg caps_out, caps_in;
+    uint8_t buf[32];
+    int ret;
+
+    /* Encode with out-of-range values */
+    caps_out.max_message_size = 10000;  /* Over max (8192) */
+    caps_out.preferred_chunk = 1024;
+    caps_out.buffer_pressure = 150;  /* Over 100 */
+    caps_out.capability_flags = 0;
+    caps_out.reserved = 0;
+
+    ret = pt_capability_encode(&caps_out, buf, sizeof(buf));
+    if (ret < 0) {
+        FAIL("Encode failed: %d", ret);
+        return;
+    }
+
+    ret = pt_capability_decode(NULL, buf, ret, &caps_in);
+    if (ret != 0) {
+        FAIL("Decode failed: %d", ret);
+        return;
+    }
+
+    /* Values should be clamped */
+    if (caps_in.max_message_size != 8192) {
+        FAIL("max_message_size not clamped: %u", caps_in.max_message_size);
+        return;
+    }
+    if (caps_in.buffer_pressure != 100) {
+        FAIL("buffer_pressure not clamped: %u", caps_in.buffer_pressure);
+        return;
+    }
+
+    PASS();
+}
+
+/* Test capability buffer too small */
+static void test_capability_buffer_small(void)
+{
+    TEST("test_capability_buffer_small");
+
+    pt_capability_msg caps;
+    uint8_t buf[8];  /* Too small */
+    int ret;
+
+    caps.max_message_size = 4096;
+    caps.preferred_chunk = 512;
+    caps.buffer_pressure = 50;
+    caps.capability_flags = 0;
+    caps.reserved = 0;
+
+    ret = pt_capability_encode(&caps, buf, sizeof(buf));
+    if (ret != PT_ERR_BUFFER_FULL) {
+        FAIL("Expected PT_ERR_BUFFER_FULL, got %d", ret);
+        return;
+    }
+
+    PASS();
+}
+
+/* Test fragment header encode/decode round-trip */
+static void test_fragment_round_trip(void)
+{
+    TEST("test_fragment_round_trip");
+
+    pt_fragment_header hdr_out, hdr_in;
+    uint8_t buf[PT_FRAGMENT_HEADER_SIZE];
+    int ret;
+
+    /* Create test fragment header */
+    hdr_out.message_id = 0x1234;
+    hdr_out.total_length = 4096;
+    hdr_out.fragment_offset = 1024;
+    hdr_out.fragment_flags = PT_FRAGMENT_FLAG_FIRST;
+    hdr_out.reserved = 0;
+
+    /* Encode */
+    ret = pt_fragment_encode(&hdr_out, buf);
+    if (ret != PT_FRAGMENT_HEADER_SIZE) {
+        FAIL("Encode returned %d, expected %d", ret, PT_FRAGMENT_HEADER_SIZE);
+        return;
+    }
+
+    /* Decode */
+    ret = pt_fragment_decode(buf, sizeof(buf), &hdr_in);
+    if (ret != 0) {
+        FAIL("Decode failed: %d", ret);
+        return;
+    }
+
+    /* Verify all fields */
+    if (hdr_in.message_id != hdr_out.message_id ||
+        hdr_in.total_length != hdr_out.total_length ||
+        hdr_in.fragment_offset != hdr_out.fragment_offset ||
+        hdr_in.fragment_flags != hdr_out.fragment_flags) {
+        FAIL("Field mismatch");
+        return;
+    }
+
+    PASS();
+}
+
+/* Test fragment header with various flag combinations */
+static void test_fragment_flags(void)
+{
+    TEST("test_fragment_flags");
+
+    pt_fragment_header hdr_out, hdr_in;
+    uint8_t buf[PT_FRAGMENT_HEADER_SIZE];
+    int ret;
+
+    /* Test FIRST flag only */
+    hdr_out.message_id = 1;
+    hdr_out.total_length = 2048;
+    hdr_out.fragment_offset = 0;
+    hdr_out.fragment_flags = PT_FRAGMENT_FLAG_FIRST;
+    hdr_out.reserved = 0;
+
+    pt_fragment_encode(&hdr_out, buf);
+    pt_fragment_decode(buf, sizeof(buf), &hdr_in);
+
+    if (hdr_in.fragment_flags != PT_FRAGMENT_FLAG_FIRST) {
+        FAIL("FIRST flag mismatch");
+        return;
+    }
+
+    /* Test LAST flag only */
+    hdr_out.fragment_flags = PT_FRAGMENT_FLAG_LAST;
+    pt_fragment_encode(&hdr_out, buf);
+    pt_fragment_decode(buf, sizeof(buf), &hdr_in);
+
+    if (hdr_in.fragment_flags != PT_FRAGMENT_FLAG_LAST) {
+        FAIL("LAST flag mismatch");
+        return;
+    }
+
+    /* Test both flags (single fragment = complete message) */
+    hdr_out.fragment_flags = PT_FRAGMENT_FLAG_FIRST | PT_FRAGMENT_FLAG_LAST;
+    pt_fragment_encode(&hdr_out, buf);
+    ret = pt_fragment_decode(buf, sizeof(buf), &hdr_in);
+
+    if (ret != 0 || hdr_in.fragment_flags != (PT_FRAGMENT_FLAG_FIRST | PT_FRAGMENT_FLAG_LAST)) {
+        FAIL("FIRST|LAST flags mismatch");
+        return;
+    }
+
+    PASS();
+}
+
+/* Test fragment header truncation */
+static void test_fragment_truncation(void)
+{
+    TEST("test_fragment_truncation");
+
+    pt_fragment_header hdr;
+    uint8_t buf[4];  /* Too short */
+    int ret;
+
+    ret = pt_fragment_decode(buf, sizeof(buf), &hdr);
+    if (ret != PT_ERR_TRUNCATED) {
+        FAIL("Expected PT_ERR_TRUNCATED, got %d", ret);
+        return;
+    }
+
+    PASS();
+}
+
+/* Test capability message type validation */
+static void test_message_header_capability(void)
+{
+    TEST("test_message_header_capability");
+
+    pt_message_header hdr_out, hdr_in;
+    uint8_t buf[PT_MESSAGE_HEADER_SIZE];
+    int ret;
+
+    /* Create capability message header */
+    hdr_out.version = PT_PROTOCOL_VERSION;
+    hdr_out.type = PT_MSG_TYPE_CAPABILITY;
+    hdr_out.flags = 0;
+    hdr_out.sequence = 0;
+    hdr_out.payload_len = 15;  /* Capability TLV payload */
+
+    /* Encode */
+    ret = pt_message_encode_header(&hdr_out, buf);
+    if (ret != PT_MESSAGE_HEADER_SIZE) {
+        FAIL("Encode returned %d, expected %d", ret, PT_MESSAGE_HEADER_SIZE);
+        return;
+    }
+
+    /* Decode */
+    ret = pt_message_decode_header(NULL, buf, sizeof(buf), &hdr_in);
+    if (ret != 0) {
+        FAIL("Decode failed: %d", ret);
+        return;
+    }
+
+    /* Verify type */
+    if (hdr_in.type != PT_MSG_TYPE_CAPABILITY) {
+        FAIL("Type mismatch: got %u, expected %u", hdr_in.type, PT_MSG_TYPE_CAPABILITY);
+        return;
+    }
+
+    PASS();
+}
+
+/* ========================================================================
  * Main
  * ======================================================================== */
 
@@ -603,6 +913,16 @@ int main(void)
     test_udp_round_trip();
     test_udp_errors();
     test_strerror();
+
+    /* Capability negotiation tests */
+    test_capability_round_trip();
+    test_capability_edge_cases();
+    test_capability_clamping();
+    test_capability_buffer_small();
+    test_fragment_round_trip();
+    test_fragment_flags();
+    test_fragment_truncation();
+    test_message_header_capability();
 
     /* Summary */
     printf("\n=== Results ===\n");

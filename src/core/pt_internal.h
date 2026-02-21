@@ -8,7 +8,8 @@
 
 #include "pt_types.h"
 #include "pt_log.h"
-#include "send.h"  /* Phase 3: pt_batch type */
+#include "send.h"           /* Phase 3: pt_batch type */
+#include "direct_buffer.h"  /* Tier 2: large message buffers */
 
 /* ========================================================================== */
 /* PT_Log Integration (Phase 0)                                              */
@@ -47,11 +48,22 @@ typedef struct {
     int             (*init)(struct pt_context *ctx);
     void            (*shutdown)(struct pt_context *ctx);
     int             (*poll)(struct pt_context *ctx);
+    int             (*poll_fast)(struct pt_context *ctx);  /* TCP I/O only */
     pt_tick_t       (*get_ticks)(void);
     unsigned long   (*get_free_mem)(void);
     unsigned long   (*get_max_block)(void);
     int             (*send_udp)(struct pt_context *ctx, struct pt_peer *peer,
                                 const void *data, uint16_t len);
+
+    /* Async send pipeline ops (NULL if platform doesn't support/need async) */
+    int             (*tcp_send_async)(struct pt_context *ctx, struct pt_peer *peer,
+                                      const void *data, uint16_t len, uint8_t flags);
+    int             (*poll_send_completions)(struct pt_context *ctx,
+                                             struct pt_peer *peer);
+    int             (*send_slots_available)(struct pt_context *ctx,
+                                            struct pt_peer *peer);
+    int             (*pipeline_init)(struct pt_context *ctx, struct pt_peer *peer);
+    void            (*pipeline_cleanup)(struct pt_context *ctx, struct pt_peer *peer);
 } pt_platform_ops;
 
 /* Platform ops implementations (defined in platform-specific files) */
@@ -70,6 +82,157 @@ extern pt_platform_ops pt_ot_ops;
 #if defined(PT_PLATFORM_APPLETALK) || defined(PT_HAS_APPLETALK)
 extern pt_platform_ops pt_appletalk_ops;
 #endif
+
+/* ========================================================================== */
+/* Async Send Pipeline Structures                                             */
+/* ========================================================================== */
+
+/**
+ * Platform-agnostic WDS entry (matches MacTCP wdsEntry layout)
+ *
+ * On MacTCP: used directly for TCPSend WDS array
+ * On POSIX: not used (kernel handles buffering)
+ * On OT: similar to TNetbuf
+ */
+typedef struct {
+    uint16_t    length;     /* Length of buffer */
+    void       *ptr;        /* Pointer to buffer data */
+} pt_wds_entry;
+
+/**
+ * Send slot - holds one in-flight async message (24 bytes)
+ *
+ * Design notes:
+ * - WDS embedded to avoid separate allocation
+ * - ioResult cached locally for cache-efficient polling (avoids pointer chase)
+ * - Hot fields (buffer, platform_data, ioResult) grouped first
+ *
+ * Per MacTCP Guide (Lines 2959-2961): "You must not modify or relocate the
+ * WDS and the buffers it describes until the TCPSend command has been completed."
+ */
+typedef struct {
+    uint8_t        *buffer;         /* 4 bytes - Message buffer (header + payload + CRC) */
+    void           *platform_data;  /* 4 bytes - Platform-specific (TCPiopb*, etc.) */
+    pt_wds_entry    wds[2];         /* 8 bytes - WDS[0]=message, WDS[1]=sentinel */
+    volatile int16_t ioResult;      /* 2 bytes - Cached from pb->ioResult for fast polling */
+    uint16_t        message_len;    /* 2 bytes - Actual message length */
+    uint8_t         in_use;         /* 1 byte  - 1 if send pending */
+    uint8_t         completed;      /* 1 byte  - 1 if send finished (success or error) */
+    uint16_t        buffer_size;    /* 2 bytes - Allocated size (cold - only at init) */
+} pt_send_slot;  /* Total: 24 bytes */
+
+/**
+ * Send pipeline - manages async send slots for a peer
+ *
+ * Hot field (pending_count) first for cache locality on 68030 (256-byte cache).
+ *
+ * Memory per peer (standard build, depth=4):
+ *   - 4 x pt_send_slot = 96 bytes
+ *   - 4 x buffer (~4KB each) = 16,448 bytes
+ *   - 4 x TCPiopb (~92 bytes) = 368 bytes
+ *   - Total: ~17KB per peer
+ *
+ * Memory per peer (lowmem build, depth=2):
+ *   - 2 x pt_send_slot = 48 bytes
+ *   - 2 x buffer (~1KB each) = 2,080 bytes
+ *   - 2 x TCPiopb (~92 bytes) = 184 bytes
+ *   - Total: ~2.3KB per peer
+ */
+typedef struct {
+    uint8_t         pending_count;  /* Hot: checked every poll */
+    uint8_t         next_slot;      /* Warm: checked on send */
+    uint8_t         initialized;    /* Cold: rarely checked */
+    uint8_t         reserved;
+    pt_send_slot    slots[PT_SEND_PIPELINE_DEPTH];
+} pt_send_pipeline;
+
+/* ========================================================================== */
+/* Peer Capability Structure                                                  */
+/* ========================================================================== */
+
+/**
+ * Per-peer capability storage
+ *
+ * Stored in pt_peer_cold (rarely accessed after negotiation).
+ * Effective max is cached in pt_peer_hot for fast send-path access.
+ *
+ * Flow control: We track last_reported_pressure to detect when our local
+ * pressure has changed significantly (crosses PT_PRESSURE_* thresholds).
+ * When it changes, we send a capability update to inform the peer.
+ * The peer stores our pressure in buffer_pressure and throttles sends.
+ */
+typedef struct {
+    uint16_t max_message_size;   /* Peer's max (256-8192), 0=unknown */
+    uint16_t preferred_chunk;    /* Optimal chunk size */
+    uint16_t capability_flags;   /* PT_CAPFLAG_* */
+    uint16_t recv_buffer_size;   /* Peer's receive buffer size (0=unknown, default 8192) */
+    uint16_t optimal_chunk;      /* Peer's 25% threshold (recv_buf/4) - optimal send size */
+    uint16_t send_window;        /* Flow control: max queued messages (auto-calculated) */
+    uint8_t  buffer_pressure;    /* 0-100: peer's reported constraint level */
+    uint8_t  caps_exchanged;     /* 1 after exchange complete */
+    uint8_t  last_reported_pressure; /* 0-100: what we last told peer */
+    uint8_t  pressure_update_pending; /* 1 if need to send pressure update */
+    uint8_t  first_send_logged;  /* 1 after logging first send effective_max */
+    uint8_t  compact_mode;       /* 1 if compact headers negotiated with peer */
+    uint8_t  push_preferred;     /* 1 if peer needs pushFlag=1 always */
+    uint8_t  last_ibuf_pressure; /* MacTCP: ibuf level when last update sent */
+    uint8_t  peak_ibuf_pressure; /* MacTCP: peak ibuf during this poll cycle */
+    uint8_t  last_reported_ibuf_level; /* MacTCP: last threshold level (0/25/50/75) */
+
+    /* Rate limiting state (token bucket algorithm)
+     * When peer reports high pressure, we auto-throttle sends to avoid
+     * overwhelming them. rate_limit_bytes_per_sec=0 means no rate limit. */
+    uint32_t rate_limit_bytes_per_sec;  /* 0 = unlimited */
+    uint32_t rate_bucket_tokens;        /* Available tokens (bytes) */
+    uint32_t rate_bucket_max;           /* Max token accumulation */
+    pt_tick_t rate_last_update;         /* Last token refill time */
+
+    /* Capability send rate limiting.
+     * We must not flood the peer with capability messages, especially when
+     * their ibuf is congested (e.g., after a heavy receive phase). Cap updates
+     * are rate-limited to at most one per PT_CAP_MIN_INTERVAL_TICKS ticks.
+     * Units match platform get_ticks(): TickCount on Mac, ms on POSIX. */
+    pt_tick_t cap_last_sent;            /* Tick count when last capability was sent */
+} pt_peer_caps;
+
+/* ========================================================================== */
+/* Fragment Reassembly State                                                  */
+/* ========================================================================== */
+
+/**
+ * Per-peer fragment reassembly state
+ *
+ * Uses existing recv_direct buffer for storage. Only one message
+ * can be reassembled at a time per peer.
+ */
+typedef struct {
+    uint16_t message_id;         /* Current message being reassembled */
+    uint16_t total_length;       /* Expected total message size */
+    uint16_t received_length;    /* Bytes received so far */
+    uint8_t  active;             /* 1 if reassembly in progress */
+    uint8_t  reserved;
+} pt_reassembly_state;
+
+/* ========================================================================== */
+/* Stream Transfer State                                                      */
+/* ========================================================================== */
+
+/**
+ * Per-peer stream transfer state
+ *
+ * Tracks an active PeerTalk_StreamSend() operation. Only one stream
+ * can be active per peer at a time.
+ */
+typedef struct {
+    const uint8_t      *data;           /* Pointer to user's data buffer */
+    void               *user_data;      /* User callback context */
+    void               *on_complete;    /* PeerTalk_StreamCompleteCB (void* to avoid include) */
+    uint32_t            total_length;   /* Total bytes to send */
+    uint32_t            bytes_sent;     /* Bytes sent so far */
+    uint8_t             active;         /* 1 if stream in progress */
+    uint8_t             cancelled;      /* 1 if cancel requested */
+    uint8_t             reserved[2];
+} pt_peer_stream;
 
 /* ========================================================================== */
 /* Internal Peer Address Structure                                           */
@@ -101,13 +264,15 @@ typedef struct {
     PeerTalk_PeerID     id;
     uint16_t            peer_flags;     /* PT_PEER_FLAG_* from discovery */
     uint16_t            latency_ms;     /* Estimated RTT */
+    uint16_t            effective_max_msg; /* min(ours, theirs) - cached for send path */
+    uint16_t            effective_chunk;   /* Adaptive chunk size based on RTT */
     pt_peer_state       state;
     uint8_t             address_count;
     uint8_t             preferred_transport;
     uint8_t             send_seq;       /* Send sequence number (Phase 2) */
     uint8_t             recv_seq;       /* Receive sequence number (Phase 2) */
     uint8_t             name_idx;       /* Index into context name table */
-    uint8_t             reserved[3];    /* Padding for alignment */
+    uint8_t             pipeline_depth; /* Adaptive pipeline depth based on RTT */
 } pt_peer_hot;
 
 /**
@@ -123,8 +288,10 @@ typedef struct {
     uint16_t            rtt_samples[8];     /* Rolling RTT samples */
     uint8_t             rtt_index;
     uint8_t             rtt_count;
-    uint8_t             obuf[768];          /* Output framing buffer */
-    uint8_t             ibuf[512];          /* Input framing buffer */
+    pt_peer_caps        caps;               /* Peer capability info */
+    pt_reassembly_state reassembly;         /* Fragment reassembly state */
+    uint8_t             obuf[PT_FRAME_BUF_SIZE];  /* Output framing buffer */
+    uint8_t             ibuf[PT_FRAME_BUF_SIZE];  /* Input framing buffer */
     uint16_t            obuflen;
     uint16_t            ibuflen;
 #ifdef PT_DEBUG
@@ -139,8 +306,12 @@ typedef struct {
 struct pt_peer {
     pt_peer_hot         hot;            /* 32 bytes - frequently accessed */
     pt_peer_cold        cold;           /* ~1.4KB - rarely accessed */
-    struct pt_queue    *send_queue;
-    struct pt_queue    *recv_queue;
+    struct pt_queue    *send_queue;     /* Tier 1: 256-byte slots for control messages */
+    struct pt_queue    *recv_queue;     /* Tier 1: 256-byte slots for control messages */
+    pt_direct_buffer    send_direct;    /* Tier 2: 4KB buffer for large outgoing messages */
+    pt_direct_buffer    recv_direct;    /* Tier 2: 4KB buffer for large incoming messages */
+    pt_peer_stream      stream;         /* Active stream transfer state */
+    pt_send_pipeline    pipeline;       /* Async send pipeline (MacTCP/OT optimization) */
 };
 
 /* ========================================================================== */
@@ -185,6 +356,26 @@ struct pt_context {
 
     /* Phase 3: Pre-allocated batch buffer (avoids 1.4KB stack allocation) */
     pt_batch            send_batch;     /* For pt_drain_send_queue() */
+
+    /* Two-tier message queue configuration */
+    uint16_t            direct_threshold;   /* Messages > this go to Tier 2 (default 256) */
+    uint16_t            direct_buffer_size; /* Tier 2 buffer size (default 4096) */
+
+    /* Capability negotiation configuration */
+    uint16_t            local_max_message;      /* Our max message size (0=8192) */
+    uint16_t            local_preferred_chunk;  /* Our preferred chunk (0=1024) */
+    uint16_t            local_capability_flags; /* Our PT_CAPFLAG_* */
+    uint8_t             enable_fragmentation;   /* 1=auto-fragment (default 1) */
+    uint8_t             owns_buffer_pool;       /* 1=we allocated buffer_pool, must free */
+
+    /* Configurable pressure thresholds (from config, with defaults applied) */
+    uint8_t             pressure_medium;        /* Default: PT_PRESSURE_MEDIUM (50) */
+    uint8_t             pressure_high;          /* Default: PT_PRESSURE_HIGH (85) */
+    uint8_t             pressure_critical;      /* Default: PT_PRESSURE_CRITICAL (95) */
+    uint8_t             pressure_frag;          /* Default: PT_PRESSURE_FRAG_THRESHOLD (75) */
+
+    /* Connection timeout (ms) */
+    uint16_t            connect_timeout;        /* Default: 30000 */
 
     /* Platform-specific data follows (allocated via pt_plat_extra_size) */
 };
@@ -335,5 +526,27 @@ void pt_plat_free(void *ptr);
  * Platform-specific extra context size
  */
 size_t pt_plat_extra_size(void);
+
+/* ========================================================================== */
+/* Buffer Pool Internal Functions                                             */
+/* ========================================================================== */
+
+/**
+ * Get a buffer from the pool (marks it in-use).
+ * Returns NULL if pool is NULL or exhausted.
+ */
+void *pt_buffer_pool_get(PeerTalk_BufferPool *pool);
+
+/**
+ * Return a buffer to the pool (marks it available).
+ * Returns 1 if buffer was from this pool, 0 otherwise.
+ */
+int pt_buffer_pool_return(PeerTalk_BufferPool *pool, void *buffer);
+
+/**
+ * Get the buffer size for a pool.
+ * Returns 0 if pool is NULL.
+ */
+uint32_t pt_buffer_pool_size(const PeerTalk_BufferPool *pool);
 
 #endif /* PT_INTERNAL_H */
