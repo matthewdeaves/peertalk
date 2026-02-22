@@ -1,13 +1,13 @@
 #!/bin/bash
 # ISR Safety Gate - BLOCKS edits that introduce ISR safety violations
 #
-# This hook runs before Edit operations on Mac networking code.
+# This hook runs before Edit and Write operations on Mac networking code.
 # It checks the new content for forbidden function calls in callback contexts.
 #
 # Claude Code hooks receive JSON on stdin, not environment variables.
 #
 # Exit 0: Allow the edit
-# Exit 1: Block the edit (violation found)
+# Exit 2: Block the edit (violation found)
 
 set -e
 
@@ -53,7 +53,6 @@ fi
 log_hook "Checking: $FILE_PATH"
 
 # Path to forbidden calls database
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 FORBIDDEN_FILE="$PROJECT_DIR/tools/validators/forbidden_calls.txt"
 
@@ -114,28 +113,28 @@ done < "$FORBIDDEN_FILE"
 
 if [[ -n "$VIOLATIONS" ]]; then
     log_hook "BLOCKED: Violations in $FILE_PATH"
-    echo ""
-    echo "BLOCKED: ISR Safety Violations Detected"
-    echo "========================================"
-    echo ""
-    echo "The following forbidden calls were found in callback code:"
-    echo -e "$VIOLATIONS"
-    echo ""
-    echo "Next steps:"
-    echo "  1. Review patterns: .claude/rules/isr-safety.md"
-    echo "  2. Check all violations: /check-isr $FILE_PATH"
-    echo "  3. Fix violations using safe alternatives below"
-    echo "  4. Re-attempt your edit"
-    echo ""
-    echo "Common fixes:"
-    echo "  memcpy/BlockMove -> pt_memcpy_isr() (see CLAUDE.md 'ISR-Safe Queue Push')"
-    echo "  malloc/NewPtr    -> Pre-allocated buffers in context struct"
-    echo "  TickCount        -> Set timestamp=0, let main loop timestamp later"
-    echo "  Sync network     -> Use async version with completion callback"
-    echo "  printf/logging   -> Set flag, log from main loop"
-    echo ""
-    echo "Reference: Inside Macintosh Volume VI Table B-3 (lines 224396-224607)"
-    exit 1
+    echo "" >&2
+    echo "BLOCKED: ISR Safety Violations Detected" >&2
+    echo "========================================" >&2
+    echo "" >&2
+    echo "The following forbidden calls were found in callback code:" >&2
+    echo -e "$VIOLATIONS" >&2
+    echo "" >&2
+    echo "Next steps:" >&2
+    echo "  1. Review patterns: .claude/rules/isr-safety.md" >&2
+    echo "  2. Check all violations: /check-isr $FILE_PATH" >&2
+    echo "  3. Fix violations using safe alternatives below" >&2
+    echo "  4. Re-attempt your edit" >&2
+    echo "" >&2
+    echo "Common fixes:" >&2
+    echo "  memcpy/BlockMove -> pt_memcpy_isr() (see CLAUDE.md 'ISR-Safe Queue Push')" >&2
+    echo "  malloc/NewPtr    -> Pre-allocated buffers in context struct" >&2
+    echo "  TickCount        -> Set timestamp=0, let main loop timestamp later" >&2
+    echo "  Sync network     -> Use async version with completion callback" >&2
+    echo "  printf/logging   -> Set flag, log from main loop" >&2
+    echo "" >&2
+    echo "Reference: Inside Macintosh Volume VI Table B-3 (lines 224396-224607)" >&2
+    exit 2
 fi
 
 log_hook "PASS: No violations in $FILE_PATH"

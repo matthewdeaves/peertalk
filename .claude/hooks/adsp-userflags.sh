@@ -34,7 +34,7 @@ INPUT=$(cat)
 
 # Extract file path and new content from JSON
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
-NEW_CONTENT=$(echo "$INPUT" | jq -r '.tool_input.new_string // empty')
+NEW_CONTENT=$(echo "$INPUT" | jq -r '.tool_input.new_string // .tool_input.content // empty')
 
 # Only check AppleTalk code
 if [[ ! "$FILE_PATH" =~ appletalk ]]; then

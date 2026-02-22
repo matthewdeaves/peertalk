@@ -75,9 +75,6 @@ if ! docker compose version >/dev/null 2>&1; then
     exit 0
 fi
 
-# All compilation happens in Docker
-USE_DOCKER=true
-
 # Get relative path for Docker (container mounts project at /workspace)
 REL_PATH="${FILE_PATH#$PROJECT_DIR/}"
 
@@ -92,9 +89,20 @@ run_compile() {
 }
 
 # Compile in Docker based on platform
-if [[ "$FILE_PATH" == *"/mactcp/"* ]] || [[ "$FILE_PATH" == *"/appletalk/"* ]]; then
-    # 68k code
-    OUTPUT=$(run_compile "m68k-apple-macos-gcc" "-I/workspace/include -I/opt/Retro68-build/toolchain/universal/CIncludes") || {
+if [[ "$FILE_PATH" == *"/appletalk/"* ]]; then
+    # 68k AppleTalk code
+    OUTPUT=$(run_compile "m68k-apple-macos-gcc" "-DPT_PLATFORM_APPLETALK -I/workspace/include -I/workspace/src/core -I/opt/Retro68-build/toolchain/universal/CIncludes") || {
+        log_hook "ERROR: Syntax errors in $FILE_PATH"
+        echo ""
+        echo "[compile] ⚠️  Syntax errors in $(basename "$FILE_PATH"):"
+        echo "$OUTPUT" | head -20
+        echo ""
+        echo "Next step: Fix the errors above and save again (hook will re-run automatically)"
+        exit 0
+    }
+elif [[ "$FILE_PATH" == *"/mactcp/"* ]]; then
+    # 68k MacTCP code
+    OUTPUT=$(run_compile "m68k-apple-macos-gcc" "-DPT_PLATFORM_MACTCP -I/workspace/include -I/workspace/src/core -I/opt/Retro68-build/toolchain/universal/CIncludes") || {
         log_hook "ERROR: Syntax errors in $FILE_PATH"
         echo ""
         echo "[compile] ⚠️  Syntax errors in $(basename "$FILE_PATH"):"
@@ -104,8 +112,9 @@ if [[ "$FILE_PATH" == *"/mactcp/"* ]] || [[ "$FILE_PATH" == *"/appletalk/"* ]]; 
         exit 0
     }
 elif [[ "$FILE_PATH" == *"/opentransport/"* ]]; then
-    # PPC code
-    OUTPUT=$(run_compile "powerpc-apple-macos-gcc" "-I/workspace/include -I/opt/Retro68-build/toolchain/universal/CIncludes") || {
+    # PPC Open Transport code
+    OUTPUT=$(run_compile "powerpc-apple-macos-gcc" "-DPT_PLATFORM_OT -I/workspace/include -I/workspace/src/core -I/opt/Retro68-build/toolchain/universal/CIncludes") || {
+        log_hook "ERROR: Syntax errors in $FILE_PATH"
         echo ""
         echo "[compile] ⚠️  Syntax errors in $(basename "$FILE_PATH"):"
         echo "$OUTPUT" | head -20
@@ -115,7 +124,8 @@ elif [[ "$FILE_PATH" == *"/opentransport/"* ]]; then
     }
 else
     # POSIX code
-    OUTPUT=$(run_compile "gcc" "-I/workspace/include") || {
+    OUTPUT=$(run_compile "gcc" "-DPT_PLATFORM_POSIX -I/workspace/include -I/workspace/src/core") || {
+        log_hook "ERROR: Syntax errors in $FILE_PATH"
         echo ""
         echo "[compile] ⚠️  Syntax errors in $(basename "$FILE_PATH"):"
         echo "$OUTPUT" | head -20
