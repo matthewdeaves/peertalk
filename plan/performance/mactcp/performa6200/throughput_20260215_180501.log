@@ -1,0 +1,81 @@
+========================================
+PeerTalk Throughput Test
+Version: 1.0.0
+========================================
+Memory after pool alloc: FreeMem=228336 MaxBlock=226576
+Buffer pool: 2 buffers × 32KB (25% threshold=8192B)
+Initializing PeerTalk...
+Waiting for peer...
+Press any key to exit.
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+Connecting to peer...
+CONNECTED to peer 1
+Peer capabilities: max_msg=4096 chunk=1024 pressure=0
+Peer buffer info: recv_buf=8192 optimal_chunk=2048
+Effective max message size: 4096 bytes
+Optimal chunk for peer: 1024 bytes
+Starting throughput test with buffer size 256 (window=4)
+BUF 256: sent=17 KB/s (349 msgs) recv=17 KB/s (345 msgs) inflight=4
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+BUF 256: sent=16 KB/s (684 msgs) recv=16 KB/s (680 msgs) inflight=4
+BUF 256: sent=17 KB/s (1025 msgs) recv=16 KB/s (1021 msgs) inflight=4
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+BUF 256: sent=17 KB/s (1367 msgs) recv=16 KB/s (1363 msgs) inflight=4
+BUF 256: sent=16 KB/s (1698 msgs) recv=16 KB/s (1694 msgs) inflight=4
+COMPLETE 256 bytes: SEND=16 KB/s (2014 msgs) RECV=16 KB/s (2010 msgs)
+Starting buffer size 512 test
+BUF 512: sent=40 KB/s (8 msgs) recv=30 KB/s (8 msgs) inflight=4
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+BUF 512: sent=33 KB/s (342 msgs) recv=33 KB/s (342 msgs) inflight=4
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+BUF 512: sent=33 KB/s (682 msgs) recv=33 KB/s (682 msgs) inflight=4
+BUF 512: sent=33 KB/s (1023 msgs) recv=33 KB/s (1023 msgs) inflight=4
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+BUF 512: sent=33 KB/s (1363 msgs) recv=33 KB/s (1363 msgs) inflight=4
+BUF 512: sent=33 KB/s (1699 msgs) recv=33 KB/s (1699 msgs) inflight=4
+COMPLETE 512 bytes: SEND=33 KB/s (2017 msgs) RECV=33 KB/s (2017 msgs)
+Starting buffer size 1024 test
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+BUF 1024: sent=50 KB/s (11 msgs) recv=41 KB/s (11 msgs) inflight=4
+BUF 1024: sent=64 KB/s (336 msgs) recv=63 KB/s (336 msgs) inflight=4
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+BUF 1024: sent=63 KB/s (647 msgs) recv=62 KB/s (647 msgs) inflight=4
+BUF 1024: sent=64 KB/s (976 msgs) recv=63 KB/s (976 msgs) inflight=4
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+BUF 1024: sent=64 KB/s (1300 msgs) recv=64 KB/s (1300 msgs) inflight=4
+BUF 1024: sent=64 KB/s (1624 msgs) recv=64 KB/s (1624 msgs) inflight=4
+COMPLETE 1024 bytes: SEND=64 KB/s (1935 msgs) RECV=64 KB/s (1935 msgs)
+Starting buffer size 2048 test
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+BUF 2048: sent=98 KB/s (14 msgs) recv=84 KB/s (14 msgs) inflight=3
+BUF 2048: sent=90 KB/s (241 msgs) recv=89 KB/s (241 msgs) inflight=4
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+BUF 2048: sent=93 KB/s (482 msgs) recv=92 KB/s (482 msgs) inflight=4
+BUF 2048: sent=94 KB/s (724 msgs) recv=93 KB/s (724 msgs) inflight=4
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+BUF 2048: sent=94 KB/s (970 msgs) recv=94 KB/s (970 msgs) inflight=4
+BUF 2048: sent=95 KB/s (1211 msgs) recv=95 KB/s (1211 msgs) inflight=4
+COMPLETE 2048 bytes: SEND=95 KB/s (1431 msgs) RECV=95 KB/s (1431 msgs)
+Starting buffer size 4096 test
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+BUF 4096: sent=93 KB/s (9 msgs) recv=62 KB/s (8 msgs) inflight=4
+BUF 4096: sent=43 KB/s (58 msgs) recv=40 KB/s (57 msgs) inflight=4
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+BUF 4096: sent=22 KB/s (58 msgs) recv=21 KB/s (57 msgs) inflight=4
+BUF 4096: sent=15 KB/s (58 msgs) recv=14 KB/s (57 msgs) inflight=4
+DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+BUF 4096: sent=11 KB/s (58 msgs) recv=10 KB/s (57 msgs) inflight=4
+BUF 4096: sent=9 KB/s (58 msgs) recv=8 KB/s (57 msgs) inflight=4
+COMPLETE 4096 bytes: SEND=7 KB/s (58 msgs) RECV=7 KB/s (57 msgs)
+All throughput tests complete
+========================================
+THROUGHPUT TEST RESULTS
+========================================
+ 256 bytes: SEND   16 KB/s  RECV   16 KB/s  (errs=0)
+ 512 bytes: SEND   33 KB/s  RECV   33 KB/s  (errs=0)
+1024 bytes: SEND   64 KB/s  RECV   64 KB/s  (errs=0)
+2048 bytes: SEND   95 KB/s  RECV   95 KB/s  (errs=0)
+4096 bytes: SEND    7 KB/s  RECV    7 KB/s  (errs=0)
+========================================
+Memory: FreeMem=17952 MaxBlock=16464
+Streaming 4280 bytes of logs to partner...

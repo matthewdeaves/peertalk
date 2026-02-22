@@ -61,9 +61,9 @@ mcp__classic-mac-hardware__upload_file(
 ```
 
 **Available test apps after build:**
-- `build/mac/test_mactcp.bin` - Basic discovery test
 - `build/mac/test_latency.bin` - RTT measurement
-- `build/mac/test_throughput.bin` - Streaming throughput
+- `build/mac/test_throughput.bin` - Bidirectional echo throughput
+- `build/mac/test_stream.bin` - One-way streaming
 - `build/mac/test_stress.bin` - Connect/disconnect cycles
 - `build/mac/test_discovery.bin` - Discovery packet counting
 

@@ -1,0 +1,81 @@
+[00000050][INF] ========================================
+[00000050][INF] PeerTalk Stress Test
+[00000066][INF] Version: 1.0.0
+[00000066][INF] Target: 5 cycles
+[00000066][INF] ========================================
+[00000066][INF] Buffer pool: 4 buffers × 32KB (25% threshold=8192B)
+[00000066][INF] Initializing PeerTalk...
+[00000133][INF] Waiting for peer...
+[00000133][INF] Press any key to abort.
+[00001683][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00001683][INF] Selected peer 1 as stress test target
+[00001700][INF] Initial: MaxBlock=2080864 (+0) FreeMem=2083152 (+0)
+[00001700][INF] Cycle 1: Connecting to peer 1...
+[00001716][DBG] State: DISCOVERING -> CONNECTING
+[00001750][INF] CONNECTED to peer 1 (cycle 1)
+[00001750][DBG] State: CONNECTING -> CONNECTED
+[00001766][DBG] Sent test message
+[00001766][INF] Cycle 1: Disconnecting...
+[00001783][DBG] State: CONNECTED -> DISCONNECTING
+[00001800][INF] DISCONNECTED from peer 1 (reason=0)
+[00001833][DBG] State: DISCONNECTING -> WAITING
+[00002350][INF] Cycle 2: Connecting to peer 1...
+[00002350][DBG] State: WAITING -> CONNECTING
+[00002450][INF] CONNECTED to peer 1 (cycle 2)
+[00002450][DBG] State: CONNECTING -> CONNECTED
+[00002466][DBG] Sent test message
+[00002483][INF] Cycle 2: Disconnecting...
+[00002483][DBG] State: CONNECTED -> DISCONNECTING
+[00002516][INF] DISCONNECTED from peer 1 (reason=0)
+[00002533][DBG] State: DISCONNECTING -> WAITING
+[00003066][INF] Cycle 3: Connecting to peer 1...
+[00003066][DBG] State: WAITING -> CONNECTING
+[00003183][INF] CONNECTED to peer 1 (cycle 3)
+[00003183][DBG] State: CONNECTING -> CONNECTED
+[00003216][DBG] Sent test message
+[00003216][INF] Cycle 3: Disconnecting...
+[00003216][DBG] State: CONNECTED -> DISCONNECTING
+[00003250][INF] DISCONNECTED from peer 1 (reason=0)
+[00003283][DBG] State: DISCONNECTING -> WAITING
+[00003800][INF] Cycle 4: Connecting to peer 1...
+[00003800][DBG] State: WAITING -> CONNECTING
+[00004200][INF] CONNECTED to peer 1 (cycle 4)
+[00004200][DBG] State: CONNECTING -> CONNECTED
+[00004233][DBG] Sent test message
+[00004233][INF] Cycle 4: Disconnecting...
+[00004233][DBG] State: CONNECTED -> DISCONNECTING
+[00004266][INF] DISCONNECTED from peer 1 (reason=0)
+[00004300][DBG] State: DISCONNECTING -> WAITING
+[00004816][INF] Cycle 5: Connecting to peer 1...
+[00004816][DBG] State: WAITING -> CONNECTING
+[00005016][INF] CONNECTED to peer 1 (cycle 5)
+[00005016][DBG] State: CONNECTING -> CONNECTED
+[00005050][DBG] Sent test message
+[00005050][INF] Cycle 5: Disconnecting...
+[00005050][DBG] State: CONNECTED -> DISCONNECTING
+[00005066][INF] DISCONNECTED from peer 1 (reason=0)
+[00005100][DBG] State: DISCONNECTING -> COMPLETE
+[00005100][INF] ========================================
+[00005100][INF] STRESS TEST RESULTS
+[00005100][INF] ========================================
+[00005100][INF] Connection Cycles: 5
+[00005100][INF]   Successes: 5
+[00005100][INF]   Failures: 0
+[00005100][INF]   Disconnects: 5
+[00005116][INF]   Success rate: 100%
+[00005116][INF] Messages: sent=5 recv=0
+[00005116][INF] 
+[00005116][INF] Memory Analysis:
+[00005116][INF]   Initial MaxBlock: 2080864
+[00005116][INF]   Final MaxBlock:   2019584 (+0)
+[00005116][INF]   Min MaxBlock:     2019584
+[00005116][INF]   Initial FreeMem:  2083152
+[00005116][INF]   Final FreeMem:    2019584 (+0)
+[00005116][INF]   Min FreeMem:      2019584
+[00005116][INF] 
+[00005116][INF] VERDICT: PASS - No significant memory leaks detected
+[00005116][INF] ========================================
+[00005150][WRN] Test completed but not connected - skipping log streaming
+[00005150][INF] ========================================
+[00005150][INF] TEST EXITING - cleaning up...
+[00005150][INF] ========================================

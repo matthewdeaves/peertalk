@@ -1,0 +1,1868 @@
+[STATUS] 150 sec: peers=0, msgs=0, connected=no
+[00150106][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[DISCOVERED] Peer 1: "MacLatency" at 10.188.1.213:7354
+[00155439][INF] Discovery ANNOUNCE received from 10.188.1.213:7354 (MacLatency)
+[00155439][INF] Processing packet type 1
+[00155439][INF] Handling ANNOUNCE packet
+[00155439][INF] pt_peer_find_by_addr returned: (nil)
+[00155439][INF] Creating new peer: MacLatency at 10.188.1.213:7354
+[00155439][INF] Peer created: id=1 name='MacLatency' addr=0x0ABC01D5 port=7354
+[00155439][INF] Peer created successfully, firing callback
+[00155439][INF] Calling on_peer_discovered callback
+[STATUS] 160 sec: peers=1, msgs=0, connected=no
+[00160108][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[00160212][INF] Incoming connection from 0x0ABC01D5
+[00160212][INF] Peer created: id=2 name='' addr=0x0ABC01D5 port=1618
+[00160212][INF] Queue initialized: 16 slots, 4288 bytes
+[00160212][INF] Queue initialized: 16 slots, 4288 bytes
+[00160212][INF] Peer state: DISCOVERED → CONNECTED (peer id=2)
+[00160212][INF] Accepted connection from peer 2 at 0x0ABC01D5 (assigned to slot 1)
+[00160212][INF] Sent capabilities to peer 2: max=8192 chunk=1024
+[CONNECTED] Peer 2
+[CAPS] Peer 2: max_msg=4096 chunk=1024 pressure=0 [FRAG]
+[CAPS] Peer buffer: recv_buf=8192 optimal_chunk=2048
+[CAPS] Effective max message: 4096 bytes
+[CAPS] Optimal chunk for peer: 1024 bytes
+[00160251][INF] Header bytes [50 54 4D 47], received=4
+[00160252][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00160252][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=0 compact=1 recv_buf=16384 optimal=4096 push=1
+[00160267][INF] Header bytes [50 54 4D 47], received=4
+[00160268][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=0
+[MESSAGE] From peer 2: 16 bytes
+[00160268][INF] First send to peer 2: effective_max=8192, fragmentation=enabled
+[MESSAGE] From peer 2: 16 bytes
+[00160364][INF] Header bytes [50 10 00 10], received=4
+[00160364][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00160463][INF] Header bytes [50 10 00 10], received=4
+[00160463][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00160567][INF] Header bytes [50 10 00 10], received=4
+[MESSAGE] From peer 2: 16 bytes
+[00160567][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00160670][INF] Header bytes [50 10 00 10], received=4
+[00160670][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00160763][INF] Header bytes [50 10 00 10], received=4
+[00160763][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00160867][INF] Header bytes [50 10 00 10], received=4
+[00160867][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00160962][INF] Header bytes [50 10 00 10], received=4
+[MESSAGE] From peer 2: 16 bytes
+[00160962][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00161060][INF] Header bytes [50 10 00 10], received=4
+[00161060][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00161163][INF] Header bytes [50 10 00 10], received=4
+[00161163][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00161262][INF] Header bytes [50 10 00 10], received=4
+[00161263][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00161362][INF] Header bytes [50 10 00 10], received=4
+[00161362][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00161461][INF] Header bytes [50 10 00 10], received=4
+[00161462][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00161561][INF] Header bytes [50 10 00 10], received=4
+[00161561][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00161662][INF] Header bytes [50 10 00 10], received=4
+[00161662][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00161763][INF] Header bytes [50 10 00 10], received=4
+[00161763][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00161862][INF] Header bytes [50 10 00 10], received=4
+[00161862][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00161961][INF] Header bytes [50 10 00 10], received=4
+[00161961][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00162060][INF] Header bytes [50 10 00 10], received=4
+[00162060][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00162159][INF] Header bytes [50 10 00 10], received=4
+[00162159][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00162261][INF] Header bytes [50 10 00 10], received=4
+[00162261][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00162361][INF] Header bytes [50 10 00 10], received=4
+[00162361][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00162458][INF] Header bytes [50 10 00 10], received=4
+[00162458][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00162558][INF] Header bytes [50 10 00 10], received=4
+[00162558][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00162660][INF] Header bytes [50 10 00 10], received=4
+[00162661][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00162760][INF] Header bytes [50 10 00 10], received=4
+[00162760][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00162860][INF] Header bytes [50 10 00 10], received=4
+[00162860][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00162960][INF] Header bytes [50 10 00 10], received=4
+[00162960][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00163056][INF] Header bytes [50 10 00 10], received=4
+[00163056][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00163158][INF] Header bytes [50 10 00 10], received=4
+[00163158][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00163257][INF] Header bytes [50 10 00 10], received=4
+[00163257][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00163357][INF] Header bytes [50 10 00 10], received=4
+[00163357][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00163457][INF] Header bytes [50 10 00 10], received=4
+[00163457][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00163556][INF] Header bytes [50 10 00 10], received=4
+[00163556][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00163657][INF] Header bytes [50 10 00 10], received=4
+[00163657][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00163756][INF] Header bytes [50 10 00 10], received=4
+[00163756][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00163862][INF] Header bytes [50 10 00 10], received=4
+[00163862][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00163956][INF] Header bytes [50 10 00 10], received=4
+[00163956][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00164055][INF] Header bytes [50 10 00 10], received=4
+[00164055][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00164156][INF] Header bytes [50 10 00 10], received=4
+[00164156][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00164254][INF] Header bytes [50 10 00 10], received=4
+[00164254][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00164356][INF] Header bytes [50 10 00 10], received=4
+[00164356][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00164455][INF] Header bytes [50 10 00 10], received=4
+[00164455][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00164556][INF] Header bytes [50 10 00 10], received=4
+[00164556][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00164652][INF] Header bytes [50 10 00 10], received=4
+[00164652][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00164753][INF] Header bytes [50 10 00 10], received=4
+[00164753][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00164853][INF] Header bytes [50 10 00 10], received=4
+[00164853][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00164953][INF] Header bytes [50 10 00 10], received=4
+[00164953][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00165051][INF] Header bytes [50 10 00 10], received=4
+[00165051][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00165153][INF] Header bytes [50 10 00 10], received=4
+[MESSAGE] From peer 2: 16 bytes
+[00165153][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00165251][INF] Header bytes [50 10 00 10], received=4
+[00165251][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00165352][INF] Header bytes [50 10 00 10], received=4
+[00165352][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00165450][INF] Header bytes [50 10 00 10], received=4
+[MESSAGE] From peer 2: 16 bytes
+[00165450][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00165552][INF] Header bytes [50 10 00 10], received=4
+[00165552][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00165652][INF] Header bytes [50 10 00 10], received=4
+[00165652][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00165750][INF] Header bytes [50 10 00 10], received=4
+[00165750][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00165851][INF] Header bytes [50 10 00 10], received=4
+[MESSAGE] From peer 2: 16 bytes
+[00165851][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00165951][INF] Header bytes [50 10 00 10], received=4
+[00165951][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00166048][INF] Header bytes [50 10 00 10], received=4
+[00166048][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00166151][INF] Header bytes [50 10 00 10], received=4
+[00166151][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00166249][INF] Header bytes [50 10 00 10], received=4
+[00166249][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00166350][INF] Header bytes [50 10 00 10], received=4
+[00166350][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00166448][INF] Header bytes [50 10 00 10], received=4
+[00166449][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00166550][INF] Header bytes [50 10 00 10], received=4
+[00166550][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00166648][INF] Header bytes [50 10 00 10], received=4
+[00166648][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00166750][INF] Header bytes [50 10 00 10], received=4
+[00166750][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00166847][INF] Header bytes [50 10 00 10], received=4
+[00166847][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00166947][INF] Header bytes [50 10 00 10], received=4
+[00166947][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00167046][INF] Header bytes [50 10 00 10], received=4
+[00167046][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00167148][INF] Header bytes [50 10 00 10], received=4
+[00167148][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00167247][INF] Header bytes [50 10 00 10], received=4
+[00167247][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00167346][INF] Header bytes [50 10 00 10], received=4
+[00167346][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00167445][INF] Header bytes [50 10 00 10], received=4
+[00167445][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00167546][INF] Header bytes [50 10 00 10], received=4
+[00167546][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00167646][INF] Header bytes [50 10 00 10], received=4
+[00167646][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00167747][INF] Header bytes [50 10 00 10], received=4
+[00167747][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00167845][INF] Header bytes [50 10 00 10], received=4
+[00167845][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00167945][INF] Header bytes [50 10 00 10], received=4
+[00167945][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00168043][INF] Header bytes [50 10 00 10], received=4
+[00168043][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00168146][INF] Header bytes [50 10 00 10], received=4
+[00168146][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00168245][INF] Header bytes [50 10 00 10], received=4
+[00168245][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00168344][INF] Header bytes [50 10 00 10], received=4
+[00168344][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00168446][INF] Header bytes [50 10 00 10], received=4
+[00168446][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00168544][INF] Header bytes [50 10 00 10], received=4
+[00168544][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00168643][INF] Header bytes [50 10 00 10], received=4
+[00168643][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00168743][INF] Header bytes [50 10 00 10], received=4
+[00168743][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00168842][INF] Header bytes [50 10 00 10], received=4
+[00168842][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00168942][INF] Header bytes [50 10 00 10], received=4
+[00168942][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00169041][INF] Header bytes [50 10 00 10], received=4
+[00169041][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[STATUS] 170 sec: peers=1, msgs=89, connected=yes
+[00169144][INF] Header bytes [50 10 00 10], received=4
+[00169144][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00169241][INF] Header bytes [50 10 00 10], received=4
+[MESSAGE] From peer 2: 16 bytes
+[00169241][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00169343][INF] Header bytes [50 10 00 10], received=4
+[00169343][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00169443][INF] Header bytes [50 10 00 10], received=4
+[00169443][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00169543][INF] Header bytes [50 10 00 10], received=4
+[00169543][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00169641][INF] Header bytes [50 10 00 10], received=4
+[00169641][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00169741][INF] Header bytes [50 10 00 10], received=4
+[00169741][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00169839][INF] Header bytes [50 10 00 10], received=4
+[00169839][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[00169941][INF] Header bytes [50 10 00 10], received=4
+[00169941][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[MESSAGE] From peer 2: 16 bytes
+[MESSAGE] From peer 2: 16 bytes
+[00170040][INF] Header bytes [50 10 00 10], received=4
+[00170040][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00170108][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[MESSAGE] From peer 2: 16 bytes
+[ECHO] 100 messages echoed
+[00170139][INF] Header bytes [50 10 00 10], received=4
+[00170139][INF] Processing msg from peer 2: type=1 flags=0x00 len=16 compact=1
+[00170251][INF] Header bytes [50 10 00 40], received=4
+[00170251][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00170348][INF] Header bytes [50 10 00 40], received=4
+[00170348][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00170390][INF] Discovery ANNOUNCE received from 10.188.1.213:7354 (MacLatency)
+[00170390][INF] Processing packet type 1
+[00170390][INF] Handling ANNOUNCE packet
+[00170390][INF] pt_peer_find_by_addr returned: 0x72c4edde0010
+[MESSAGE] From peer 2: 64 bytes
+[00170440][INF] Header bytes [50 10 00 40], received=4
+[00170440][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00170539][INF] Header bytes [50 10 00 40], received=4
+[00170539][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00170639][INF] Header bytes [50 10 00 40], received=4
+[00170639][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[MESSAGE] From peer 2: 64 bytes
+[00170739][INF] Header bytes [50 10 00 40], received=4
+[00170739][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00170837][INF] Header bytes [50 10 00 40], received=4
+[00170837][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[MESSAGE] From peer 2: 64 bytes
+[00170937][INF] Header bytes [50 10 00 40], received=4
+[00170937][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00171038][INF] Header bytes [50 10 00 40], received=4
+[00171038][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[MESSAGE] From peer 2: 64 bytes
+[00171137][INF] Header bytes [50 10 00 40], received=4
+[00171137][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00171237][INF] Header bytes [50 10 00 40], received=4
+[00171237][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00171337][INF] Header bytes [50 10 00 40], received=4
+[00171337][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00171435][INF] Header bytes [50 10 00 40], received=4
+[00171435][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00171539][INF] Header bytes [50 10 00 40], received=4
+[00171539][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00171638][INF] Header bytes [50 10 00 40], received=4
+[00171638][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[MESSAGE] From peer 2: 64 bytes
+[00171738][INF] Header bytes [50 10 00 40], received=4
+[00171738][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00171841][INF] Header bytes [50 10 00 40], received=4
+[00171841][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00171935][INF] Header bytes [50 10 00 40], received=4
+[00171936][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[MESSAGE] From peer 2: 64 bytes
+[00172034][INF] Header bytes [50 10 00 40], received=4
+[00172034][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00172136][INF] Header bytes [50 10 00 40], received=4
+[00172136][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00172240][INF] Header bytes [50 10 00 40], received=4
+[MESSAGE] From peer 2: 64 bytes
+[00172240][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00172334][INF] Header bytes [50 10 00 40], received=4
+[00172334][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00172433][INF] Header bytes [50 10 00 40], received=4
+[00172433][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00172535][INF] Header bytes [50 10 00 40], received=4
+[00172535][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[MESSAGE] From peer 2: 64 bytes
+[00172633][INF] Header bytes [50 10 00 40], received=4
+[00172633][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00172737][INF] Header bytes [50 10 00 40], received=4
+[00172737][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00172833][INF] Header bytes [50 10 00 40], received=4
+[00172833][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[MESSAGE] From peer 2: 64 bytes
+[00172932][INF] Header bytes [50 10 00 40], received=4
+[00172932][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00173033][INF] Header bytes [50 10 00 40], received=4
+[00173033][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00173132][INF] Header bytes [50 10 00 40], received=4
+[00173132][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00173239][INF] Header bytes [50 10 00 40], received=4
+[00173239][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00173332][INF] Header bytes [50 10 00 40], received=4
+[00173332][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00173430][INF] Header bytes [50 10 00 40], received=4
+[00173430][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[MESSAGE] From peer 2: 64 bytes
+[00173534][INF] Header bytes [50 10 00 40], received=4
+[00173534][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00173632][INF] Header bytes [50 10 00 40], received=4
+[00173632][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00173734][INF] Header bytes [50 10 00 40], received=4
+[00173734][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[MESSAGE] From peer 2: 64 bytes
+[00173829][INF] Header bytes [50 10 00 40], received=4
+[00173829][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00173931][INF] Header bytes [50 10 00 40], received=4
+[00173931][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00174028][INF] Header bytes [50 10 00 40], received=4
+[MESSAGE] From peer 2: 64 bytes
+[00174028][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00174131][INF] Header bytes [50 10 00 40], received=4
+[00174131][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00174230][INF] Header bytes [50 10 00 40], received=4
+[MESSAGE] From peer 2: 64 bytes
+[00174230][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00174332][INF] Header bytes [50 10 00 40], received=4
+[00174332][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00174429][INF] Header bytes [50 10 00 40], received=4
+[00174429][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00174531][INF] Header bytes [50 10 00 40], received=4
+[00174531][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00174629][INF] Header bytes [50 10 00 40], received=4
+[00174629][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00174729][INF] Header bytes [50 10 00 40], received=4
+[00174729][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00174835][INF] Header bytes [50 10 00 40], received=4
+[MESSAGE] From peer 2: 64 bytes
+[00174835][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00174930][INF] Header bytes [50 10 00 40], received=4
+[MESSAGE] From peer 2: 64 bytes
+[00174930][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00175027][INF] Header bytes [50 10 00 40], received=4
+[00175027][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[MESSAGE] From peer 2: 64 bytes
+[00175127][INF] Header bytes [50 10 00 40], received=4
+[00175127][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00175228][INF] Header bytes [50 10 00 40], received=4
+[00175228][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00175328][INF] Header bytes [50 10 00 40], received=4
+[00175328][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[MESSAGE] From peer 2: 64 bytes
+[00175427][INF] Header bytes [50 10 00 40], received=4
+[00175427][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00175528][INF] Header bytes [50 10 00 40], received=4
+[00175528][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00175625][INF] Header bytes [50 10 00 40], received=4
+[00175626][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00175726][INF] Header bytes [50 10 00 40], received=4
+[00175726][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00175827][INF] Header bytes [50 10 00 40], received=4
+[00175827][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00175927][INF] Header bytes [50 10 00 40], received=4
+[MESSAGE] From peer 2: 64 bytes
+[00175927][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00176025][INF] Header bytes [50 10 00 40], received=4
+[00176025][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[MESSAGE] From peer 2: 64 bytes
+[00176125][INF] Header bytes [50 10 00 40], received=4
+[00176125][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00176224][INF] Header bytes [50 10 00 40], received=4
+[00176224][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00176325][INF] Header bytes [50 10 00 40], received=4
+[00176325][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00176425][INF] Header bytes [50 10 00 40], received=4
+[00176425][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00176524][INF] Header bytes [50 10 00 40], received=4
+[00176524][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00176624][INF] Header bytes [50 10 00 40], received=4
+[00176624][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00176724][INF] Header bytes [50 10 00 40], received=4
+[00176724][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00176823][INF] Header bytes [50 10 00 40], received=4
+[00176823][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00176925][INF] Header bytes [50 10 00 40], received=4
+[00176925][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00177021][INF] Header bytes [50 10 00 40], received=4
+[00177021][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[MESSAGE] From peer 2: 64 bytes
+[00177122][INF] Header bytes [50 10 00 40], received=4
+[00177122][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00177223][INF] Header bytes [50 10 00 40], received=4
+[00177223][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[MESSAGE] From peer 2: 64 bytes
+[00177323][INF] Header bytes [50 10 00 40], received=4
+[00177323][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00177423][INF] Header bytes [50 10 00 40], received=4
+[00177423][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[MESSAGE] From peer 2: 64 bytes
+[00177525][INF] Header bytes [50 10 00 40], received=4
+[00177525][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00177621][INF] Header bytes [50 10 00 40], received=4
+[MESSAGE] From peer 2: 64 bytes
+[00177621][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00177721][INF] Header bytes [50 10 00 40], received=4
+[00177721][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00177822][INF] Header bytes [50 10 00 40], received=4
+[00177822][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00177921][INF] Header bytes [50 10 00 40], received=4
+[00177921][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00178021][INF] Header bytes [50 10 00 40], received=4
+[00178021][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[MESSAGE] From peer 2: 64 bytes
+[00178124][INF] Header bytes [50 10 00 40], received=4
+[00178124][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00178219][INF] Header bytes [50 10 00 40], received=4
+[00178220][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00178320][INF] Header bytes [50 10 00 40], received=4
+[00178320][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00178420][INF] Header bytes [50 10 00 40], received=4
+[00178420][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00178519][INF] Header bytes [50 10 00 40], received=4
+[00178519][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00178619][INF] Header bytes [50 10 00 40], received=4
+[00178619][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[MESSAGE] From peer 2: 64 bytes
+[00178718][INF] Header bytes [50 10 00 40], received=4
+[00178718][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00178821][INF] Header bytes [50 10 00 40], received=4
+[00178821][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00178919][INF] Header bytes [50 10 00 40], received=4
+[00178919][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00179016][INF] Header bytes [50 10 00 40], received=4
+[00179016][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[STATUS] 180 sec: peers=1, msgs=189, connected=yes
+[00179118][INF] Header bytes [50 10 00 40], received=4
+[MESSAGE] From peer 2: 64 bytes
+[00179118][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00179217][INF] Header bytes [50 10 00 40], received=4
+[00179217][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[MESSAGE] From peer 2: 64 bytes
+[00179319][INF] Header bytes [50 10 00 40], received=4
+[00179319][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00179419][INF] Header bytes [50 10 00 40], received=4
+[00179419][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00179518][INF] Header bytes [50 10 00 40], received=4
+[00179518][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00179616][INF] Header bytes [50 10 00 40], received=4
+[00179616][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[00179715][INF] Header bytes [50 10 00 40], received=4
+[00179715][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00179815][INF] Header bytes [50 10 00 40], received=4
+[MESSAGE] From peer 2: 64 bytes
+[00179816][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00179916][INF] Header bytes [50 10 00 40], received=4
+[00179916][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[MESSAGE] From peer 2: 64 bytes
+[00180014][INF] Header bytes [50 10 00 40], received=4
+[00180014][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[MESSAGE] From peer 2: 64 bytes
+[ECHO] 200 messages echoed
+[00180116][INF] Header bytes [50 10 00 40], received=4
+[00180116][INF] Processing msg from peer 2: type=1 flags=0x00 len=64 compact=1
+[00180116][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[00180216][INF] Header bytes [50 10 01 00], received=4
+[00180216][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00180318][INF] Header bytes [50 10 01 00], received=4
+[00180318][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00180414][INF] Header bytes [50 10 01 00], received=4
+[00180414][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00180514][INF] Header bytes [50 10 01 00], received=4
+[00180514][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00180614][INF] Header bytes [50 10 01 00], received=4
+[MESSAGE] From peer 2: 256 bytes
+[00180615][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00180714][INF] Header bytes [50 10 01 00], received=4
+[00180714][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00180815][INF] Header bytes [50 10 01 00], received=4
+[00180815][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00180915][INF] Header bytes [50 10 01 00], received=4
+[00180915][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00181012][INF] Header bytes [50 10 01 00], received=4
+[00181012][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00181115][INF] Header bytes [50 10 01 00], received=4
+[00181115][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00181213][INF] Header bytes [50 10 01 00], received=4
+[00181213][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00181312][INF] Header bytes [50 10 01 00], received=4
+[00181312][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00181413][INF] Header bytes [50 10 01 00], received=4
+[00181413][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00181512][INF] Header bytes [50 10 01 00], received=4
+[00181512][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00181614][INF] Header bytes [50 10 01 00], received=4
+[00181614][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00181712][INF] Header bytes [50 10 01 00], received=4
+[00181712][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00181810][INF] Header bytes [50 10 01 00], received=4
+[00181810][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00181912][INF] Header bytes [50 10 01 00], received=4
+[00181912][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00182011][INF] Header bytes [50 10 01 00], received=4
+[00182011][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00182111][INF] Header bytes [50 10 01 00], received=4
+[00182111][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00182210][INF] Header bytes [50 10 01 00], received=4
+[00182210][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00182311][INF] Header bytes [50 10 01 00], received=4
+[00182311][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00182413][INF] Header bytes [50 10 01 00], received=4
+[00182413][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00182510][INF] Header bytes [50 10 01 00], received=4
+[00182510][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00182610][INF] Header bytes [50 10 01 00], received=4
+[00182610][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00182709][INF] Header bytes [50 10 01 00], received=4
+[00182709][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00182809][INF] Header bytes [50 10 01 00], received=4
+[00182809][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00182909][INF] Header bytes [50 10 01 00], received=4
+[00182909][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00183008][INF] Header bytes [50 10 01 00], received=4
+[00183008][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00183111][INF] Header bytes [50 10 01 00], received=4
+[MESSAGE] From peer 2: 256 bytes
+[00183111][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00183208][INF] Header bytes [50 10 01 00], received=4
+[00183208][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00183308][INF] Header bytes [50 10 01 00], received=4
+[00183308][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00183408][INF] Header bytes [50 10 01 00], received=4
+[00183408][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00183507][INF] Header bytes [50 10 01 00], received=4
+[00183507][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00183609][INF] Header bytes [50 10 01 00], received=4
+[00183609][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00183707][INF] Header bytes [50 10 01 00], received=4
+[00183707][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00183807][INF] Header bytes [50 10 01 00], received=4
+[00183807][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00183909][INF] Header bytes [50 10 01 00], received=4
+[00183909][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00184006][INF] Header bytes [50 10 01 00], received=4
+[00184006][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00184109][INF] Header bytes [50 10 01 00], received=4
+[00184109][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00184205][INF] Header bytes [50 10 01 00], received=4
+[00184205][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00184305][INF] Header bytes [50 10 01 00], received=4
+[00184305][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00184404][INF] Header bytes [50 10 01 00], received=4
+[00184404][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00184506][INF] Header bytes [50 10 01 00], received=4
+[00184506][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00184604][INF] Header bytes [50 10 01 00], received=4
+[00184604][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00184706][INF] Header bytes [50 10 01 00], received=4
+[00184706][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00184804][INF] Header bytes [50 10 01 00], received=4
+[00184804][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00184906][INF] Header bytes [50 10 01 00], received=4
+[00184906][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00185002][INF] Header bytes [50 10 01 00], received=4
+[00185002][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00185102][INF] Header bytes [50 10 01 00], received=4
+[00185102][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00185204][INF] Header bytes [50 10 01 00], received=4
+[00185204][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00185304][INF] Header bytes [50 10 01 00], received=4
+[00185304][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00185340][INF] Discovery ANNOUNCE received from 10.188.1.213:7354 (MacLatency)
+[00185340][INF] Processing packet type 1
+[00185340][INF] Handling ANNOUNCE packet
+[00185340][INF] pt_peer_find_by_addr returned: 0x72c4edde0010
+[00185403][INF] Header bytes [50 10 01 00], received=4
+[00185403][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00185501][INF] Header bytes [50 10 01 00], received=4
+[00185501][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00185602][INF] Header bytes [50 10 01 00], received=4
+[00185602][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00185701][INF] Header bytes [50 10 01 00], received=4
+[00185701][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00185802][INF] Header bytes [50 10 01 00], received=4
+[00185802][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00185901][INF] Header bytes [50 10 01 00], received=4
+[00185901][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00186000][INF] Header bytes [50 10 01 00], received=4
+[00186000][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00186104][INF] Header bytes [50 10 01 00], received=4
+[00186104][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00186201][INF] Header bytes [50 10 01 00], received=4
+[00186201][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00186301][INF] Header bytes [50 10 01 00], received=4
+[00186301][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00186400][INF] Header bytes [50 10 01 00], received=4
+[00186400][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00186515][INF] Header bytes [50 10 01 00], received=4
+[00186515][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00186598][INF] Header bytes [50 10 01 00], received=4
+[00186598][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00186700][INF] Header bytes [50 10 01 00], received=4
+[00186700][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00186805][INF] Header bytes [50 10 01 00], received=4
+[00186805][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00186899][INF] Header bytes [50 10 01 00], received=4
+[00186899][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00186999][INF] Header bytes [50 10 01 00], received=4
+[00186999][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00187098][INF] Header bytes [50 10 01 00], received=4
+[00187098][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00187203][INF] Header bytes [50 10 01 00], received=4
+[00187203][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00187300][INF] Header bytes [50 10 01 00], received=4
+[00187300][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00187403][INF] Header bytes [50 10 01 00], received=4
+[00187403][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00187502][INF] Header bytes [50 10 01 00], received=4
+[00187502][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00187596][INF] Header bytes [50 10 01 00], received=4
+[00187596][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00187698][INF] Header bytes [50 10 01 00], received=4
+[00187698][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00187802][INF] Header bytes [50 10 01 00], received=4
+[MESSAGE] From peer 2: 256 bytes
+[00187802][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00187906][INF] Header bytes [50 10 01 00], received=4
+[00187906][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00187995][INF] Header bytes [50 10 01 00], received=4
+[00187995][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00188099][INF] Header bytes [50 10 01 00], received=4
+[00188099][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00188196][INF] Header bytes [50 10 01 00], received=4
+[00188196][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00188296][INF] Header bytes [50 10 01 00], received=4
+[00188296][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00188396][INF] Header bytes [50 10 01 00], received=4
+[00188396][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00188501][INF] Header bytes [50 10 01 00], received=4
+[00188501][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00188595][INF] Header bytes [50 10 01 00], received=4
+[00188595][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00188695][INF] Header bytes [50 10 01 00], received=4
+[00188695][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00188795][INF] Header bytes [50 10 01 00], received=4
+[00188795][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00188895][INF] Header bytes [50 10 01 00], received=4
+[00188896][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00188992][INF] Header bytes [50 10 01 00], received=4
+[00188992][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00189093][INF] Header bytes [50 10 01 00], received=4
+[00189093][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[STATUS] 190 sec: peers=1, msgs=290, connected=yes
+[MESSAGE] From peer 2: 256 bytes
+[00189192][INF] Header bytes [50 10 01 00], received=4
+[00189192][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00189294][INF] Header bytes [50 10 01 00], received=4
+[00189294][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00189392][INF] Header bytes [50 10 01 00], received=4
+[00189392][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00189644][INF] Header bytes [50 10 01 00], received=4
+[00189644][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00189664][INF] Header bytes [50 10 01 00], received=4
+[00189664][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00189759][INF] Header bytes [50 10 01 00], received=4
+[00189759][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[MESSAGE] From peer 2: 256 bytes
+[00189864][INF] Header bytes [50 10 01 00], received=4
+[00189864][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00189959][INF] Header bytes [50 10 01 00], received=4
+[00189959][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[00190056][INF] Header bytes [50 10 01 00], received=4
+[00190056][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[MESSAGE] From peer 2: 256 bytes
+[00190125][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[00190158][INF] Header bytes [50 10 01 00], received=4
+[MESSAGE] From peer 2: 256 bytes
+[00190158][INF] Processing msg from peer 2: type=1 flags=0x00 len=256 compact=1
+[ECHO] 300 messages echoed
+[MESSAGE] From peer 2: 1024 bytes
+[00190260][INF] Header bytes [50 10 04 00], received=4
+[00190260][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00190370][INF] Header bytes [50 10 04 00], received=4
+[00190370][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00190455][INF] Header bytes [50 10 04 00], received=4
+[00190455][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00190555][INF] Header bytes [50 10 04 00], received=4
+[00190555][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00190658][INF] Header bytes [50 10 04 00], received=4
+[00190658][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00190757][INF] Header bytes [50 10 04 00], received=4
+[00190757][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00190859][INF] Header bytes [50 10 04 00], received=4
+[00190859][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00190954][INF] Header bytes [50 10 04 00], received=4
+[00190954][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00191057][INF] Header bytes [50 10 04 00], received=4
+[00191057][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00191155][INF] Header bytes [50 10 04 00], received=4
+[00191155][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00191254][INF] Header bytes [50 10 04 00], received=4
+[00191254][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00191357][INF] Header bytes [50 10 04 00], received=4
+[00191357][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00191453][INF] Header bytes [50 10 04 00], received=4
+[00191453][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00191556][INF] Header bytes [50 10 04 00], received=4
+[00191556][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00191654][INF] Header bytes [50 10 04 00], received=4
+[00191654][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00191753][INF] Header bytes [50 10 04 00], received=4
+[00191753][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00191856][INF] Header bytes [50 10 04 00], received=4
+[00191856][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00191953][INF] Header bytes [50 10 04 00], received=4
+[MESSAGE] From peer 2: 1024 bytes
+[00191953][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00192054][INF] Header bytes [50 10 04 00], received=4
+[00192054][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00192153][INF] Header bytes [50 10 04 00], received=4
+[00192153][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00192252][INF] Header bytes [50 10 04 00], received=4
+[00192252][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00192353][INF] Header bytes [50 10 04 00], received=4
+[00192353][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00192454][INF] Header bytes [50 10 04 00], received=4
+[00192454][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00192552][INF] Header bytes [50 10 04 00], received=4
+[00192552][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00192652][INF] Header bytes [50 10 04 00], received=4
+[00192652][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00192754][INF] Header bytes [50 10 04 00], received=4
+[00192754][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00192850][INF] Header bytes [50 10 04 00], received=4
+[00192850][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00192952][INF] Header bytes [50 10 04 00], received=4
+[00192952][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00193051][INF] Header bytes [50 10 04 00], received=4
+[00193051][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00193149][INF] Header bytes [50 10 04 00], received=4
+[00193149][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00193249][INF] Header bytes [50 10 04 00], received=4
+[00193249][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00193352][INF] Header bytes [50 10 04 00], received=4
+[MESSAGE] From peer 2: 1024 bytes
+[00193352][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00193448][INF] Header bytes [50 10 04 00], received=4
+[00193448][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00193551][INF] Header bytes [50 10 04 00], received=4
+[00193551][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00193648][INF] Header bytes [50 10 04 00], received=4
+[00193648][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00193753][INF] Header bytes [50 10 04 00], received=4
+[00193803][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00193850][INF] Header bytes [50 10 04 00], received=4
+[00193850][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00193948][INF] Header bytes [50 10 04 00], received=4
+[00193948][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00194054][INF] Header bytes [50 10 04 00], received=4
+[00194054][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00194148][INF] Header bytes [50 10 04 00], received=4
+[00194148][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00194247][INF] Header bytes [50 10 04 00], received=4
+[00194247][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00194346][INF] Header bytes [50 10 04 00], received=4
+[00194346][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00194452][INF] Header bytes [50 10 04 00], received=4
+[MESSAGE] From peer 2: 1024 bytes
+[00194452][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00194549][INF] Header bytes [50 10 04 00], received=4
+[00194549][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00194645][INF] Header bytes [50 10 04 00], received=4
+[00194645][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00194747][INF] Header bytes [50 10 04 00], received=4
+[00194747][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00194845][INF] Header bytes [50 10 04 00], received=4
+[00194845][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00194945][INF] Header bytes [50 10 04 00], received=4
+[00194945][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00195044][INF] Header bytes [50 10 04 00], received=4
+[00195044][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00195144][INF] Header bytes [50 10 04 00], received=4
+[00195144][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00195244][INF] Header bytes [50 10 04 00], received=4
+[00195245][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00195344][INF] Header bytes [50 10 04 00], received=4
+[00195344][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00195444][INF] Header bytes [50 10 04 00], received=4
+[00195444][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00195543][INF] Header bytes [50 10 04 00], received=4
+[00195543][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00195645][INF] Header bytes [50 10 04 00], received=4
+[MESSAGE] From peer 2: 1024 bytes
+[00195645][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00195742][INF] Header bytes [50 10 04 00], received=4
+[00195742][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00195844][INF] Header bytes [50 10 04 00], received=4
+[MESSAGE] From peer 2: 1024 bytes
+[00195844][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00195943][INF] Header bytes [50 10 04 00], received=4
+[00195943][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00196041][INF] Header bytes [50 10 04 00], received=4
+[00196041][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00196143][INF] Header bytes [50 10 04 00], received=4
+[00196143][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00196241][INF] Header bytes [50 10 04 00], received=4
+[00196241][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00196343][INF] Header bytes [50 10 04 00], received=4
+[00196343][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00196442][INF] Header bytes [50 10 04 00], received=4
+[00196442][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00196541][INF] Header bytes [50 10 04 00], received=4
+[00196541][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00196640][INF] Header bytes [50 10 04 00], received=4
+[00196640][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00196741][INF] Header bytes [50 10 04 00], received=4
+[MESSAGE] From peer 2: 1024 bytes
+[00196741][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00196843][INF] Header bytes [50 10 04 00], received=4
+[00196843][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00196940][INF] Header bytes [50 10 04 00], received=4
+[00196940][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00197038][INF] Header bytes [50 10 04 00], received=4
+[00197038][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00197139][INF] Header bytes [50 10 04 00], received=4
+[00197139][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00197240][INF] Header bytes [50 10 04 00], received=4
+[00197240][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00197342][INF] Header bytes [50 10 04 00], received=4
+[00197342][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00197439][INF] Header bytes [50 10 04 00], received=4
+[00197439][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00197541][INF] Header bytes [50 10 04 00], received=4
+[00197541][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00197638][INF] Header bytes [50 10 04 00], received=4
+[00197638][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00197738][INF] Header bytes [50 10 04 00], received=4
+[00197738][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00197840][INF] Header bytes [50 10 04 00], received=4
+[00197840][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00197937][INF] Header bytes [50 10 04 00], received=4
+[00197937][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00198037][INF] Header bytes [50 10 04 00], received=4
+[00198037][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00198137][INF] Header bytes [50 10 04 00], received=4
+[MESSAGE] From peer 2: 1024 bytes
+[00198193][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00198250][INF] Header bytes [50 10 04 00], received=4
+[00198250][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00198337][INF] Header bytes [50 10 04 00], received=4
+[00198337][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00198437][INF] Header bytes [50 10 04 00], received=4
+[00198437][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00198539][INF] Header bytes [50 10 04 00], received=4
+[00198539][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00198635][INF] Header bytes [50 10 04 00], received=4
+[00198635][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00198737][INF] Header bytes [50 10 04 00], received=4
+[00198737][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00198835][INF] Header bytes [50 10 04 00], received=4
+[00198835][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00198935][INF] Header bytes [50 10 04 00], received=4
+[00198935][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00199034][INF] Header bytes [50 10 04 00], received=4
+[00199034][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[STATUS] 200 sec: peers=1, msgs=389, connected=yes
+[00199135][INF] Header bytes [50 10 04 00], received=4
+[00199135][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00199234][INF] Header bytes [50 10 04 00], received=4
+[00199234][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00199334][INF] Header bytes [50 10 04 00], received=4
+[00199334][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00199435][INF] Header bytes [50 10 04 00], received=4
+[00199435][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00199537][INF] Header bytes [50 10 04 00], received=4
+[00199537][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00199634][INF] Header bytes [50 10 04 00], received=4
+[00199634][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00199736][INF] Header bytes [50 10 04 00], received=4
+[00199736][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00199836][INF] Header bytes [50 10 04 00], received=4
+[00199836][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00199932][INF] Header bytes [50 10 04 00], received=4
+[00199932][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[00200032][INF] Header bytes [50 10 04 00], received=4
+[00200032][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[ECHO] 400 messages echoed
+[00200134][INF] Header bytes [50 10 04 00], received=4
+[00200134][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00200134][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[00200237][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00200239][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00200260][INF] Header bytes [50 54 4D 47], received=4
+[00200261][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00200261][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00200346][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00200356][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00200435][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00200438][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00200496][INF] Discovery ANNOUNCE received from 10.188.1.213:7354 (MacLatency)
+[00200496][INF] Processing packet type 1
+[00200496][INF] Handling ANNOUNCE packet
+[00200496][INF] pt_peer_find_by_addr returned: 0x72c4edde0010
+[00200498][INF] Header bytes [50 54 4D 47], received=4
+[00200499][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00200499][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00200556][INF] Header bytes [50 10 10 00], received=4
+[00200559][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00200652][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00200654][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00200746][INF] Header bytes [50 54 4D 47], received=4
+[00200747][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00200747][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00200802][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00200806][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00200900][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00200904][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00201000][INF] Header bytes [50 54 4D 47], received=4
+[00201001][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00201001][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00201061][INF] Header bytes [50 10 10 00], received=4
+[00201064][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00201148][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00201151][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00201247][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00201249][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00201259][INF] Header bytes [50 54 4D 47], received=4
+[00201260][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00201260][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00201363][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00201366][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00201466][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00201471][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00201495][INF] Header bytes [50 54 4D 47], received=4
+[00201496][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00201496][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00201565][INF] Header bytes [50 10 10 00], received=4
+[00201567][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00201664][INF] Header bytes [50 10 10 00], received=4
+[00201667][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00201743][INF] Header bytes [50 54 4D 47], received=4
+[00201744][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00201744][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00201801][INF] Header bytes [50 10 10 00], received=4
+[00201804][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00201900][INF] Header bytes [50 10 10 00], received=4
+[00201901][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00201992][INF] Header bytes [50 54 4D 47], received=4
+[00201993][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00201993][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00202046][INF] Header bytes [50 10 10 00], received=4
+[00202077][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00202147][INF] Header bytes [50 10 10 00], received=4
+[00202158][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00202242][INF] Header bytes [50 54 4D 47], received=4
+[00202243][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00202243][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00202298][INF] Header bytes [50 10 10 00], received=4
+[00202300][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00202396][INF] Header bytes [50 10 10 00], received=4
+[00202398][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00202490][INF] Header bytes [50 54 4D 47], received=4
+[00202491][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00202491][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00202553][INF] Header bytes [50 10 10 00], received=4
+[00202554][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00202646][INF] Header bytes [50 10 10 00], received=4
+[00202649][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00202742][INF] Header bytes [50 54 4D 47], received=4
+[00202743][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00202743][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00202800][INF] Header bytes [50 10 10 00], received=4
+[00202802][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00202895][INF] Header bytes [50 10 10 00], received=4
+[00202898][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00202995][INF] Header bytes [50 54 4D 47], received=4
+[00202997][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00202997][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00203051][INF] Header bytes [50 10 10 00], received=4
+[00203055][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00203145][INF] Header bytes [50 10 10 00], received=4
+[00203150][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00203238][INF] Header bytes [50 54 4D 47], received=4
+[00203239][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00203239][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00203296][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00203302][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00203393][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00203396][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00203490][INF] Header bytes [50 54 4D 47], received=4
+[00203491][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00203491][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00203546][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00203555][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00203643][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00203646][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00203738][INF] Header bytes [50 54 4D 47], received=4
+[00203739][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00203739][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00203793][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00203795][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00203891][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00203893][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00203987][INF] Header bytes [50 54 4D 47], received=4
+[00203988][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00203988][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00204044][INF] Header bytes [50 10 10 00], received=4
+[00204049][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00204143][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00204145][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00204236][INF] Header bytes [50 54 4D 47], received=4
+[00204237][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00204237][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00204294][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00204300][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00204391][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00204396][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00204489][INF] Header bytes [50 54 4D 47], received=4
+[00204490][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00204490][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00204550][INF] Header bytes [50 10 10 00], received=4
+[00204551][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00204639][INF] Header bytes [50 10 10 00], received=4
+[00204642][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00204736][INF] Header bytes [50 54 4D 47], received=4
+[00204737][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00204737][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00204794][INF] Header bytes [50 10 10 00], received=4
+[00204798][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00204889][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00204892][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00204998][INF] Header bytes [50 54 4D 47], received=4
+[00204999][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00204999][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00205056][INF] Header bytes [50 10 10 00], received=4
+[00205060][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00205156][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00205158][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00205234][INF] Header bytes [50 54 4D 47], received=4
+[00205235][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00205235][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00205300][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00205301][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00205396][INF] Header bytes [50 10 10 00], received=4
+[00205398][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00205483][INF] Header bytes [50 54 4D 47], received=4
+[00205484][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00205484][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00205541][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00205544][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00205638][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00205700][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00205733][INF] Header bytes [50 54 4D 47], received=4
+[00205734][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00205734][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00205789][INF] Header bytes [50 10 10 00], received=4
+[00205792][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00205890][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00205892][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00205984][INF] Header bytes [50 54 4D 47], received=4
+[00205985][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00205985][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00206038][INF] Header bytes [50 10 10 00], received=4
+[00206041][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00206137][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00206140][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00206232][INF] Header bytes [50 54 4D 47], received=4
+[00206233][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00206233][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00206291][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00206293][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00206385][INF] Header bytes [50 10 10 00], received=4
+[00206387][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00206481][INF] Header bytes [50 54 4D 47], received=4
+[00206482][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00206482][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00206537][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00206540][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00206637][INF] Header bytes [50 10 10 00], received=4
+[00206639][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00206737][INF] Header bytes [50 54 4D 47], received=4
+[00206738][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00206738][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00206793][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00206795][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00206884][INF] Header bytes [50 10 10 00], received=4
+[00206888][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00206987][INF] Header bytes [50 54 4D 47], received=4
+[00206988][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00206988][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00207046][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00207051][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00207134][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00207137][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00207230][INF] Header bytes [50 54 4D 47], received=4
+[00207231][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00207231][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00207286][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00207289][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00207384][INF] Header bytes [50 10 10 00], received=4
+[00207387][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00207479][INF] Header bytes [50 54 4D 47], received=4
+[00207480][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00207480][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00207535][INF] Header bytes [50 10 10 00], received=4
+[00207540][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00207634][INF] Header bytes [50 10 10 00], received=4
+[00207636][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00207727][INF] Header bytes [50 54 4D 47], received=4
+[00207728][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00207728][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00207787][INF] Header bytes [50 10 10 00], received=4
+[00207790][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00207881][INF] Header bytes [50 10 10 00], received=4
+[00207884][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00207977][INF] Header bytes [50 54 4D 47], received=4
+[00207978][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00207978][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00208032][INF] Header bytes [50 10 10 00], received=4
+[00208035][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00208135][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00208136][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00208227][INF] Header bytes [50 54 4D 47], received=4
+[00208228][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00208228][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00208287][INF] Header bytes [50 10 10 00], received=4
+[00208290][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00208382][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00208384][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00208477][INF] Header bytes [50 54 4D 47], received=4
+[00208478][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00208478][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00208536][INF] Header bytes [50 10 10 00], received=4
+[00208542][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00208630][INF] Header bytes [50 10 10 00], received=4
+[00208633][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00208726][INF] Header bytes [50 54 4D 47], received=4
+[00208727][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00208727][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00208782][INF] Header bytes [50 10 10 00], received=4
+[00208785][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00208888][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00208889][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00208975][INF] Header bytes [50 54 4D 47], received=4
+[00208976][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00208977][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00209030][INF] Header bytes [50 10 10 00], received=4
+[00209036][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[STATUS] 210 sec: peers=1, msgs=473, connected=yes
+[00209133][INF] Header bytes [50 10 10 00], received=4
+[00209134][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00209227][INF] Header bytes [50 54 4D 47], received=4
+[00209228][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00209228][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00209287][INF] Header bytes [50 10 10 00], received=4
+[00209298][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00209378][INF] Header bytes [50 10 10 00], received=4
+[00209381][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00209473][INF] Header bytes [50 54 4D 47], received=4
+[00209474][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00209474][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00209531][INF] Header bytes [50 10 10 00], received=4
+[00209534][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00209627][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00209629][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00209723][INF] Header bytes [50 54 4D 47], received=4
+[00209724][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00209724][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00209779][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00209782][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00209877][INF] Header bytes [50 10 10 00], received=4
+[00209882][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00209971][INF] Header bytes [50 54 4D 47], received=4
+[00209972][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00209972][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00210030][INF] Header bytes [50 10 10 00], received=4
+[00210034][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00210127][INF] Header bytes [50 10 10 00], received=4
+[00210127][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[00210130][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00210222][INF] Header bytes [50 54 4D 47], received=4
+[00210223][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00210223][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00210280][INF] Header bytes [50 10 10 00], received=4
+[00210283][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00210377][INF] Header bytes [50 10 10 00], received=4
+[00210379][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00210472][INF] Header bytes [50 54 4D 47], received=4
+[00210473][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00210473][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00210534][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00210535][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00210626][INF] Header bytes [50 10 10 00], received=4
+[00210632][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00210719][INF] Header bytes [50 54 4D 47], received=4
+[00210721][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00210721][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00210778][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00210792][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00210875][INF] Header bytes [50 10 10 00], received=4
+[00210877][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00210969][INF] Header bytes [50 54 4D 47], received=4
+[00210970][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00210970][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00211024][INF] Header bytes [50 10 10 00], received=4
+[00211026][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00211123][INF] Header bytes [50 10 10 00], received=4
+[00211126][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00211220][INF] Header bytes [50 54 4D 47], received=4
+[00211221][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00211221][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00211281][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00211282][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00211372][INF] Header bytes [50 10 10 00], received=4
+[00211376][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00211469][INF] Header bytes [50 54 4D 47], received=4
+[00211470][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00211470][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00211529][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[00211531][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[00211622][INF] Header bytes [50 10 10 00], received=4
+[00211628][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00211718][INF] Header bytes [50 54 4D 47], received=4
+[00211720][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00211720][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00211774][INF] Header bytes [50 10 10 00], received=4
+[00211777][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00211873][INF] Header bytes [50 10 10 00], received=4
+[00211875][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00211971][INF] Header bytes [50 10 10 00], received=4
+[00211973][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00211977][INF] Header bytes [50 54 4D 47], received=4
+[00211978][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00211978][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00212072][INF] Header bytes [50 10 10 00], received=4
+[00212074][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00212177][INF] Header bytes [50 10 10 00], received=4
+[00212177][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 4096 bytes
+[00212216][INF] Header bytes [50 54 4D 47], received=4
+[00212218][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00212218][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[00212275][INF] Header bytes [50 10 10 00], received=4
+[MESSAGE] From peer 2: 4096 bytes
+[ECHO] 500 messages echoed
+[00212277][INF] Processing msg from peer 2: type=1 flags=0x00 len=4096 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Detected log stream marker from peer 2 (IP 0x0ABC01D5)
+[LOG] Started receiving logs from MacLatency (IP 0x0ABC01D5, 31782 bytes expected)
+[00212786][INF] Header bytes [50 10 04 00], received=4
+[00212786][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00212836][INF] Header bytes [50 54 4D 47], received=4
+[00212837][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00212837][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=25 compact=1 recv_buf=16384 optimal=4096 push=1
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 2048/31782 bytes
+[00212850][INF] Header bytes [50 10 04 00], received=4
+[00212850][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00212869][INF] Header bytes [50 10 04 00], received=4
+[00212869][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 3072/31782 bytes
+[00212881][INF] Header bytes [50 10 04 00], received=4
+[00212881][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 4096/31782 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00212895][INF] Header bytes [50 10 04 00], received=4
+[LOG] Received 5120/31782 bytes
+[00212895][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00212910][INF] Header bytes [50 10 04 00], received=4
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 6144/31782 bytes
+[00212919][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00212933][INF] Header bytes [50 10 04 00], received=4
+[00212933][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 7168/31782 bytes
+[00212946][INF] Header bytes [50 10 04 00], received=4
+[00212946][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 8192/31782 bytes
+[00212959][INF] Header bytes [50 10 04 00], received=4
+[MESSAGE] From peer 2: 1024 bytes
+[00212959][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[LOG] Received 9216/31782 bytes
+[00212973][INF] Header bytes [50 10 04 00], received=4
+[00212973][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 10240/31782 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[00212985][INF] Header bytes [50 10 04 00], received=4
+[LOG] Received 11264/31782 bytes
+[00212985][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 12288/31782 bytes
+[00213000][INF] Header bytes [50 10 04 00], received=4
+[00213000][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00213012][INF] Header bytes [50 10 04 00], received=4
+[00213012][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 13312/31782 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 14336/31782 bytes
+[00213030][INF] Header bytes [50 10 04 00], received=4
+[00213030][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00213043][INF] Header bytes [50 10 04 00], received=4
+[00213043][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 15360/31782 bytes
+[00213057][INF] Header bytes [50 10 04 00], received=4
+[00213057][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 16384/31782 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 17408/31782 bytes
+[00213069][INF] Header bytes [50 10 04 00], received=4
+[00213069][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00213082][INF] Header bytes [50 10 04 00], received=4
+[00213082][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 18432/31782 bytes
+[00213092][INF] Header bytes [50 54 4D 47], received=4
+[00213093][INF] Processing msg from peer 2: type=7 flags=0x00 len=23 compact=0
+[00213093][INF] Received capabilities from peer 2: max=8192 chunk=1024 pressure=0 compact=1 recv_buf=16384 optimal=4096 push=1
+[00213109][INF] Header bytes [50 10 04 00], received=4
+[00213109][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 19456/31782 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 20480/31782 bytes
+[00213124][INF] Header bytes [50 10 04 00], received=4
+[00213124][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00213137][INF] Header bytes [50 10 04 00], received=4
+[MESSAGE] From peer 2: 1024 bytes
+[00213137][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[LOG] Received 21504/31782 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 22528/31782 bytes
+[00213149][INF] Header bytes [50 10 04 00], received=4
+[00213149][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00213161][INF] Header bytes [50 10 04 00], received=4
+[00213161][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 23552/31782 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 24576/31782 bytes
+[00213175][INF] Header bytes [50 10 04 00], received=4
+[00213175][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00213189][INF] Header bytes [50 10 04 00], received=4
+[MESSAGE] From peer 2: 1024 bytes
+[00213189][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[LOG] Received 25600/31782 bytes
+[00213201][INF] Header bytes [50 10 04 00], received=4
+[00213201][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 26624/31782 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 27648/31782 bytes
+[00213217][INF] Header bytes [50 10 04 00], received=4
+[00213217][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[00213230][INF] Header bytes [50 10 04 00], received=4
+[00213230][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 28672/31782 bytes
+[00213249][INF] Header bytes [50 10 04 00], received=4
+[00213249][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 29696/31782 bytes
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 30720/31782 bytes
+[00213261][INF] Header bytes [50 10 04 00], received=4
+[00213261][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 1024 bytes
+[LOG] Received 31744/31782 bytes
+[00213274][INF] Header bytes [50 10 04 00], received=4
+[00213274][INF] Processing msg from peer 2: type=1 flags=0x00 len=1024 compact=1
+[MESSAGE] From peer 2: 38 bytes
+[LOG] Received 31782/31782 bytes
+[REGISTRY] Loaded 2 machines from MACHINE_REGISTRY
+[00213285][INF] Header bytes [50 10 00 26], received=4
+[00213286][INF] Processing msg from peer 2: type=1 flags=0x00 len=38 compact=1
+[LOG] Saved 31774 bytes to plan/performance/mactcp/performa6200/latency_20260221_175219.log
+
+========== latency METRICS ==========
+
+Latency Results:
+  Size    Min    Avg    Max    Loss
+  ----    ---    ---    ---    ----
+    16B     0ms    0ms   50ms  0%
+    64B     0ms    0ms   33ms  0%
+   256B     0ms    0ms  116ms  0%
+  1024B     0ms   16ms   66ms  0%
+  4096B    16ms   16ms   83ms  0%
+    16B     0ms    0ms   50ms  0%
+    64B     0ms    0ms   33ms  0%
+   256B     0ms    0ms  116ms  0%
+=====================================
+
+[STATUS] 220 sec: peers=1, msgs=532, connected=yes
+[00220143][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[00223434][INF] Discovery GOODBYE received from 10.188.1.213:7354 (MacLatency)
+[00223434][INF] Processing packet type 3
+[00223434][INF] Peer destroyed: id=1 name='MacLatency'
+[DISCONNECTED] Peer 2 (reason=0)
+[00223436][ERR] Header recv error for peer 2: Connection reset by peer
+[00223436][INF] Closing connection to peer 2
+[STATUS] 230 sec: peers=1, msgs=532, connected=no
+[00230144][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)
+[STATUS] 240 sec: peers=1, msgs=532, connected=no
+[00240150][INF] Discovery ANNOUNCE sent to 255.255.255.255:7353 (25 bytes)

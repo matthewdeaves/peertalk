@@ -178,7 +178,6 @@ jobs:
   # Retro68 cross-compilation - builds PeerTalk SDK library for Classic Mac platforms
   build-retro68:
     runs-on: ubuntu-latest
-    needs: [build-docker]
     # Only run on main branch or when explicitly requested
     if: github.ref == 'refs/heads/main' || contains(github.event.pull_request.labels.*.name, 'build-retro68')
     steps:
@@ -191,16 +190,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Pull Docker image
-        run: docker pull ghcr.io/${{ github.repository_owner }}/peertalk-dev:latest || docker pull ghcr.io/${{ github.repository_owner }}/peertalk-dev:main
-
-      - name: Tag image for local use
-        run: docker tag ghcr.io/${{ github.repository_owner }}/peertalk-dev:latest peertalk-dev:latest 2>/dev/null || docker tag ghcr.io/${{ github.repository_owner }}/peertalk-dev:main peertalk-dev:latest
+      - name: Pull PeerTalk dev image
+        run: docker pull ghcr.io/${{ github.repository_owner }}/peertalk-dev:develop
 
       - name: Build PeerTalk SDK for 68k (MacTCP)
         run: |
           if [ -f "Makefile.retro68" ]; then
-            docker run --rm -v ${{ github.workspace }}:/workspace peertalk-dev:latest \
+            docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace \
+              ghcr.io/${{ github.repository_owner }}/peertalk-dev:develop \
               make -f Makefile.retro68 PLATFORM=mactcp
           else
             echo "No Makefile.retro68 yet - skipping SDK build for 68k"
@@ -209,7 +206,8 @@ jobs:
       - name: Build PeerTalk SDK for PPC (Open Transport)
         run: |
           if [ -f "Makefile.retro68" ]; then
-            docker run --rm -v ${{ github.workspace }}:/workspace peertalk-dev:latest \
+            docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace \
+              ghcr.io/${{ github.repository_owner }}/peertalk-dev:develop \
               make -f Makefile.retro68 PLATFORM=ot
           else
             echo "No Makefile.retro68 yet - skipping SDK build for PPC"

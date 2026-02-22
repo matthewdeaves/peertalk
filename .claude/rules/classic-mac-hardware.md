@@ -162,7 +162,6 @@ All test apps log these markers:
 
 | Test | Approximate Duration |
 |------|---------------------|
-| test_mactcp | 60 seconds |
 | test_latency | 2-3 minutes (500 pings across 5 sizes) |
 | test_throughput | 2+ minutes per chunk size |
 | test_stress | 50+ cycles × ~5 seconds each |

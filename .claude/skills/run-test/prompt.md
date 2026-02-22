@@ -15,7 +15,7 @@ Parse format:
 ```
 <test> [machine] [--skip-build] [--skip-analysis] [--verbose]
 
-test:     latency | throughput | stream | stress | discovery | mactcp | all
+test:     latency | throughput | stream | stress | discovery | all
 machine:  Machine ID from machines.json (default: performa6200)
 ```
 
@@ -37,7 +37,7 @@ $ARGUMENTS = "throughput --verbose"
 
 ```
 1. Parse test name (required):
-   - latency, throughput, stream, stress, discovery, mactcp, all
+   - latency, throughput, stream, stress, discovery, all
 
 2. Parse machine (optional, default: performa6200):
    - Read .claude/mcp-servers/classic-mac-hardware/machines.json
@@ -65,16 +65,14 @@ For standard builds (most machines):
   Run: ./scripts/build-mac-tests.sh mactcp perf
 
 For lowmem builds (Mac SE, machines with build: "lowmem"):
-  Run:
-  docker compose -f docker/docker-compose.yml run --rm peertalk-dev \
-    make -f Makefile.retro68 PLATFORM=mactcp lowmem_tests
+  Run: ./scripts/build-mac-tests.sh mactcp lowmem
 
 Also build perf_partner:
-  docker run --rm -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest \
+  docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd)":/workspace -w /workspace peertalk-posix:latest \
     make build/bin/perf_partner
 
 Expected outputs:
-  Standard: build/mac/test_latency.bin, test_throughput.bin, etc.
+  Standard: build/mac/test_latency.bin, test_throughput.bin, test_stream.bin, etc.
   Lowmem: build/mac/test_latency_lowmem.bin, etc.
 
 If build fails:
@@ -85,43 +83,24 @@ If build fails:
 
 ### Step 3: Start Test Partner
 
-**SIMPLIFIED:** Echo mode now auto-detects ALL test types. No mode switching needed!
-
-| Test | Partner Mode | Notes |
-|------|--------------|-------|
-| latency | echo | Echoes pings back |
-| throughput | echo | Echoes data back for bidirectional measurement |
-| stream | echo | Auto-detects STRM control messages |
-| stress | echo | Standard echo works for stress |
-| discovery | echo | Responds to discovery |
-| mactcp | echo | Basic connectivity test |
-| all | echo | Same partner for all tests |
-
-**KEY INSIGHT:** The partner auto-detects stream test control messages (STRM magic).
-When Mac sends START_SEND, partner sinks. When Mac sends START_RECV, partner streams.
-No manual mode switching required!
+The perf_partner auto-detects ALL test types. Start once, no restarts needed.
 
 ```
 1. Check if perf-partner container already running:
    docker ps --filter name=perf-partner --format "{{.Names}}"
 
-2. If running with echo mode: Partner is ready for ALL test types
-   No restart needed!
+2. If running: Partner is ready for ALL test types. No restart needed.
 
 3. If NOT running, start partner:
    docker run -d --name perf-partner --network host \
-     -v "$(pwd)":/workspace -w /workspace \
+     -u "$(id -u):$(id -g)" -v "$(pwd)":/workspace -w /workspace \
      -e MACHINE_REGISTRY="10.188.1.55:macse,10.188.1.213:performa6200" \
      peertalk-posix:latest ./build/bin/perf_partner --verbose
-
-   Note: No --mode flag needed. Echo is default and handles everything.
 
 4. Wait 2 seconds for partner to start
 
 5. Verify partner is running:
    docker logs perf-partner 2>&1 | head -10
-
-   Look for: "PeerTalk Performance Test Partner" and "Mode: echo"
 
 If partner fails to start:
   Show logs
@@ -132,8 +111,8 @@ If partner fails to start:
 ### Step 4: Execute Test via LaunchAPPL
 
 ```
-1. Record start timestamp for log filtering:
-   START_TIME=$(date -Iseconds)   # ISO format for docker logs --since
+1. Record start timestamp for partner log filtering:
+   START_TIME=$(date +%Y%m%d_%H%M%S)
 
 2. Determine binary path:
    - Standard: build/mac/test_<test>.bin
@@ -147,7 +126,7 @@ If partner fails to start:
    )
 
 4. Handle response:
-   - Success with output: Test started, continue
+   - Success with output: Test completed within 60s
    - Timeout (60s): Expected for long tests, continue monitoring
    - Connection failed: LaunchAPPL not running, suggest /test-machine
    - Binary not found: Build failed, suggest /build
@@ -158,19 +137,27 @@ The test continues running on the Mac beyond the timeout.
 
 ### Step 5: Monitor for Completion
 
+**CRITICAL: Use short polling intervals (sleep 15-30s), NOT a single long sleep.**
+
 ```
-Test timeout values:
-  latency: 5 minutes
-  throughput: 5 minutes
-  stream: 8 minutes (30s send + 30s recv per size × 5 sizes)
-  stress: 8 minutes
+Initial wait before first poll (just enough for test to get going):
+  latency: sleep 90
+  throughput: sleep 90
+  stream: sleep 180
+  stress: sleep 60
+  discovery: sleep 90
+
+Max wait (give up after this):
+  latency: 4 minutes
+  throughput: 4 minutes
+  stream: 8 minutes
+  stress: 2 minutes
   discovery: 3 minutes
-  mactcp: 2 minutes
 
 BEFORE polling, note existing log files:
   BEFORE_COUNT=$(ls plan/performance/mactcp/<machine>/<test>_*.log 2>/dev/null | wc -l)
 
-Polling loop (every 30 seconds):
+After initial wait, poll every 15 seconds:
   1. Check for NEW log file (best completion signal):
      AFTER_COUNT=$(ls plan/performance/mactcp/<machine>/<test>_*.log 2>/dev/null | wc -l)
      if [ "$AFTER_COUNT" -gt "$BEFORE_COUNT" ]; then
@@ -178,133 +165,136 @@ Polling loop (every 30 seconds):
        → Continue to step 6
      fi
 
-  2. Check partner logs for completion markers (ONLY logs since test started):
-     docker logs --since "$START_TIME" perf-partner 2>&1 | grep -E "GOODBYE|Saving log to|TEST EXITING"
+  2. If no new log yet, sleep 15 more seconds and re-check.
 
-  3. Check partner logs for activity (ONLY logs since test started):
-     docker logs --since "$START_TIME" perf-partner 2>&1 | tail -10
-     - If seeing "Processing msg" or "Echo" lines → test in progress
-     - If empty or only "Discovery ANNOUNCE" → test may have completed or not started
-
-  4. If timeout exceeded:
+  3. If max wait exceeded:
      → Warn user, suggest checking Mac screen
      → Continue to step 6 anyway (may have partial results)
 ```
 
 ### Step 6: Collect BOTH Logs (Mac + Partner)
 
-**CRITICAL: Logs are ALREADY SAVED LOCALLY by perf_partner. DO NOT use FTP to download logs.**
-
-The Mac test app streams logs to perf_partner at test completion. perf_partner auto-saves
-them to `plan/performance/mactcp/<machine>/<test>_<timestamp>.log`. Just read the local file.
+**CRITICAL: ALWAYS save BOTH logs. Partner logs contain valuable POSIX-side data.**
 
 ```
-A test run produces TWO logs (both LOCAL - no FTP needed):
-  1. Mac test app log - streamed from Mac to partner, AUTO-SAVED locally
-  2. perf_partner log - partner's own output (echoes, metrics, errors)
-
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 LOG_DIR="plan/performance/mactcp/<machine>"
 
 1. Find the Mac test app log (ALREADY auto-saved by perf_partner):
 
-   MAC_LOG=$(ls -t ${LOG_DIR}/<test>_*.log 2>/dev/null | head -1)
+   MAC_LOG=$(ls -t ${LOG_DIR}/<test>_*.log | grep -v _partner | head -1)
 
    This file ALREADY EXISTS locally. Do NOT download via FTP.
 
-2. Save the perf_partner log:
+2. Extract the timestamp from the Mac log filename:
+
+   # e.g., latency_20260221_142714.log → TIMESTAMP=20260221_142714
+   TIMESTAMP=$(basename "$MAC_LOG" .log | sed "s/^<test>_//")
+
+3. Save the perf_partner log WITH MATCHING TIMESTAMP:
 
    docker logs perf-partner 2>&1 > "${LOG_DIR}/<test>_${TIMESTAMP}_partner.log"
 
-   This captures:
-   - Echo/stream activity during test
-   - Parsed metrics summary
-   - Any errors or warnings
-   - Connection events
-
-3. Check perf_partner log for parsed metrics:
-
-   grep -A 20 "METRICS =========" "${LOG_DIR}/<test>_${TIMESTAMP}_partner.log"
-
-   Display these metrics in the final report.
+   This ensures Mac log and partner log are paired:
+     latency_20260221_142714.log          ← Mac log
+     latency_20260221_142714_partner.log  ← Partner log
 
 4. If no Mac log found (streaming failed):
 
    Check if log data is embedded in partner output:
-      grep -A 1000 "LOG:" "${LOG_DIR}/<test>_${TIMESTAMP}_partner.log"
+     docker logs perf-partner 2>&1 | tail -200 | grep -A 1000 "LOG:"
 
-   If still no logs, report streaming failure (don't attempt FTP workaround).
+   If still no logs, report streaming failure.
 
-5. Read results from Mac log:
-   tail -100 "$MAC_LOG"
-
-   Look for:
-   - "======== LATENCY METRICS ========" section
-   - "TEST EXITING" marker
-
-6. Report both log locations:
+5. Report both log locations:
    Mac log:     ${LOG_DIR}/<test>_${TIMESTAMP}.log (XX KB)
    Partner log: ${LOG_DIR}/<test>_${TIMESTAMP}_partner.log (YY KB)
 ```
 
-**Log naming convention:**
-- `latency_20260211_192936.log` - Mac test app log (streamed)
-- `latency_20260211_192936_partner.log` - POSIX partner log
+### Step 7: Display Summary Table
 
-### Step 7: Analyze Results (unless --skip-analysis)
+**CRITICAL: ALWAYS display a formatted summary table after EVERY test. This is NOT optional.**
 
-**CRITICAL: Always analyze BOTH log files together for complete picture.**
-
-Mac test apps now clear their logs at startup, so each log file contains
-only data from that specific test run (no stale data from previous runs).
+Follow the exact table formats in [summary-tables.md](references/summary-tables.md).
 
 ```
-1. Read Mac test app log (primary results):
-   tail -100 "${LOG_DIR}/<test>_${TIMESTAMP}.log"
+1. Read Mac test app log — extract primary metrics:
+   See [log-parsing.md](references/log-parsing.md) for extraction patterns.
 
-   Extract test-specific metrics:
-   - latency: Min/avg/max RTT per size, packet loss %
-   - throughput: KB/s per buffer size, message counts, errors
-   - stress: Cycles completed/failed, memory delta
-   - discovery: Discoveries/minute, unique peers, lost events
+   - latency: SIZE lines → min/avg/max/sent/recv/lost per size
+   - throughput: COMPLETE lines → send_kbps/recv_kbps/msgs per size
+   - stream: SEND COMPLETE/RECV COMPLETE lines → send_kbps/recv_kbps per size
+   - stress: Results section → cycles/successes/failures/memory
+   - discovery: Summary section → discoveries/unique/first_time/lost
 
-2. Read Partner log (verification data):
-   grep -E "Echo|MESSAGE|error|METRICS" "${LOG_DIR}/<test>_${TIMESTAMP}_partner.log"
+2. Read Partner log — extract POSIX-side data:
+   See [log-parsing.md](references/log-parsing.md) for partner extraction patterns.
 
-   Extract:
-   - Total messages echoed/processed
-   - Any errors (would_block, buffer_full, connection_reset)
-   - Timing from partner's perspective
+   - stream: SINK/STREAM phase complete lines → kbps and byte counts from POSIX side
+   - all tests: error/warning count, message count
 
-3. Cross-reference BOTH logs:
-   - Mac "sent X messages" should match partner "echoed X messages"
-   - Discrepancies indicate packet loss or protocol issues
-   - Check partner log for errors not visible in Mac log
+3. Display formatted summary table:
+   Use the EXACT format from [summary-tables.md](references/summary-tables.md).
+   Include partner-side data where relevant (especially stream test).
 
-4. Compare to previous runs:
-   ls -la plan/performance/mactcp/<machine>/<test>_*.log | tail -5
+4. Compare to previous run (if one exists):
+   Find previous Mac log: ls -t ${LOG_DIR}/<test>_*.log | grep -v _partner | head -2
+   If a previous run exists, show a comparison table with % change.
 
-5. Present combined analysis:
-   - Summary table from Mac log
-   - Verification notes from partner log
-   - Any discrepancies or concerns
-   - Recommendations for improvement
+5. Show verdict prominently:
+   VERDICT: PASS/WARN/FAIL
 ```
 
-### Step 8: Cleanup and Report
+### Step 8: Output JSON Metrics
+
+**ALWAYS output structured JSON metrics for /perf-optimize consumption.**
+
+```
+After the summary table, output:
+
+========================================
+METRICS (JSON)
+========================================
+{
+  "test": "<test>",
+  "machine": "<machine>",
+  "platform": "mactcp",
+  "timestamp": "<ISO8601>",
+  "status": "pass|warn|fail",
+  "metrics": {
+    <test-specific — see references/metrics-output.md>
+  },
+  "partner": {
+    <partner-side data where available>
+  },
+  "logs": {
+    "mac": "<path to mac log>",
+    "partner": "<path to partner log>"
+  }
+}
+========================================
+
+See [metrics-output.md](references/metrics-output.md) for test-specific formats.
+
+Include partner-side metrics:
+  - stream: sink_kbps, stream_kbps, total_bytes per phase
+  - all tests: message_count, error_count from partner log
+```
+
+### Step 9: Cleanup and Report
 
 ```
 For single test:
-  Report results summary
-  Ask: "Keep partner running for more tests? (Y/n)"
-  If no: docker stop perf-partner && docker rm perf-partner
+  Leave partner running (user may want more tests)
+  Show log file paths
 
 For "all" tests:
   Keep partner running between tests
-  Run each test sequentially: latency → throughput → stress → discovery → mactcp
-  Stop partner after all complete
+  Run each test sequentially: latency → throughput → stream → stress → discovery
+  Display individual summary table after EACH test
+  After all tests, display combined "All Tests Summary" table
+  (see summary-tables.md for format)
 
-Final report:
+Final output:
   ========================================
   TEST COMPLETE: <test> on <machine>
   ========================================
@@ -313,15 +303,11 @@ Final report:
     Mac:     plan/performance/mactcp/<machine>/<test>_YYYYMMDD_HHMMSS.log
     Partner: plan/performance/mactcp/<machine>/<test>_YYYYMMDD_HHMMSS_partner.log
 
-  Duration: X minutes Y seconds
+  [Summary Table — see summary-tables.md]
+  [JSON Metrics — see metrics-output.md]
 
-  [Summary table from analysis]
-  [Metrics from partner log if available]
-
-  Next steps:
-    - Run another test: /run-test <other-test> <machine>
-    - Review all results: cat plan/performance/mactcp/<machine>/*.log
-    - Stop partner: docker stop perf-partner && docker rm perf-partner
+  Partner still running for additional tests.
+  Stop with: docker stop perf-partner && docker rm perf-partner
 ```
 
 ## Error Handling
@@ -379,82 +365,47 @@ Test completed but no logs were received.
 
 The Mac may have disconnected before streaming logs.
 
-Check partner output for embedded logs:
-  docker logs perf-partner 2>&1 | tail -100 | grep -A 1000 "LOG:"
+Check partner output:
+  docker logs perf-partner 2>&1 | tail -100
 
 If the test completed on the Mac but logs weren't streamed:
-  - The GOODBYE message may have been lost
-  - Check Mac screen for any error dialogs
   - Rerun the test (logs stream at end of each run)
 ```
 
 ## Test Sequence for "all"
 
-When test="all", run in this order (matching test complexity):
+When test="all", run in this order:
 
-1. **mactcp** (60s) - Basic connectivity validation
-2. **discovery** (2min) - Discovery packet counting
-3. **latency** (3min) - RTT measurements
-4. **throughput** (3min) - Bidirectional streaming performance
-5. **stream** (5min) - One-way streaming (true unidirectional capacity)
-6. **stress** (5min) - Connection stability
+1. **latency** (3 min) — RTT measurements
+2. **throughput** (3 min) — Bidirectional echo throughput
+3. **stream** (5-8 min) — One-way streaming (true unidirectional capacity)
+4. **stress** (1-2 min) — Connection stability
+5. **discovery** (2 min) — Discovery observation
+
+After EACH test: display summary table + save partner log.
+After ALL tests: display combined "All Tests Summary" table.
+
+No partner restarts needed between tests.
 
 If any test fails critically, ask user whether to continue with remaining tests.
 
 ## Important Notes
 
-1. **One test at a time** - Mac test apps bind network ports. Never run multiple tests concurrently on the same machine.
+1. **One test at a time** — Mac test apps bind network ports. Never run concurrent tests.
 
-2. **Partner auto-detects all test types** - Just start the partner once with default settings (no `--mode` flag). It handles:
-   - Echo for latency/throughput tests
-   - Auto-switches to sink/stream mode when Mac sends STRM control messages
-   - No manual mode switching needed between tests
+2. **Partner auto-detects all test types** — Start once, no mode switching needed.
 
-3. **Lowmem builds** - Mac SE REQUIRES lowmem builds. Check machine's `build` field in machines.json.
+3. **Lowmem builds** — Mac SE REQUIRES lowmem builds. Check `build` field in machines.json.
 
-4. **60s LaunchAPPL timeout** - This is normal! Tests run longer than the LaunchAPPL command timeout.
+4. **60s LaunchAPPL timeout** — Normal! Tests run longer than the command timeout.
 
-5. **Log streaming** - Mac apps stream logs to partner at completion. Logs are AUTO-SAVED locally. NEVER use FTP to download logs.
+5. **ALWAYS save partner logs** — They contain POSIX-side measurements essential for stream test analysis and cross-validation of all test types.
 
-6. **Canonical log location** - All logs are auto-saved to `plan/performance/mactcp/<machine>/` - just read the local file!
+6. **ALWAYS display summary tables** — Use the exact formats in [summary-tables.md](references/summary-tables.md). This is the primary output the user sees.
 
-7. **Stream test vs throughput test**:
-   - `throughput` - bidirectional echo-based test (Mac sends, partner echoes back)
-   - `stream` - one-way streaming test (Mac→Partner then Partner→Mac, no echo)
-   - Stream test shows true unidirectional capacity (typically 50-100% higher)
+7. **ALWAYS output JSON metrics** — Enables `/perf-optimize` to track baselines and detect regressions.
 
-8. **Structured metrics output** - Always include the JSON metrics block at end of analysis.
-   See [metrics-output.md](references/metrics-output.md) for format.
-
-## Structured Metrics Output
-
-After analysis, ALWAYS output a structured metrics block for automation:
-
-```
-========================================
-METRICS (JSON)
-========================================
-{
-  "test": "<test>",
-  "machine": "<machine>",
-  "platform": "mactcp",
-  "timestamp": "<ISO8601>",
-  "duration_seconds": <N>,
-  "status": "pass|warn|fail|error",
-  "metrics": {
-    <test-specific metrics - see references/metrics-output.md>
-  },
-  "logs": {
-    "mac": "<path to mac log>",
-    "partner": "<path to partner log>"
-  }
-}
-========================================
-```
-
-This structured output enables:
-- `/perf-optimize` to establish baselines and track improvements
-- Automated regression detection
-- Historical trend analysis
-
-**Always include this block even when providing human-readable analysis.**
+8. **Stream test vs throughput test**:
+   - `throughput` — bidirectional echo (Mac sends, partner echoes back)
+   - `stream` — one-way streaming (Mac→Partner then Partner→Mac, no echo)
+   - Stream test shows true unidirectional capacity (typically higher than echo)

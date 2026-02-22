@@ -53,26 +53,25 @@ Output:
 ```
 build/mac/test_latency.bin
 build/mac/test_throughput.bin
+build/mac/test_stream.bin
 build/mac/test_stress.bin
 build/mac/test_discovery.bin
-build/mac/test_mactcp.bin
 ```
 
 ### Lowmem Builds
 
 ```bash
 # Build all perf test apps (lowmem heap for 4MB Macs)
-docker compose -f docker/docker-compose.yml run --rm peertalk-dev \
-  make -f Makefile.retro68 PLATFORM=mactcp lowmem_tests
+./scripts/build-mac-tests.sh mactcp lowmem
 ```
 
 Output:
 ```
 build/mac/test_latency_lowmem.bin
 build/mac/test_throughput_lowmem.bin
+build/mac/test_stream_lowmem.bin
 build/mac/test_stress_lowmem.bin
 build/mac/test_discovery_lowmem.bin
-build/mac/test_mactcp_lowmem.bin
 ```
 
 ## Why This Matters
