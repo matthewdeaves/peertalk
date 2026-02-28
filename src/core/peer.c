@@ -424,7 +424,9 @@ int pt_peer_set_state(struct pt_context *ctx, struct pt_peer *peer,
         break;
 
     case PT_PEER_STATE_CONNECTED:
+        /* DISCOVERED allowed for local disconnect + immediate reconnection */
         valid_transition = (new_state == PT_PEER_STATE_DISCONNECTING ||
+                           new_state == PT_PEER_STATE_DISCOVERED ||
                            new_state == PT_PEER_STATE_FAILED ||
                            new_state == PT_PEER_STATE_UNUSED);
         break;

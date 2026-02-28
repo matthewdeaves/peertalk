@@ -101,7 +101,10 @@ const char *PeerTalk_Version(void);
  *          32KB peer buffer, 4KB messages → window = 8 (clamped to max)
  */
 #define PT_FLOW_WINDOW_MIN      2   /* Minimum window (always allow 2 in flight) */
-#define PT_FLOW_WINDOW_MAX      8   /* Maximum window (don't flood even big buffers) */
+#define PT_FLOW_WINDOW_MAX      64  /* Maximum window: OT/MacTCP provide real backpressure
+                                     * via kOTFlowErr / buffer full. This window only limits
+                                     * how many messages queue during flow control pauses.
+                                     * Value 8 caused 97% WOULD_BLOCK on OT SEND tests. */
 #define PT_FLOW_WINDOW_DEFAULT  4   /* Default before capability exchange */
 
 /* TCP receive buffer sizes for pre-allocation */
@@ -135,6 +138,19 @@ typedef enum {
  * Returns bitmask of available transports on current platform
  */
 uint16_t PeerTalk_GetAvailableTransports(void);
+
+/**
+ * Transport preference for multi-homed peers
+ *
+ * When a peer is reachable via multiple transports (e.g., both TCP/IP and
+ * ADSP), this controls which transport is preferred for connections.
+ */
+typedef enum {
+    PT_PREFER_TCP       = 0,    /* Prefer TCP/IP (better POSIX interop) - DEFAULT */
+    PT_PREFER_ADSP      = 1,    /* Prefer AppleTalk (better for Mac-only networks) */
+    PT_PREFER_FASTEST   = 2,    /* Use whichever responds first */
+    PT_PREFER_NONE      = 3     /* No preference - use first available */
+} PeerTalk_TransportPref;
 
 /* ========================================================================== */
 /* Error Codes                                                                */
@@ -616,6 +632,19 @@ typedef struct {
      * If both buffer_pool and auto_buffers are set, buffer_pool is used.
      */
     PeerTalk_BufferPool *buffer_pool;       /* Pre-allocated TCP buffers, or NULL */
+
+    /* Multi-transport configuration (Phase 6.7+)
+     *
+     * All fields default to sensible values when zero-initialized:
+     * - pref: PT_PREFER_TCP (0)
+     * - auto_merge_peers: 0 (disabled by default; set 1 to enable)
+     * - nbp_type: "" (defaults to "PeerTalk" in OT init)
+     * - nbp_zone: "" (defaults to "*" in OT init)
+     */
+    uint8_t         pref;                   /* PeerTalk_TransportPref (0 = PT_PREFER_TCP) */
+    uint8_t         auto_merge_peers;       /* Auto-merge same-named peers across transports */
+    char            nbp_type[33];           /* AppleTalk NBP type (empty = "PeerTalk") */
+    char            nbp_zone[33];           /* AppleTalk NBP zone (empty = "*") */
 } PeerTalk_Config;
 
 /* ========================================================================== */
@@ -706,6 +735,33 @@ typedef void (*PeerTalk_MessageSentCB)(
     void *user_data);
 
 /**
+ * Transport state change - new transport discovered for a peer
+ */
+typedef void (*PeerTalk_TransportAddedCB)(
+    PeerTalk_Context *ctx,
+    PeerTalk_PeerID peer_id,
+    uint16_t new_transport,
+    void *user_data);
+
+/**
+ * Transport state change - transport lost for a peer
+ */
+typedef void (*PeerTalk_TransportRemovedCB)(
+    PeerTalk_Context *ctx,
+    PeerTalk_PeerID peer_id,
+    uint16_t removed_transport,
+    void *user_data);
+
+/**
+ * Peer merge notification - two peers merged into one
+ */
+typedef void (*PeerTalk_PeersMergedCB)(
+    PeerTalk_Context *ctx,
+    PeerTalk_PeerID kept_peer,
+    PeerTalk_PeerID merged_peer,
+    void *user_data);
+
+/**
  * Batch message structure (for high-frequency messages)
  */
 typedef struct {
@@ -777,6 +833,11 @@ typedef struct {
     /* Batch callbacks (preferred if set) */
     PeerTalk_MessageBatchCB         on_message_batch;
     PeerTalk_UDPBatchCB             on_udp_batch;
+
+    /* Multi-transport callbacks (Phase 6.7+, NULL = not used) */
+    PeerTalk_TransportAddedCB       on_transport_added;
+    PeerTalk_TransportRemovedCB     on_transport_removed;
+    PeerTalk_PeersMergedCB          on_peers_merged;
 
     void                           *user_data;
 } PeerTalk_Callbacks;
@@ -975,9 +1036,36 @@ int PeerTalk_GetPeerAddresses(
 /* ========================================================================== */
 
 /**
- * Connect to discovered peer
+ * Connect to discovered peer (uses preferred transport)
  */
 PeerTalk_Error PeerTalk_Connect(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id);
+
+/**
+ * Connect via specific transport
+ */
+PeerTalk_Error PeerTalk_ConnectVia(
+    PeerTalk_Context *ctx,
+    PeerTalk_PeerID peer_id,
+    uint16_t transport);
+
+/**
+ * Set transport preference for a specific peer
+ */
+PeerTalk_Error PeerTalk_SetPeerTransportPref(
+    PeerTalk_Context *ctx,
+    PeerTalk_PeerID peer_id,
+    PeerTalk_TransportPref pref);
+
+/**
+ * Reconnect via alternate transport (if available)
+ *
+ * Disconnects from current transport and connects via the specified one.
+ * Useful for transport failover when preferred transport goes down.
+ */
+PeerTalk_Error PeerTalk_ReconnectVia(
+    PeerTalk_Context *ctx,
+    PeerTalk_PeerID peer_id,
+    uint16_t transport);
 
 /**
  * Disconnect from peer
@@ -1190,6 +1278,68 @@ PeerTalk_Error PeerTalk_GetQueueStatus(
     PeerTalk_PeerID peer_id,
     uint16_t *out_pending,
     uint16_t *out_available);
+
+/* ========================================================================== */
+/* Multi-Transport Peer Management                                           */
+/* ========================================================================== */
+
+/**
+ * Get peers filtered by transport
+ *
+ * Returns only peers reachable via the specified transport(s).
+ * Pass PT_TRANSPORT_ALL to get all peers (same as PeerTalk_GetPeers).
+ */
+PeerTalk_Error PeerTalk_GetPeersByTransport(
+    PeerTalk_Context *ctx,
+    uint16_t transport_mask,
+    PeerTalk_PeerInfo *peers,
+    uint16_t max_peers,
+    uint16_t *out_count);
+
+/**
+ * Check which transports can reach a peer
+ *
+ * Returns bitmask of PT_TRANSPORT_* flags for available transports.
+ * Returns 0 if peer not found.
+ */
+uint16_t PeerTalk_GetPeerTransports(
+    PeerTalk_Context *ctx,
+    PeerTalk_PeerID peer_id);
+
+/**
+ * Manually merge two peers that represent the same physical machine
+ *
+ * If the SDK doesn't auto-detect that two discovery entries are the same
+ * Mac (e.g., found via both UDP and NBP), the application can merge them.
+ * The kept peer inherits all transports from the merged peer.
+ *
+ * @param keep_peer   Peer to keep (receives merged transports)
+ * @param merge_peer  Peer to merge (will be removed)
+ */
+PeerTalk_Error PeerTalk_MergePeers(
+    PeerTalk_Context *ctx,
+    PeerTalk_PeerID keep_peer,
+    PeerTalk_PeerID merge_peer);
+
+/**
+ * Remove peer from list (all transports)
+ *
+ * Disconnects if connected, then removes the peer entirely.
+ */
+PeerTalk_Error PeerTalk_RemovePeer(
+    PeerTalk_Context *ctx,
+    PeerTalk_PeerID peer_id);
+
+/**
+ * Remove peer from specific transport only
+ *
+ * If the peer has other transports remaining, it stays in the peer list.
+ * If this was the last transport, the peer is removed entirely.
+ */
+PeerTalk_Error PeerTalk_RemovePeerTransport(
+    PeerTalk_Context *ctx,
+    PeerTalk_PeerID peer_id,
+    uint16_t transport);
 
 /* ========================================================================== */
 /* Statistics                                                                 */

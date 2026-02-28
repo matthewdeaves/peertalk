@@ -197,9 +197,10 @@ void pt_atomic_clear_bit(pt_atomic_t *flags, int bit) {
     OTAtomicClearBit(byte_ptr, (UInt8)bit_in_byte);
 }
 
-int pt_atomic_test_bit(pt_atomic_t *flags, int bit) {
+int pt_atomic_test_bit(const pt_atomic_t *flags, int bit) {
     int byte_offset = 3 - (bit / 8);
     int bit_in_byte = bit % 8;
+    /* OTAtomicTestBit takes non-const ptr but doesn't modify */
     UInt8 *byte_ptr = ((UInt8 *)flags) + byte_offset;
     return OTAtomicTestBit(byte_ptr, (UInt8)bit_in_byte);
 }

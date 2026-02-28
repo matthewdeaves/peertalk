@@ -230,6 +230,93 @@ int pt_peer_check_canaries(struct pt_context *ctx, struct pt_peer *peer);
 void pt_peer_get_info(struct pt_peer *peer, PeerTalk_PeerInfo *info);
 
 /* ========================================================================
+ * Multi-Transport Peer Management (peer_multi.c)
+ * ======================================================================== */
+
+/* Find existing peer matching a discovery (for deduplication)
+ *
+ * Scans peer list for a peer with matching name that doesn't already
+ * have the specified transport. Used during discovery to detect when
+ * the same Mac is found via different transport mechanisms.
+ *
+ * Args:
+ *   ctx            - Context
+ *   name           - Discovered peer name
+ *   new_transport  - Transport being discovered (PT_TRANSPORT_*)
+ *
+ * Returns: Matching peer, or NULL if no match
+ */
+struct pt_peer *pt_peer_find_match(struct pt_context *ctx,
+                                    const char *name,
+                                    uint16_t new_transport);
+
+/* Add transport to existing peer (merge)
+ *
+ * Stores transport-specific address and fires on_transport_added callback.
+ *
+ * Args:
+ *   ctx       - Context
+ *   peer      - Existing peer
+ *   transport - New transport (PT_TRANSPORT_TCP, PT_TRANSPORT_ADSP)
+ *   address   - Transport-specific address
+ *   port      - Transport-specific port
+ *
+ * Returns: 0 on success, -1 on error
+ */
+int pt_peer_add_transport(struct pt_context *ctx,
+                           struct pt_peer *peer,
+                           uint16_t transport,
+                           uint32_t address, uint16_t port);
+
+/* Remove transport from peer
+ *
+ * If last transport, peer is destroyed and on_peer_lost fires.
+ *
+ * Args:
+ *   ctx       - Context
+ *   peer      - Peer to update
+ *   transport - Transport to remove (PT_TRANSPORT_*)
+ *
+ * Returns: 0 on success, -1 on error
+ */
+int pt_peer_remove_transport(struct pt_context *ctx,
+                              struct pt_peer *peer,
+                              uint16_t transport);
+
+/* Create peer from discovery with deduplication
+ *
+ * If auto_merge_peers is enabled and a peer with matching name exists
+ * on a different transport, merges instead of creating duplicate.
+ *
+ * Args:
+ *   ctx       - Context
+ *   name      - Discovered peer name
+ *   transport - Transport discovered on
+ *   address   - Transport-specific address
+ *   port      - Transport-specific port
+ *
+ * Returns: Peer pointer (new or existing), or NULL on failure
+ */
+struct pt_peer *pt_peer_create_from_discovery(struct pt_context *ctx,
+                                               const char *name,
+                                               uint16_t transport,
+                                               uint32_t address,
+                                               uint16_t port);
+
+/* Select best transport for connecting to a peer
+ *
+ * Considers peer-specific and global transport preferences.
+ *
+ * Args:
+ *   ctx  - Context
+ *   peer - Peer to connect to
+ *
+ * Returns: Best transport (PT_TRANSPORT_*), or 0 if none available
+ */
+uint16_t pt_peer_select_transport(struct pt_context *ctx,
+                                   struct pt_peer *peer);
+
+/* ========================================================================
  * Flow Control
  * ======================================================================== */
 

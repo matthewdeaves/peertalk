@@ -420,6 +420,10 @@ extern void pt_posix_discovery_stop(struct pt_context *ctx);
 /* Forward declarations from discovery_mactcp.c */
 extern int pt_mactcp_discovery_start(struct pt_context *ctx);
 extern void pt_mactcp_discovery_stop(struct pt_context *ctx);
+#elif defined(PT_PLATFORM_OT)
+/* Forward declarations from discovery_ot.c */
+extern int pt_ot_discovery_start(struct pt_context *ctx);
+extern void pt_ot_discovery_stop(struct pt_context *ctx);
 #endif
 
 PeerTalk_Error PeerTalk_StartDiscovery(PeerTalk_Context *ctx_public) {
@@ -435,6 +439,10 @@ PeerTalk_Error PeerTalk_StartDiscovery(PeerTalk_Context *ctx_public) {
     }
 #elif defined(PT_PLATFORM_MACTCP)
     if (pt_mactcp_discovery_start(ctx) < 0) {
+        return PT_ERR_NETWORK;
+    }
+#elif defined(PT_PLATFORM_OT)
+    if (pt_ot_discovery_start(ctx) < 0) {
         return PT_ERR_NETWORK;
     }
 #else
@@ -458,6 +466,8 @@ PeerTalk_Error PeerTalk_StopDiscovery(PeerTalk_Context *ctx_public) {
     pt_posix_discovery_stop(ctx);
 #elif defined(PT_PLATFORM_MACTCP)
     pt_mactcp_discovery_stop(ctx);
+#elif defined(PT_PLATFORM_OT)
+    pt_ot_discovery_stop(ctx);
 #else
     (void)ctx;
 #endif
@@ -483,6 +493,12 @@ extern int pt_mactcp_listen_start(struct pt_context *ctx);
 extern void pt_mactcp_listen_stop(struct pt_context *ctx);
 extern int pt_mactcp_connect(struct pt_context *ctx, struct pt_peer *peer);
 extern int pt_mactcp_disconnect(struct pt_context *ctx, struct pt_peer *peer);
+#elif defined(PT_PLATFORM_OT)
+/* Forward declarations from tcp_server_ot.c, tcp_connect_ot.c */
+extern int pt_ot_listen_start(struct pt_context *ctx);
+extern void pt_ot_listen_stop(struct pt_context *ctx);
+extern int pt_ot_tcp_connect(struct pt_context *ctx, struct pt_peer *peer);
+extern int pt_ot_disconnect(struct pt_context *ctx, struct pt_peer *peer);
 #endif
 
 PeerTalk_Error PeerTalk_StartListening(PeerTalk_Context *ctx_public) {
@@ -498,6 +514,10 @@ PeerTalk_Error PeerTalk_StartListening(PeerTalk_Context *ctx_public) {
     }
 #elif defined(PT_PLATFORM_MACTCP)
     if (pt_mactcp_listen_start(ctx) < 0) {
+        return PT_ERR_NETWORK;
+    }
+#elif defined(PT_PLATFORM_OT)
+    if (pt_ot_listen_start(ctx) < 0) {
         return PT_ERR_NETWORK;
     }
 #else
@@ -520,6 +540,8 @@ PeerTalk_Error PeerTalk_StopListening(PeerTalk_Context *ctx_public) {
     pt_posix_listen_stop(ctx);
 #elif defined(PT_PLATFORM_MACTCP)
     pt_mactcp_listen_stop(ctx);
+#elif defined(PT_PLATFORM_OT)
+    pt_ot_listen_stop(ctx);
 #else
     (void)ctx;
 #endif
@@ -549,6 +571,8 @@ PeerTalk_Error PeerTalk_Connect(PeerTalk_Context *ctx_public,
     return pt_posix_connect(ctx, peer);
 #elif defined(PT_PLATFORM_MACTCP)
     return pt_mactcp_connect(ctx, peer);
+#elif defined(PT_PLATFORM_OT)
+    return pt_ot_tcp_connect(ctx, peer);
 #else
     (void)peer;
     return PT_ERR_NOT_SUPPORTED;
@@ -576,6 +600,8 @@ PeerTalk_Error PeerTalk_Disconnect(PeerTalk_Context *ctx_public,
     return pt_posix_disconnect(ctx, peer);
 #elif defined(PT_PLATFORM_MACTCP)
     return pt_mactcp_disconnect(ctx, peer);
+#elif defined(PT_PLATFORM_OT)
+    return pt_ot_disconnect(ctx, peer);
 #else
     (void)peer;
     return PT_ERR_NOT_SUPPORTED;

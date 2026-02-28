@@ -874,6 +874,24 @@ int pt_posix_listen_poll(struct pt_context *ctx) {
         setsockopt(client_sock, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
     }
 
+    /* Disable delayed ACKs - Classic Mac TCP stacks (MacTCP, OT) depend on
+     * timely ACKs for congestion window growth. Linux delayed ACKs (40ms)
+     * can starve OT's conservative TCP implementation.
+     * Value 16 = TCP_MAX_QUICKACKS: 16 immediate ACKs per setsockopt. */
+#ifdef TCP_QUICKACK
+    {
+        int flag = 16;
+        setsockopt(client_sock, IPPROTO_TCP, TCP_QUICKACK, &flag, sizeof(flag));
+    }
+#endif
+
+    /* Increase receive buffer to ensure large TCP window advertisement.
+     * Classic Mac senders benefit from seeing a large receiver window. */
+    {
+        int rcvbuf = 256 * 1024;
+        setsockopt(client_sock, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf));
+    }
+
     client_ip = ntohl(addr.sin_addr.s_addr);
 
     PT_CTX_INFO(ctx, PT_LOG_CAT_CONNECT,
@@ -986,6 +1004,21 @@ int pt_posix_connect(struct pt_context *ctx, struct pt_peer *peer) {
     {
         int flag = 1;
         setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
+    }
+
+    /* Disable delayed ACKs for Classic Mac peers.
+     * Value 16 = TCP_MAX_QUICKACKS for maximum quick ACK coverage. */
+#ifdef TCP_QUICKACK
+    {
+        int flag = 16;
+        setsockopt(sock, IPPROTO_TCP, TCP_QUICKACK, &flag, sizeof(flag));
+    }
+#endif
+
+    /* Increase receive buffer for large TCP window */
+    {
+        int rcvbuf = 256 * 1024;
+        setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf));
     }
 
     pt_memset(&addr, 0, sizeof(addr));
@@ -2541,9 +2574,11 @@ int pt_posix_poll(struct pt_context *ctx) {
     read_fds = pd->cached_read_fds;
     write_fds = pd->cached_write_fds;
 
-    /* Set timeout to 10ms for responsive polling */
+    /* Short timeout for responsive polling. 1ms ensures TCP_QUICKACK
+     * refreshes quickly, preventing Linux delayed ACKs (40ms) from
+     * starving Classic Mac TCP congestion window growth. */
     tv.tv_sec = 0;
-    tv.tv_usec = 10000;
+    tv.tv_usec = 1000;
 
     /* Call select() with all sockets */
     select_result = select(pd->max_fd + 1, &read_fds, &write_fds, NULL, &tv);
@@ -2590,6 +2625,21 @@ int pt_posix_poll(struct pt_context *ctx) {
 
         if (sock < 0)
             continue;
+
+        /* Aggressively refresh TCP_QUICKACK on every poll cycle.
+         * Linux decrements the quick counter after each ACK. Setting a
+         * larger value (16 = TCP_MAX_QUICKACKS) gives 16 immediate ACKs
+         * per setsockopt call. Combined with ~1ms poll cycle, this
+         * ensures nearly all ACKs are sent immediately.
+         * Critical for Classic Mac TCP: OT's conservative cwnd plus
+         * Linux's 40ms delayed ACK creates a throughput ceiling of
+         * ~13 KB/s with MSS=536. Quick ACKs allow cwnd to grow. */
+#ifdef TCP_QUICKACK
+        if (peer->hot.state == PT_PEER_CONNECTED) {
+            int qack = 16;
+            setsockopt(sock, IPPROTO_TCP, TCP_QUICKACK, &qack, sizeof(qack));
+        }
+#endif
 
         /* Check connect completion (if state is CONNECTING and socket is writable) */
         if (peer->hot.state == PT_PEER_CONNECTING && FD_ISSET(sock, &write_fds)) {
@@ -2669,6 +2719,16 @@ int pt_posix_poll(struct pt_context *ctx) {
             while ((recv_ret = pt_posix_recv(ctx, peer)) > 0) {
                 /* Keep receiving until no more complete messages */
             }
+
+            /* Re-enable quick ACK after receiving data from Classic Mac.
+             * Linux decrements quick counter per ACK, so refresh it with
+             * the max value (16) each time we process received data. */
+#ifdef TCP_QUICKACK
+            {
+                int flag = 16;
+                setsockopt(sock, IPPROTO_TCP, TCP_QUICKACK, &flag, sizeof(flag));
+            }
+#endif
 
             /* If recv returned -1 (error/close), mark peer for disconnection */
             if (recv_ret < 0 && peer->hot.state == PT_PEER_CONNECTED) {
@@ -2910,6 +2970,13 @@ int pt_posix_poll_fast(struct pt_context *ctx) {
             while ((recv_ret = pt_posix_recv(ctx, peer)) > 0) {
                 /* Keep receiving until no more complete messages */
             }
+
+#ifdef TCP_QUICKACK
+            {
+                int flag = 16;
+                setsockopt(sock, IPPROTO_TCP, TCP_QUICKACK, &flag, sizeof(flag));
+            }
+#endif
 
             /* If recv returned -1, mark for disconnection */
             if (recv_ret < 0 && peer->hot.state == PT_PEER_CONNECTED) {
