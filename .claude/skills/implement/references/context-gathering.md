@@ -1,15 +1,17 @@
 # Context Gathering - Parallel Subagent Execution
 
-When implementing a session, spawn these 4 subagents in parallel using the Task tool to gather implementation context.
+When implementing, spawn these 4 subagents in parallel using the Task tool to gather implementation context. The subagent prompts differ based on detected format (legacy vs spec-kit).
 
 ## Contents
-- Subagent 1: Session Extraction (Explore)
+- Subagent 1: Session Extraction / Task Extraction
 - Subagent 2: Platform Rules (Explore)
 - Subagent 3: Dependency Check (Explore)
 - Subagent 4: Existing Code Inventory (Explore)
 - Build Environment Note
 
-## Subagent 1: Session Extraction
+## Subagent 1: Work Item Extraction
+
+### Legacy Mode: Session Extraction
 
 **Type:** `Explore`
 
@@ -29,6 +31,37 @@ Also extract from the phase file header:
 - Session status (should be [OPEN] or [IN PROGRESS])
 
 Return: The complete session specification with all code blocks preserved.
+```
+
+### Spec-Kit Mode: Task Extraction
+
+**Type:** `Explore`
+
+**Prompt:**
+```
+Read the following spec-kit artifacts and extract context for tasks {task_ids}:
+
+1. tasks.md - Extract the full task lines for the target tasks, including:
+   - Task IDs, [P] markers, [USn] labels, file paths
+   - Phase header they belong to
+   - Completion status of preceding tasks (for dependency context)
+
+2. spec.md - For each [USn] label in the target tasks:
+   - Extract the full user story text
+   - Extract all acceptance criteria
+   - Extract any clarifications relevant to these stories
+
+3. plan.md - For the phase(s) containing these tasks:
+   - Extract architecture decisions
+   - Extract key design choices and patterns
+   - Extract any constraints or notes
+
+4. constitution.md (if exists) - Extract:
+   - Core principles
+   - Decision priorities
+   - Non-negotiables relevant to these tasks
+
+Return: Combined context for all target tasks with spec requirements and plan guidance.
 ```
 
 ## Subagent 2: Platform Rules

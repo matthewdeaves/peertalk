@@ -73,10 +73,32 @@ Verify consistent code style:
 - Function and variable naming follows conventions
 - No dead code or commented-out blocks
 
+## 8. Spec Compliance (Spec-Kit Mode Only)
+
+For each implemented task with a `[USn]` label:
+- Read the corresponding user story's acceptance criteria from spec.md
+- Verify each acceptance criterion is met by the implementation
+- Check that the implementation doesn't exceed scope (no unrequested features)
+
+## 9. Constitution Compliance (Spec-Kit Mode Only)
+
+If a constitution was loaded:
+- Verify implementation decisions align with constitution principles
+- Check that no non-negotiables were violated
+- Verify out-of-scope items weren't accidentally implemented
+
+## 10. Cross-Task Consistency (After Parallel Batches)
+
+After parallel batch execution:
+- Verify tasks that were implemented in parallel are compatible
+- Check for conflicting assumptions (different error codes, naming conventions)
+- Verify shared headers modified by multiple tasks don't have conflicts
+- Ensure interfaces defined by one task match usage by another
+
 ## Verification Failure Handling
 
 If any verification step fails:
-1. **Do NOT mark session as [DONE]**
+1. **Do NOT mark task/session as complete** (`[X]` or `[DONE]`)
 2. **Document the specific failure**
 3. **Fix the issue**
 4. **Re-run verification from Step 1**

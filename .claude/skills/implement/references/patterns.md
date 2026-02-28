@@ -176,3 +176,34 @@ Classic Mac hardware is severely constrained:
 - Process arrays in order
 - Minimize pointer indirection
 - Keep hot code paths small
+
+## Parallel Batch Implementation (Spec-Kit Mode)
+
+When spec-kit tasks have `[P]` markers, they can be implemented in parallel batches via the Task tool. See [parallel-execution.md](parallel-execution.md) for the full protocol.
+
+**Key rules:**
+- Max 4 tasks per parallel batch
+- Verify no file conflicts between batch members
+- After each batch, compile-check the combined result
+- Mark all batch tasks `[X]` only after the batch passes verification
+
+**Batch task context:**
+Each parallel task agent needs:
+1. The specific task description and file paths
+2. Relevant user story and acceptance criteria (from spec.md)
+3. Constitution principles (if loaded)
+4. Platform rules (ISR safety, etc.)
+5. Existing code inventory (what already exists)
+
+**After parallel batches:**
+Run cross-task consistency check — verify that parallel implementations are compatible (no conflicting assumptions, consistent naming, compatible interfaces).
+
+## Checkpoint and Resume (Spec-Kit Mode)
+
+For long implementation sessions (>15 tasks), use periodic checkpoints. See [checkpoint-protocol.md](checkpoint-protocol.md).
+
+**Key points:**
+- Checkpoint every 5 tasks or after each parallel batch
+- Report progress, files modified, compile status
+- Offer the user a chance to pause
+- On resume, scan tasks.md for `[X]` markers and pick up from first pending task

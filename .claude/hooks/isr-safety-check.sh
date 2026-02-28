@@ -2,7 +2,11 @@
 # ISR Safety Gate - BLOCKS edits that introduce ISR safety violations
 #
 # This hook runs before Edit and Write operations on Mac networking code.
-# It checks the new content for forbidden function calls in callback contexts.
+# It delegates to a Python validator that correctly scopes checks to
+# callback function bodies only (notifiers, ASRs, completion routines).
+#
+# For Edit operations, the validator reconstructs the full file to check
+# the complete callback context, not just the edited snippet.
 #
 # Claude Code hooks receive JSON on stdin, not environment variables.
 #
@@ -30,10 +34,8 @@ log_hook() {
 # Read JSON input from stdin
 INPUT=$(cat)
 
-# Extract file path and new content from JSON
-# Edit tool uses 'new_string', Write tool uses 'content'
+# Extract file path from JSON
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
-NEW_CONTENT=$(echo "$INPUT" | jq -r '.tool_input.new_string // .tool_input.content // empty')
 
 # Skip if no file path
 if [[ -z "$FILE_PATH" ]]; then
@@ -45,80 +47,35 @@ if [[ ! "$FILE_PATH" =~ (mactcp|opentransport|appletalk) ]]; then
     exit 0
 fi
 
-# Skip if no new content
-if [[ -z "$NEW_CONTENT" ]]; then
-    exit 0
-fi
-
 log_hook "Checking: $FILE_PATH"
 
-# Path to forbidden calls database
+# Require Python for the validator
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "[isr-safety] python3 not found - skipping ISR safety check"
+    exit 0
+fi
+
+# Run the Python validator (scopes checks to callback function bodies only)
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-FORBIDDEN_FILE="$PROJECT_DIR/tools/validators/forbidden_calls.txt"
+VALIDATOR="$PROJECT_DIR/tools/validators/isr_safety_hook.py"
 
-if [[ ! -f "$FORBIDDEN_FILE" ]]; then
-    # No database, can't check - allow
+if [[ ! -f "$VALIDATOR" ]]; then
+    log_hook "Validator not found: $VALIDATOR"
     exit 0
 fi
 
-# Check for callback function patterns that indicate ISR context
-# These patterns match the signatures documented in:
-#   - mactcp.md: TCPNotifyProcPtr, UDPNotifyProcPtr
-#   - opentransport.md: OTNotifyProcPtr
-#   - appletalk.md: ADSPCompletionUPP, ADSPConnectionEventUPP
-CALLBACK_PATTERNS=(
-    "_asr\s*\("
-    "_notifier\s*\("
-    "_completion\s*\("
-    "_callback\s*\("
-    "pascal\s+void.*StreamPtr"       # MacTCP TCP/UDP ASR
-    "pascal\s+void.*OTEventCode"     # Open Transport notifier
-    "pascal\s+void.*DSPPBPtr"        # ADSP ioCompletion
-    "pascal\s+void.*TPCCB"           # ADSP userRoutine
-)
-
-HAS_CALLBACK=false
-for pattern in "${CALLBACK_PATTERNS[@]}"; do
-    if echo "$NEW_CONTENT" | grep -qE "$pattern"; then
-        HAS_CALLBACK=true
-        break
-    fi
-done
-
-if [[ "$HAS_CALLBACK" != "true" ]]; then
-    # No callback functions in this edit, no need to check ISR safety
-    log_hook "PASS: No callbacks in $FILE_PATH"
-    exit 0
-fi
-
-log_hook "Callback detected in $FILE_PATH, checking for violations..."
-
-# Check for forbidden calls in the new content
 VIOLATIONS=""
+EXIT_CODE=0
+VIOLATIONS=$(echo "$INPUT" | python3 "$VALIDATOR" 2>&1) || EXIT_CODE=$?
 
-while IFS='|' read -r func category reason; do
-    # Skip comments and empty lines
-    [[ "$func" =~ ^# ]] && continue
-    [[ -z "$func" ]] && continue
-
-    # Trim whitespace
-    func=$(echo "$func" | xargs)
-    reason=$(echo "$reason" | xargs)
-
-    # Check if function is called (word boundary + parenthesis)
-    if echo "$NEW_CONTENT" | grep -qE "\b${func}\s*\("; then
-        VIOLATIONS="${VIOLATIONS}  - ${func}: ${reason}\n"
-    fi
-done < "$FORBIDDEN_FILE"
-
-if [[ -n "$VIOLATIONS" ]]; then
+if [[ $EXIT_CODE -eq 1 ]]; then
     log_hook "BLOCKED: Violations in $FILE_PATH"
     echo "" >&2
     echo "BLOCKED: ISR Safety Violations Detected" >&2
     echo "========================================" >&2
     echo "" >&2
-    echo "The following forbidden calls were found in callback code:" >&2
-    echo -e "$VIOLATIONS" >&2
+    echo "The following forbidden calls were found inside callback functions:" >&2
+    echo "$VIOLATIONS" >&2
     echo "" >&2
     echo "Next steps:" >&2
     echo "  1. Review patterns: .claude/rules/isr-safety.md" >&2
@@ -135,6 +92,10 @@ if [[ -n "$VIOLATIONS" ]]; then
     echo "" >&2
     echo "Reference: Inside Macintosh Volume VI Table B-3 (lines 224396-224607)" >&2
     exit 2
+elif [[ $EXIT_CODE -ne 0 ]]; then
+    # Python error (not a violation) - don't block, just log
+    log_hook "Validator error (exit $EXIT_CODE) - allowing edit"
+    exit 0
 fi
 
 log_hook "PASS: No violations in $FILE_PATH"

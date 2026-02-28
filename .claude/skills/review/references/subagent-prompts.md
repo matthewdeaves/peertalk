@@ -2,6 +2,8 @@
 
 Spawn these subagents in parallel using the Task tool for comprehensive plan review. For Classic Mac API verification (subagents 2a-2d), use the `/mac-api` skill directly instead of spawning subagents.
 
+**Important:** Only spawn domain subagents (1, 2a-2d, 3) when the artifact references those platforms. Always spawn subagents 4-6. In spec-kit mode, also spawn subagents 7-9.
+
 ## Contents
 - Build Environment Note
 - Subagent 1: MPW/Retro68 API Verification
@@ -13,6 +15,9 @@ Spawn these subagents in parallel using the Task tool for comprehensive plan rev
 - Subagent 4: Phase Continuity Check
 - Subagent 5: Logging & Debugging Review
 - Subagent 6: Data-Oriented Design Review
+- Subagent 7: Constitution Alignment Check (spec-kit only)
+- Subagent 8: Cross-Artifact Consistency Analysis (spec-kit only)
+- Subagent 9: Coverage Analysis (spec-kit only)
 
 ## Build Environment Note
 
@@ -311,4 +316,107 @@ Check for:
 
 Return: List of DOD concerns with specific struct/function references and recommendations.
 Categorize as "Fix Now" (architectural) vs "Fix Later" (implementation).
+```
+
+## Subagent 7: Constitution Alignment Check (Spec-Kit Only)
+
+**Type:** `general-purpose`
+
+**When to spawn:** Only in spec-kit mode, when a constitution has been loaded.
+
+**Prompt:**
+```
+Read the constitution at: [constitution path]
+Read the spec at: [spec.md path]
+Read the plan at: [plan.md path]
+
+For each design decision or architectural choice in the spec and plan:
+1. Identify which constitution principle(s) apply
+2. Check if the choice aligns with the principle
+3. If principles conflict, check if the resolution matches the constitution's priority order
+
+Focus on:
+- Architecture decisions (e.g., "use callbacks" vs "use polling")
+- Scope decisions (what's in/out)
+- Technology choices (libraries, protocols, patterns)
+- Quality vs speed trade-offs
+- Platform support decisions
+
+Report format for each issue:
+  CONSTITUTION ISSUE in [artifact:location]:
+    Decision: "[what was decided]"
+    Principle: "[relevant constitution principle]"
+    Conflict: [how the decision contradicts the principle]
+    Recommendation: [how to realign]
+
+If no issues found, state: "All decisions align with constitution principles."
+
+Return: List of constitution alignment issues with principle citations.
+```
+
+## Subagent 8: Cross-Artifact Consistency Analysis (Spec-Kit Only)
+
+**Type:** `general-purpose`
+
+**When to spawn:** Only in spec-kit mode, when multiple spec-kit artifacts exist.
+
+**Prompt:**
+```
+Read all spec-kit artifacts:
+- constitution.md (if exists)
+- spec.md
+- plan.md
+- tasks.md (if exists)
+- data-model.md (if exists)
+
+Run these 6 consistency analysis passes:
+
+Pass 1 - DUPLICATION: Find repeated/redundant content across artifacts.
+Pass 2 - AMBIGUITY: Flag vague language ("appropriate", "suitable", "as needed", "etc.").
+Pass 3 - UNDERSPECIFICATION: Find things mentioned but not fully defined.
+Pass 4 - CONSTITUTION: Decisions that contradict constitution principles (if loaded).
+Pass 5 - COVERAGE: User stories without tasks, tasks without stories.
+Pass 6 - INCONSISTENCY: Contradictions between artifacts (constants, names, ordering).
+
+For detailed pass descriptions, see .claude/skills/review/references/analyze-passes.md
+
+Return: Summary table with issue counts per pass, plus details for each issue found.
+Format:
+| Pass | Issues Found | Critical | Important | Minor |
+|------|-------------|----------|-----------|-------|
+| ... | ... | ... | ... | ... |
+
+Overall assessment: CONSISTENT / NEEDS ATTENTION / SIGNIFICANT ISSUES
+```
+
+## Subagent 9: Coverage Analysis (Spec-Kit Only)
+
+**Type:** `general-purpose`
+
+**When to spawn:** Only in spec-kit mode, when both spec.md and tasks.md exist.
+
+**Prompt:**
+```
+Read spec.md and tasks.md.
+
+Build a traceability matrix:
+
+1. Extract all user stories (US1, US2, ...) from spec.md
+2. Extract all acceptance criteria for each user story
+3. Extract all tasks from tasks.md with their [USn] labels
+4. Map tasks to user stories via [USn] labels
+
+Produce this matrix:
+| User Story | Acceptance Criteria | Tasks | Status |
+|------------|-------------------|-------|--------|
+| US1 | AC1.1 | T001, T002 | Covered |
+| US1 | AC1.2 | — | GAP |
+| ... | ... | ... | ... |
+
+Also report:
+- Coverage percentage: X/Y acceptance criteria have implementing tasks
+- Orphan tasks: tasks with no [USn] label (may be valid infrastructure)
+- Plan phases with no tasks generated
+
+Return: The traceability matrix and coverage statistics.
 ```

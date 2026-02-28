@@ -88,52 +88,32 @@ run_compile() {
         $compiler -fsyntax-only -Wall $includes "/workspace/$REL_PATH" 2>&1
 }
 
-# Compile in Docker based on platform
+# Pick compiler and platform define based on file path
+RETRO68_INCLUDES="-I/workspace/include -I/workspace/src/core -I/opt/Retro68-build/toolchain/universal/CIncludes"
+
 if [[ "$FILE_PATH" == *"/appletalk/"* ]]; then
-    # 68k AppleTalk code
-    OUTPUT=$(run_compile "m68k-apple-macos-gcc" "-DPT_PLATFORM_APPLETALK -I/workspace/include -I/workspace/src/core -I/opt/Retro68-build/toolchain/universal/CIncludes") || {
-        log_hook "ERROR: Syntax errors in $FILE_PATH"
-        echo ""
-        echo "[compile] ⚠️  Syntax errors in $(basename "$FILE_PATH"):"
-        echo "$OUTPUT" | head -20
-        echo ""
-        echo "Next step: Fix the errors above and save again (hook will re-run automatically)"
-        exit 0
-    }
+    COMPILER="m68k-apple-macos-gcc"
+    INCLUDES="-DPT_PLATFORM_APPLETALK $RETRO68_INCLUDES"
 elif [[ "$FILE_PATH" == *"/mactcp/"* ]]; then
-    # 68k MacTCP code
-    OUTPUT=$(run_compile "m68k-apple-macos-gcc" "-DPT_PLATFORM_MACTCP -I/workspace/include -I/workspace/src/core -I/opt/Retro68-build/toolchain/universal/CIncludes") || {
-        log_hook "ERROR: Syntax errors in $FILE_PATH"
-        echo ""
-        echo "[compile] ⚠️  Syntax errors in $(basename "$FILE_PATH"):"
-        echo "$OUTPUT" | head -20
-        echo ""
-        echo "Next step: Fix the errors above and save again (hook will re-run automatically)"
-        exit 0
-    }
+    COMPILER="m68k-apple-macos-gcc"
+    INCLUDES="-DPT_PLATFORM_MACTCP $RETRO68_INCLUDES"
 elif [[ "$FILE_PATH" == *"/opentransport/"* ]]; then
-    # PPC Open Transport code
-    OUTPUT=$(run_compile "powerpc-apple-macos-gcc" "-DPT_PLATFORM_OT -I/workspace/include -I/workspace/src/core -I/opt/Retro68-build/toolchain/universal/CIncludes") || {
-        log_hook "ERROR: Syntax errors in $FILE_PATH"
-        echo ""
-        echo "[compile] ⚠️  Syntax errors in $(basename "$FILE_PATH"):"
-        echo "$OUTPUT" | head -20
-        echo ""
-        echo "Next step: Fix the errors above and save again (hook will re-run automatically)"
-        exit 0
-    }
+    COMPILER="powerpc-apple-macos-gcc"
+    INCLUDES="-DPT_PLATFORM_OT $RETRO68_INCLUDES"
 else
-    # POSIX code
-    OUTPUT=$(run_compile "gcc" "-DPT_PLATFORM_POSIX -I/workspace/include -I/workspace/src/core") || {
-        log_hook "ERROR: Syntax errors in $FILE_PATH"
-        echo ""
-        echo "[compile] ⚠️  Syntax errors in $(basename "$FILE_PATH"):"
-        echo "$OUTPUT" | head -20
-        echo ""
-        echo "Next step: Fix the errors above and save again (hook will re-run automatically)"
-        exit 0
-    }
+    COMPILER="gcc"
+    INCLUDES="-DPT_PLATFORM_POSIX -I/workspace/include -I/workspace/src/core"
 fi
+
+OUTPUT=$(run_compile "$COMPILER" "$INCLUDES") || {
+    log_hook "ERROR: Syntax errors in $FILE_PATH"
+    echo ""
+    echo "[compile] ⚠️  Syntax errors in $(basename "$FILE_PATH"):"
+    echo "$OUTPUT" | head -20
+    echo ""
+    echo "Next step: Fix the errors above and save again (hook will re-run automatically)"
+    exit 0
+}
 
 log_hook "OK: $FILE_PATH"
 echo "[compile] ✓ $(basename "$FILE_PATH") OK"

@@ -3,7 +3,8 @@
 After all subagents complete, synthesise their findings into this standardized format.
 
 ## Contents
-- Template sections: Summary Verdict, API/Documentation Issues, CSEND-LESSONS Corrections, Phase Continuity Gaps, Logging & Debugging Gaps, Performance Concerns, Recommended Plan Changes, Apply Changes Prompt
+- Template sections (both modes): Summary Verdict, API/Documentation Issues, CSEND-LESSONS Corrections, Phase Continuity Gaps, Logging & Debugging Gaps, Performance Concerns, Recommended Plan Changes, Apply Changes Prompt
+- Additional sections (spec-kit mode only): Constitution Alignment, Cross-Artifact Consistency, Coverage Map, Requirement Quality Checklist
 - Notes on Synthesis Quality
 
 ---
@@ -145,6 +146,69 @@ Options:
 ```
 
 If user selects "Apply all changes", proceed to auto-apply step (see [auto-apply-rules.md](auto-apply-rules.md)).
+
+---
+
+## Spec-Kit Mode: Additional Sections
+
+Include these sections ONLY in spec-kit mode (when reviewing spec-kit artifacts, not legacy PHASE-*.md plans).
+
+### 9. Constitution Alignment Issues
+
+Decisions in the spec/plan that contradict the loaded constitution (from Subagent 7).
+
+| Decision | Location | Principle | Conflict | Recommendation |
+|----------|----------|-----------|----------|----------------|
+| Uses polling for peer discovery | plan.md:L45 | "Prefer event-driven patterns" | Polling contradicts event-driven principle | Switch to callback-based discovery |
+| ... | ... | ... | ... | ... |
+
+**If no issues:** "All decisions align with constitution principles."
+
+### 10. Cross-Artifact Consistency
+
+Summary from 6 analysis passes (from Subagent 8).
+
+| Pass | Issues Found | Critical | Important | Minor |
+|------|-------------|----------|-----------|-------|
+| Duplication | N | ... | ... | ... |
+| Ambiguity | N | ... | ... | ... |
+| Underspecification | N | ... | ... | ... |
+| Constitution | N | ... | ... | ... |
+| Coverage | N | ... | ... | ... |
+| Inconsistency | N | ... | ... | ... |
+| **Total** | **N** | **N** | **N** | **N** |
+
+**Overall:** CONSISTENT / NEEDS ATTENTION / SIGNIFICANT ISSUES
+
+For each critical or important issue, include the full detail from the analysis pass.
+
+### 11. Coverage Map
+
+Traceability matrix from spec user stories to tasks (from Subagent 9).
+
+| User Story | Acceptance Criteria | Tasks | Status |
+|------------|-------------------|-------|--------|
+| US1 | AC1.1 | T001, T002 | Covered |
+| US1 | AC1.2 | — | GAP |
+| US2 | AC2.1 | T005 | Covered |
+| ... | ... | ... | ... |
+
+**Coverage:** X/Y acceptance criteria covered (Z%)
+
+### 12. Requirement Quality Checklist
+
+Assessment from [checklist-template.md](checklist-template.md).
+
+| Dimension | Score | Issues |
+|-----------|-------|--------|
+| Completeness | Pass/Partial/Fail | Brief description |
+| Testability | Pass/Partial/Fail | Brief description |
+| Consistency | Pass/Partial/Fail | Brief description |
+| Traceability | Pass/Partial/Fail | Brief description |
+| Feasibility | Pass/Partial/Fail | Brief description |
+| Clarity | Pass/Partial/Fail | Brief description |
+
+**Overall:** READY FOR IMPLEMENTATION / NEEDS REFINEMENT / MAJOR GAPS
 
 ---
 

@@ -765,23 +765,31 @@ class ClassicMacHardwareServer:
 
         try:
             cmd = [launchappl, "-e", "tcp", "--tcp-address", machine_ip, binary_path]
-            # Run from /tmp to prevent LaunchAPPL's temp directories from polluting workspace
-            # LaunchAPPL creates UUID-named temp dirs that aren't cleaned up on timeout
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, cwd="/tmp")
+            # Use Popen instead of run() so we can properly kill on timeout.
+            # subprocess.run() with timeout does NOT kill the child process,
+            # leaving an orphaned LaunchAPPL client connected to the server
+            # and preventing LaunchAPPLServer from accepting new connections.
+            # Run from /tmp to prevent LaunchAPPL's temp directories from polluting workspace.
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                    text=True, cwd="/tmp")
+            try:
+                stdout, stderr = proc.communicate(timeout=60)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+                return [TextContent(
+                    type="text",
+                    text=f"⏱️ Timed out after 60s. Binary may still be running.\nLogs will be streamed to perf_partner when test completes."
+                )]
 
-            if result.returncode == 0:
-                return [TextContent(type="text", text=f"✅ Executed on {machine['name']}:\n\n{result.stdout}")]
+            if proc.returncode == 0:
+                return [TextContent(type="text", text=f"✅ Executed on {machine['name']}:\n\n{stdout}")]
             else:
                 return [TextContent(
                     type="text",
-                    text=f"⚠️ Execution failed:\n\n{result.stderr}\n\n"
+                    text=f"⚠️ Execution failed:\n\n{stderr}\n\n"
                          f"Ensure LaunchAPPLServer is running on {machine['name']}"
                 )]
-        except subprocess.TimeoutExpired:
-            return [TextContent(
-                type="text",
-                text=f"⏱️ Timed out after 60s. Binary may still be running.\nLogs will be streamed to perf_partner when test completes."
-            )]
         except Exception as e:
             return [TextContent(type="text", text=f"❌ Error: {e}")]
 

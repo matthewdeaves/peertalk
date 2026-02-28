@@ -183,7 +183,18 @@ Prevents misaligned access exceptions on 68020/68030.
 
 ## Decision-Making Hierarchy
 
-When multiple options exist for fixing an issue, choose based on this priority order:
+When multiple options exist for fixing an issue, choose based on the loaded decision authority.
+
+### If Constitution Is Loaded (Spec-Kit Mode)
+
+Use the constitution's stated priority order. The constitution overrides the default hierarchy below. Cite the relevant constitution principle when making each decision:
+
+```
+Decision: [what was chosen]
+Rationale: [Constitution: "relevant principle text"]
+```
+
+### Default Hierarchy (Legacy Mode or No Constitution)
 
 1. **Safety first:** ISR-safety, memory safety, crash prevention
 2. **Project goals:** Match PROJECT_GOALS.md requirements
@@ -239,6 +250,24 @@ If the review identifies issues that affect project-wide guidance:
 |---------|------------------|
 | ... | ... |
 | Calling PT_Log from ASR/notifier | Set flag in callback, log from main loop (discovered in Phase 5 review) |
+```
+
+## Artifact Scope
+
+### Legacy Mode
+
+Editable: The plan file at `$ARGUMENTS`, plus CLAUDE.md if needed.
+
+### Spec-Kit Mode
+
+Editable: `spec.md`, `plan.md`, `tasks.md`, `data-model.md`.
+
+**NEVER auto-modify:** `constitution.md` — only the user changes the constitution.
+
+For each auto-applied change in spec-kit mode, add a constitution citation:
+
+```markdown
+<!-- Review applied: [Constitution: "principle text"] -->
 ```
 
 ## Execution Flow
