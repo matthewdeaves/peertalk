@@ -1,0 +1,242 @@
+[00000033][INF] ========================================
+[00000050][INF] PeerTalk One-Way Stream Test
+[00000066][INF] Version: 1.0.0
+[00000066][INF] ========================================
+[00000066][INF] Memory after pool alloc: FreeMem=2952784 MaxBlock=2952784
+[00000066][INF] Buffer pool: 4 buffers × 32KB
+[00000066][INF] Initializing PeerTalk...
+[00000216][INF] Waiting for peer...
+[00000216][INF] Press any key to exit.
+[00001483][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00001483][INF] Connecting to peer...
+[00001650][INF] CONNECTED to peer 1
+[00001650][INF] Peer capabilities: max_msg=4096 recv_buf=8192
+[00001666][INF] === SEND PHASE: 256 bytes ===
+[00001666][DBG] Sent control: cmd=1 size=256 duration=30000
+[00001866][DBG] MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+[00001866][DBG] Control msg: cmd=4 size=0 duration=0
+[00001866][INF] Received ACK from partner
+[00006866][INF] SEND 256: 5 KB/s (119 msgs) errs=0
+[00011533][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00011866][INF] SEND 256: 6 KB/s (263 msgs) errs=0
+[00016866][INF] SEND 256: 5 KB/s (359 msgs) errs=0
+[00021583][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00021866][INF] SEND 256: 5 KB/s (455 msgs) errs=0
+[00026866][INF] SEND 256: 5 KB/s (551 msgs) errs=0
+[00031650][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00031866][INF] SEND 256: 5 KB/s (695 msgs) errs=0
+[00031866][INF] SEND COMPLETE 256 bytes: 5 KB/s (695 msgs, 0 errors)
+[00031866][DBG] Sent control: cmd=3 size=0 duration=0
+[00031866][DBG] Draining for 2 seconds...
+[00034683][DBG] Control msg: cmd=4 size=0 duration=0
+[00034683][INF] Received ACK from partner
+[00041700][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00041866][INF] === RECV PHASE: 256 bytes ===
+[00041866][DBG] Sent control: cmd=2 size=256 duration=30000
+[00041916][DBG] MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+[00041916][DBG] Control msg: cmd=4 size=0 duration=0
+[00041916][INF] Received ACK from partner
+[00046916][INF] RECV 256: 33 KB/s (673 msgs)
+[00051566][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00051916][INF] RECV 256: 33 KB/s (1336 msgs)
+[00056916][INF] RECV 256: 33 KB/s (2002 msgs)
+[00061616][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00061916][INF] RECV 256: 33 KB/s (2668 msgs)
+[00066916][INF] RECV 256: 33 KB/s (3334 msgs)
+[00071683][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00071916][INF] RECV 256: 33 KB/s (4000 msgs)
+[00071916][INF] RECV COMPLETE 256 bytes: 33 KB/s (4000 msgs)
+[00071916][DBG] Sent control: cmd=3 size=0 duration=0
+[00071933][INF] Draining for 10 seconds...
+[00071950][DBG] Control msg: cmd=4 size=0 duration=0
+[00071950][INF] Received ACK from partner
+[00081733][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00081916][INF] === SEND PHASE: 512 bytes ===
+[00081916][DBG] Sent control: cmd=1 size=512 duration=30000
+[00081966][DBG] MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+[00081966][DBG] Control msg: cmd=4 size=0 duration=0
+[00081966][INF] Received ACK from partner
+[00086966][INF] SEND 512: 8 KB/s (83 msgs) errs=0
+[00091800][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00091966][INF] SEND 512: 6 KB/s (133 msgs) errs=0
+[00096966][INF] SEND 512: 6 KB/s (208 msgs) errs=0
+[00101866][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00101966][INF] SEND 512: 6 KB/s (258 msgs) errs=0
+[00106966][INF] SEND 512: 6 KB/s (308 msgs) errs=0
+[00111916][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00111966][INF] SEND 512: 5 KB/s (358 msgs) errs=0
+[00111966][INF] SEND COMPLETE 512 bytes: 5 KB/s (358 msgs, 0 errors)
+[00111966][DBG] Sent control: cmd=3 size=0 duration=0
+[00111966][DBG] Draining for 2 seconds...
+[00112733][DBG] Control msg: cmd=4 size=0 duration=0
+[00112733][INF] Received ACK from partner
+[00121766][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00121966][INF] === RECV PHASE: 512 bytes ===
+[00121966][DBG] Sent control: cmd=2 size=512 duration=30000
+[00122016][DBG] MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+[00122016][DBG] Control msg: cmd=4 size=0 duration=0
+[00122016][INF] Received ACK from partner
+[00127016][INF] RECV 512: 22 KB/s (223 msgs)
+[00131833][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00132016][INF] RECV 512: 22 KB/s (445 msgs)
+[00137016][INF] RECV 512: 22 KB/s (666 msgs)
+[00141883][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00142016][INF] RECV 512: 22 KB/s (889 msgs)
+[00147016][INF] RECV 512: 22 KB/s (1111 msgs)
+[00151950][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00152016][INF] RECV 512: 22 KB/s (1333 msgs)
+[00152016][INF] RECV COMPLETE 512 bytes: 22 KB/s (1333 msgs)
+[00152016][DBG] Sent control: cmd=3 size=0 duration=0
+[00152033][INF] Draining for 15 seconds...
+[00152050][DBG] Control msg: cmd=4 size=0 duration=0
+[00152050][INF] Received ACK from partner
+[00162000][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00172016][INF] === SEND PHASE: 1024 bytes ===
+[00172016][DBG] Sent control: cmd=1 size=1024 duration=30000
+[00172033][DBG] MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+[00172033][DBG] Control msg: cmd=4 size=0 duration=0
+[00172033][INF] Received ACK from partner
+[00172066][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00177033][INF] SEND 1024: 8 KB/s (42 msgs) errs=0
+[00181933][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00182033][INF] SEND 1024: 6 KB/s (68 msgs) errs=0
+[00187033][INF] SEND 1024: 6 KB/s (94 msgs) errs=0
+[00191983][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00192033][INF] SEND 1024: 6 KB/s (120 msgs) errs=0
+[00197033][INF] SEND 1024: 5 KB/s (146 msgs) errs=0
+[00202033][INF] SEND 1024: 6 KB/s (185 msgs) errs=0
+[00202050][INF] SEND COMPLETE 1024 bytes: 6 KB/s (185 msgs, 0 errors)
+[00202050][DBG] Sent control: cmd=3 size=0 duration=0
+[00202050][DBG] Draining for 2 seconds...
+[00202050][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00204683][DBG] Control msg: cmd=4 size=0 duration=0
+[00204683][INF] Received ACK from partner
+[00212033][INF] === RECV PHASE: 1024 bytes ===
+[00212033][DBG] Sent control: cmd=2 size=1024 duration=30000
+[00212050][DBG] MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+[00212050][DBG] Control msg: cmd=4 size=0 duration=0
+[00212050][INF] Received ACK from partner
+[00212100][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00217050][INF] RECV 1024: 44 KB/s (223 msgs)
+[00222050][INF] RECV 1024: 44 KB/s (445 msgs)
+[00222166][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00227050][INF] RECV 1024: 44 KB/s (667 msgs)
+[00232050][INF] RECV 1024: 44 KB/s (890 msgs)
+[00232216][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00237050][INF] RECV 1024: 44 KB/s (1112 msgs)
+[00242050][INF] RECV 1024: 44 KB/s (1334 msgs)
+[00242050][INF] RECV COMPLETE 1024 bytes: 44 KB/s (1334 msgs)
+[00242050][DBG] Sent control: cmd=3 size=0 duration=0
+[00242066][INF] Draining for 15 seconds...
+[00242083][DBG] Control msg: cmd=4 size=0 duration=0
+[00242083][INF] Received ACK from partner
+[00242283][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00252333][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00262050][INF] === SEND PHASE: 2048 bytes ===
+[00262050][DBG] Sent control: cmd=1 size=2048 duration=30000
+[00262166][DBG] MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+[00262166][DBG] Control msg: cmd=4 size=0 duration=0
+[00262166][INF] Received ACK from partner
+[00262200][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00267166][INF] SEND 2048: 6 KB/s (17 msgs) errs=0
+[00272166][INF] SEND 2048: 6 KB/s (31 msgs) errs=0
+[00272250][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00277166][INF] SEND 2048: 6 KB/s (45 msgs) errs=0
+[00282166][INF] SEND 2048: 5 KB/s (59 msgs) errs=0
+[00282316][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00287166][INF] SEND 2048: 5 KB/s (73 msgs) errs=0
+[00292166][INF] SEND 2048: 5 KB/s (87 msgs) errs=0
+[00292183][INF] SEND COMPLETE 2048 bytes: 5 KB/s (87 msgs, 0 errors)
+[00292183][DBG] Sent control: cmd=3 size=0 duration=0
+[00292183][DBG] Draining for 2 seconds...
+[00292383][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00293416][DBG] Control msg: cmd=4 size=0 duration=0
+[00293416][INF] Received ACK from partner
+[00302166][INF] === RECV PHASE: 2048 bytes ===
+[00302166][DBG] Sent control: cmd=2 size=2048 duration=30000
+[00302300][DBG] MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+[00302300][DBG] Control msg: cmd=4 size=0 duration=0
+[00302300][INF] Received ACK from partner
+[00302433][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00307300][INF] RECV 2048: 58 KB/s (146 msgs)
+[00312300][INF] RECV 2048: 59 KB/s (298 msgs)
+[00312500][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00317300][INF] RECV 2048: 59 KB/s (447 msgs)
+[00322300][INF] RECV 2048: 59 KB/s (595 msgs)
+[00322350][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00327300][INF] RECV 2048: 59 KB/s (743 msgs)
+[00332300][INF] RECV 2048: 59 KB/s (892 msgs)
+[00332300][INF] RECV COMPLETE 2048 bytes: 59 KB/s (892 msgs)
+[00332300][DBG] Sent control: cmd=3 size=0 duration=0
+[00332316][INF] Draining for 15 seconds...
+[00332333][DBG] Control msg: cmd=4 size=0 duration=0
+[00332333][INF] Received ACK from partner
+[00332400][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00342466][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00352300][INF] === SEND PHASE: 4096 bytes ===
+[00352300][DBG] Sent control: cmd=1 size=4096 duration=30000
+[00352316][DBG] MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+[00352316][DBG] Control msg: cmd=4 size=0 duration=0
+[00352316][INF] Received ACK from partner
+[00352516][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00357316][INF] SEND 4096: 8 KB/s (10 msgs) errs=0
+[00362316][INF] SEND 4096: 7 KB/s (18 msgs) errs=0
+[00362583][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00367316][INF] SEND 4096: 6 KB/s (26 msgs) errs=0
+[00372316][INF] SEND 4096: 6 KB/s (34 msgs) errs=0
+[00372650][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00377316][INF] SEND 4096: 6 KB/s (42 msgs) errs=0
+[00382316][INF] SEND 4096: 6 KB/s (50 msgs) errs=0
+[00382316][INF] SEND COMPLETE 4096 bytes: 6 KB/s (50 msgs, 0 errors)
+[00382316][DBG] Sent control: cmd=3 size=0 duration=0
+[00382316][DBG] Draining for 2 seconds...
+[00382700][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00385916][DBG] Control msg: cmd=4 size=0 duration=0
+[00385916][INF] Received ACK from partner
+[00392316][INF] === RECV PHASE: 4096 bytes ===
+[00392316][DBG] Sent control: cmd=2 size=4096 duration=30000
+[00392350][DBG] MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+[00392350][DBG] Control msg: cmd=4 size=0 duration=0
+[00392350][INF] Received ACK from partner
+[00392566][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00397350][INF] RECV 4096: 118 KB/s (148 msgs)
+[00402350][INF] RECV 4096: 118 KB/s (296 msgs)
+[00402616][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00407350][INF] RECV 4096: 118 KB/s (444 msgs)
+[00412350][INF] RECV 4096: 118 KB/s (593 msgs)
+[00412683][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00417350][INF] RECV 4096: 118 KB/s (741 msgs)
+[00422350][INF] RECV 4096: 118 KB/s (889 msgs)
+[00422350][INF] RECV COMPLETE 4096 bytes: 118 KB/s (889 msgs)
+[00422350][DBG] Sent control: cmd=3 size=0 duration=0
+[00422350][INF] All stream tests complete
+[00422366][INF] Draining TCP buffers for 20s before log streaming...
+[00422383][DBG] Control msg: cmd=4 size=0 duration=0
+[00422383][INF] Received ACK from partner
+[00422733][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00432800][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00442350][INF] ========================================
+[00442350][INF] ONE-WAY STREAMING TEST RESULTS
+[00442350][INF] ========================================
+[00442350][INF]  256 bytes: SEND    5 KB/s  RECV   33 KB/s
+[00442350][INF]  512 bytes: SEND    5 KB/s  RECV   22 KB/s
+[00442350][INF] 1024 bytes: SEND    6 KB/s  RECV   44 KB/s
+[00442350][INF] 2048 bytes: SEND    5 KB/s  RECV   59 KB/s
+[00442350][INF] 4096 bytes: SEND    6 KB/s  RECV  118 KB/s
+[00442350][INF] ========================================
+[00442350][INF] Memory: FreeMem=2775152 MaxBlock=2775152
+[00442350][INF] Streaming 8709 bytes of logs to partner...
+[00442450][INF] DISCONNECTED from peer 1 (reason=0)
+[00442850][INF] DISCOVERED: "PerfPartner" at 10.188.1.59:7354
+[00442850][INF] Connecting to peer...
+[00442883][INF] CONNECTED to peer 1
+[00442883][INF] Peer capabilities: max_msg=8192 recv_buf=65535
+[00442883][INF] === SEND PHASE: 65536 bytes ===
+[00442883][DBG] Sent control: cmd=1 size=0 duration=30000
+[00442916][DBG] MSG during ACK wait: len=12 bytes=[53 54 52 4D ...]
+[00442916][DBG] Control msg: cmd=4 size=0 duration=0
+[00442916][INF] Received ACK from partner
+[00452366][INF] Log streaming complete: 8761 bytes sent
+[00452366][INF] ========================================
+[00452366][INF] TEST EXITING - cleaning up...
+[00452366][INF] ========================================
