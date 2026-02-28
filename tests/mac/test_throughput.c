@@ -580,6 +580,12 @@ int main(void)
         goto cleanup;
     }
 
+    /* Clear library log file for fresh run */
+    {
+        PT_Log *lib_log = PeerTalk_GetLog(g_ctx);
+        if (lib_log) PT_LogClearFile(lib_log);
+    }
+
     /* Configure library logging to write to file for debugging */
     {
         PT_Log *lib_log = PeerTalk_GetLog(g_ctx);

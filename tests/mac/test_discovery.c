@@ -510,6 +510,12 @@ int main(void)
         goto cleanup;
     }
 
+    /* Clear library log file for fresh run */
+    {
+        PT_Log *lib_log = PeerTalk_GetLog(g_ctx);
+        if (lib_log) PT_LogClearFile(lib_log);
+    }
+
     /* Set callbacks */
     memset(&callbacks, 0, sizeof(callbacks));
     callbacks.on_peer_discovered = on_peer_discovered;

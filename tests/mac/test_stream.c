@@ -27,6 +27,11 @@
 #include <TextEdit.h>
 #include <Dialogs.h>
 #include <OSUtils.h>
+#include <Timer.h>
+
+#ifdef PT_PLATFORM_OT
+#include <OpenTransport.h>
+#endif
 
 #include "peertalk.h"
 #include "pt_log.h"
@@ -69,12 +74,21 @@ typedef struct {
 
 #define TEST_DURATION_SEC    30       /* Duration per phase per size */
 #define REPORT_INTERVAL_SEC  5        /* Report progress every N seconds */
-#define DISCOVERY_TIMEOUT_TICKS (60 * 60) /* 60 seconds to find a peer */
 #define MAX_CONNECT_RETRIES  5
-#define DRAIN_WAIT_TICKS     (10 * 60) /* 10 seconds between phases - allows TCP backlog to clear */
-#define DRAIN_WAIT_LONG_TICKS (20 * 60) /* 20 seconds after large message RECV phases */
-#define ACK_TIMEOUT_TICKS    (30 * 60) /* 30 seconds to wait for ACK */
-#define LOG_STREAM_TIMEOUT_TICKS (120 * 60) /* 120 seconds to stream logs (increased from 30s) */
+
+/* Tick rate - calibrated at startup, defaults to 60 Hz.
+ * Some Macs (Performa 6200, 6400) run TickCount at ~1000 Hz instead of 60 Hz.
+ * Using the wrong rate makes phases 16x too short and throughput 16x too low. */
+static unsigned long g_ticks_per_second = 60;
+
+/* Timing macros using calibrated tick rate */
+#define SEC_TO_TICKS(s) ((unsigned long)(s) * g_ticks_per_second)
+#define DISCOVERY_TIMEOUT_TICKS SEC_TO_TICKS(60)
+#define DRAIN_WAIT_TICKS        SEC_TO_TICKS(10)
+#define DRAIN_WAIT_LONG_TICKS   SEC_TO_TICKS(20)
+#define ACK_TIMEOUT_TICKS       SEC_TO_TICKS(30)
+#define LOG_STREAM_TIMEOUT_TICKS SEC_TO_TICKS(120)
+#define WATCHDOG_TIMEOUT_TICKS  SEC_TO_TICKS(12 * 60)
 
 /* Buffer sizes to test */
 static const int g_buffer_sizes[] = { 256, 512, 1024, 2048, 4096 };
@@ -128,6 +142,17 @@ static int g_ack_retries = 0;
 #define MAX_ACK_RETRIES 3
 static TableUI g_table;
 static unsigned long g_log_stream_start = 0;
+static unsigned long g_app_start = 0;
+
+/* Diagnostic counters for send burst analysis */
+static unsigned long g_diag_ok = 0;
+static unsigned long g_diag_would_block = 0;
+static unsigned long g_diag_buf_full = 0;
+static unsigned long g_diag_rate_limited = 0;
+static unsigned long g_diag_other_err = 0;
+static unsigned long g_diag_bursts = 0;
+static unsigned long g_diag_max_burst = 0;
+/* g_diag_flow_retries removed - no longer used after simplifying burst */
 static unsigned long g_pre_stream_drain_start = 0;
 
 /* ========================================================================== */
@@ -136,7 +161,46 @@ static unsigned long g_pre_stream_drain_start = 0;
 
 static unsigned long ticks_to_ms(unsigned long ticks)
 {
-    return (ticks * 1000UL) / 60UL;
+    return (ticks * 1000UL) / g_ticks_per_second;
+}
+
+/**
+ * Calibrate TickCount frequency by measuring real elapsed time.
+ *
+ * TickCount is documented as 60.15 Hz, but some Macs (Performa 6200, 6400)
+ * run at ~1000 Hz. This measures the actual rate at startup so all timing
+ * calculations use the correct conversion.
+ *
+ * Uses Microseconds() trap (available System 7+) for wall-clock reference.
+ */
+static void calibrate_tick_rate(void)
+{
+    UnsignedWide start_us, end_us;
+    unsigned long start_tick, elapsed_ticks;
+    unsigned long elapsed_us;
+
+    Microseconds(&start_us);
+    start_tick = TickCount();
+
+    /* Wait for at least 120 ticks. At 60 Hz this is 2 seconds,
+     * at 1000 Hz this is 120ms. Either way, enough for accuracy. */
+    while ((TickCount() - start_tick) < 120)
+        ;
+
+    elapsed_ticks = TickCount() - start_tick;
+    Microseconds(&end_us);
+
+    /* Calculate elapsed microseconds (lo word sufficient for < 4295 seconds) */
+    elapsed_us = end_us.lo - start_us.lo;
+
+    if (elapsed_us > 0 && elapsed_ticks > 0) {
+        /* ticks_per_second = elapsed_ticks / (elapsed_us / 1000000)
+         *                  = elapsed_ticks * 1000000 / elapsed_us
+         * Safe: 120 * 1000000 = 120M, fits in 32-bit unsigned */
+        g_ticks_per_second = (elapsed_ticks * 1000000UL) / elapsed_us;
+        if (g_ticks_per_second == 0)
+            g_ticks_per_second = 60;
+    }
 }
 
 static void init_test(void)
@@ -323,6 +387,22 @@ static void finish_send_phase(void)
         "SEND COMPLETE %d bytes: %lu KB/s (%lu msgs, %lu errors)",
         stats->buffer_size, kbps, stats->send_msgs, stats->send_errors);
 
+    /* Diagnostic counters */
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
+        "DIAG: ok=%lu wb=%lu bf=%lu rl=%lu err=%lu bursts=%lu max_burst=%lu",
+        g_diag_ok, g_diag_would_block, g_diag_buf_full,
+        g_diag_rate_limited, g_diag_other_err,
+        g_diag_bursts, g_diag_max_burst);
+
+    /* Reset diagnostics for next size */
+    g_diag_ok = 0;
+    g_diag_would_block = 0;
+    g_diag_buf_full = 0;
+    g_diag_rate_limited = 0;
+    g_diag_other_err = 0;
+    g_diag_bursts = 0;
+    g_diag_max_burst = 0;
+
     /* Tell partner to stop */
     send_control(STREAM_CMD_STOP, 0, 0);
 
@@ -379,6 +459,7 @@ static void send_data_burst(void)
     int size;
     PeerTalk_Error err;
     int burst_count = 0;
+    int flow_retries = 0;
 
     if (g_test.phase != 0 || g_test.waiting_for_ack)
         return;
@@ -386,20 +467,55 @@ static void send_data_burst(void)
     stats = &g_test.stats[g_test.current_size_idx];
     size = stats->buffer_size;
 
-    /* Send as many messages as we can without blocking */
-    while (burst_count < 20) {
+    /* Send messages in a tight loop with inline flow control recovery.
+     * When OT's send buffer fills (WOULD_BLOCK), yield briefly to let
+     * OT deferred tasks process TCP ACKs and drain the buffer, then
+     * retry. This avoids returning to the main event loop (16ms penalty)
+     * on every flow control event. */
+    while (burst_count < 500) {
         err = PeerTalk_Send(g_ctx, g_connected_peer, g_send_buffer, size);
         if (err == PT_OK) {
             stats->send_bytes += size;
             stats->send_msgs++;
             burst_count++;
+            flow_retries = 0;
+            g_diag_ok++;
+
+            /* Yield every 16 successful sends so OT deferred tasks can
+             * process TCP ACKs and free send buffer space. */
+            if ((burst_count & 0x0F) == 0) {
+                EventRecord dummy;
+                WaitNextEvent(0, &dummy, 0, NULL);
+                PeerTalk_Poll(g_ctx);
+            }
         } else if (err == PT_ERR_WOULD_BLOCK || err == PT_ERR_BUFFER_FULL) {
-            /* Let poll drain the queue */
+            g_diag_would_block++;
+            flow_retries++;
+
+            /* Yield to let OT drain send buffer, then retry.
+             * Give up after 32 retries (~32ms) and return to main loop. */
+            if (flow_retries >= 32) {
+                break;
+            }
+            {
+                EventRecord dummy;
+                WaitNextEvent(0, &dummy, 0, NULL);
+            }
+            PeerTalk_Poll(g_ctx);
+        } else if (err == PT_ERR_RATE_LIMITED) {
+            g_diag_rate_limited++;
             break;
         } else {
+            g_diag_other_err++;
             stats->send_errors++;
             break;
         }
+    }
+
+    if (burst_count > 0) {
+        g_diag_bursts++;
+        if ((unsigned long)burst_count > g_diag_max_burst)
+            g_diag_max_burst = (unsigned long)burst_count;
     }
 }
 
@@ -576,7 +692,7 @@ static void on_peer_connected(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id,
 
     if (PeerTalk_GetPeerCapabilities(ctx, peer_id, &caps) == PT_OK) {
         PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
-            "Peer capabilities: max_msg=%u recv_buf=%u",
+            "Peer capabilities (pre-exchange): max_msg=%u recv_buf=%u",
             (unsigned)caps.max_message_size,
             (unsigned)caps.recv_buffer_size);
     }
@@ -674,8 +790,8 @@ int main(void)
     PeerTalk_Callbacks callbacks;
     EventRecord event;
     unsigned long now;
-    unsigned long test_duration_ticks = TEST_DURATION_SEC * 60UL;
-    unsigned long report_interval_ticks = REPORT_INTERVAL_SEC * 60UL;
+    unsigned long test_duration_ticks;
+    unsigned long report_interval_ticks;
     unsigned long drain_start = 0;
     int draining = 0;        /* 0=no drain, 1=post-send, 2=post-recv, 3=post-recv-long */
 
@@ -683,6 +799,14 @@ int main(void)
     g_buffer_pool = PeerTalk_Bootstrap(4);
 
     init_toolbox();
+
+    /* Calibrate TickCount frequency before any timing calculations.
+     * Must be after init_toolbox() for Microseconds() trap availability. */
+    calibrate_tick_rate();
+
+    /* Now compute tick-based durations with the calibrated rate */
+    test_duration_ticks = SEC_TO_TICKS(TEST_DURATION_SEC);
+    report_interval_ticks = SEC_TO_TICKS(REPORT_INTERVAL_SEC);
 
     status_init("PeerTalk Stream Test");
     status_line("Initializing...");
@@ -700,6 +824,9 @@ int main(void)
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "PeerTalk One-Way Stream Test");
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Version: %s", PeerTalk_Version());
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Tick rate: %lu Hz (calibrated)", g_ticks_per_second);
+    PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "Phase duration: %lu ticks (%d sec)",
+        test_duration_ticks, TEST_DURATION_SEC);
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1, "========================================");
 
     PT_LOG_INFO(g_log, PT_LOG_CAT_APP1,
@@ -733,6 +860,12 @@ int main(void)
         goto cleanup;
     }
 
+    /* Clear library log file for fresh run */
+    {
+        PT_Log *lib_log = PeerTalk_GetLog(g_ctx);
+        if (lib_log) PT_LogClearFile(lib_log);
+    }
+
     /* Set callbacks */
     memset(&callbacks, 0, sizeof(callbacks));
     callbacks.on_peer_discovered = on_peer_discovered;
@@ -763,13 +896,17 @@ int main(void)
     status_line("");
     status_line("SEND: Mac streams to POSIX");
     status_line("RECV: POSIX streams to Mac");
-    status_line("30s per phase per size.");
+    status_linef("%ds per phase per size.", TEST_DURATION_SEC);
+    status_linef("Tick rate: %lu Hz", g_ticks_per_second);
     status_line("");
     status_line("Waiting for peer...");
 
     g_discovery_start = TickCount();
+    g_app_start = g_discovery_start;
 
-    /* Main loop */
+    /* Main loop - sleep=0 for maximum throughput during SEND phase.
+     * OT deferred tasks still run during WaitNextEvent even with sleep=0.
+     * The send_data_burst() handles its own yielding for flow control. */
     while (g_running) {
         if (WaitNextEvent(everyEvent, &event, 0, NULL)) {
             if (event.what == keyDown || event.what == mouseDown) {
@@ -781,6 +918,16 @@ int main(void)
         PeerTalk_Poll(g_ctx);
 
         now = TickCount();
+
+        /* Global watchdog - force exit after 12 minutes no matter what.
+         * Prevents LaunchAPPLServer from being permanently blocked. */
+        if ((now - g_app_start) >= WATCHDOG_TIMEOUT_TICKS) {
+            PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                "WATCHDOG: 12 minute timeout - forcing exit");
+            g_test.test_complete = 1;
+            g_running = 0;
+            break;
+        }
 
         /* Discovery timeout */
         if (g_target_peer == 0 && (now - g_discovery_start) >= DISCOVERY_TIMEOUT_TICKS) {
@@ -816,6 +963,14 @@ int main(void)
                     g_test.test_complete = 1;
                 }
             }
+        }
+
+        /* Peer disconnect during active test - abort immediately */
+        if (!g_connected_peer && !g_test.test_complete &&
+            g_test.phase >= 0 && g_test.stats[0].send_start_ticks > 0) {
+            PT_LOG_WARN(g_log, PT_LOG_CAT_APP1,
+                "Peer disconnected during test - aborting");
+            g_test.test_complete = 1;
         }
 
         /* Test logic */
