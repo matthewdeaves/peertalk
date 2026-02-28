@@ -71,14 +71,13 @@ if [[ $BUILD_MACTCP -eq 1 ]]; then
     $DOCKER_CMD -f docker/docker-compose.yml run --rm peertalk-dev bash -c "
         set -e
 
-        # Build in container's LaunchAPPL source directory
-        cd /opt/Retro68/LaunchAPPL
-        rm -rf build-mactcp
-        mkdir -p build-mactcp
-        cd build-mactcp
+        # Build in /tmp to avoid permission issues with root-owned source dir
+        rm -rf /tmp/launchappl-build-mactcp
+        mkdir -p /tmp/launchappl-build-mactcp
+        cd /tmp/launchappl-build-mactcp
 
-        # Configure with CMake for 68k
-        cmake .. \
+        # Configure with CMake for 68k (point at source via absolute path)
+        cmake /opt/Retro68/LaunchAPPL \
             -DCMAKE_TOOLCHAIN_FILE=/opt/Retro68-build/toolchain/m68k-apple-macos/cmake/retro68.toolchain.cmake \
             -DCMAKE_BUILD_TYPE=Release
 
@@ -110,15 +109,14 @@ if [[ $BUILD_OT -eq 1 ]]; then
     $DOCKER_CMD -f docker/docker-compose.yml run --rm peertalk-dev bash -c "
         set -e
 
-        # Build in container's LaunchAPPL source directory
-        cd /opt/Retro68/LaunchAPPL
-        rm -rf build-ppc
-        mkdir -p build-ppc
-        cd build-ppc
+        # Build in /tmp to avoid permission issues with root-owned source dir
+        rm -rf /tmp/launchappl-build-ppc
+        mkdir -p /tmp/launchappl-build-ppc
+        cd /tmp/launchappl-build-ppc
 
-        # Configure with CMake for PPC
-        cmake .. \
-            -DCMAKE_TOOLCHAIN_FILE=/opt/Retro68-build/toolchain/powerpc-apple-macos/cmake/retro68.toolchain.cmake \
+        # Configure with CMake for PPC (point at source via absolute path)
+        cmake /opt/Retro68/LaunchAPPL \
+            -DCMAKE_TOOLCHAIN_FILE=/opt/Retro68-build/toolchain/powerpc-apple-macos/cmake/retroppc.toolchain.cmake \
             -DCMAKE_BUILD_TYPE=Release
 
         # Build
