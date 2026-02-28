@@ -1691,11 +1691,12 @@ int main(int argc, char *argv[])
             break;
         }
 
-        /* Sleep to avoid busy-wait, unless --fast mode for minimal latency.
-         * In fast mode, we spin at 100% CPU for lowest possible echo latency.
-         * SDK Note: Fast mode + PollFast = maximum performance for echo server. */
-        if (!g_config.fast) {
-            usleep(1000);  /* 1ms sleep to avoid busy-wait */
+        /* Sleep to avoid busy-wait when idle. When a peer is connected,
+         * skip sleep to maximize TCP ACK responsiveness (Classic Mac TCP
+         * needs timely ACKs for congestion window growth). The 1ms select
+         * timeout in PeerTalk_Poll provides the timing. */
+        if (!g_config.fast && g_connected_peer == 0) {
+            usleep(1000);  /* 1ms sleep when no peer connected */
         }
     }
 
