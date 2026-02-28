@@ -639,8 +639,8 @@ if (final_maxblock < initial_maxblock - 1024) {
 
 | Session | Focus | Status | Files Created/Modified | Tests | Verify |
 |---------|-------|--------|------------------------|-------|--------|
-| 8.0 | Platform Consolidation Review | [OPEN] | Refactored common patterns | Code review | Common patterns extracted, no regressions |
-| 8.1 | POSIX Chat App | [OPEN] | `examples/chat_posix.c` | Manual test | Chat works between two POSIX instances |
+| 8.0 | Platform Consolidation Review | [DONE] | `notes/PHASE-8.0-NOTES.md` | Code review | Common patterns extracted, no regressions |
+| 8.1 | POSIX Chat App | [DONE] | `examples/chat_posix.c` | Manual test | Chat works between two POSIX instances |
 | 8.2 | Classic Mac Chat App (Single Transport) | [OPEN] | `examples/chat_mac.c` | Manual test | Chat works on real Mac hardware |
 | 8.3 | Multi-Transport OT Chat (Gateway) | ⛔ **[BLOCKED]** | `examples/chat_mac_gateway.c` | Real hardware | TCP/IP ↔ AppleTalk bridging works. **Requires Phase 6.8-6.10 + Phase 7** |
 | 8.4 | Cross-Network Integration Testing | [OPEN] | `examples/minimal_example.c`, `notes/TESTING.md` | Real hardware | POSIX ↔ Mac works, minimal example compiles |

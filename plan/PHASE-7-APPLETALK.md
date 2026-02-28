@@ -1,6 +1,6 @@
 # PHASE 7: AppleTalk Networking
 
-> **Status:** OPEN
+> **Status:** DONE
 > **Review Applied:** 2026-01-29 (2nd review) - Added I/O logging requirements, refined DOD notes, verified all APIs against Retro68 headers
 > **Depends on:** Phase 2 (Protocol layer - may need AppleTalk-specific discovery format)
 > **Independent of:** Phases 4, 5, 6 (can develop in parallel)
@@ -414,13 +414,13 @@ Note: TickCount() is safe to call from main thread but NOT from callbacks. Perfo
 
 | Session | Focus | Status | Files Created/Modified | Tests | Verify |
 |---------|-------|--------|------------------------|-------|--------|
-| 7.1 | AppleTalk Init & Types | [OPEN] | `src/appletalk/at_defs.h`, `src/appletalk/at_driver.c` | Real hardware | Drivers open |
-| 7.2 | NBP Discovery | [OPEN] | `src/appletalk/nbp_appletalk.c` | Real hardware | Peers appear |
-| 7.3 | ADSP Stream Management | [OPEN] | `src/appletalk/adsp_appletalk.c` | Real hardware | CCB lifecycle |
-| 7.4 | ADSP Listen | [OPEN] | `src/appletalk/adsp_listen.c` | Real hardware | Accept works |
-| 7.5 | ADSP Connect | [OPEN] | `src/appletalk/adsp_connect.c` | Real hardware | Connect works |
-| 7.6 | ADSP I/O | [OPEN] | `src/appletalk/adsp_io.c` | Real hardware | Messages work |
-| 7.7 | Integration | [OPEN] | All AppleTalk files | Real Mac hardware | End-to-end, MaxBlock leak check |
+| 7.1 | AppleTalk Init & Types | [DONE] | `src/appletalk/at_defs.h`, `src/appletalk/at_driver.c` | Real hardware | Drivers open |
+| 7.2 | NBP Discovery | [DONE] | `src/appletalk/nbp_appletalk.c` | Real hardware | Peers appear |
+| 7.3 | ADSP Stream Management | [DONE] | `src/appletalk/adsp_appletalk.c` | Real hardware | CCB lifecycle |
+| 7.4 | ADSP Listen | [DONE] | `src/appletalk/adsp_listen.c` | Real hardware | Accept works |
+| 7.5 | ADSP Connect | [DONE] | `src/appletalk/adsp_connect.c` | Real hardware | Connect works |
+| 7.6 | ADSP I/O | [DONE] | `src/appletalk/adsp_io.c` | Real hardware | Messages work |
+| 7.7 | Integration | [DONE] | All AppleTalk files | Real Mac hardware | End-to-end, MaxBlock leak check |
 
 ### Status Key
 - **[OPEN]** - Not started

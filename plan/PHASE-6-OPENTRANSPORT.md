@@ -1,6 +1,6 @@
 # PHASE 6: Open Transport Networking
 
-> **Status:** OPEN
+> **Status:** DONE
 > **Depends on:** Phase 2 (Protocol layer for shared types and encoding)
 >                Phase 7 (AppleTalk - **REQUIRED** for Sessions 6.8-6.10 multi-transport)
 >                Phase 3 (Advanced Queues - optional)
@@ -544,16 +544,16 @@ if (latency_ms > 100) {  /* Only log slow events */
 
 | Session | Focus | Status | Files Created/Modified | Tests | Verify |
 |---------|-------|--------|------------------------|-------|--------|
-| 6.1 | OT Init & Types | [OPEN] | `src/opentransport/ot_defs.h`, `src/opentransport/ot_driver.c` | Real hardware | OT gestalt, init |
-| 6.2 | UDP Endpoint | [OPEN] | `src/opentransport/udp_ot.c` | Real hardware | Send/recv UDP |
-| 6.3 | TCP Endpoint | [OPEN] | `src/opentransport/tcp_ot.c` | Real hardware | Endpoint lifecycle |
-| 6.4 | TCP Connect | [OPEN] | `src/opentransport/tcp_connect_ot.c` | Real hardware | Outgoing connections |
-| 6.5 | TCP Server | [OPEN] | `src/opentransport/tcp_server_ot.c` | Real hardware | tilisten pattern |
-| 6.6 | TCP/IP Integration | [OPEN] | All OT TCP/IP files | Real hardware | End-to-end TCP/IP |
-| **6.7** | **Multi-Transport Types** | [OPEN] | `src/opentransport/ot_multi.h` | Real hardware | Types compile |
-| **6.8** | **AppleTalk via OT** | [OPEN] | `src/opentransport/ot_adsp.c`, `src/opentransport/ot_nbp.c` | Real hardware | NBP + ADSP work |
-| **6.9** | **Unified Library Build** | [OPEN] | `Makefile.retro68` update | Real hardware | `libpeertalk_ot_at.a` builds |
-| **6.10** | **Multi-Transport Poll** | [OPEN] | `src/opentransport/ot_multi.c` | Real hardware | Unified poll, peer dedup |
+| 6.1 | OT Init & Types | [DONE] | `src/opentransport/ot_defs.h`, `src/opentransport/ot_driver.c` | Real hardware | OT gestalt, init |
+| 6.2 | UDP Endpoint | [DONE] | `src/opentransport/udp_ot.c` | Real hardware | Send/recv UDP |
+| 6.3 | TCP Endpoint | [DONE] | `src/opentransport/tcp_ot.c` | Real hardware | Endpoint lifecycle |
+| 6.4 | TCP Connect | [DONE] | `src/opentransport/tcp_connect_ot.c` | Real hardware | Outgoing connections |
+| 6.5 | TCP Server | [DONE] | `src/opentransport/tcp_server_ot.c` | Real hardware | tilisten pattern |
+| 6.6 | TCP/IP Integration | [DONE] | All OT TCP/IP files | Real hardware | End-to-end TCP/IP |
+| **6.7** | **Multi-Transport Types** | [DONE] | `src/opentransport/ot_multi.h` | Real hardware | Types compile |
+| **6.8** | **AppleTalk via OT** | [DONE] | `src/opentransport/ot_adsp.c`, `src/opentransport/ot_nbp.c` | Real hardware | NBP + ADSP work |
+| **6.9** | **Unified Library Build** | [DONE] | `Makefile.retro68` update | Real hardware | `libpeertalk_ot_at.a` builds |
+| **6.10** | **Multi-Transport Poll** | [DONE] | `src/opentransport/ot_multi.c` | Real hardware | Unified poll, peer dedup |
 
 ### Status Key
 - **[OPEN]** - Not started
