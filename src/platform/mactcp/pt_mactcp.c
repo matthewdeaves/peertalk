@@ -645,7 +645,6 @@ static void mactcp_tcp_disconnect(PT_Context_Internal *ctx,
 static void mactcp_poll(PT_Context_Internal *ctx)
 {
     int i;
-    int has_listener;
 
     /* Process TCP streams */
     for (i = 0; i < MAX_TCP_STREAMS; i++) {
@@ -873,7 +872,7 @@ static void mactcp_poll(PT_Context_Internal *ctx)
 
     /* ---- Ensure a listener is active ---- */
     if (g_mactcp.listen_active) {
-        has_listener = 0;
+        int has_listener = 0;
         for (i = 0; i < MAX_TCP_STREAMS; i++) {
             if (g_mactcp.tcp_streams[i].state == STREAM_LISTENING) {
                 has_listener = 1;

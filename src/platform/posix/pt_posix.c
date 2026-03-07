@@ -305,7 +305,6 @@ static PT_Status posix_tcp_send(PT_Context_Internal *ctx,
                                 PT_Peer_Internal *peer,
                                 const void *data, size_t len)
 {
-    ssize_t sent;
     size_t total = 0;
 
     (void)ctx;
@@ -313,7 +312,7 @@ static PT_Status posix_tcp_send(PT_Context_Internal *ctx,
     if (peer->platform_peer.tcp_fd < 0) return PT_ERR_NOT_CONNECTED;
 
     while (total < len) {
-        sent = send(peer->platform_peer.tcp_fd,
+        ssize_t sent = send(peer->platform_peer.tcp_fd,
                     (const char *)data + total,
                     len - total, MSG_NOSIGNAL);
         if (sent < 0) {
@@ -494,13 +493,12 @@ static void posix_poll(PT_Context_Internal *ctx)
         /* Check connected peers for readable data */
         if (ctx->peers[i].state == PT_PEER_CONNECTED &&
             FD_ISSET(fd, &readfds)) {
-            ssize_t n;
             size_t space;
 
             space = ctx->peers[i].tcp_recv_size -
                     ctx->peers[i].tcp_recv_len;
             if (space > 0) {
-                n = recv(fd,
+                ssize_t n = recv(fd,
                          (char *)ctx->peers[i].tcp_recv_buf +
                              ctx->peers[i].tcp_recv_len,
                          space, 0);

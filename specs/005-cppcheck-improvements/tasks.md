@@ -84,10 +84,10 @@
 
 ### Implementation for User Story 4
 
-- [ ] T016 [P] [US4] Reduce scope of variable `has_listener` at line 648 in src/platform/mactcp/pt_mactcp.c
-- [ ] T017 [P] [US4] Reduce scope of variable `sent` at line 308 in src/platform/posix/pt_posix.c
-- [ ] T018 [P] [US4] Reduce scope of variable `n` at line 497 in src/platform/posix/pt_posix.c
-- [ ] T019 [US4] Verify scope changes maintain C89 compliance (declarations at block start) and compile on POSIX
+- [x] T016 [P] [US4] Reduce scope of variable `has_listener` at line 648 in src/platform/mactcp/pt_mactcp.c
+- [x] T017 [P] [US4] Reduce scope of variable `sent` at line 308 in src/platform/posix/pt_posix.c
+- [x] T018 [P] [US4] Reduce scope of variable `n` at line 497 in src/platform/posix/pt_posix.c
+- [x] T019 [US4] Verify scope changes maintain C89 compliance (declarations at block start) and compile on POSIX
 
 **Checkpoint**: All 3 variableScope warnings resolved while maintaining C89 compliance.
 
