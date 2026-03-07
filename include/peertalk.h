@@ -74,6 +74,7 @@ typedef void (*PT_MessageCallback)(
 );
 
 typedef void (*PT_ErrorCallback)(
+    PT_Peer *peer,
     PT_Status error,
     const char *description,
     void *user_data

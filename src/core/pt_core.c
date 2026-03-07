@@ -107,12 +107,13 @@ void pt_format_ip(unsigned long ip, char *buf)
 /* Error firing                                                        */
 /* ------------------------------------------------------------------ */
 
-void pt_fire_error(PT_Context_Internal *ctx, PT_Status err,
-                   const char *desc)
+void pt_fire_error(PT_Context_Internal *ctx,
+                   PT_Peer_Internal *peer,
+                   PT_Status err, const char *desc)
 {
     CLOG_WARN("Error %d: %s", (int)err, desc ? desc : "");
     if (ctx->callbacks.on_error) {
-        ctx->callbacks.on_error(err, desc,
+        ctx->callbacks.on_error((PT_Peer *)peer, err, desc,
                                 ctx->callbacks.on_error_data);
     }
 }
@@ -184,7 +185,7 @@ void pt_handle_incoming_connection(PT_Context_Internal *ctx,
                 close(ppeer->tcp_fd);
             }
 #endif
-            pt_fire_error(ctx, PT_ERR_NO_ROOM,
+            pt_fire_error(ctx, NULL, PT_ERR_NO_ROOM,
                           "No peer slots for incoming connection");
             return;
         }
@@ -500,7 +501,7 @@ void PT_Poll(PT_Context *pub_ctx)
             ctx->platform_ops->tcp_disconnect(ctx, &ctx->peers[i]);
             ctx->peers[i].connect_start = 0;
             ctx->peers[i].state = PT_PEER_DISCONNECTED;
-            pt_fire_error(ctx, PT_ERR_SEND_FAILED,
+            pt_fire_error(ctx, &ctx->peers[i], PT_ERR_SEND_FAILED,
                           "Connection timeout");
         }
 

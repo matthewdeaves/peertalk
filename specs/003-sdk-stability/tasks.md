@@ -21,20 +21,20 @@
 
 **⚠️ CRITICAL**: This is a breaking API change. All call sites must be updated atomically.
 
-- [ ] T001 [US3] Update PT_ErrorCallback typedef to add PT_Peer* as first parameter in include/peertalk.h
-- [ ] T002 [US3] Update pt_fire_error declaration to add PT_Peer_Internal* parameter in src/core/pt_internal.h
-- [ ] T003 [US3] Update pt_fire_error implementation and all call sites in src/core/pt_core.c — pass peer where available, NULL where not
-- [ ] T004 [P] [US3] Update pt_fire_error call site in src/core/pt_discovery.c — pass NULL (no peer context for discovery no-room error)
-- [ ] T005 [P] [US3] Update pt_fire_error call site in src/core/pt_messaging.c — pass peer pointer from reassembly context
-- [ ] T006 [P] [US3] Update pt_fire_error call site in src/platform/posix/pt_posix.c — pass peer pointer for send failure
-- [ ] T007 [P] [US3] Update pt_fire_error call site in src/platform/mactcp/pt_mactcp.c — pass peer pointer for send failure
-- [ ] T008 [P] [US3] Update pt_fire_error call sites in src/platform/opentransport/pt_ot.c — pass peer pointer for send failure and NULL for no-room
-- [ ] T009 [P] [US3] Update on_error callback in tests/test_lifecycle.c to match new signature (add PT_Peer* first param)
-- [ ] T010 [P] [US3] Update on_error callback in tests/test_fast.c to match new signature
-- [ ] T011 [P] [US3] Update on_error callback in tests/test_reliable.c to match new signature
-- [ ] T012 [P] [US3] Update on_error callback in tests/test_init_only.c to match new signature
-- [ ] T013 [P] [US3] Update on_error callback in tests/test_chat.c to match new signature
-- [ ] T014 [US3] Build POSIX target and verify all test apps compile cleanly in build/
+- [x] T001 [US3] Update PT_ErrorCallback typedef to add PT_Peer* as first parameter in include/peertalk.h
+- [x] T002 [US3] Update pt_fire_error declaration to add PT_Peer_Internal* parameter in src/core/pt_internal.h
+- [x] T003 [US3] Update pt_fire_error implementation and all call sites in src/core/pt_core.c — pass peer where available, NULL where not
+- [x] T004 [P] [US3] Update pt_fire_error call site in src/core/pt_discovery.c — pass NULL (no peer context for discovery no-room error)
+- [x] T005 [P] [US3] Update pt_fire_error call site in src/core/pt_messaging.c — pass peer pointer from reassembly context
+- [x] T006 [P] [US3] Update pt_fire_error call site in src/platform/posix/pt_posix.c — pass peer pointer for send failure
+- [x] T007 [P] [US3] Update pt_fire_error call site in src/platform/mactcp/pt_mactcp.c — pass peer pointer for send failure
+- [x] T008 [P] [US3] Update pt_fire_error call sites in src/platform/opentransport/pt_ot.c — pass peer pointer for send failure and NULL for no-room
+- [x] T009 [P] [US3] Update on_error callback in tests/test_lifecycle.c to match new signature (add PT_Peer* first param)
+- [x] T010 [P] [US3] Update on_error callback in tests/test_fast.c to match new signature
+- [x] T011 [P] [US3] Update on_error callback in tests/test_reliable.c to match new signature
+- [x] T012 [P] [US3] Update on_error callback in tests/test_init_only.c to match new signature (no on_error callback — already compatible)
+- [x] T013 [P] [US3] Update on_error callback in tests/test_chat.c to match new signature
+- [x] T014 [US3] Build POSIX target and verify all test apps compile cleanly in build/
 
 **Checkpoint**: Error callback API change complete. All test apps compile. pt_fire_error passes peer context where available.
 

@@ -714,7 +714,7 @@ static void ot_poll(PT_Context_Internal *ctx)
             if (idx < 0) {
                 /* No room -- reject */
                 OTSndDisconnect(g_ot.listener_ep, &call);
-                pt_fire_error(ctx, PT_ERR_NO_ROOM,
+                pt_fire_error(ctx, NULL, PT_ERR_NO_ROOM,
                               "No endpoint slots for incoming");
                 continue;
             }
@@ -830,7 +830,7 @@ static void ot_poll(PT_Context_Internal *ctx)
                     peer->connect_start = 0;
                     peer->state = PT_PEER_DISCONNECTED;
                     peer->platform_peer.endpoint = NULL;
-                    pt_fire_error(ctx, PT_ERR_SEND_FAILED,
+                    pt_fire_error(ctx, peer, PT_ERR_SEND_FAILED,
                                   "OT connect failed");
                 }
             }

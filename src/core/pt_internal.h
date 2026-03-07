@@ -269,8 +269,9 @@ void      pt_messaging_check_reassembly_timeouts(PT_Context_Internal *ctx);
 
 /* pt_core.c */
 void      pt_format_ip(unsigned long ip, char *buf);
-void      pt_fire_error(PT_Context_Internal *ctx, PT_Status err,
-                        const char *desc);
+void      pt_fire_error(PT_Context_Internal *ctx,
+                        PT_Peer_Internal *peer,
+                        PT_Status err, const char *desc);
 PT_Peer_Internal *pt_find_peer_by_ip(PT_Context_Internal *ctx,
                                      unsigned long ip);
 PT_Peer_Internal *pt_alloc_peer(PT_Context_Internal *ctx);

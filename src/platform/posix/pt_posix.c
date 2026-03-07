@@ -485,7 +485,8 @@ static void posix_poll(PT_Context_Internal *ctx)
                 close(fd);
                 ctx->peers[i].platform_peer.tcp_fd = -1;
                 ctx->peers[i].state = PT_PEER_DISCONNECTED;
-                pt_fire_error(ctx, PT_ERR_SEND_FAILED,
+                pt_fire_error(ctx, &ctx->peers[i],
+                              PT_ERR_SEND_FAILED,
                               "TCP connect failed");
             }
         }

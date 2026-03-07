@@ -707,7 +707,7 @@ static void mactcp_poll(PT_Context_Internal *ctx)
                     peer->connect_start = 0;
                     peer->state = PT_PEER_DISCONNECTED;
                     peer->platform_peer.tcp_stream = NULL;
-                    pt_fire_error(ctx, PT_ERR_SEND_FAILED,
+                    pt_fire_error(ctx, peer, PT_ERR_SEND_FAILED,
                                   "TCP connect failed");
                 }
             }

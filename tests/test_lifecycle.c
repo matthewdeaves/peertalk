@@ -83,9 +83,10 @@ static void on_disconnected(PT_Peer *peer,
     }
 }
 
-static void on_error(PT_Status error, const char *desc, void *data)
+static void on_error(PT_Peer *peer, PT_Status error, const char *desc,
+                     void *data)
 {
-    (void)data;
+    (void)peer; (void)data;
     TEST_WARN("[ERROR] %d: %s", (int)error, desc ? desc : "");
 }
 

@@ -212,7 +212,7 @@ void pt_messaging_process_tcp_data(PT_Context_Internal *ctx,
 
                 if (total_size > peer->reassembly_buf_size) {
                     /* Message too large */
-                    pt_fire_error(ctx, PT_ERR_NO_ROOM,
+                    pt_fire_error(ctx, peer, PT_ERR_NO_ROOM,
                                   "Reassembly buffer too small");
                     peer->reassembly_total = 0;
                     peer->reassembly_received = 0;

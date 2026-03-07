@@ -95,7 +95,7 @@ void pt_discovery_receive(PT_Context_Internal *ctx,
     /* New peer -- allocate slot */
     peer = pt_alloc_peer(ctx);
     if (!peer) {
-        pt_fire_error(ctx, PT_ERR_NO_ROOM,
+        pt_fire_error(ctx, NULL, PT_ERR_NO_ROOM,
                       "No peer slots for discovered peer");
         return;
     }
