@@ -67,10 +67,10 @@
 
 ### Implementation for User Story 3
 
-- [ ] T012 [P] [US3] Add const to parameter `ppeer` at line 173 in src/core/pt_core.c
-- [ ] T013 [P] [US3] Add const to parameter `ts` at line 270 in src/platform/mactcp/pt_mactcp.c
-- [ ] T014 [P] [US3] Add const to parameter `slot` at line 170 in src/platform/opentransport/pt_ot.c
-- [ ] T015 [US3] Verify all const parameter changes compile on POSIX with `cmake --build build`
+- [x] T012 [P] [US3] Add const to parameter `ppeer` at line 173 in src/core/pt_core.c
+- [x] T013 [P] [US3] Add const to parameter `ts` at line 270 in src/platform/mactcp/pt_mactcp.c
+- [x] T014 [P] [US3] Add const to parameter `slot` at line 170 in src/platform/opentransport/pt_ot.c
+- [x] T015 [US3] Verify all const parameter changes compile on POSIX with `cmake --build build`
 
 **Checkpoint**: All 3 constParameterPointer warnings resolved. Run cppcheck to verify.
 

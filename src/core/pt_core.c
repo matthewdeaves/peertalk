@@ -170,7 +170,7 @@ PT_Peer_Internal *pt_alloc_peer(PT_Context_Internal *ctx)
 
 void pt_handle_incoming_connection(PT_Context_Internal *ctx,
                                    unsigned long peer_ip,
-                                   PT_PlatformPeer *ppeer)
+                                   const PT_PlatformPeer *ppeer)
 {
     PT_Peer_Internal *peer;
 

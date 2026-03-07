@@ -167,7 +167,7 @@ static int find_free_ep(void)
 }
 
 static PT_Peer_Internal *find_peer_for_ep(PT_Context_Internal *ctx,
-                                          OTEndpointSlot *slot)
+                                          const OTEndpointSlot *slot)
 {
     int j;
     for (j = 0; j < ctx->max_peers; j++) {

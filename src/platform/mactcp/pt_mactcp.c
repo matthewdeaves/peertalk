@@ -267,7 +267,7 @@ static void issue_udp_read(UDPStreamSlot *us, short driverRef)
 
 /* Find the peer that owns a specific TCP stream slot */
 static PT_Peer_Internal *find_peer_for_stream(PT_Context_Internal *ctx,
-                                              TCPStreamSlot *ts)
+                                              const TCPStreamSlot *ts)
 {
     int j;
     for (j = 0; j < ctx->max_peers; j++) {

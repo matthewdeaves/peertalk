@@ -277,7 +277,7 @@ PT_Peer_Internal *pt_find_peer_by_ip(PT_Context_Internal *ctx,
 PT_Peer_Internal *pt_alloc_peer(PT_Context_Internal *ctx);
 void      pt_handle_incoming_connection(PT_Context_Internal *ctx,
                                         unsigned long peer_ip,
-                                        PT_PlatformPeer *ppeer);
+                                        const PT_PlatformPeer *ppeer);
 void      pt_handle_peer_disconnect(PT_Context_Internal *ctx,
                                     PT_Peer_Internal *peer,
                                     PT_DisconnectReason reason);
