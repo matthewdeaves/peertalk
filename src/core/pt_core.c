@@ -610,7 +610,7 @@ void PT_OnError(PT_Context *pub_ctx, PT_ErrorCallback cb,
 /* Public API: Peer Info                                               */
 /* ------------------------------------------------------------------ */
 
-int PT_GetPeerCount(PT_Context *pub_ctx)
+int PT_GetPeerCount(const PT_Context *pub_ctx)
 {
     const PT_Context_Internal *ctx = (const PT_Context_Internal *)pub_ctx;
     if (!ctx) return 0;
@@ -636,21 +636,21 @@ PT_Peer *PT_GetPeer(PT_Context *pub_ctx, int index)
     return NULL;
 }
 
-const char *PT_PeerName(PT_Peer *pub_peer)
+const char *PT_PeerName(const PT_Peer *pub_peer)
 {
     const PT_Peer_Internal *peer = (const PT_Peer_Internal *)pub_peer;
     if (!peer) return "";
     return peer->name;
 }
 
-const char *PT_PeerAddress(PT_Peer *pub_peer)
+const char *PT_PeerAddress(const PT_Peer *pub_peer)
 {
     const PT_Peer_Internal *peer = (const PT_Peer_Internal *)pub_peer;
     if (!peer) return "";
     return peer->addr_str;
 }
 
-PT_PeerState PT_GetPeerState(PT_Peer *pub_peer)
+PT_PeerState PT_GetPeerState(const PT_Peer *pub_peer)
 {
     const PT_Peer_Internal *peer = (const PT_Peer_Internal *)pub_peer;
     if (!peer) return PT_PEER_DISCONNECTED;

@@ -134,15 +134,7 @@ A developer evaluates whether callback function parameters can be made const. Th
 
 ## Intentionally Not Fixed
 
-The following cppcheck warnings are intentionally not fixed:
+The following cppcheck warning is intentionally not fixed:
 
-1. **Public API parameter const warnings** (4 warnings):
-   - `PT_GetPeerCount(PT_Context *pub_ctx)` - pub_ctx could be const
-   - `PT_PeerName(PT_Peer *pub_peer)` - pub_peer could be const
-   - `PT_PeerAddress(PT_Peer *pub_peer)` - pub_peer could be const
-   - `PT_GetPeerState(PT_Peer *pub_peer)` - pub_peer could be const
-
-   **Reasoning**: These are public API functions declared in `peertalk.h`. Adding const would be a breaking API change requiring all callers to update their code. The functions work correctly as-is, and the const correctness of internal implementation was addressed without changing the public API surface.
-
-2. **False positive unsignedLessThanZero** (1 warning):
+1. **False positive unsignedLessThanZero** (1 warning):
    - The comparison `ctx->current_time >= ctx->discovery_timer` between two unsigned longs is valid but triggers a cppcheck false positive. An inline suppression comment was added.

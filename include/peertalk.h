@@ -152,11 +152,11 @@ PT_Status PT_SetName(PT_Context *ctx, const char *name);
 /* Peer info (5)                                                       */
 /* ------------------------------------------------------------------ */
 
-int              PT_GetPeerCount(PT_Context *ctx);
+int              PT_GetPeerCount(const PT_Context *ctx);
 PT_Peer         *PT_GetPeer(PT_Context *ctx, int index);
-const char      *PT_PeerName(PT_Peer *peer);
-const char      *PT_PeerAddress(PT_Peer *peer);
-PT_PeerState     PT_GetPeerState(PT_Peer *peer);
+const char      *PT_PeerName(const PT_Peer *peer);
+const char      *PT_PeerAddress(const PT_Peer *peer);
+PT_PeerState     PT_GetPeerState(const PT_Peer *peer);
 
 #ifdef __cplusplus
 }
