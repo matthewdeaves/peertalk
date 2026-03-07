@@ -1,0 +1,24 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clone and build clog
+        run: |
+          git clone https://github.com/matthewdeaves/clog.git "$HOME/clog"
+          mkdir "$HOME/clog/build" && cd "$HOME/clog/build" && cmake .. && make
+      - name: Build peertalk
+        run: mkdir build && cd build && cmake .. -DCLOG_DIR="$HOME/clog" && make
+      - name: Package
+        run: tar czf libpeertalk-posix.tar.gz -C build libpeertalk.a -C ../include peertalk.h
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: libpeertalk-posix.tar.gz

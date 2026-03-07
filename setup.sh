@@ -13,9 +13,9 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-RETRO68_TOOLCHAIN="$HOME/Retro68-build/toolchain"
-RETRO68_SRC="$HOME/Retro68"
-CLOG_DIR="$HOME/Desktop/clog"
+RETRO68_TOOLCHAIN="${RETRO68_TOOLCHAIN:-$HOME/Retro68-build/toolchain}"
+RETRO68_SRC="${RETRO68_SRC:-$HOME/Retro68}"
+CLOG_DIR="${CLOG_DIR:-$HOME/clog}"
 
 echo "PeerTalk Development Setup"
 echo "=========================="
@@ -30,6 +30,18 @@ check_tool() {
     else
         echo "  [!!] $1 not found"
         return 1
+    fi
+}
+
+ensure_bashrc_export() {
+    local var_name="$1" var_value="$2"
+    if ! grep -q "export ${var_name}=" "$HOME/.bashrc" 2>/dev/null; then
+        echo "" >> "$HOME/.bashrc"
+        echo "# Added by peertalk/setup.sh" >> "$HOME/.bashrc"
+        echo "export ${var_name}=\"${var_value}\"" >> "$HOME/.bashrc"
+        echo "  [ok] Added ${var_name} to ~/.bashrc"
+    else
+        echo "  [ok] ${var_name} already in ~/.bashrc"
     fi
 }
 
@@ -105,14 +117,24 @@ fi
 # ── Check MPW Interfaces ────────────────────────────────────────
 
 MPW_CINCLUDES="$RETRO68_SRC/InterfacesAndLibraries/MPW_Interfaces/Interfaces&Libraries/Interfaces/CIncludes"
+MPW_ZIP="$SCRIPT_DIR/resources/retro68/MPW_Interfaces.zip"
 echo ""
 echo "Checking MPW Interfaces..."
 if [ -f "$MPW_CINCLUDES/MacTCP.h" ] && [ -f "$MPW_CINCLUDES/OpenTransport.h" ]; then
     echo "  [ok] MacTCP.h and OpenTransport.h found"
+elif [ -f "$MPW_ZIP" ]; then
+    echo "  [--] MPW Interfaces not found. Extracting from $MPW_ZIP..."
+    mkdir -p "$RETRO68_SRC/InterfacesAndLibraries"
+    unzip -o "$MPW_ZIP" -d "$RETRO68_SRC/InterfacesAndLibraries/"
+    if [ -f "$MPW_CINCLUDES/MacTCP.h" ] && [ -f "$MPW_CINCLUDES/OpenTransport.h" ]; then
+        echo "  [ok] MPW Interfaces extracted successfully"
+    else
+        echo "  [!!] Extraction succeeded but headers not found at expected path"
+        exit 1
+    fi
 else
-    echo "  [!!] MPW Interfaces not found"
-    echo "       Extract MPW_Interfaces.zip into ~/Retro68/InterfacesAndLibraries/"
-    echo "       Or run: unzip resources/retro68/MPW_Interfaces.zip -d ~/Retro68/InterfacesAndLibraries/"
+    echo "  [!!] MPW Interfaces not found and no MPW_Interfaces.zip available"
+    echo "       Expected zip at: $MPW_ZIP"
     exit 1
 fi
 
@@ -201,8 +223,11 @@ else
     echo "export PATH=\"\$RETRO68/bin:\$PATH\"" >> "$SHELL_RC"
 fi
 
+ensure_bashrc_export "PEERTALK_DIR" "$SCRIPT_DIR"
+
 export RETRO68="$RETRO68_TOOLCHAIN"
 export PATH="$RETRO68/bin:$PATH"
+export PEERTALK_DIR="$SCRIPT_DIR"
 
 # ── Make scripts executable ──────────────────────────────────────
 

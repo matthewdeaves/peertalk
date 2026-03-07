@@ -118,7 +118,7 @@ if [ ! -f "$TASKS_FILE" ]; then
 fi
 
 PROJECT_ROOT="$(pwd)"
-CLOG_DIR="$HOME/Desktop/clog"
+CLOG_DIR="${CLOG_DIR:-$HOME/clog}"
 
 # --- Preflight checks ---
 if [ ! -f "$CLOG_DIR/build/libclog.a" ]; then

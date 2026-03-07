@@ -36,31 +36,31 @@ specs/001-peertalk-sdk/     # Spec, plan, tasks, contracts, research
 
 ## Build Commands
 
-clog dependency: `~/Desktop/clog` — must be built first for each target platform.
+clog dependency: `$CLOG_DIR` (defaults to `~/clog`) — must be built first for each target platform.
 
 ```bash
 # POSIX (build/)
-mkdir -p build && cd build && cmake .. -DCLOG_DIR=$HOME/Desktop/clog && make
+mkdir -p build && cd build && cmake .. -DCLOG_DIR=$CLOG_DIR && make
 
 # 68k MacTCP (build-68k/) — for Mac SE
 mkdir -p build-68k && cd build-68k && \
-cmake .. -DCMAKE_TOOLCHAIN_FILE=~/Retro68-build/toolchain/m68k-apple-macos/cmake/retro68.toolchain.cmake \
-  -DPT_PLATFORM=MACTCP -DCLOG_DIR=~/Desktop/clog -DCLOG_LIB_DIR=~/Desktop/clog/build-m68k && make
+cmake .. -DCMAKE_TOOLCHAIN_FILE=$RETRO68_TOOLCHAIN/m68k-apple-macos/cmake/retro68.toolchain.cmake \
+  -DPT_PLATFORM=MACTCP -DCLOG_DIR=$CLOG_DIR -DCLOG_LIB_DIR=$CLOG_DIR/build-m68k && make
 
 # PPC Open Transport (build-ppc-ot/) — for Performa 6400
 mkdir -p build-ppc-ot && cd build-ppc-ot && \
-cmake .. -DCMAKE_TOOLCHAIN_FILE=~/Retro68-build/toolchain/powerpc-apple-macos/cmake/retroppc.toolchain.cmake \
-  -DPT_PLATFORM=OT -DCLOG_DIR=~/Desktop/clog -DCLOG_LIB_DIR=~/Desktop/clog/build-ppc && make
+cmake .. -DCMAKE_TOOLCHAIN_FILE=$RETRO68_TOOLCHAIN/powerpc-apple-macos/cmake/retroppc.toolchain.cmake \
+  -DPT_PLATFORM=OT -DCLOG_DIR=$CLOG_DIR -DCLOG_LIB_DIR=$CLOG_DIR/build-ppc && make
 
 # 68k Open Transport (build-68k-ot/) — for Performa 630
 mkdir -p build-68k-ot && cd build-68k-ot && \
-cmake .. -DCMAKE_TOOLCHAIN_FILE=~/Retro68-build/toolchain/m68k-apple-macos/cmake/retro68.toolchain.cmake \
-  -DPT_PLATFORM=OT -DCLOG_DIR=~/Desktop/clog -DCLOG_LIB_DIR=~/Desktop/clog/build-m68k && make
+cmake .. -DCMAKE_TOOLCHAIN_FILE=$RETRO68_TOOLCHAIN/m68k-apple-macos/cmake/retro68.toolchain.cmake \
+  -DPT_PLATFORM=OT -DCLOG_DIR=$CLOG_DIR -DCLOG_LIB_DIR=$CLOG_DIR/build-m68k && make
 
 # PPC MacTCP (build-ppc-mactcp/) — for Performa 6200
 mkdir -p build-ppc-mactcp && cd build-ppc-mactcp && \
-cmake .. -DCMAKE_TOOLCHAIN_FILE=~/Retro68-build/toolchain/powerpc-apple-macos/cmake/retroppc.toolchain.cmake \
-  -DPT_PLATFORM=MACTCP -DCLOG_DIR=~/Desktop/clog -DCLOG_LIB_DIR=~/Desktop/clog/build-ppc && make
+cmake .. -DCMAKE_TOOLCHAIN_FILE=$RETRO68_TOOLCHAIN/powerpc-apple-macos/cmake/retroppc.toolchain.cmake \
+  -DPT_PLATFORM=MACTCP -DCLOG_DIR=$CLOG_DIR -DCLOG_LIB_DIR=$CLOG_DIR/build-ppc && make
 ```
 
 ## Code Style

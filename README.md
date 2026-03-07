@@ -42,24 +42,30 @@ PT_Shutdown(ctx);
 
 See [Quickstart Guide](specs/001-peertalk-sdk/quickstart.md) and [API Reference](specs/001-peertalk-sdk/contracts/peertalk-api.md) for details.
 
+## Prerequisites
+
+- [clog](https://github.com/matthewdeaves/clog) must be set up first (`$CLOG_DIR`, defaults to `~/clog`)
+- [Retro68](https://github.com/autc04/Retro68) cross-compiler for Classic Mac builds (`$RETRO68_TOOLCHAIN`)
+- Run `./setup.sh` to configure the environment (sets `$PEERTALK_DIR`, checks dependencies)
+
 ## Building
 
-Requires [clog](https://github.com/your-org/clog) built first at `~/Desktop/clog`.
+Requires [clog](https://github.com/matthewdeaves/clog) built first at `$CLOG_DIR` (defaults to `~/clog`).
 
 ```bash
 # POSIX
 mkdir -p build && cd build
-cmake .. -DCLOG_DIR=$HOME/Desktop/clog && make
+cmake .. -DCLOG_DIR=$CLOG_DIR && make
 
 # 68k MacTCP (Retro68 cross-compiler)
 mkdir -p build-68k && cd build-68k
-cmake .. -DCMAKE_TOOLCHAIN_FILE=~/Retro68-build/toolchain/m68k-apple-macos/cmake/retro68.toolchain.cmake \
-  -DPT_PLATFORM=MACTCP -DCLOG_DIR=~/Desktop/clog -DCLOG_LIB_DIR=~/Desktop/clog/build-m68k && make
+cmake .. -DCMAKE_TOOLCHAIN_FILE=$RETRO68_TOOLCHAIN/m68k-apple-macos/cmake/retro68.toolchain.cmake \
+  -DPT_PLATFORM=MACTCP -DCLOG_DIR=$CLOG_DIR -DCLOG_LIB_DIR=$CLOG_DIR/build-m68k && make
 
 # PPC Open Transport (Retro68 cross-compiler)
 mkdir -p build-ppc-ot && cd build-ppc-ot
-cmake .. -DCMAKE_TOOLCHAIN_FILE=~/Retro68-build/toolchain/powerpc-apple-macos/cmake/retroppc.toolchain.cmake \
-  -DPT_PLATFORM=OT -DCLOG_DIR=~/Desktop/clog -DCLOG_LIB_DIR=~/Desktop/clog/build-ppc && make
+cmake .. -DCMAKE_TOOLCHAIN_FILE=$RETRO68_TOOLCHAIN/powerpc-apple-macos/cmake/retroppc.toolchain.cmake \
+  -DPT_PLATFORM=OT -DCLOG_DIR=$CLOG_DIR -DCLOG_LIB_DIR=$CLOG_DIR/build-ppc && make
 ```
 
 ## Using as a Library
@@ -112,3 +118,11 @@ All test apps pass on real Classic Mac hardware:
 - [API Contract](specs/001-peertalk-sdk/contracts/peertalk-api.md)
 - [Quickstart](specs/001-peertalk-sdk/quickstart.md)
 - [Research Decisions](specs/001-peertalk-sdk/research.md)
+
+## Dependency Chain
+
+[clog](https://github.com/matthewdeaves/clog) -> peertalk -> [csend](https://github.com/matthewdeaves/csend)
+
+## Next Step
+
+After setting up peertalk, set up [csend](https://github.com/matthewdeaves/csend).
