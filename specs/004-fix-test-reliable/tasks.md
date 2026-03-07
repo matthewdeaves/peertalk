@@ -21,11 +21,11 @@
 
 ## Phase 2: Hardware Verification
 
-- [ ] T005 Build 68k MacTCP target (build-68k/) and PPC OT target (build-ppc-ot/) and verify clean compilation
-- [ ] T006 Run test_reliable on Performa 6400 (PPC OT) with POSIX peer — verify PASS with 10 moves exchanged
-- [ ] T007 Run test_reliable on Performa 6200 (PPC MacTCP) with POSIX peer — verify PASS with 10 moves exchanged
-- [ ] T008 Run test_reliable on Mac SE (68k MacTCP) with POSIX peer — verify PASS with 10 moves exchanged
-- [ ] T009 Download and review clog files from all hardware tests — confirm 10 sent, 10 received, order valid, payload valid, broadcast complete
+- [x] T005 Build 68k MacTCP target (build-68k/) and PPC OT target (build-ppc-ot/) and verify clean compilation
+- [x] T006 Run test_reliable on Performa 6400 (PPC OT) with POSIX peer — verify PASS with 10 moves exchanged
+- [x] T007 Run test_reliable on Performa 6200 (PPC MacTCP) with POSIX peer — verify PASS with 10 moves exchanged
+- [x] T008 Run test_reliable on Mac SE (68k MacTCP) with POSIX peer — verify PASS with 10 moves exchanged
+- [x] T009 Download and review clog files from all hardware tests — confirm 10 sent, 10 received, order valid, payload valid, broadcast complete
 
 **Checkpoint**: test_reliable PASS on all platforms. Feature complete.
 
