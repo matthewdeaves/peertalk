@@ -504,6 +504,7 @@ void PT_Poll(PT_Context *pub_ctx)
 
     /* Discovery broadcast timer */
     if (ctx->discovery_active &&
+        /* cppcheck-suppress unsignedLessThanZero ; false positive: comparing two unsigned longs */
         ctx->current_time >= ctx->discovery_timer) {
         pt_discovery_broadcast(ctx);
         ctx->discovery_timer = ctx->current_time +
