@@ -18,6 +18,9 @@ set -euo pipefail
 # Allow running from within a Claude Code session
 unset CLAUDECODE 2>/dev/null || true
 
+# Tell speckit which feature spec to use (branch detection won't work on main)
+export SPECIFY_FEATURE="002-peer-ip-address"
+
 # Detach from terminal stdin to prevent SIGTTIN when backgrounded.
 # Redirect script's own stdin from /dev/null so all child processes
 # (including Claude) inherit /dev/null instead of the terminal.
@@ -27,7 +30,7 @@ fi
 
 # --- Configuration ---
 MAX_ITERATIONS=100
-TASKS_FILE="specs/001-peertalk-sdk/tasks.md"
+TASKS_FILE="specs/002-peer-ip-address/tasks.md"
 COOLDOWN_SECONDS=15
 RATE_LIMIT_WAIT_INITIAL=300  # 5 minutes first backoff
 RATE_LIMIT_WAIT_MAX=3600     # 1 hour max backoff
@@ -264,7 +267,7 @@ Only attempt hardware tasks on machines marked ONLINE.
 
 ## Your job
 
-Run /speckit.implement to execute tasks from specs/001-peertalk-sdk/tasks.md. Implement as many tasks as you can in this session, working through them in phase order.
+Run /speckit.implement to execute tasks from ${TASKS_FILE}. Implement as many tasks as you can in this session, working through them in phase order.
 
 ## Current progress
 
