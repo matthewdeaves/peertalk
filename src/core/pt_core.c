@@ -80,7 +80,7 @@ static void pt_log_platform_info(void)
 
 void pt_format_ip(unsigned long ip, char *buf)
 {
-    unsigned char *b = (unsigned char *)&ip;
+    const unsigned char *b = (const unsigned char *)&ip;
     int i;
     int pos = 0;
 
@@ -612,7 +612,7 @@ void PT_OnError(PT_Context *pub_ctx, PT_ErrorCallback cb,
 
 int PT_GetPeerCount(PT_Context *pub_ctx)
 {
-    PT_Context_Internal *ctx = (PT_Context_Internal *)pub_ctx;
+    const PT_Context_Internal *ctx = (const PT_Context_Internal *)pub_ctx;
     if (!ctx) return 0;
     return ctx->peer_count;
 }
@@ -638,21 +638,21 @@ PT_Peer *PT_GetPeer(PT_Context *pub_ctx, int index)
 
 const char *PT_PeerName(PT_Peer *pub_peer)
 {
-    PT_Peer_Internal *peer = (PT_Peer_Internal *)pub_peer;
+    const PT_Peer_Internal *peer = (const PT_Peer_Internal *)pub_peer;
     if (!peer) return "";
     return peer->name;
 }
 
 const char *PT_PeerAddress(PT_Peer *pub_peer)
 {
-    PT_Peer_Internal *peer = (PT_Peer_Internal *)pub_peer;
+    const PT_Peer_Internal *peer = (const PT_Peer_Internal *)pub_peer;
     if (!peer) return "";
     return peer->addr_str;
 }
 
 PT_PeerState PT_GetPeerState(PT_Peer *pub_peer)
 {
-    PT_Peer_Internal *peer = (PT_Peer_Internal *)pub_peer;
+    const PT_Peer_Internal *peer = (const PT_Peer_Internal *)pub_peer;
     if (!peer) return PT_PEER_DISCONNECTED;
     return peer->state;
 }

@@ -418,7 +418,7 @@ static void posix_poll(PT_Context_Internal *ctx)
                        (struct sockaddr *)&from, &fromlen);
         if (newfd >= 0) {
             PT_PlatformPeer ppeer;
-            PT_Peer_Internal *accepted;
+            const PT_Peer_Internal *accepted;
 
             make_nonblocking(newfd);
             setsockopt(newfd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));

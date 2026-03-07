@@ -439,7 +439,7 @@ static PT_Status mactcp_udp_broadcast(PT_Context_Internal *ctx,
                                       const void *data, size_t len)
 {
     UDPiopb pb;
-    UDPStreamSlot *us;
+    const UDPStreamSlot *us;
     wdsEntry wds[2];
     OSErr err;
 
@@ -623,12 +623,12 @@ static PT_Status mactcp_tcp_send(PT_Context_Internal *ctx,
 static void mactcp_tcp_disconnect(PT_Context_Internal *ctx,
                                   PT_Peer_Internal *peer)
 {
-    TCPStreamSlot *ts;
+    const TCPStreamSlot *ts;
     int i;
 
     (void)ctx;
 
-    ts = (TCPStreamSlot *)peer->platform_peer.tcp_stream;
+    ts = (const TCPStreamSlot *)peer->platform_peer.tcp_stream;
     if (!ts) return;
 
     /* Find stream index and abort */
@@ -659,7 +659,7 @@ static void mactcp_poll(PT_Context_Internal *ctx)
             if (ts->open_pb.ioResult == noErr) {
                 ip_addr remote_ip;
                 PT_PlatformPeer ppeer;
-                PT_Peer_Internal *peer;
+                const PT_Peer_Internal *peer;
 
                 remote_ip = ts->open_pb.csParam.open.remoteHost;
 

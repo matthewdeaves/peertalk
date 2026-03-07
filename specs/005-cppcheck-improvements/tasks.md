@@ -46,14 +46,14 @@
 
 ### Implementation for User Story 2
 
-- [ ] T004 [P] [US2] Add const to variable `b` at line 83 in src/core/pt_core.c
-- [ ] T005 [P] [US2] Add const to variable `ctx` at line 614 in src/core/pt_core.c
-- [ ] T006 [P] [US2] Add const to variable `peer` at lines 640, 647, 654 in src/core/pt_core.c
-- [ ] T007 [P] [US2] Add const to variable `us` at line 442 in src/platform/mactcp/pt_mactcp.c
-- [ ] T008 [P] [US2] Add const to variable `ts` at line 626 in src/platform/mactcp/pt_mactcp.c
-- [ ] T009 [P] [US2] Add const to variable `peer` at line 662 in src/platform/mactcp/pt_mactcp.c
-- [ ] T010 [P] [US2] Add const to variable `accepted` at line 421 in src/platform/posix/pt_posix.c
-- [ ] T011 [US2] Verify all const variable changes compile on POSIX with `cmake --build build`
+- [x] T004 [P] [US2] Add const to variable `b` at line 83 in src/core/pt_core.c
+- [x] T005 [P] [US2] Add const to variable `ctx` at line 614 in src/core/pt_core.c
+- [x] T006 [P] [US2] Add const to variable `peer` at lines 640, 647, 654 in src/core/pt_core.c
+- [x] T007 [P] [US2] Add const to variable `us` at line 442 in src/platform/mactcp/pt_mactcp.c
+- [x] T008 [P] [US2] Add const to variable `ts` at line 626 in src/platform/mactcp/pt_mactcp.c
+- [x] T009 [P] [US2] Add const to variable `peer` at line 662 in src/platform/mactcp/pt_mactcp.c
+- [x] T010 [P] [US2] Add const to variable `accepted` at line 421 in src/platform/posix/pt_posix.c
+- [x] T011 [US2] Verify all const variable changes compile on POSIX with `cmake --build build`
 
 **Checkpoint**: All 9 constVariablePointer warnings resolved. Run cppcheck to verify.
 
