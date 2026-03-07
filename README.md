@@ -1,89 +1,114 @@
 # PeerTalk
 
-Cross-platform peer-to-peer networking library for Classic Macintosh and modern systems.
+A C networking SDK for LAN peer-to-peer communication between modern POSIX systems and Classic Macintosh computers.
 
-[![Metrics Dashboard](https://img.shields.io/badge/metrics-dashboard-blue)](https://matthewdeaves.github.io/peertalk/) [![Coverage](https://img.shields.io/badge/coverage-40.9%25-yellow)](https://matthewdeaves.github.io/peertalk/coverage/)
+## Features
 
-## What It Is
+- **21-function C89 API** with a single public header (`peertalk.h`)
+- **3 platform backends**: POSIX (BSD sockets), MacTCP (68k/PPC), Open Transport (68k/PPC)
+- **Zero allocation after init** — all buffers pre-allocated in a single block
+- **Automatic peer discovery** via UDP broadcast
+- **Reliable (TCP) and fast (UDP)** message transports
+- **~5,700 lines of C** across all platforms
 
-PeerTalk is an SDK for peer-to-peer communication across:
-- **POSIX** (Linux/macOS) - Reference implementation with automated testing
-- **MacTCP** (System 6-7.5, 68k Macs) - Classic networking for older hardware
-- **Open Transport** (System 7.6+, PPC Macs) - Modern Classic Mac networking
-- **AppleTalk** (System 6+) - Mac-to-Mac only (POSIX bridging requires Phase 10)
+## Supported Platforms
 
-The project demonstrates how to use [Claude Code](https://docs.anthropic.com/en/docs/claude-code)'s extensibility features (skills, agents, hooks, rules) to implement a complex cross-platform SDK methodically.
+| Platform | Backend | Build Target | Tested Hardware |
+|----------|---------|-------------|-----------------|
+| Linux / macOS | POSIX (BSD sockets) | `build/` | Any modern system |
+| Mac SE (68000) | MacTCP | `build-68k/` | Mac SE, 4 MB RAM |
+| Performa 6200 (PPC 603) | MacTCP | `build-ppc-mactcp/` | Performa 6200, 40 MB RAM |
+| Performa 6400 (PPC 603ev) | Open Transport | `build-ppc-ot/` | Performa 6400, 48 MB RAM |
+| Performa 630 (68LC040) | Open Transport | `build-68k-ot/` | Performa 630 (pending) |
 
-## Current State
+## Quick Start
 
-**Planning complete, implementation not started.**
+```c
+#include "peertalk.h"
 
-- 12 phases planned (0-10 plus 3.5) with detailed specifications
-- All Claude Code tooling in place (skills, agents, hooks, rules)
-- Ready for implementation
+PT_Context *ctx = PT_Init("MyApp", 0);
 
-Phase specifications are in `plan/`. The [blog post](https://matthewdeaves.com/blog/2026-01-11-rapid-prototyping-with-claude-code/) explains how they were created using Claude.
+PT_SetOnPeerDiscovered(ctx, on_discovered);
+PT_SetOnMessageReceived(ctx, on_message);
+PT_StartDiscovery(ctx);
 
-## Branches
+while (running) {
+    PT_Poll(ctx);
+    /* send messages with PT_Send() or PT_SendFast() */
+}
 
-- **`main`** - Will contain implemented SDK code as phases complete
-- **`starter-template`** - Complete tooling + plans, no SDK code. Use Claude's skills/agents/hooks to build the SDK yourself by following the phase plans.
+PT_Shutdown(ctx);
+```
 
-## Setup
+See [Quickstart Guide](specs/001-peertalk-sdk/quickstart.md) and [API Reference](specs/001-peertalk-sdk/contracts/peertalk-api.md) for details.
+
+## Building
+
+Requires [clog](https://github.com/your-org/clog) built first at `~/Desktop/clog`.
 
 ```bash
-git clone https://github.com/matthewdeaves/peertalk.git
-cd peertalk
+# POSIX
+mkdir -p build && cd build
+cmake .. -DCLOG_DIR=$HOME/Desktop/clog && make
 
-# For starter-template (recommended for learning):
-git checkout starter-template
+# 68k MacTCP (Retro68 cross-compiler)
+mkdir -p build-68k && cd build-68k
+cmake .. -DCMAKE_TOOLCHAIN_FILE=~/Retro68-build/toolchain/m68k-apple-macos/cmake/retro68.toolchain.cmake \
+  -DPT_PLATFORM=MACTCP -DCLOG_DIR=~/Desktop/clog -DCLOG_LIB_DIR=~/Desktop/clog/build-m68k && make
 
-# ONE command to set up everything:
-./tools/setup.sh
+# PPC Open Transport (Retro68 cross-compiler)
+mkdir -p build-ppc-ot && cd build-ppc-ot
+cmake .. -DCMAKE_TOOLCHAIN_FILE=~/Retro68-build/toolchain/powerpc-apple-macos/cmake/retroppc.toolchain.cmake \
+  -DPT_PLATFORM=OT -DCLOG_DIR=~/Desktop/clog -DCLOG_LIB_DIR=~/Desktop/clog/build-ppc && make
 ```
 
-This sets up:
-- ✓ Host dependencies (jq, python3)
-- ✓ Docker environment (~2GB, contains entire toolchain)
-- ✓ MCP server configuration
+## Using as a Library
 
-**Then restart Claude Code** to load MCP servers.
-
-**Philosophy: All builds in Docker**
-- **Host:** jq (hooks), python3 (MCP/validators), [Docker](https://docs.docker.com/get-docker/)
-- **Docker:** [Retro68](https://github.com/autc04/Retro68), gcc, make, lcov, ctags, clang-format, everything else
-
-## Usage
-
-Launch Claude Code and use skills to guide implementation:
-
-```
-/session              # Track progress, find available work from the plan folder
-/implement            # Implement a session from the plan folder
-/build test           # Compile and run POSIX tests to verify implementation
-/mac-api [query]      # Search Inside Macintosh books for API documentation
+```cmake
+set(PEERTALK_BUILD_TESTS OFF)
+add_subdirectory(${PEERTALK_DIR} ${CMAKE_BINARY_DIR}/peertalk)
+target_link_libraries(myapp PRIVATE peertalk)
 ```
 
-## Structure
+## Project Structure
 
-| Location | Contents |
-|----------|----------|
-| [docs/CLAUDE-CODE-SETUP.md](docs/CLAUDE-CODE-SETUP.md) | **Complete guide** to all Claude Code customizations: skills, hooks, MCP servers, rules |
-| [.claude/skills/](.claude/skills/) | **14 custom commands** like `/build`, `/deploy`, `/execute` - each with docs, scripts, and assets |
-| [.claude/mcp-servers/](.claude/mcp-servers/) | **MCP server** connecting Claude to real Classic Mac hardware via FTP/[LaunchAPPL](https://github.com/autc04/Retro68?tab=readme-ov-file#launchappl) (deploy, execute, fetch-logs) |
-| [.claude/hooks/](.claude/hooks/) | **Automated checks** that run on file save: ISR safety validation, compile checks, coverage reports |
-| [.claude/rules/](.claude/rules/) | **Platform-specific rules** auto-loaded when editing Mac code: ISR safety, MacTCP, Open Transport, AppleTalk |
-| [plan/](plan/) | **Implementation plans** for 12 phases (0-10 plus 3.5) with sessions, tasks, and acceptance criteria |
-| [books/](books/) | **Apple reference docs**: Inside Macintosh, MacTCP Guide, Open Transport, AppleTalk manuals (used by `/mac-api`) |
+```
+include/peertalk.h          # Single public header (C89)
+src/core/                   # Platform-independent core
+src/platform/posix/         # BSD sockets + select()
+src/platform/mactcp/        # MacTCP parameter blocks
+src/platform/opentransport/ # OT endpoints + notifiers
+tests/                      # Four test apps
+```
 
-## For Learners
+## Test Apps
 
-If you want to understand how to customize Claude Code for domain-specific work:
+| App | Pattern | What it tests |
+|-----|---------|---------------|
+| test_lifecycle | Connection | Discovery, connect, disconnect, reconnect |
+| test_reliable | Chess (TCP) | Ordered reliable message exchange |
+| test_fast | Bomberman (UDP) | High-frequency positional updates at 60 Hz |
+| test_chat | Chat (TCP) | Variable-length bidirectional messages |
 
-1. Switch to `starter-template` branch
-2. Read [STARTER-TEMPLATE.md](docs/STARTER-TEMPLATE.md) for an overview
-3. Read [CLAUDE-CODE-SETUP.md](docs/CLAUDE-CODE-SETUP.md) for detailed documentation of all skills, hooks, and tools
-4. Use `/session next` to find available work
-5. Try implementing Phase 0 (POSIX-only, good starting point)
+## Hardware Verification
 
-The tooling guides you through the implementation while enforcing safety rules automatically.
+All test apps pass on real Classic Mac hardware:
+
+- **Mac SE** (68000, System 6.0.8, MacTCP): 4/4 PASS
+- **Performa 6200** (PPC 603, System 7.5.5, MacTCP): 4/4 PASS
+- **Performa 6400** (PPC 603ev, Mac OS 8.1, Open Transport): test_lifecycle PASS
+
+## Design Principles
+
+1. Every feature serves Bomberman, Chess, or Chat
+2. Pre-allocate everything at init, zero malloc after
+3. Poll-based I/O on all platforms (no threads)
+4. C89 for maximum portability
+5. Measure on real hardware, document honestly
+
+## Documentation
+
+- [Specification](specs/001-peertalk-sdk/spec.md)
+- [API Contract](specs/001-peertalk-sdk/contracts/peertalk-api.md)
+- [Quickstart](specs/001-peertalk-sdk/quickstart.md)
+- [Research Decisions](specs/001-peertalk-sdk/research.md)

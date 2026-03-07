@@ -1,1496 +1,160 @@
 /*
- * PeerTalk - Cross-platform peer-to-peer networking library
- * Public API
+ * peertalk.h -- PeerTalk LAN peer-to-peer SDK
  *
- * Supports:
- *   - POSIX (Linux/macOS) - TCP/UDP via BSD sockets
- *   - Classic Mac MacTCP (System 6-7.5, 68k) - TCP/UDP via MacTCP
- *   - Classic Mac Open Transport (System 7.6+, PPC/68k) - TCP/UDP via OT
- *   - Classic Mac AppleTalk (all systems) - ADSP/NBP
+ * C89-compatible public header. No stdint.h, no bool.
+ * Include this single header to use the SDK.
  */
 
 #ifndef PEERTALK_H
 #define PEERTALK_H
 
+#include <stddef.h> /* size_t */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* ========================================================================== */
-/* Platform-Specific Type Definitions                                        */
-/* ========================================================================== */
+/* ------------------------------------------------------------------ */
+/* Opaque types                                                        */
+/* ------------------------------------------------------------------ */
 
-/*
- * Classic Mac compilers may not have stdint.h. Provide fallback definitions
- * with include guards to prevent redefinition conflicts with Retro68 headers.
- */
-#if defined(__APPLE__) && defined(__MACH__) && !defined(__STDC_VERSION__)
-    /* Classic Mac (pre-C99) */
-    #ifndef _UINT8_T
-        #define _UINT8_T
-        typedef unsigned char uint8_t;
-    #endif
-    #ifndef _INT8_T
-        #define _INT8_T
-        typedef signed char int8_t;
-    #endif
-    #ifndef _UINT16_T
-        #define _UINT16_T
-        typedef unsigned short uint16_t;
-    #endif
-    #ifndef _INT16_T
-        #define _INT16_T
-        typedef signed short int16_t;
-    #endif
-    #ifndef _UINT32_T
-        #define _UINT32_T
-        typedef unsigned long uint32_t;
-    #endif
-    #ifndef _INT32_T
-        #define _INT32_T
-        typedef signed long int32_t;
-    #endif
-#else
-    /* Modern platforms (C99+) */
-    #include <stdint.h>
-#endif
+typedef struct PT_Context PT_Context;
+typedef struct PT_Peer    PT_Peer;
 
-/* ========================================================================== */
-/* Version Information                                                        */
-/* ========================================================================== */
-
-#define PEERTALK_VERSION_MAJOR  1
-#define PEERTALK_VERSION_MINOR  0
-#define PEERTALK_VERSION_PATCH  0
-
-#define PT_VERSION_STRING       "1.0.0"
-
-/**
- * Returns the PeerTalk version string
- */
-const char *PeerTalk_Version(void);
-
-/* ========================================================================== */
-/* Configuration Constants                                                    */
-/* ========================================================================== */
-
-#define PT_MAX_PEER_NAME        31      /* Max peer name length (excl. null) */
-#define PT_MAX_PEERS            16      /* Default max peer slots */
-#define PT_MAX_MESSAGE_SIZE     8192    /* Max TCP message size */
-#define PT_MAX_UDP_MESSAGE_SIZE 1400    /* Max UDP message size (fits in MTU) */
-#define PT_MAX_BATCH_SIZE       16      /* Max messages per batch callback */
-
-/* Async send pipelining configuration */
-#ifdef PT_LOWMEM
-    #define PT_SEND_PIPELINE_DEPTH  2   /* Mac SE (4MB): 2 in-flight sends */
-    #define PT_PIPELINE_MAX_PAYLOAD 1024
-#else
-    #define PT_SEND_PIPELINE_DEPTH  4   /* Standard: 4 in-flight sends */
-    #define PT_PIPELINE_MAX_PAYLOAD 4096
-#endif
-
-/* Flow control window (auto-calculated from peer's recv_buffer_size)
- *
- * Limits queued messages per peer to prevent flooding slower receivers.
- * Window = peer_recv_buffer / max_message_size, clamped to min/max.
- *
- * Too small: underutilizes network, poor throughput
- * Too large: floods peer, causes severe send/recv asymmetry
- *
- * Example: 8KB peer buffer, 4KB messages → window = 2
- *          32KB peer buffer, 4KB messages → window = 8 (clamped to max)
- */
-#define PT_FLOW_WINDOW_MIN      2   /* Minimum window (always allow 2 in flight) */
-#define PT_FLOW_WINDOW_MAX      64  /* Maximum window: OT/MacTCP provide real backpressure
-                                     * via kOTFlowErr / buffer full. This window only limits
-                                     * how many messages queue during flow control pauses.
-                                     * Value 8 caused 97% WOULD_BLOCK on OT SEND tests. */
-#define PT_FLOW_WINDOW_DEFAULT  4   /* Default before capability exchange */
-
-/* TCP receive buffer sizes for pre-allocation */
-#define PT_TCP_BUF_4K   4096    /* Minimum - 25% threshold = 1KB */
-#define PT_TCP_BUF_8K   8192    /* Character apps - 25% threshold = 2KB */
-#define PT_TCP_BUF_16K  16384   /* Block apps - 25% threshold = 4KB */
-#define PT_TCP_BUF_32K  32768   /* High throughput - 25% threshold = 8KB */
-
-#define PT_DEFAULT_DISCOVERY_PORT   7353
-#define PT_DEFAULT_TCP_PORT         7354
-#define PT_DEFAULT_UDP_PORT         7355
-
-/* ========================================================================== */
-/* Transport Types                                                            */
-/* ========================================================================== */
-
-/**
- * Transport mechanisms (bitmask)
- */
-typedef enum {
-    PT_TRANSPORT_NONE       = 0x00,
-    PT_TRANSPORT_TCP        = 0x01,     /* Reliable stream (POSIX/MacTCP/OT) */
-    PT_TRANSPORT_UDP        = 0x02,     /* Unreliable datagram (POSIX/MacTCP/OT) */
-    PT_TRANSPORT_ADSP       = 0x04,     /* AppleTalk Data Stream Protocol */
-    PT_TRANSPORT_NBP        = 0x08,     /* AppleTalk Name Binding Protocol */
-    PT_TRANSPORT_APPLETALK  = 0x0C,     /* ADSP | NBP */
-    PT_TRANSPORT_ALL        = 0xFF
-} PeerTalk_Transport;
-
-/**
- * Returns bitmask of available transports on current platform
- */
-uint16_t PeerTalk_GetAvailableTransports(void);
-
-/**
- * Transport preference for multi-homed peers
- *
- * When a peer is reachable via multiple transports (e.g., both TCP/IP and
- * ADSP), this controls which transport is preferred for connections.
- */
-typedef enum {
-    PT_PREFER_TCP       = 0,    /* Prefer TCP/IP (better POSIX interop) - DEFAULT */
-    PT_PREFER_ADSP      = 1,    /* Prefer AppleTalk (better for Mac-only networks) */
-    PT_PREFER_FASTEST   = 2,    /* Use whichever responds first */
-    PT_PREFER_NONE      = 3     /* No preference - use first available */
-} PeerTalk_TransportPref;
-
-/* ========================================================================== */
-/* Error Codes                                                                */
-/* ========================================================================== */
+/* ------------------------------------------------------------------ */
+/* Enums                                                               */
+/* ------------------------------------------------------------------ */
 
 typedef enum {
-    PT_OK                       = 0,
-
-    /* Parameter & State Errors */
-    PT_ERR_INVALID_PARAM        = -1,
-    PT_ERR_NO_MEMORY            = -2,
-    PT_ERR_NOT_INITIALIZED      = -3,
-    PT_ERR_ALREADY_INITIALIZED  = -4,
-    PT_ERR_INVALID_STATE        = -10,
-    PT_ERR_NOT_SUPPORTED        = -17,
-
-    /* Network Errors */
-    PT_ERR_NETWORK              = -5,
-    PT_ERR_TIMEOUT              = -6,
-    PT_ERR_CONNECTION_REFUSED   = -7,
-    PT_ERR_CONNECTION_CLOSED    = -8,
-    PT_ERR_NO_NETWORK           = -13,
-    PT_ERR_NOT_CONNECTED        = -18,
-    PT_ERR_WOULD_BLOCK          = -19,  /* Resource busy, retry later (e.g., Tier 2 buffer in use) */
-
-    /* Buffer & Queue Errors */
-    PT_ERR_BUFFER_FULL          = -9,
-    PT_ERR_QUEUE_EMPTY          = -15,
-    PT_ERR_MESSAGE_TOO_LARGE    = -16,
-    PT_ERR_BACKPRESSURE         = -25,
-
-    /* Peer Errors */
-    PT_ERR_PEER_NOT_FOUND       = -11,
-    PT_ERR_DISCOVERY_ACTIVE     = -12,
-
-    /* Protocol Errors (Phase 2) */
-    PT_ERR_CRC                  = -20,
-    PT_ERR_MAGIC                = -21,
-    PT_ERR_TRUNCATED            = -22,
-    PT_ERR_VERSION              = -23,
-    PT_ERR_NOT_POWER2           = -24,
-
-    /* Operation Errors */
-    PT_ERR_BUSY                 = -27,  /* Resource busy (e.g., stream already active) */
-    PT_ERR_CANCELLED            = -28,  /* Operation was cancelled */
-    PT_ERR_RATE_LIMITED         = -29,  /* Throttled due to peer pressure - wait before retry */
-
-    /* System Errors */
-    PT_ERR_PLATFORM             = -14,
-    PT_ERR_RESOURCE             = -26,
-    PT_ERR_INTERNAL             = -99
-} PeerTalk_Error;
-
-/* Aliases for convenience */
-#define PT_ERR_INVALID      PT_ERR_INVALID_PARAM
-#define PT_ERR_NOT_FOUND    PT_ERR_PEER_NOT_FOUND
-
-/**
- * Returns human-readable error string
- */
-const char *PeerTalk_ErrorString(PeerTalk_Error error);
-
-/* ========================================================================== */
-/* Priority Levels                                                            */
-/* ========================================================================== */
+    PT_OK = 0,
+    PT_ERR_INIT,
+    PT_ERR_NOT_CONNECTED,
+    PT_ERR_SEND_FAILED,
+    PT_ERR_INVALID_ARG,
+    PT_ERR_NO_ROOM
+} PT_Status;
 
 typedef enum {
-    PT_PRIORITY_LOW         = 0,
-    PT_PRIORITY_NORMAL      = 1,
-    PT_PRIORITY_HIGH        = 2,
-    PT_PRIORITY_CRITICAL    = 3
-} PeerTalk_Priority;
-
-/* ========================================================================== */
-/* Send Flags                                                                 */
-/* ========================================================================== */
-
-/* Send flags (passed to PeerTalk_SendEx)
- *
- * Delivery semantics:
- * - NO_DELAY: Send immediately, set TCP PSH flag (low latency)
- * - BATCH: Allow receiver to buffer (high throughput bulk transfers)
- * - FLUSH: End of batch - flush receiver buffers
- *
- * For Classic Mac receivers, FLUSH ensures the final message in a
- * batch triggers immediate TCPNoCopyRcv completion.
- */
-#define PT_SEND_DEFAULT         0x00
-#define PT_SEND_UNRELIABLE      0x01    /* Use UDP if available */
-#define PT_SEND_COALESCABLE     0x02    /* Allow message coalescing */
-#define PT_SEND_NO_DELAY        0x04    /* Disable Nagle algorithm */
-#define PT_SEND_BATCH           0x08    /* Allow batching (high throughput) */
-#define PT_SEND_FLUSH           0x20    /* End of batch - flush receiver */
-#define PT_SEND_UDP_NO_QUEUE    0x80    /* UDP fast path - explicit no queue */
-
-/* ========================================================================== */
-/* Coalesce Keys                                                              */
-/* ========================================================================== */
-
-/*
- * Keys 0x0000-0x00FF are reserved for PeerTalk
- * Keys 0x0100+ are available for application use
- */
-#define PT_COALESCE_NONE        0x0000
-#define PT_COALESCE_POSITION    0x0001  /* Position updates */
-#define PT_COALESCE_STATE       0x0002  /* State sync messages */
-#define PT_COALESCE_TYPING      0x0003  /* Typing indicators */
-
-/* Create per-peer coalesce key */
-#define PT_COALESCE_KEY(base, peer_id)  ((base) | ((peer_id) << 8))
-
-/* ========================================================================== */
-/* Peer Flags                                                                 */
-/* ========================================================================== */
-
-/*
- * Peer flags are split into:
- *   - 0x0001-0x000F: PeerTalk reserved (core roles)
- *   - 0x0010-0x0080: Reserved for future PeerTalk use
- *   - 0x0100-0x8000: Application-defined flags
- */
-#define PT_PEER_FLAG_HOST       0x0001  /* Peer is session host */
-#define PT_PEER_FLAG_ACCEPTING  0x0002  /* Peer accepting connections */
-#define PT_PEER_FLAG_SPECTATOR  0x0004  /* Peer is spectator (read-only) */
-#define PT_PEER_FLAG_READY      0x0008  /* Peer is ready (app-defined) */
-
-/* Application-defined flags */
-#define PT_PEER_FLAG_APP_0      0x0100
-#define PT_PEER_FLAG_APP_1      0x0200
-#define PT_PEER_FLAG_APP_2      0x0400
-#define PT_PEER_FLAG_APP_3      0x0800
-#define PT_PEER_FLAG_APP_4      0x1000
-#define PT_PEER_FLAG_APP_5      0x2000
-#define PT_PEER_FLAG_APP_6      0x4000
-#define PT_PEER_FLAG_APP_7      0x8000
-
-/* ========================================================================== */
-/* Rejection Reasons                                                          */
-/* ========================================================================== */
+    PT_PEER_DISCOVERED,
+    PT_PEER_CONNECTED,
+    PT_PEER_DISCONNECTED
+} PT_PeerState;
 
 typedef enum {
-    PT_REJECT_UNSPECIFIED       = 0,
-    PT_REJECT_SERVER_FULL       = 1,
-    PT_REJECT_BANNED            = 2,
-    PT_REJECT_WRONG_VERSION     = 3,
-    PT_REJECT_GAME_IN_PROGRESS  = 4
-} PeerTalk_RejectReason;
+    PT_FAST,
+    PT_RELIABLE
+} PT_Transport;
 
-/* ========================================================================== */
-/* Core Types                                                                 */
-/* ========================================================================== */
+typedef enum {
+    PT_QUIT,
+    PT_TIMEOUT,
+    PT_DISCONNECT_ERROR
+} PT_DisconnectReason;
 
-/**
- * Opaque context handle
- */
-typedef struct pt_context PeerTalk_Context;
+/* ------------------------------------------------------------------ */
+/* Callback typedefs                                                   */
+/* ------------------------------------------------------------------ */
 
-/**
- * Forward declaration for logging (see pt_log.h)
- */
-typedef struct pt_log PT_Log;
+typedef void (*PT_PeerCallback)(
+    PT_Peer *peer,
+    void *user_data
+);
 
-/**
- * Peer identifier (unique per session)
- */
-typedef uint16_t PeerTalk_PeerID;
+typedef void (*PT_DisconnectCallback)(
+    PT_Peer *peer,
+    PT_DisconnectReason reason,
+    void *user_data
+);
 
-/* ========================================================================== */
-/* Peer Information                                                           */
-/* ========================================================================== */
-
-/**
- * Peer information structure
- *
- * Layout optimized for cache efficiency on Classic Mac (68030 has 32-byte cache lines).
- * Hot fields (accessed during polling) are grouped first.
- */
-typedef struct {
-    /* Hot fields - accessed frequently during polling (20 bytes) */
-    uint32_t        address;                /* IPv4 or pseudo-address for AppleTalk */
-    PeerTalk_PeerID id;                     /* Unique peer ID */
-    uint16_t        flags;                  /* PT_PEER_FLAG_* */
-    uint16_t        transports_available;   /* Bitmask: how peer is reachable */
-    uint16_t        transport_connected;    /* Which transport we're connected via */
-    uint16_t        port;
-    uint16_t        latency_ms;             /* Estimated RTT */
-    uint16_t        queue_pressure;         /* Send queue fill 0-100 */
-    uint8_t         connected;
-    uint8_t         name_idx;               /* Index into context name table */
-} PeerTalk_PeerInfo;
-
-/**
- * Address structure for multi-transport peers
- */
-typedef struct {
-    uint16_t        transport;              /* PT_TRANSPORT_* */
-    uint32_t        address;                /* Transport-specific address */
-    uint16_t        port;
-    uint16_t        reserved;
-} PeerTalk_Address;
-
-/* ========================================================================== */
-/* Statistics                                                                 */
-/* ========================================================================== */
-
-/**
- * Per-peer statistics
- */
-typedef struct {
-    uint32_t        bytes_sent;
-    uint32_t        bytes_received;
-    uint32_t        messages_sent;
-    uint32_t        messages_received;
-    uint16_t        send_errors;
-    uint16_t        receive_errors;
-    uint16_t        dropped_messages;
-    uint16_t        retransmissions;
-    uint16_t        latency_ms;
-    uint16_t        latency_variance_ms;
-    uint8_t         send_queue_pressure;    /* 0-100 */
-    uint8_t         recv_queue_pressure;    /* 0-100 */
-    uint8_t         quality;                /* 0-100, 100=excellent */
-    uint8_t         reserved;
-} PeerTalk_PeerStats;
-
-/**
- * Global statistics
- */
-typedef struct {
-    uint32_t        total_bytes_sent;
-    uint32_t        total_bytes_received;
-    uint32_t        total_messages_sent;
-    uint32_t        total_messages_received;
-    uint16_t        discovery_packets_sent;
-    uint16_t        discovery_packets_received;
-    uint16_t        peers_discovered;
-    uint16_t        peers_connected;
-    uint16_t        connections_accepted;
-    uint16_t        connections_rejected;
-    uint32_t        memory_used;
-    uint16_t        streams_active;
-    uint16_t        reserved;
-} PeerTalk_GlobalStats;
-
-/* ========================================================================== */
-/* Buffer Pool (Classic Mac Performance Optimization)                         */
-/* ========================================================================== */
-
-/**
- * Pre-allocated TCP receive buffer pool.
- *
- * CLASSIC MAC ONLY: On MacTCP/Open Transport, larger TCP receive buffers
- * significantly improve throughput due to the "25% threshold rule" - MacTCP
- * completes a receive when data reaches 25% of the buffer size:
- *   - 4KB buffer = receive completes at 1KB (many small receives)
- *   - 16KB buffer = receive completes at 4KB (4x better throughput)
- *   - 32KB buffer = receive completes at 8KB (optimal for large messages)
- *
- * However, MacTCP fragments the heap when it loads, leaving only ~10KB
- * contiguous blocks. To get larger buffers, allocate them at the VERY START
- * of main(), before MacTCP/Open Transport or PeerTalk initialize.
- *
- * Usage (Classic Mac only):
- * @code
- *   int main(void) {
- *       PeerTalk_BufferPool *pool;
- *       PeerTalk_Config config = {0};
- *       PeerTalk_Context *ctx;
- *
- *       // FIRST: Allocate buffers before anything fragments the heap
- *       pool = PeerTalk_AllocateBuffers(4, PT_TCP_BUF_16K);
- *       if (!pool) {
- *           // Fall back to smaller buffers or continue without
- *           pool = PeerTalk_AllocateBuffers(4, PT_TCP_BUF_8K);
- *       }
- *
- *       // Then initialize PeerTalk with the buffer pool
- *       strcpy(config.local_name, "MyApp");
- *       config.buffer_pool = pool;  // Pass pre-allocated buffers
- *       ctx = PeerTalk_Init(&config);
- *       // ...
- *   }
- * @endcode
- *
- * On POSIX systems, this is ignored - buffer allocation is not a bottleneck.
- */
-typedef struct PeerTalk_BufferPool PeerTalk_BufferPool;
-
-/**
- * Bootstrap PeerTalk at the very start of main().
- *
- * CRITICAL: Call this BEFORE any Toolbox initialization (InitGraf, InitFonts, etc.)!
- *
- * This function:
- *   1. Calls MaxApplZone() to maximize heap space
- *   2. Calls MoreMasters() to pre-allocate master pointers
- *   3. Allocates TCP receive buffers while heap is contiguous
- *
- * The allocated buffer pool is returned so you can pass it to PeerTalk_Init().
- *
- * Example usage:
- * @code
- *   int main(void) {
- *       PeerTalk_BufferPool *pool;
- *       PeerTalk_Config config = {0};
- *
- *       // FIRST LINE OF MAIN - before ANY toolbox init!
- *       pool = PeerTalk_Bootstrap(4);  // 4 peers
- *
- *       // Now safe to init toolbox
- *       InitGraf(&qd.thePort);
- *       InitFonts();
- *       InitWindows();
- *       // ...
- *
- *       // Configure PeerTalk with pre-allocated buffers
- *       config.buffer_pool = pool;
- *       config.max_peers = 4;
- *       ctx = PeerTalk_Init(&config);
- *   }
- * @endcode
- *
- * On POSIX, this is a no-op that returns NULL (use auto_buffers=1 in config).
- *
- * @param max_peers  Maximum number of simultaneous peers
- * @return Buffer pool handle, or NULL on POSIX/failure
- */
-PeerTalk_BufferPool *PeerTalk_Bootstrap(uint16_t max_peers);
-
-/**
- * Allocate TCP receive buffers at the earliest opportunity.
- *
- * CALL THIS FIRST in main(), before any other initialization.
- * Classic Mac heaps fragment quickly; this must run before MacTCP loads.
- *
- * @param count       Number of buffers (typically max_peers from config)
- * @param buffer_size Size of each buffer (use PT_TCP_BUF_* constants)
- * @return            Buffer pool handle, or NULL if allocation failed
- *
- * Recommended sizes:
- *   - PT_TCP_BUF_32K: High-throughput apps (file transfer) - needs ~128KB+ heap
- *   - PT_TCP_BUF_16K: Block-oriented apps (streaming) - needs ~64KB+ heap
- *   - PT_TCP_BUF_8K:  Interactive apps (chat) - needs ~32KB+ heap
- *   - PT_TCP_BUF_4K:  Low-memory fallback (Mac SE 4MB)
- *
- * If allocation fails, try a smaller buffer_size or count.
- */
-PeerTalk_BufferPool *PeerTalk_AllocateBuffers(uint16_t count, uint32_t buffer_size);
-
-/**
- * Allocate a buffer pool with automatic sizing based on available memory.
- *
- * Checks available RAM and automatically chooses the largest buffer size
- * that will fit. This is the recommended function for most applications.
- *
- * Sizing logic:
- *   - 8MB+ machine, plenty of RAM: 32KB buffers (best throughput)
- *   - 4-8MB machine: 16KB buffers (good throughput)
- *   - 4MB machine, tight: 8KB buffers (acceptable)
- *   - Very low memory: 4KB buffers (minimum)
- *
- * Example:
- *   pool = PeerTalk_AllocateBuffersAuto(4);  // Auto-detect best size for 4 peers
- *   if (pool) {
- *       uint32_t size;
- *       PeerTalk_GetBufferPoolInfo(pool, NULL, &size);
- *       printf("Allocated %luKB buffers\n", size/1024);
- *   }
- *
- * @param count  Number of buffers to allocate (should match max_peers)
- * @return Pool handle, or NULL if even minimum allocation failed
- */
-PeerTalk_BufferPool *PeerTalk_AllocateBuffersAuto(uint16_t count);
-
-/**
- * Free a buffer pool that was not passed to PeerTalk_Init.
- *
- * If you allocated a buffer pool but then decided not to use it (e.g., you're
- * creating multiple pools to find the right size), free unused pools with this.
- *
- * NOTE: Do NOT call this for a pool that was passed to PeerTalk_Init() -
- * PeerTalk_Shutdown() handles cleanup automatically.
- *
- * @param pool  Buffer pool to free (safe to pass NULL)
- */
-void PeerTalk_FreeBuffers(PeerTalk_BufferPool *pool);
-
-/**
- * Query buffer pool properties.
- *
- * Useful for logging what size buffers were successfully allocated.
- *
- * @param pool        Buffer pool handle
- * @param out_count   Receives number of buffers (may be NULL)
- * @param out_size    Receives size of each buffer (may be NULL)
- */
-void PeerTalk_GetBufferPoolInfo(const PeerTalk_BufferPool *pool,
-                                 uint16_t *out_count, uint32_t *out_size);
-
-/* ========================================================================== */
-/* Configuration                                                              */
-/* ========================================================================== */
-
-/**
- * Configuration structure
- *
- * Zero values use defaults:
- *   - transports: PT_TRANSPORT_ALL
- *   - ports: PT_DEFAULT_* constants
- *   - max_peers: PT_MAX_PEERS (16)
- *   - buffer sizes: auto (platform-dependent)
- *   - discovery_interval: 5000ms
- *   - peer_timeout: 15000ms
- *   - auto_accept: 1 (enabled)
- *   - auto_cleanup: 1 (enabled)
- *   - direct_buffer_size: 4096 (Tier 2 buffer)
- *   - max_message_size: 8192 (max supported)
- *   - preferred_chunk: 1024
- *   - enable_fragmentation: 1 (enabled)
- *
- * Two-Tier Message Queue:
- *   Messages <= 256 bytes use Tier 1 (pre-allocated queue slots)
- *   Messages > 256 bytes use Tier 2 (direct buffer, one per peer)
- *   If Tier 2 buffer is busy, PeerTalk_Send returns PT_ERR_WOULD_BLOCK
- *
- * Capability Negotiation:
- *   Peers exchange capabilities after TCP connection established.
- *   For messages exceeding peer's max, auto-fragment if enabled.
- */
-typedef struct {
-    /* Embedded name - eliminates pointer indirection */
-    char            local_name[PT_MAX_PEER_NAME + 1];   /* Required, max 31 chars + null */
-
-    /* 16-bit fields grouped together */
-    uint16_t        transports;             /* Bitmask: 0 = PT_TRANSPORT_ALL */
-    uint16_t        discovery_port;         /* 0 = 7353 */
-    uint16_t        tcp_port;               /* 0 = 7354 */
-    uint16_t        udp_port;               /* 0 = 7355 */
-    uint16_t        max_peers;              /* 0 = 16 */
-    uint16_t        recv_buffer_size;       /* 0 = auto */
-    uint16_t        send_buffer_size;       /* 0 = auto */
-    uint16_t        discovery_interval;     /* ms, 0 = 5000 */
-    uint16_t        peer_timeout;           /* ms, 0 = 15000 */
-    uint16_t        direct_buffer_size;     /* Tier 2 buffer size, 0 = 4096 (max 8192) */
-    uint16_t        max_message_size;       /* Max message we can handle, 0 = 8192 */
-    uint16_t        preferred_chunk;        /* Optimal chunk for streaming, 0 = 1024 */
-
-    /* 8-bit fields grouped together */
-    uint8_t         auto_accept;            /* Auto-accept connections, default = 1 */
-    uint8_t         auto_cleanup;           /* Auto-remove timed-out peers, default = 1 */
-    uint8_t         log_level;              /* 0=off, 1=err, 2=warn, 3=info, 4=debug */
-    uint8_t         enable_fragmentation;   /* Auto-fragment large messages, default = 1 */
-    uint8_t         auto_buffers;           /* Auto-allocate optimal buffers, default = 0 */
-
-    /* Flow control thresholds (0 = use defaults)
-     * These control when the SDK throttles sends based on peer-reported pressure.
-     * Default values tuned for Classic Mac ↔ POSIX peer communication. */
-    uint8_t         pressure_medium;        /* 0 = 50, light throttle threshold */
-    uint8_t         pressure_high;          /* 0 = 85, heavy throttle threshold */
-    uint8_t         pressure_critical;      /* 0 = 95, blocking threshold */
-    uint8_t         pressure_frag;          /* 0 = 75, pressure-triggered fragmentation */
-
-    /* Connection timeout (ms, 0 = default) */
-    uint16_t        connect_timeout;        /* ms, 0 = 30000 (MacTCP) */
-
-    /* Pre-allocated buffer pool (MacTCP optimization)
-     *
-     * Option 1: Manual allocation (best performance - allocate early)
-     *   pool = PeerTalk_AllocateBuffers(max_peers, PT_TCP_BUF_16K);
-     *   config.buffer_pool = pool;
-     *
-     * Option 2: Auto-allocation (convenient - SDK manages buffers)
-     *   config.auto_buffers = 1;  // SDK allocates optimal buffers
-     *
-     * The auto_buffers option allocates the largest possible buffers that
-     * fit in available memory during PeerTalk_Init(). This may be smaller
-     * than manual allocation at start of main() due to heap fragmentation.
-     *
-     * If both buffer_pool and auto_buffers are set, buffer_pool is used.
-     */
-    PeerTalk_BufferPool *buffer_pool;       /* Pre-allocated TCP buffers, or NULL */
-
-    /* Multi-transport configuration (Phase 6.7+)
-     *
-     * All fields default to sensible values when zero-initialized:
-     * - pref: PT_PREFER_TCP (0)
-     * - auto_merge_peers: 0 (disabled by default; set 1 to enable)
-     * - nbp_type: "" (defaults to "PeerTalk" in OT init)
-     * - nbp_zone: "" (defaults to "*" in OT init)
-     */
-    uint8_t         pref;                   /* PeerTalk_TransportPref (0 = PT_PREFER_TCP) */
-    uint8_t         auto_merge_peers;       /* Auto-merge same-named peers across transports */
-    char            nbp_type[33];           /* AppleTalk NBP type (empty = "PeerTalk") */
-    char            nbp_zone[33];           /* AppleTalk NBP zone (empty = "*") */
-} PeerTalk_Config;
-
-/* ========================================================================== */
-/* Callbacks                                                                  */
-/* ========================================================================== */
-
-/*
- * IMPORTANT: All callbacks are invoked from PeerTalk_Poll() which runs in the
- * MAIN EVENT LOOP, NOT from interrupt context. Therefore, callbacks MAY:
- *   - Allocate memory (NewPtr, malloc)
- *   - Call File Manager (FSRead, FSWrite)
- *   - Call PT_Log functions
- *   - Call any Toolbox routine
- *   - Block (though this delays other events)
- */
-
-/**
- * Peer discovered via broadcast
- */
-typedef void (*PeerTalk_PeerDiscoveredCB)(
-    PeerTalk_Context *ctx,
-    const PeerTalk_PeerInfo *peer,
-    void *user_data);
-
-/**
- * Peer lost (timeout or explicit removal)
- */
-typedef void (*PeerTalk_PeerLostCB)(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    void *user_data);
-
-/**
- * Peer connected successfully
- */
-typedef void (*PeerTalk_PeerConnectedCB)(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    void *user_data);
-
-/**
- * Peer disconnected
- */
-typedef void (*PeerTalk_PeerDisconnectedCB)(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    PeerTalk_Error reason,
-    void *user_data);
-
-/**
- * Single message received (TCP/reliable)
- */
-typedef void (*PeerTalk_MessageReceivedCB)(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID from_peer,
+typedef void (*PT_MessageCallback)(
+    PT_Peer *peer,
     const void *data,
-    uint16_t length,
-    void *user_data);
+    size_t len,
+    void *user_data
+);
 
-/**
- * Single UDP message received
- */
-typedef void (*PeerTalk_UDPReceivedCB)(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID from_peer,
-    uint32_t from_address,
-    uint16_t from_port,
-    const void *data,
-    uint16_t length,
-    void *user_data);
+typedef void (*PT_ErrorCallback)(
+    PT_Status error,
+    const char *description,
+    void *user_data
+);
 
-/**
- * Connection request received (return 1 to accept, 0 to reject)
- */
-typedef int (*PeerTalk_ConnectionRequestedCB)(
-    PeerTalk_Context *ctx,
-    const PeerTalk_PeerInfo *peer,
-    void *user_data);
+/* ------------------------------------------------------------------ */
+/* Lifecycle (2)                                                       */
+/* ------------------------------------------------------------------ */
 
-/**
- * Message send completed
- */
-typedef void (*PeerTalk_MessageSentCB)(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    uint32_t message_id,
-    PeerTalk_Error result,
-    void *user_data);
+PT_Status PT_Init(PT_Context **ctx, const char *name);
+void      PT_Shutdown(PT_Context *ctx);
 
-/**
- * Transport state change - new transport discovered for a peer
- */
-typedef void (*PeerTalk_TransportAddedCB)(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    uint16_t new_transport,
-    void *user_data);
+/* ------------------------------------------------------------------ */
+/* Discovery (2)                                                       */
+/* ------------------------------------------------------------------ */
 
-/**
- * Transport state change - transport lost for a peer
- */
-typedef void (*PeerTalk_TransportRemovedCB)(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    uint16_t removed_transport,
-    void *user_data);
+PT_Status PT_StartDiscovery(PT_Context *ctx);
+void      PT_StopDiscovery(PT_Context *ctx);
 
-/**
- * Peer merge notification - two peers merged into one
- */
-typedef void (*PeerTalk_PeersMergedCB)(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID kept_peer,
-    PeerTalk_PeerID merged_peer,
-    void *user_data);
+/* ------------------------------------------------------------------ */
+/* Connections (2)                                                     */
+/* ------------------------------------------------------------------ */
 
-/**
- * Batch message structure (for high-frequency messages)
- */
-typedef struct {
-    const void     *data;               /* Pointer first for alignment */
-    PeerTalk_PeerID from_peer;
-    uint16_t        length;
-} PeerTalk_MessageBatch;
+PT_Status PT_Connect(PT_Context *ctx, PT_Peer *peer);
+void      PT_Disconnect(PT_Context *ctx, PT_Peer *peer);
 
-/**
- * Batch UDP message structure
- */
-typedef struct {
-    const void     *data;               /* Pointer first for alignment */
-    uint32_t        from_address;
-    PeerTalk_PeerID from_peer;
-    uint16_t        from_port;
-    uint16_t        length;
-    uint16_t        reserved;           /* Explicit padding */
-} PeerTalk_UDPBatch;
+/* ------------------------------------------------------------------ */
+/* Messaging (3)                                                       */
+/* ------------------------------------------------------------------ */
 
-/**
- * Batch message callback (invoked once per poll with up to PT_MAX_BATCH_SIZE messages)
- */
-typedef void (*PeerTalk_MessageBatchCB)(
-    PeerTalk_Context *ctx,
-    const PeerTalk_MessageBatch *messages,
-    uint16_t count,
-    void *user_data);
+void      PT_RegisterMessage(PT_Context *ctx, unsigned char type,
+                             PT_Transport transport);
 
-/**
- * Batch UDP callback
- */
-typedef void (*PeerTalk_UDPBatchCB)(
-    PeerTalk_Context *ctx,
-    const PeerTalk_UDPBatch *messages,
-    uint16_t count,
-    void *user_data);
+PT_Status PT_Send(PT_Context *ctx, PT_Peer *peer,
+                  unsigned char type, const void *data, size_t len);
 
-/**
- * Stream transfer complete callback
- *
- * Called when a PeerTalk_StreamSend() operation completes (success or failure).
- * The data buffer passed to StreamSend can be freed after this callback.
- */
-typedef void (*PeerTalk_StreamCompleteCB)(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    uint32_t bytes_sent,
-    PeerTalk_Error result,
-    void *user_data);
+PT_Status PT_Broadcast(PT_Context *ctx, unsigned char type,
+                       const void *data, size_t len);
 
-/**
- * Callback structure
- *
- * Batch callbacks (on_message_batch, on_udp_batch) are preferred if set.
- * Per-event callbacks (on_message_received, on_udp_received) are used otherwise.
- */
-typedef struct {
-    /* Per-event callbacks */
-    PeerTalk_PeerDiscoveredCB       on_peer_discovered;
-    PeerTalk_PeerLostCB             on_peer_lost;
-    PeerTalk_PeerConnectedCB        on_peer_connected;
-    PeerTalk_PeerDisconnectedCB     on_peer_disconnected;
-    PeerTalk_MessageReceivedCB      on_message_received;
-    PeerTalk_UDPReceivedCB          on_udp_received;
-    PeerTalk_ConnectionRequestedCB  on_connection_requested;
-    PeerTalk_MessageSentCB          on_message_sent;
+/* ------------------------------------------------------------------ */
+/* Event loop (1)                                                      */
+/* ------------------------------------------------------------------ */
 
-    /* Batch callbacks (preferred if set) */
-    PeerTalk_MessageBatchCB         on_message_batch;
-    PeerTalk_UDPBatchCB             on_udp_batch;
+void PT_Poll(PT_Context *ctx);
 
-    /* Multi-transport callbacks (Phase 6.7+, NULL = not used) */
-    PeerTalk_TransportAddedCB       on_transport_added;
-    PeerTalk_TransportRemovedCB     on_transport_removed;
-    PeerTalk_PeersMergedCB          on_peers_merged;
+/* ------------------------------------------------------------------ */
+/* Callback registration (6)                                           */
+/* ------------------------------------------------------------------ */
 
-    void                           *user_data;
-} PeerTalk_Callbacks;
+void PT_OnPeerDiscovered(PT_Context *ctx, PT_PeerCallback cb,
+                         void *user_data);
 
-/* ========================================================================== */
-/* Lifecycle Functions                                                        */
-/* ========================================================================== */
+void PT_OnPeerLost(PT_Context *ctx, PT_PeerCallback cb,
+                   void *user_data);
 
-/**
- * Initialize PeerTalk with configuration
- *
- * Returns context handle on success, NULL on failure
- */
-PeerTalk_Context *PeerTalk_Init(const PeerTalk_Config *config);
+void PT_OnConnected(PT_Context *ctx, PT_PeerCallback cb,
+                    void *user_data);
 
-/**
- * Quick-start PeerTalk with sensible defaults (zero-config).
- *
- * This is the simplest way to initialize PeerTalk. It:
- *   - Sets up discovery, TCP, and UDP on default ports
- *   - Enables auto-buffer allocation (SDK manages memory)
- *   - Enables fragmentation for large messages
- *   - Configures optimal settings for the platform
- *
- * Example:
- * @code
- *   // POSIX - just call QuickStart
- *   PeerTalk_Context *ctx = PeerTalk_QuickStart("MyApp", 4, &callbacks);
- *
- *   // Classic Mac - call Bootstrap first for best performance
- *   PeerTalk_BufferPool *pool = PeerTalk_Bootstrap(4);
- *   init_toolbox();
- *   PeerTalk_Context *ctx = PeerTalk_QuickStartWithPool("MyApp", pool, &callbacks);
- * @endcode
- *
- * @param name       Local peer name (max 31 chars)
- * @param max_peers  Maximum simultaneous peers (1-16)
- * @param callbacks  Event callbacks (on_message, on_peer_connected, etc.)
- * @return Context handle on success, NULL on failure
- */
-PeerTalk_Context *PeerTalk_QuickStart(
-    const char *name,
-    uint16_t max_peers,
-    const PeerTalk_Callbacks *callbacks);
+void PT_OnDisconnected(PT_Context *ctx, PT_DisconnectCallback cb,
+                       void *user_data);
 
-/**
- * Quick-start PeerTalk with a pre-allocated buffer pool.
- *
- * Use this on Classic Mac after calling PeerTalk_Bootstrap() at the
- * very start of main(). This gives the best performance because
- * buffers are allocated before heap fragmentation.
- *
- * @param name       Local peer name (max 31 chars)
- * @param max_peers  Maximum simultaneous peers (1-16)
- * @param pool       Buffer pool from PeerTalk_Bootstrap() or PeerTalk_AllocateBuffers()
- * @param callbacks  Event callbacks
- * @return Context handle on success, NULL on failure
- */
-PeerTalk_Context *PeerTalk_QuickStartWithPool(
-    const char *name,
-    uint16_t max_peers,
-    PeerTalk_BufferPool *pool,
-    const PeerTalk_Callbacks *callbacks);
+void PT_OnMessage(PT_Context *ctx, unsigned char type,
+                  PT_MessageCallback cb, void *user_data);
 
-/**
- * Shutdown PeerTalk and free resources
- */
-void PeerTalk_Shutdown(PeerTalk_Context *ctx);
+void PT_OnError(PT_Context *ctx, PT_ErrorCallback cb,
+                void *user_data);
 
-/**
- * Poll for network events and invoke callbacks
- *
- * Should be called frequently from main event loop (e.g., 60Hz)
- */
-PeerTalk_Error PeerTalk_Poll(PeerTalk_Context *ctx);
+/* ------------------------------------------------------------------ */
+/* Configuration (1)                                                   */
+/* ------------------------------------------------------------------ */
 
-/**
- * Fast poll - TCP I/O only, skipping discovery and periodic tasks
- *
- * Use this in tight game loops where you need maximum throughput.
- * PollFast only performs:
- * - TCP send queue drain for connected peers
- * - TCP receive for connected peers
- *
- * PollFast does NOT:
- * - Poll discovery socket (UDP broadcast)
- * - Poll UDP message socket
- * - Poll listen socket for new connections
- * - Send periodic discovery announces
- * - Check peer timeouts
- *
- * Call PeerTalk_Poll() periodically (e.g., every 10-15 frames) to
- * handle discovery, new connections, and peer maintenance.
- */
-PeerTalk_Error PeerTalk_PollFast(PeerTalk_Context *ctx);
+PT_Status PT_SetName(PT_Context *ctx, const char *name);
 
-/**
- * Set callbacks
- */
-PeerTalk_Error PeerTalk_SetCallbacks(
-    PeerTalk_Context *ctx,
-    const PeerTalk_Callbacks *callbacks);
+/* ------------------------------------------------------------------ */
+/* Peer info (4)                                                       */
+/* ------------------------------------------------------------------ */
 
-/* ========================================================================== */
-/* Discovery Functions                                                        */
-/* ========================================================================== */
-
-/**
- * Start discovery broadcasts
- */
-PeerTalk_Error PeerTalk_StartDiscovery(PeerTalk_Context *ctx);
-
-/**
- * Stop discovery broadcasts
- */
-PeerTalk_Error PeerTalk_StopDiscovery(PeerTalk_Context *ctx);
-
-/**
- * Get list of discovered peers
- *
- * Returns PT_OK on success, fills out_count with actual peer count
- */
-PeerTalk_Error PeerTalk_GetPeers(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerInfo *peers,
-    uint16_t max_peers,
-    uint16_t *out_count);
-
-/**
- * Get peer list version (increments when peers added/removed)
- *
- * Allows detecting changes without copying entire peer list
- */
-uint32_t PeerTalk_GetPeersVersion(PeerTalk_Context *ctx);
-
-/* ========================================================================== */
-/* Peer Lookup Functions                                                      */
-/* ========================================================================== */
-
-/**
- * Get peer info by ID (returns pointer to internal structure, valid until next Poll)
- *
- * Returns NULL if peer not found
- */
-const PeerTalk_PeerInfo *PeerTalk_GetPeerByID(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id);
-
-/**
- * Get peer info by ID (copies to caller-provided structure)
- */
-PeerTalk_Error PeerTalk_GetPeer(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    PeerTalk_PeerInfo *info);
-
-/**
- * Get peer name by name index
- */
-const char *PeerTalk_GetPeerName(PeerTalk_Context *ctx, uint8_t name_idx);
-
-/**
- * Find peer by name
- *
- * Returns peer ID if found, 0 if not found
- */
-PeerTalk_PeerID PeerTalk_FindPeerByName(
-    PeerTalk_Context *ctx,
-    const char *name,
-    PeerTalk_PeerInfo *info);
-
-/**
- * Find peer by address
- *
- * Returns peer ID if found, 0 if not found
- */
-PeerTalk_PeerID PeerTalk_FindPeerByAddress(
-    PeerTalk_Context *ctx,
-    uint32_t address,
-    uint16_t port,
-    PeerTalk_PeerInfo *info);
-
-/**
- * Get all addresses for a multi-transport peer
- *
- * Returns number of addresses filled (may be less than max_addresses)
- */
-int PeerTalk_GetPeerAddresses(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    PeerTalk_Address *addresses,
-    int max_addresses);
-
-/* ========================================================================== */
-/* Connection Functions                                                       */
-/* ========================================================================== */
-
-/**
- * Connect to discovered peer (uses preferred transport)
- */
-PeerTalk_Error PeerTalk_Connect(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id);
-
-/**
- * Connect via specific transport
- */
-PeerTalk_Error PeerTalk_ConnectVia(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    uint16_t transport);
-
-/**
- * Set transport preference for a specific peer
- */
-PeerTalk_Error PeerTalk_SetPeerTransportPref(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    PeerTalk_TransportPref pref);
-
-/**
- * Reconnect via alternate transport (if available)
- *
- * Disconnects from current transport and connects via the specified one.
- * Useful for transport failover when preferred transport goes down.
- */
-PeerTalk_Error PeerTalk_ReconnectVia(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    uint16_t transport);
-
-/**
- * Disconnect from peer
- */
-PeerTalk_Error PeerTalk_Disconnect(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id);
-
-/**
- * Reject incoming connection
- */
-PeerTalk_Error PeerTalk_RejectConnection(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    PeerTalk_RejectReason reason);
-
-/* ========================================================================== */
-/* Listen Control                                                             */
-/* ========================================================================== */
-
-/**
- * Start listening for incoming connections
- */
-PeerTalk_Error PeerTalk_StartListening(PeerTalk_Context *ctx);
-
-/**
- * Stop listening for incoming connections
- */
-PeerTalk_Error PeerTalk_StopListening(PeerTalk_Context *ctx);
-
-/**
- * Check if listening
- */
-int PeerTalk_IsListening(PeerTalk_Context *ctx);
-
-/**
- * Get listen port for transport
- */
-uint16_t PeerTalk_GetListenPort(PeerTalk_Context *ctx, uint16_t transport);
-
-/* ========================================================================== */
-/* Messaging Functions (TCP/Reliable)                                        */
-/* ========================================================================== */
-
-/**
- * Send message to peer (reliable TCP/ADSP)
- */
-PeerTalk_Error PeerTalk_Send(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    const void *data,
-    uint16_t length);
-
-/**
- * Send with priority and flags
- */
-PeerTalk_Error PeerTalk_SendEx(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    const void *data,
-    uint16_t length,
-    uint8_t priority,
-    uint8_t flags,
-    uint16_t coalesce_key);
-
-/**
- * Send via specific transport
- */
-PeerTalk_Error PeerTalk_SendVia(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    const void *data,
-    uint16_t length,
-    uint16_t transport,
-    uint8_t priority,
-    uint8_t flags,
-    uint16_t coalesce_key);
-
-/**
- * Send with message ID tracking (for on_message_sent callback)
- */
-PeerTalk_Error PeerTalk_SendTracked(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    const void *data,
-    uint16_t length,
-    uint32_t *out_message_id);
-
-/**
- * Broadcast to all connected peers
- */
-PeerTalk_Error PeerTalk_Broadcast(
-    PeerTalk_Context *ctx,
-    const void *data,
-    uint16_t length);
-
-/* ========================================================================== */
-/* Messaging Functions (UDP/Unreliable)                                      */
-/* ========================================================================== */
-
-/**
- * Send unreliable UDP message to peer
- */
-PeerTalk_Error PeerTalk_SendUDP(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    const void *data,
-    uint16_t length);
-
-/**
- * Broadcast unreliable UDP to all peers
- */
-PeerTalk_Error PeerTalk_BroadcastUDP(
-    PeerTalk_Context *ctx,
-    const void *data,
-    uint16_t length);
-
-/**
- * Send UDP message with zero-queue semantics (fast path)
- *
- * Identical to PeerTalk_SendUDP() but explicitly documented as
- * having no queuing - messages go directly to the network stack.
- * Supports larger payloads up to PT_MAX_UDP_MESSAGE_SIZE (1400 bytes).
- *
- * Use for game state updates, position packets, and other time-sensitive
- * data where occasional packet loss is acceptable.
- */
-PeerTalk_Error PeerTalk_SendUDPFast(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    const void *data,
-    uint16_t length);
-
-/* ========================================================================== */
-/* Streaming Functions                                                        */
-/* ========================================================================== */
-
-/**
- * Maximum stream transfer size (64KB)
- */
-#define PT_MAX_STREAM_SIZE  65536
-
-/**
- * Stream send - transfer large data bypassing queues
- *
- * Sends data larger than PT_MAX_MESSAGE_SIZE by streaming directly
- * to the TCP connection, bypassing the normal message queue.
- * Only one stream can be active per peer at a time.
- *
- * The data buffer must remain valid until the on_complete callback
- * is invoked. The callback is called from PeerTalk_Poll().
- *
- * Use this for:
- * - Log file transfers
- * - Large state synchronization
- * - File transfers up to 64KB
- *
- * @param ctx         PeerTalk context
- * @param peer_id     Target peer (must be connected)
- * @param data        Data to send (must remain valid until callback)
- * @param length      Data length (1 to PT_MAX_STREAM_SIZE)
- * @param on_complete Callback when transfer completes (can be NULL)
- * @param user_data   User data passed to callback
- *
- * @return PT_OK if streaming started, PT_ERR_* on failure
- *         PT_ERR_BUSY if another stream is in progress
- */
-PeerTalk_Error PeerTalk_StreamSend(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    const void *data,
-    uint32_t length,
-    PeerTalk_StreamCompleteCB on_complete,
-    void *user_data);
-
-/**
- * Cancel an active stream transfer
- *
- * Aborts an in-progress stream. The on_complete callback will be
- * invoked with PT_ERR_CANCELLED.
- *
- * @param ctx      PeerTalk context
- * @param peer_id  Peer with active stream
- *
- * @return PT_OK if cancelled, PT_ERR_NOT_FOUND if no active stream
- */
-PeerTalk_Error PeerTalk_StreamCancel(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id);
-
-/**
- * Check if a stream is in progress for a peer
- *
- * @param ctx      PeerTalk context
- * @param peer_id  Peer to check
- *
- * @return 1 if streaming, 0 if not
- */
-int PeerTalk_StreamActive(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id);
-
-/* ========================================================================== */
-/* Queue Status                                                               */
-/* ========================================================================== */
-
-/**
- * Get send queue status for peer
- */
-PeerTalk_Error PeerTalk_GetQueueStatus(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    uint16_t *out_pending,
-    uint16_t *out_available);
-
-/* ========================================================================== */
-/* Multi-Transport Peer Management                                           */
-/* ========================================================================== */
-
-/**
- * Get peers filtered by transport
- *
- * Returns only peers reachable via the specified transport(s).
- * Pass PT_TRANSPORT_ALL to get all peers (same as PeerTalk_GetPeers).
- */
-PeerTalk_Error PeerTalk_GetPeersByTransport(
-    PeerTalk_Context *ctx,
-    uint16_t transport_mask,
-    PeerTalk_PeerInfo *peers,
-    uint16_t max_peers,
-    uint16_t *out_count);
-
-/**
- * Check which transports can reach a peer
- *
- * Returns bitmask of PT_TRANSPORT_* flags for available transports.
- * Returns 0 if peer not found.
- */
-uint16_t PeerTalk_GetPeerTransports(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id);
-
-/**
- * Manually merge two peers that represent the same physical machine
- *
- * If the SDK doesn't auto-detect that two discovery entries are the same
- * Mac (e.g., found via both UDP and NBP), the application can merge them.
- * The kept peer inherits all transports from the merged peer.
- *
- * @param keep_peer   Peer to keep (receives merged transports)
- * @param merge_peer  Peer to merge (will be removed)
- */
-PeerTalk_Error PeerTalk_MergePeers(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID keep_peer,
-    PeerTalk_PeerID merge_peer);
-
-/**
- * Remove peer from list (all transports)
- *
- * Disconnects if connected, then removes the peer entirely.
- */
-PeerTalk_Error PeerTalk_RemovePeer(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id);
-
-/**
- * Remove peer from specific transport only
- *
- * If the peer has other transports remaining, it stays in the peer list.
- * If this was the last transport, the peer is removed entirely.
- */
-PeerTalk_Error PeerTalk_RemovePeerTransport(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    uint16_t transport);
-
-/* ========================================================================== */
-/* Statistics                                                                 */
-/* ========================================================================== */
-
-/**
- * Get per-peer statistics
- */
-PeerTalk_Error PeerTalk_GetPeerStats(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    PeerTalk_PeerStats *stats);
-
-/**
- * Get global statistics
- */
-PeerTalk_Error PeerTalk_GetGlobalStats(
-    PeerTalk_Context *ctx,
-    PeerTalk_GlobalStats *stats);
-
-/**
- * Reset statistics for peer (or all peers if peer_id == 0)
- */
-PeerTalk_Error PeerTalk_ResetStats(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id);
-
-/* ========================================================================== */
-/* Peer Flags                                                                 */
-/* ========================================================================== */
-
-/**
- * Set local peer flags
- */
-PeerTalk_Error PeerTalk_SetFlags(PeerTalk_Context *ctx, uint16_t flags);
-
-/**
- * Get local peer flags
- */
-uint16_t PeerTalk_GetFlags(PeerTalk_Context *ctx);
-
-/**
- * Modify local peer flags (set and clear in one operation)
- */
-PeerTalk_Error PeerTalk_ModifyFlags(
-    PeerTalk_Context *ctx,
-    uint16_t set_flags,
-    uint16_t clear_flags);
-
-/* ========================================================================== */
-/* Utility Functions                                                          */
-/* ========================================================================== */
-
-/**
- * Get local peer info
- */
-PeerTalk_Error PeerTalk_GetLocalInfo(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerInfo *out_info);
-
-/**
- * Get the library's internal logger for configuration.
- * Allows apps to configure log level, output, and file.
- * Returns NULL if logging not initialized.
- */
-PT_Log *PeerTalk_GetLog(PeerTalk_Context *ctx);
-
-/* ========================================================================== */
-/* Capability Negotiation                                                     */
-/* ========================================================================== */
-
-/**
- * Negotiated peer capabilities
- *
- * Exchanged after TCP connection established. Use this to understand
- * peer constraints (e.g., Mac SE with 4MB vs Performa with 8MB).
- *
- * For Classic Mac peers, optimal_chunk is critical for throughput:
- * - MacTCP completes a receive when buffer reaches 25% full
- * - optimal_chunk = recv_buffer_size / 4 (the 25% threshold)
- * - Sending at optimal_chunk size maximizes receive efficiency
- *
- * Example: Mac with 32KB receive buffer -> optimal_chunk = 8KB
- * Sending 8KB messages triggers receive completions efficiently.
- */
-typedef struct {
-    uint16_t        max_message_size;       /* Effective negotiated max */
-    uint16_t        preferred_chunk;        /* Peer's preferred chunk size */
-    uint16_t        capability_flags;       /* Peer's PT_CAPFLAG_* */
-    uint16_t        recv_buffer_size;       /* Peer's TCP receive buffer size */
-    uint16_t        optimal_chunk;          /* 25% of recv_buffer (ideal send size) */
-    uint8_t         buffer_pressure;        /* Peer's constraint level 0-100 */
-    uint8_t         fragmentation_active;   /* 1 if auto-frag enabled for this peer */
-} PeerTalk_Capabilities;
-
-/**
- * Get negotiated capabilities for a peer
- *
- * Returns information about peer's constraints and negotiated parameters.
- * Useful for adapting message sizes to peer capabilities.
- *
- * Args:
- *   ctx     - PeerTalk context
- *   peer_id - Peer to query
- *   caps    - Output capability structure
- *
- * Returns: PT_OK on success, PT_ERR_PEER_NOT_FOUND if peer doesn't exist
- */
-PeerTalk_Error PeerTalk_GetPeerCapabilities(
-    PeerTalk_Context *ctx,
-    PeerTalk_PeerID peer_id,
-    PeerTalk_Capabilities *caps);
-
-/**
- * Get effective max message size for a peer
- *
- * Quick accessor for the negotiated maximum message size.
- * Returns min(our_max, peer_max) for connected peers.
- *
- * Args:
- *   ctx     - PeerTalk context
- *   peer_id - Peer to query
- *
- * Returns: Effective max message size, or 0 if peer not found
- */
-uint16_t PeerTalk_GetPeerMaxMessage(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id);
-
-/**
- * Get optimal send chunk size for a peer
- *
- * Returns the ideal message size for sending to this peer. For Classic Mac
- * peers, this is 25% of their receive buffer (the MacTCP completion threshold).
- * Sending at this size maximizes receive throughput.
- *
- * For best throughput to a Mac peer:
- *   - Use this size for bulk data transfers
- *   - Or fragment larger messages to this chunk size
- *
- * Example:
- *   uint16_t chunk = PeerTalk_GetPeerOptimalChunk(ctx, peer_id);
- *   for (offset = 0; offset < data_len; offset += chunk) {
- *       PeerTalk_Send(ctx, peer_id, data + offset, min(chunk, data_len - offset));
- *   }
- *
- * Args:
- *   ctx     - PeerTalk context
- *   peer_id - Peer to query
- *
- * Returns: Optimal chunk size in bytes, or 1024 (default) if unknown/error
- */
-uint16_t PeerTalk_GetPeerOptimalChunk(PeerTalk_Context *ctx, PeerTalk_PeerID peer_id);
+int              PT_GetPeerCount(PT_Context *ctx);
+PT_Peer         *PT_GetPeer(PT_Context *ctx, int index);
+const char      *PT_PeerName(PT_Peer *peer);
+PT_PeerState     PT_GetPeerState(PT_Peer *peer);
 
 #ifdef __cplusplus
 }

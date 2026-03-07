@@ -1,0 +1,911 @@
+/*
+ * pt_mactcp.c -- MacTCP platform backend
+ *
+ * Async parameter blocks + polling. ioCompletion=NULL on all PBs.
+ * ASR sets volatile flags only; processing happens in poll.
+ *
+ * Targets 68k Macs with System 6.0.8 - 7.5.5.
+ */
+
+#include "pt_internal.h"
+
+#ifdef PT_PLATFORM_MACTCP
+
+#include <MacTCP.h>
+#include <Devices.h>
+#include <Memory.h>
+
+/* ------------------------------------------------------------------ */
+/* Constants                                                           */
+/* ------------------------------------------------------------------ */
+
+#define MACTCP_DRIVER_NAME  "\p.IPP"
+#define TCP_BUF_SIZE        8192
+#define UDP_BUF_SIZE        2048
+#define MAX_TCP_STREAMS     32
+
+/* Stream states */
+#define STREAM_FREE         0
+#define STREAM_LISTENING    1
+#define STREAM_CONNECTING   2
+#define STREAM_CONNECTED    3
+
+/* ASR flag bits */
+#define FLAG_DATA_AVAIL     0x01
+#define FLAG_REMOTE_CLOSE   0x02
+#define FLAG_TERMINATED     0x04
+
+/* UDP_FLAG_DATA removed (T127): poll checks read_pending/ioResult,
+   not flags. UDPDataArrival rarely fires when UDPRead outstanding. */
+
+/* ------------------------------------------------------------------ */
+/* Per-stream state                                                    */
+/* ------------------------------------------------------------------ */
+
+typedef struct {
+    StreamPtr   stream;
+    TCPiopb     send_pb;
+    TCPiopb     open_pb;
+    Ptr         buffer;
+    wdsEntry    wds[3];
+    volatile unsigned char flags;
+    int         state;
+    int         send_pending;
+} TCPStreamSlot;
+
+typedef struct {
+    StreamPtr   stream;
+    UDPiopb     read_pb;
+    Ptr         buffer;
+    int         read_pending;
+} UDPStreamSlot;
+
+/* ------------------------------------------------------------------ */
+/* Platform state                                                      */
+/* ------------------------------------------------------------------ */
+
+typedef struct {
+    short         driver_ref;
+    ip_addr       local_ip;
+
+    TCPStreamSlot tcp_streams[MAX_TCP_STREAMS];
+    int           listen_active;
+
+    UDPStreamSlot discovery_udp;
+    UDPStreamSlot message_udp;
+
+    TCPNotifyUPP  tcp_upp;
+    UDPNotifyUPP  udp_upp;
+} MacTCPState;
+
+static MacTCPState g_mactcp;
+
+/* ------------------------------------------------------------------ */
+/* ASR callbacks (interrupt time -- set flags only)                     */
+/* ------------------------------------------------------------------ */
+
+static pascal void tcp_asr(StreamPtr stream, unsigned short event,
+                           Ptr userDataPtr, unsigned short terminReason,
+                           ICMPReport *icmpMsg)
+{
+    TCPStreamSlot *ts = (TCPStreamSlot *)userDataPtr;
+    (void)stream; (void)terminReason; (void)icmpMsg;
+
+    switch (event) {
+    case TCPDataArrival:
+        ts->flags |= FLAG_DATA_AVAIL;
+        break;
+    case TCPClosing:
+        ts->flags |= FLAG_REMOTE_CLOSE;
+        break;
+    case TCPTerminate:
+        ts->flags |= FLAG_TERMINATED;
+        break;
+    }
+}
+
+static pascal void udp_asr(StreamPtr stream, unsigned short event,
+                           Ptr userDataPtr, ICMPReport *icmpMsg)
+{
+    /* T127: udp_asr is a no-op. Poll checks read_pending/ioResult
+       directly. UDPDataArrival rarely fires when UDPRead outstanding. */
+    (void)stream; (void)event; (void)userDataPtr; (void)icmpMsg;
+}
+
+/* ------------------------------------------------------------------ */
+/* Helpers                                                             */
+/* ------------------------------------------------------------------ */
+
+static OSErr open_mactcp_driver(short *refNum)
+{
+    ParamBlockRec pb;
+    OSErr err;
+
+    memset(&pb, 0, sizeof(pb));
+    pb.ioParam.ioNamePtr = MACTCP_DRIVER_NAME;
+    pb.ioParam.ioPermssn = fsCurPerm;
+
+    err = PBOpenSync(&pb);
+    if (err != noErr) return err;
+
+    *refNum = pb.ioParam.ioRefNum;
+    return noErr;
+}
+
+static ip_addr get_my_ip(short driverRef)
+{
+    GetAddrParamBlock pb;
+    OSErr err;
+
+    memset(&pb, 0, sizeof(pb));
+    pb.ioCRefNum = driverRef;
+    pb.csCode = ipctlGetAddr;
+    pb.ioCompletion = NULL;
+
+    err = PBControlSync((ParmBlkPtr)&pb);
+    if (err != noErr) return 0;
+
+    return pb.ourAddress;
+}
+
+static StreamPtr create_tcp_stream(short driverRef, Ptr buffer,
+                                   unsigned long bufLen,
+                                   TCPNotifyUPP notifyProc,
+                                   Ptr userData)
+{
+    TCPiopb pb;
+    OSErr err;
+
+    memset(&pb, 0, sizeof(pb));
+    pb.ioCRefNum = driverRef;
+    pb.csCode = TCPCreate;
+    pb.csParam.create.rcvBuff = buffer;
+    pb.csParam.create.rcvBuffLen = bufLen;
+    pb.csParam.create.notifyProc = notifyProc;
+    pb.csParam.create.userDataPtr = userData;
+
+    err = PBControlSync((ParmBlkPtr)&pb);
+    if (err != noErr) return 0;
+
+    return pb.tcpStream;
+}
+
+static StreamPtr create_udp_stream(short driverRef, Ptr buffer,
+                                   unsigned long bufLen,
+                                   UDPNotifyUPP notifyProc,
+                                   Ptr userData,
+                                   unsigned short localPort)
+{
+    UDPiopb pb;
+    OSErr err;
+
+    memset(&pb, 0, sizeof(pb));
+    pb.ioCRefNum = driverRef;
+    pb.csCode = UDPCreate;
+    pb.csParam.create.rcvBuff = buffer;
+    pb.csParam.create.rcvBuffLen = bufLen;
+    pb.csParam.create.notifyProc = notifyProc;
+    pb.csParam.create.localPort = localPort;
+    pb.csParam.create.userDataPtr = userData;
+
+    err = PBControlSync((ParmBlkPtr)&pb);
+    if (err != noErr) return 0;
+
+    return pb.udpStream;
+}
+
+static int find_free_stream(void)
+{
+    int i;
+    for (i = 0; i < MAX_TCP_STREAMS; i++) {
+        if (g_mactcp.tcp_streams[i].stream &&
+            g_mactcp.tcp_streams[i].state == STREAM_FREE) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static void abort_stream(int idx)
+{
+    TCPiopb pb;
+    TCPStreamSlot *ts = &g_mactcp.tcp_streams[idx];
+
+    memset(&pb, 0, sizeof(pb));
+    pb.ioCRefNum = g_mactcp.driver_ref;
+    pb.tcpStream = ts->stream;
+    pb.csCode = TCPAbort;
+    PBControlSync((ParmBlkPtr)&pb);
+
+    ts->flags = 0;
+    ts->send_pending = 0;
+    ts->state = STREAM_FREE;
+}
+
+static void issue_passive_open(int idx, short driverRef,
+                               tcp_port localPort)
+{
+    TCPStreamSlot *ts = &g_mactcp.tcp_streams[idx];
+
+    memset(&ts->open_pb, 0, sizeof(ts->open_pb));
+    ts->open_pb.ioCRefNum = driverRef;
+    ts->open_pb.tcpStream = ts->stream;
+    ts->open_pb.csCode = TCPPassiveOpen;
+    ts->open_pb.csParam.open.localPort = localPort;
+    ts->open_pb.csParam.open.remoteHost = 0;
+    ts->open_pb.csParam.open.remotePort = 0;
+    ts->open_pb.csParam.open.commandTimeoutValue = 0;
+    ts->open_pb.ioCompletion = NULL;
+
+    PBControlAsync((ParmBlkPtr)&ts->open_pb);
+    ts->state = STREAM_LISTENING;
+}
+
+static void re_listen(void)
+{
+    int idx;
+    if (!g_mactcp.listen_active) return;
+
+    idx = find_free_stream();
+    if (idx >= 0) {
+        issue_passive_open(idx, g_mactcp.driver_ref, PT_TCP_PORT);
+    }
+}
+
+static void issue_udp_read(UDPStreamSlot *us, short driverRef)
+{
+    memset(&us->read_pb, 0, sizeof(us->read_pb));
+    us->read_pb.ioCRefNum = driverRef;
+    us->read_pb.udpStream = us->stream;
+    us->read_pb.csCode = UDPRead;
+    us->read_pb.csParam.receive.timeOut = 0;
+    us->read_pb.ioCompletion = NULL;
+
+    PBControlAsync((ParmBlkPtr)&us->read_pb);
+    us->read_pending = 1;
+}
+
+/* Find the peer that owns a specific TCP stream slot */
+static PT_Peer_Internal *find_peer_for_stream(PT_Context_Internal *ctx,
+                                              TCPStreamSlot *ts)
+{
+    int j;
+    for (j = 0; j < ctx->max_peers; j++) {
+        if (ctx->peers[j].in_use &&
+            ctx->peers[j].platform_peer.tcp_stream == ts) {
+            return &ctx->peers[j];
+        }
+    }
+    return NULL;
+}
+
+/* ------------------------------------------------------------------ */
+/* PT_PlatformOps implementation                                       */
+/* ------------------------------------------------------------------ */
+
+static PT_Status mactcp_init(PT_Context_Internal *ctx)
+{
+    int i;
+    int count;
+    OSErr err;
+
+    memset(&g_mactcp, 0, sizeof(g_mactcp));
+
+    /* Open MacTCP driver */
+    err = open_mactcp_driver(&g_mactcp.driver_ref);
+    if (err != noErr) {
+        CLOG_ERR("Failed to open MacTCP driver: %d", (int)err);
+        return PT_ERR_INIT;
+    }
+
+    /* Get local IP */
+    g_mactcp.local_ip = get_my_ip(g_mactcp.driver_ref);
+    if (g_mactcp.local_ip == 0) {
+        CLOG_ERR("Failed to get local IP");
+        return PT_ERR_INIT;
+    }
+    ctx->local_ip = g_mactcp.local_ip;
+
+    /* Create UPPs */
+    g_mactcp.tcp_upp = NewTCPNotifyUPP(tcp_asr);
+    g_mactcp.udp_upp = NewUDPNotifyUPP(udp_asr);
+    if (!g_mactcp.tcp_upp || !g_mactcp.udp_upp) {
+        CLOG_ERR("Failed to create UPPs (OOM)");
+        return PT_ERR_INIT;
+    }
+
+    /* Create TCP stream pool (one per peer slot) */
+    count = ctx->max_peers;
+    if (count > MAX_TCP_STREAMS) count = MAX_TCP_STREAMS;
+    for (i = 0; i < count; i++) {
+        g_mactcp.tcp_streams[i].buffer = NewPtrClear(TCP_BUF_SIZE);
+        if (!g_mactcp.tcp_streams[i].buffer) break;
+        g_mactcp.tcp_streams[i].stream = create_tcp_stream(
+            g_mactcp.driver_ref,
+            g_mactcp.tcp_streams[i].buffer,
+            TCP_BUF_SIZE, g_mactcp.tcp_upp,
+            (Ptr)&g_mactcp.tcp_streams[i]);
+        if (!g_mactcp.tcp_streams[i].stream) break;
+        g_mactcp.tcp_streams[i].state = STREAM_FREE;
+    }
+
+    /* Create UDP discovery stream (port 7353) */
+    g_mactcp.discovery_udp.buffer = NewPtrClear(UDP_BUF_SIZE);
+    if (!g_mactcp.discovery_udp.buffer) return PT_ERR_INIT;
+    g_mactcp.discovery_udp.stream = create_udp_stream(
+        g_mactcp.driver_ref, g_mactcp.discovery_udp.buffer,
+        UDP_BUF_SIZE, g_mactcp.udp_upp,
+        (Ptr)&g_mactcp.discovery_udp,
+        PT_DISCOVERY_PORT);
+    if (!g_mactcp.discovery_udp.stream) return PT_ERR_INIT;
+
+    /* Create UDP message stream (port 7355) */
+    g_mactcp.message_udp.buffer = NewPtrClear(UDP_BUF_SIZE);
+    if (!g_mactcp.message_udp.buffer) return PT_ERR_INIT;
+    g_mactcp.message_udp.stream = create_udp_stream(
+        g_mactcp.driver_ref, g_mactcp.message_udp.buffer,
+        UDP_BUF_SIZE, g_mactcp.udp_upp,
+        (Ptr)&g_mactcp.message_udp,
+        PT_UDP_MSG_PORT);
+    if (!g_mactcp.message_udp.stream) return PT_ERR_INIT;
+
+    ctx->platform_state = &g_mactcp;
+
+    CLOG_INFO("MacTCP initialized (IP: %lu.%lu.%lu.%lu)",
+              (g_mactcp.local_ip >> 24) & 0xFF,
+              (g_mactcp.local_ip >> 16) & 0xFF,
+              (g_mactcp.local_ip >> 8) & 0xFF,
+              g_mactcp.local_ip & 0xFF);
+
+    return PT_OK;
+}
+
+static void mactcp_shutdown(PT_Context_Internal *ctx)
+{
+    int i;
+    TCPiopb pb;
+    UDPiopb upb;
+
+    /* Abort and release all TCP streams */
+    for (i = 0; i < MAX_TCP_STREAMS; i++) {
+        if (g_mactcp.tcp_streams[i].stream) {
+            memset(&pb, 0, sizeof(pb));
+            pb.ioCRefNum = g_mactcp.driver_ref;
+            pb.tcpStream = g_mactcp.tcp_streams[i].stream;
+            pb.csCode = TCPAbort;
+            PBControlSync((ParmBlkPtr)&pb);
+
+            memset(&pb, 0, sizeof(pb));
+            pb.ioCRefNum = g_mactcp.driver_ref;
+            pb.tcpStream = g_mactcp.tcp_streams[i].stream;
+            pb.csCode = TCPRelease;
+            PBControlSync((ParmBlkPtr)&pb);
+        }
+        if (g_mactcp.tcp_streams[i].buffer) {
+            DisposePtr(g_mactcp.tcp_streams[i].buffer);
+        }
+    }
+
+    /* Release UDP streams — spin-wait for pending reads (T125) */
+    if (g_mactcp.discovery_udp.stream) {
+        memset(&upb, 0, sizeof(upb));
+        upb.ioCRefNum = g_mactcp.driver_ref;
+        upb.udpStream = g_mactcp.discovery_udp.stream;
+        upb.csCode = UDPRelease;
+        PBControlSync((ParmBlkPtr)&upb);
+    }
+    /* Wait for pending UDPRead to complete before freeing buffer */
+    if (g_mactcp.discovery_udp.read_pending) {
+        long timeout_ticks = TickCount() + 120; /* 2 second timeout */
+        while (g_mactcp.discovery_udp.read_pb.ioResult == inProgress &&
+               TickCount() < timeout_ticks) {
+            /* spin */
+        }
+        g_mactcp.discovery_udp.read_pending = 0;
+    }
+    if (g_mactcp.discovery_udp.buffer) {
+        DisposePtr(g_mactcp.discovery_udp.buffer);
+    }
+
+    if (g_mactcp.message_udp.stream) {
+        memset(&upb, 0, sizeof(upb));
+        upb.ioCRefNum = g_mactcp.driver_ref;
+        upb.udpStream = g_mactcp.message_udp.stream;
+        upb.csCode = UDPRelease;
+        PBControlSync((ParmBlkPtr)&upb);
+    }
+    /* Wait for pending UDPRead to complete before freeing buffer */
+    if (g_mactcp.message_udp.read_pending) {
+        long timeout_ticks = TickCount() + 120; /* 2 second timeout */
+        while (g_mactcp.message_udp.read_pb.ioResult == inProgress &&
+               TickCount() < timeout_ticks) {
+            /* spin */
+        }
+        g_mactcp.message_udp.read_pending = 0;
+    }
+    if (g_mactcp.message_udp.buffer) {
+        DisposePtr(g_mactcp.message_udp.buffer);
+    }
+
+    if (g_mactcp.tcp_upp) DisposeTCPNotifyUPP(g_mactcp.tcp_upp);
+    if (g_mactcp.udp_upp) DisposeUDPNotifyUPP(g_mactcp.udp_upp);
+
+    ctx->platform_state = NULL;
+    (void)ctx;
+}
+
+static PT_Status mactcp_udp_broadcast(PT_Context_Internal *ctx,
+                                      unsigned short port,
+                                      const void *data, size_t len)
+{
+    UDPiopb pb;
+    UDPStreamSlot *us;
+    wdsEntry wds[2];
+    OSErr err;
+
+    (void)ctx;
+
+    us = (port == PT_DISCOVERY_PORT) ?
+         &g_mactcp.discovery_udp : &g_mactcp.message_udp;
+
+    wds[0].length = (unsigned short)len;
+    wds[0].ptr = (Ptr)data;
+    wds[1].length = 0;
+    wds[1].ptr = NULL;
+
+    memset(&pb, 0, sizeof(pb));
+    pb.ioCRefNum = g_mactcp.driver_ref;
+    pb.udpStream = us->stream;
+    pb.csCode = UDPWrite;
+    pb.csParam.send.remoteHost = 0xFFFFFFFF;
+    pb.csParam.send.remotePort = port;
+    pb.csParam.send.wdsPtr = (Ptr)wds;
+    pb.csParam.send.checkSum = 1;
+    pb.ioCompletion = NULL;
+
+    err = PBControlSync((ParmBlkPtr)&pb);
+    return (err == noErr) ? PT_OK : PT_ERR_SEND_FAILED;
+}
+
+static PT_Status mactcp_udp_send(PT_Context_Internal *ctx,
+                                 PT_Peer_Internal *peer,
+                                 unsigned short port,
+                                 const void *data, size_t len)
+{
+    UDPiopb pb;
+    wdsEntry wds[2];
+    OSErr err;
+
+    (void)ctx;
+
+    wds[0].length = (unsigned short)len;
+    wds[0].ptr = (Ptr)data;
+    wds[1].length = 0;
+    wds[1].ptr = NULL;
+
+    memset(&pb, 0, sizeof(pb));
+    pb.ioCRefNum = g_mactcp.driver_ref;
+    pb.udpStream = g_mactcp.message_udp.stream;
+    pb.csCode = UDPWrite;
+    pb.csParam.send.remoteHost = peer->ip_addr;
+    pb.csParam.send.remotePort = port;
+    pb.csParam.send.wdsPtr = (Ptr)wds;
+    pb.csParam.send.checkSum = 1;
+    pb.ioCompletion = NULL;
+
+    err = PBControlSync((ParmBlkPtr)&pb);
+    return (err == noErr) ? PT_OK : PT_ERR_SEND_FAILED;
+}
+
+static PT_Status mactcp_udp_listen(PT_Context_Internal *ctx,
+                                   unsigned short port)
+{
+    UDPStreamSlot *us;
+    (void)ctx;
+
+    us = (port == PT_DISCOVERY_PORT) ?
+         &g_mactcp.discovery_udp : &g_mactcp.message_udp;
+
+    issue_udp_read(us, g_mactcp.driver_ref);
+    return PT_OK;
+}
+
+static PT_Status mactcp_tcp_listen(PT_Context_Internal *ctx)
+{
+    int idx;
+    (void)ctx;
+
+    g_mactcp.listen_active = 1;
+
+    idx = find_free_stream();
+    if (idx < 0) {
+        CLOG_WARN("No free TCP streams for listener");
+        return PT_ERR_NO_ROOM;
+    }
+
+    issue_passive_open(idx, g_mactcp.driver_ref, PT_TCP_PORT);
+    CLOG_INFO("Listening on TCP port %d (stream %d)", PT_TCP_PORT, idx);
+    return PT_OK;
+}
+
+static PT_Status mactcp_tcp_connect(PT_Context_Internal *ctx,
+                                    PT_Peer_Internal *peer)
+{
+    int idx;
+    TCPStreamSlot *ts;
+
+    (void)ctx;
+
+    /* Find a free stream; reclaim listener if necessary */
+    idx = find_free_stream();
+    if (idx < 0) {
+        int i;
+        for (i = 0; i < MAX_TCP_STREAMS; i++) {
+            if (g_mactcp.tcp_streams[i].stream &&
+                g_mactcp.tcp_streams[i].state == STREAM_LISTENING) {
+                abort_stream(i);
+                idx = i;
+                break;
+            }
+        }
+    }
+    if (idx < 0) return PT_ERR_NO_ROOM;
+
+    ts = &g_mactcp.tcp_streams[idx];
+
+    memset(&ts->open_pb, 0, sizeof(ts->open_pb));
+    ts->open_pb.ioCRefNum = g_mactcp.driver_ref;
+    ts->open_pb.tcpStream = ts->stream;
+    ts->open_pb.csCode = TCPActiveOpen;
+    ts->open_pb.csParam.open.localPort = 0;
+    ts->open_pb.csParam.open.remoteHost = peer->ip_addr;
+    ts->open_pb.csParam.open.remotePort = PT_TCP_PORT;
+    ts->open_pb.csParam.open.commandTimeoutValue = 10;
+    ts->open_pb.csParam.open.ulpTimeoutValue = 30;
+    ts->open_pb.csParam.open.ulpTimeoutAction = 1;
+    ts->open_pb.csParam.open.validityFlags = 0xC0;
+    ts->open_pb.ioCompletion = NULL;
+
+    PBControlAsync((ParmBlkPtr)&ts->open_pb);
+    ts->state = STREAM_CONNECTING;
+
+    peer->platform_peer.tcp_stream = ts;
+
+    return PT_OK;
+}
+
+static PT_Status mactcp_tcp_send(PT_Context_Internal *ctx,
+                                 PT_Peer_Internal *peer,
+                                 const void *data, size_t len)
+{
+    TCPStreamSlot *ts;
+
+    (void)ctx;
+
+    ts = (TCPStreamSlot *)peer->platform_peer.tcp_stream;
+    if (!ts || ts->state != STREAM_CONNECTED) return PT_ERR_NOT_CONNECTED;
+
+    /* No async check needed — sends are synchronous (R42/T135) */
+
+    /* Copy data to send buffer (skip if already there, e.g. from
+     * send_tcp_frame which builds frames directly in tcp_send_buf) */
+    if (len > peer->tcp_send_size) len = peer->tcp_send_size;
+    if ((const unsigned char *)data != peer->tcp_send_buf) {
+        memcpy(peer->tcp_send_buf, data, len);
+    }
+
+    ts->wds[0].length = (unsigned short)len;
+    ts->wds[0].ptr = (Ptr)peer->tcp_send_buf;
+    ts->wds[1].length = 0;
+    ts->wds[1].ptr = NULL;
+
+    memset(&ts->send_pb, 0, sizeof(ts->send_pb));
+    ts->send_pb.ioCRefNum = g_mactcp.driver_ref;
+    ts->send_pb.tcpStream = ts->stream;
+    ts->send_pb.csCode = TCPSend;
+    ts->send_pb.csParam.send.wdsPtr = (Ptr)ts->wds;
+    ts->send_pb.csParam.send.pushFlag = 1;
+    ts->send_pb.ioCompletion = NULL;
+
+    /* Synchronous send — blocks until complete (~1ms/chunk on LAN).
+     * Required for chunked messages: the chunking loop in pt_messaging.c
+     * issues multiple tcp_send calls per PT_Send, which fails with async
+     * because the second chunk returns PT_ERR_SEND_FAILED while the first
+     * is still pending. Sync is acceptable: Chat is user-paced, Bomberman
+     * uses UDP. Reference: R42, MacTCP Programmer's Guide lines 700, 2939. */
+    PBControlSync((ParmBlkPtr)&ts->send_pb);
+
+    if (ts->send_pb.ioResult != noErr) return PT_ERR_SEND_FAILED;
+
+    return PT_OK;
+}
+
+static void mactcp_tcp_disconnect(PT_Context_Internal *ctx,
+                                  PT_Peer_Internal *peer)
+{
+    TCPStreamSlot *ts;
+    int i;
+
+    (void)ctx;
+
+    ts = (TCPStreamSlot *)peer->platform_peer.tcp_stream;
+    if (!ts) return;
+
+    /* Find stream index and abort */
+    for (i = 0; i < MAX_TCP_STREAMS; i++) {
+        if (&g_mactcp.tcp_streams[i] == ts) {
+            abort_stream(i);
+            break;
+        }
+    }
+
+    peer->platform_peer.tcp_stream = NULL;
+}
+
+static void mactcp_poll(PT_Context_Internal *ctx)
+{
+    int i;
+    int has_listener;
+
+    /* Process TCP streams */
+    for (i = 0; i < MAX_TCP_STREAMS; i++) {
+        TCPStreamSlot *ts = &g_mactcp.tcp_streams[i];
+        if (!ts->stream) continue;
+
+        /* ---- Passive open completion ---- */
+        if (ts->state == STREAM_LISTENING &&
+            ts->open_pb.ioResult != inProgress) {
+
+            if (ts->open_pb.ioResult == noErr) {
+                ip_addr remote_ip;
+                PT_PlatformPeer ppeer;
+                PT_Peer_Internal *peer;
+
+                remote_ip = ts->open_pb.csParam.open.remoteHost;
+
+                memset(&ppeer, 0, sizeof(ppeer));
+                ppeer.tcp_stream = ts;
+
+                pt_handle_incoming_connection(ctx, remote_ip, &ppeer);
+
+                /* Check if a peer accepted this stream */
+                peer = find_peer_for_stream(ctx, ts);
+                if (peer) {
+                    ts->state = STREAM_CONNECTED;
+                } else {
+                    /* No room -- abort the accepted connection */
+                    abort_stream(i);
+                }
+            } else {
+                ts->state = STREAM_FREE;
+            }
+            /* Re-listen happens at end of poll */
+        }
+
+        /* ---- Active open completion ---- */
+        if (ts->state == STREAM_CONNECTING &&
+            ts->open_pb.ioResult != inProgress) {
+
+            PT_Peer_Internal *peer = find_peer_for_stream(ctx, ts);
+
+            if (ts->open_pb.ioResult == noErr && peer) {
+                ts->state = STREAM_CONNECTED;
+                peer->state = PT_PEER_CONNECTED;
+                peer->last_tcp_activity = ctx->current_time;
+                peer->connect_start = 0;
+
+                CLOG_INFO("TCP connected to %s", peer->name);
+                if (ctx->callbacks.on_connected) {
+                    ctx->callbacks.on_connected(
+                        (PT_Peer *)peer,
+                        ctx->callbacks.on_connected_data);
+                }
+            } else {
+                /* Connection failed */
+                abort_stream(i);
+                if (peer) {
+                    peer->connect_start = 0;
+                    peer->state = PT_PEER_DISCONNECTED;
+                    peer->platform_peer.tcp_stream = NULL;
+                    pt_fire_error(ctx, PT_ERR_SEND_FAILED,
+                                  "TCP connect failed");
+                }
+            }
+        }
+
+        /* ---- Connected stream events ---- */
+        if (ts->state != STREAM_CONNECTED) continue;
+
+        /* Check send completion */
+        if (ts->send_pending && ts->send_pb.ioResult != inProgress) {
+            ts->send_pending = 0;
+        }
+
+        /* Snapshot and clear flags atomically (R27).
+           Single-byte write is atomic on both 68k and PPC.
+           ASR flags set after this clear are preserved for next poll. */
+        {
+            unsigned char local_flags = ts->flags;
+            ts->flags = 0;
+
+        /* Check data available (ASR flag) */
+        if (local_flags & FLAG_DATA_AVAIL) {
+            {
+                PT_Peer_Internal *peer = find_peer_for_stream(ctx, ts);
+                if (peer) {
+                    size_t space = peer->tcp_recv_size -
+                                   peer->tcp_recv_len;
+                    if (space > 0) {
+                        TCPiopb rpb;
+                        memset(&rpb, 0, sizeof(rpb));
+                        rpb.ioCRefNum = g_mactcp.driver_ref;
+                        rpb.tcpStream = ts->stream;
+                        rpb.csCode = TCPRcv;
+                        rpb.csParam.receive.rcvBuff =
+                            (Ptr)(peer->tcp_recv_buf +
+                                  peer->tcp_recv_len);
+                        rpb.csParam.receive.rcvBuffLen =
+                            (unsigned short)space;
+                        rpb.ioCompletion = NULL;
+
+                        if (PBControlSync((ParmBlkPtr)&rpb) == noErr) {
+                            peer->tcp_recv_len +=
+                                rpb.csParam.receive.rcvBuffLen;
+                            peer->last_tcp_activity =
+                                ctx->current_time;
+                            pt_messaging_process_tcp_data(ctx, peer);
+                        }
+                    }
+                }
+            }
+        }
+
+        /* Check remote close / terminate */
+        if (local_flags & (FLAG_REMOTE_CLOSE | FLAG_TERMINATED)) {
+            PT_Peer_Internal *peer;
+
+            peer = find_peer_for_stream(ctx, ts);
+            if (peer) {
+                /* Drain remaining TCP data — goodbye frame may be
+                   buffered but unprocessed (R23). Read what we can
+                   and parse; if goodbye is found, peer transitions
+                   to DISCONNECTED with PT_QUIT. */
+                {
+                    size_t space = peer->tcp_recv_size -
+                                   peer->tcp_recv_len;
+                    if (space > 0) {
+                        TCPiopb rpb;
+                        memset(&rpb, 0, sizeof(rpb));
+                        rpb.ioCRefNum = g_mactcp.driver_ref;
+                        rpb.tcpStream = ts->stream;
+                        rpb.csCode = TCPRcv;
+                        rpb.csParam.receive.rcvBuff =
+                            (Ptr)(peer->tcp_recv_buf +
+                                  peer->tcp_recv_len);
+                        rpb.csParam.receive.rcvBuffLen =
+                            (unsigned short)space;
+                        rpb.ioCompletion = NULL;
+
+                        if (PBControlSync((ParmBlkPtr)&rpb) == noErr &&
+                            rpb.csParam.receive.rcvBuffLen > 0) {
+                            peer->tcp_recv_len +=
+                                rpb.csParam.receive.rcvBuffLen;
+                            pt_messaging_process_tcp_data(ctx, peer);
+                        }
+                    }
+                    /* Also parse any data already in the buffer */
+                    if (peer->tcp_recv_len > 0 &&
+                        peer->state == PT_PEER_CONNECTED) {
+                        pt_messaging_process_tcp_data(ctx, peer);
+                    }
+                }
+                /* Only fire ERROR if goodbye wasn't found */
+                if (peer->state == PT_PEER_CONNECTED) {
+                    pt_handle_peer_disconnect(ctx, peer,
+                                              PT_DISCONNECT_ERROR);
+                }
+            }
+        }
+        } /* end local_flags snapshot block */
+    }
+
+    /* ---- UDP discovery socket ---- */
+    if (g_mactcp.discovery_udp.read_pending &&
+        g_mactcp.discovery_udp.read_pb.ioResult != inProgress) {
+        g_mactcp.discovery_udp.read_pending = 0;
+
+        if (g_mactcp.discovery_udp.read_pb.ioResult == noErr) {
+            Ptr data_ptr;
+            unsigned short data_len;
+            ip_addr src_addr;
+
+            data_ptr = g_mactcp.discovery_udp.read_pb.csParam.receive.rcvBuff;
+            data_len = g_mactcp.discovery_udp.read_pb.csParam.receive.rcvBuffLen;
+            src_addr = g_mactcp.discovery_udp.read_pb.csParam.receive.remoteHost;
+
+            pt_discovery_receive(ctx, data_ptr, data_len, src_addr);
+
+            /* Return buffer to MacTCP */
+            {
+                UDPiopb rpb;
+                memset(&rpb, 0, sizeof(rpb));
+                rpb.ioCRefNum = g_mactcp.driver_ref;
+                rpb.udpStream = g_mactcp.discovery_udp.stream;
+                rpb.csCode = UDPBfrReturn;
+                rpb.csParam.receive.rcvBuff = data_ptr;
+                PBControlSync((ParmBlkPtr)&rpb);
+            }
+        }
+
+        issue_udp_read(&g_mactcp.discovery_udp, g_mactcp.driver_ref);
+    }
+
+    /* ---- UDP message socket ---- */
+    if (g_mactcp.message_udp.read_pending &&
+        g_mactcp.message_udp.read_pb.ioResult != inProgress) {
+        g_mactcp.message_udp.read_pending = 0;
+
+        if (g_mactcp.message_udp.read_pb.ioResult == noErr) {
+            Ptr data_ptr;
+            unsigned short data_len;
+            ip_addr src_addr;
+
+            data_ptr = g_mactcp.message_udp.read_pb.csParam.receive.rcvBuff;
+            data_len = g_mactcp.message_udp.read_pb.csParam.receive.rcvBuffLen;
+            src_addr = g_mactcp.message_udp.read_pb.csParam.receive.remoteHost;
+
+            pt_messaging_process_udp_data(ctx, data_ptr, data_len,
+                                          src_addr);
+
+            {
+                UDPiopb rpb;
+                memset(&rpb, 0, sizeof(rpb));
+                rpb.ioCRefNum = g_mactcp.driver_ref;
+                rpb.udpStream = g_mactcp.message_udp.stream;
+                rpb.csCode = UDPBfrReturn;
+                rpb.csParam.receive.rcvBuff = data_ptr;
+                PBControlSync((ParmBlkPtr)&rpb);
+            }
+        }
+
+        issue_udp_read(&g_mactcp.message_udp, g_mactcp.driver_ref);
+    }
+
+    /* ---- Ensure a listener is active ---- */
+    if (g_mactcp.listen_active) {
+        has_listener = 0;
+        for (i = 0; i < MAX_TCP_STREAMS; i++) {
+            if (g_mactcp.tcp_streams[i].state == STREAM_LISTENING) {
+                has_listener = 1;
+                break;
+            }
+        }
+        if (!has_listener) {
+            re_listen();
+        }
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* Ops table                                                           */
+/* ------------------------------------------------------------------ */
+
+static PT_PlatformOps mactcp_ops = {
+    mactcp_init,
+    mactcp_shutdown,
+    mactcp_udp_broadcast,
+    mactcp_udp_send,
+    mactcp_udp_listen,
+    mactcp_tcp_listen,
+    mactcp_tcp_connect,
+    mactcp_tcp_send,
+    mactcp_tcp_disconnect,
+    mactcp_poll
+};
+
+PT_PlatformOps *mactcp_get_ops(void)
+{
+    return &mactcp_ops;
+}
+
+#endif /* PT_PLATFORM_MACTCP */

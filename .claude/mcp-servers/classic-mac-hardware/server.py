@@ -2,7 +2,10 @@
 """
 Classic Mac Hardware MCP Server
 
-Provides FTP-based access to Classic Macintosh test machines running RumpusFTP.
+Provides FTP-based access to Classic Macintosh test machines running RumpusFTP,
+and LaunchAPPL-based remote execution.
+
+Runs natively on the host (Python 3 + pip install mcp).
 
 Key design decisions for RumpusFTP compatibility:
 - Plain FTP (not SFTP) with passive mode
@@ -12,24 +15,19 @@ Key design decisions for RumpusFTP compatibility:
 """
 
 import asyncio
-import io
 import json
 import os
 import sys
 import time
 from ftplib import FTP
 from pathlib import Path
-from typing import Any, Optional, Tuple
-from datetime import datetime
+from typing import Tuple
 
 from mcp.server import Server
 from mcp.types import (
     Resource,
     Tool,
     TextContent,
-    ImageContent,
-    EmbeddedResource,
-    LoggingLevel
 )
 import mcp.server.stdio
 
@@ -41,7 +39,7 @@ FTP_MAX_RETRIES = 2
 
 
 class ClassicMacHardwareServer:
-    """MCP Server for Classic Mac hardware access via FTP."""
+    """MCP Server for Classic Mac hardware access via FTP and LaunchAPPL."""
 
     def __init__(self, config_path: str):
         """Initialize with machines configuration."""
@@ -59,8 +57,6 @@ class ClassicMacHardwareServer:
         self.server.read_resource()(self.read_resource)
         self.server.list_tools()(self.list_tools)
         self.server.call_tool()(self.call_tool)
-        self.server.list_prompts()(self.list_prompts)
-        self.server.get_prompt()(self.get_prompt)
 
     # =========================================================================
     # Path Normalization
@@ -169,15 +165,15 @@ class ClassicMacHardwareServer:
             if current_mtime > self._config_mtime:
                 self.machines = self._load_config()
                 self._config_mtime = current_mtime
-                print(f"✓ Reloaded config: {len(self.machines)} machines", file=sys.stderr)
+                print(f"Loaded config: {len(self.machines)} machines", file=sys.stderr)
                 return True
             return False
         except FileNotFoundError:
             if self._first_load:
-                print(f"ℹ No machines configured. Run /setup-machine to add Classic Macs.", file=sys.stderr)
+                print(f"No machines configured. Edit machines.json to add Classic Macs.", file=sys.stderr)
             return False
         except Exception as e:
-            print(f"⚠ Config reload failed: {e}", file=sys.stderr)
+            print(f"Config reload failed: {e}", file=sys.stderr)
             return False
 
     def _load_config(self) -> dict:
@@ -206,7 +202,7 @@ class ClassicMacHardwareServer:
             raise ValueError(
                 f"Unknown machine: '{machine_id}'\n"
                 f"Available: {available}\n"
-                f"Run /setup-machine to add machines."
+                f"Edit machines.json to add machines."
             )
 
     # =========================================================================
@@ -219,12 +215,13 @@ class ClassicMacHardwareServer:
         resources = []
 
         for machine_id, machine in self.machines.items():
-            resources.append(Resource(
-                uri=f"mac://{machine_id}/logs/latest",
-                name=f"Logs: {machine['name']}",
-                description=f"PT_Log output from {machine['name']}",
-                mimeType="text/plain"
-            ))
+            if 'ftp' in machine:
+                resources.append(Resource(
+                    uri=f"mac://{machine_id}/logs/latest",
+                    name=f"Logs: {machine['name']}",
+                    description=f"PT_Log output from {machine['name']}",
+                    mimeType="text/plain"
+                ))
 
         return resources
 
@@ -238,21 +235,16 @@ class ClassicMacHardwareServer:
         parts = uri[6:].split('/', 2)
         machine_id = parts[0]
         resource_type = parts[1] if len(parts) > 1 else ''
-        identifier = parts[2] if len(parts) > 2 else 'latest'
 
         if resource_type == "logs":
-            return self._fetch_log_via_download(machine_id, identifier)
+            return self._fetch_log_via_download(machine_id)
         else:
             raise ValueError(f"Unknown resource type: {resource_type}")
 
-    def _fetch_log_via_download(self, machine_id: str, identifier: str) -> str:
-        """Fetch PT_Log content from machine using generic download."""
+    def _fetch_log_via_download(self, machine_id: str) -> str:
+        """Fetch PT_Log content from machine using FTP."""
         def operation(ftp):
-            # PT_Log writes to a file called "PT_Log" (no extension)
-            # Try multiple common locations
-            log_locations = ["PT_Log", "pt_log", "PT_Log.txt"]
-
-            for log_name in log_locations:
+            for log_name in ["PT_Log", "pt_log", "PT_Log.txt"]:
                 try:
                     lines = []
                     ftp.retrlines(f'RETR {log_name}', lines.append)
@@ -260,7 +252,6 @@ class ClassicMacHardwareServer:
                         return '\n'.join(lines)
                 except:
                     pass
-
             return "No PT_Log file found in FTP root"
 
         return self._ftp_operation(machine_id, operation)
@@ -277,11 +268,6 @@ class ClassicMacHardwareServer:
             Tool(
                 name="list_machines",
                 description="List configured Classic Mac machines",
-                inputSchema={"type": "object", "properties": {}}
-            ),
-            Tool(
-                name="reload_config",
-                description="Force reload machines.json",
                 inputSchema={"type": "object", "properties": {}}
             ),
             Tool(
@@ -309,18 +295,6 @@ class ClassicMacHardwareServer:
                 }
             ),
             Tool(
-                name="create_directory",
-                description="Create directory (and parent directories if needed)",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "machine": {"type": "string", "description": f"Machine ID ({machine_ids})"},
-                        "path": {"type": "string", "description": "Directory path to create"}
-                    },
-                    "required": ["machine", "path"]
-                }
-            ),
-            Tool(
                 name="delete_files",
                 description="Delete file or directory",
                 inputSchema={
@@ -340,7 +314,7 @@ class ClassicMacHardwareServer:
                     "type": "object",
                     "properties": {
                         "machine": {"type": "string", "description": f"Machine ID ({machine_ids})"},
-                        "local_path": {"type": "string", "description": "Local file (relative to /workspace)"},
+                        "local_path": {"type": "string", "description": "Local file path (relative to project root)"},
                         "remote_path": {"type": "string", "description": "Remote path (e.g., 'file.bin' or 'folder:file.bin')"}
                     },
                     "required": ["machine", "local_path", "remote_path"]
@@ -372,32 +346,6 @@ class ClassicMacHardwareServer:
                     "required": ["machine", "platform", "binary_path"]
                 }
             ),
-            Tool(
-                name="cleanup_machine",
-                description="Remove old files from Classic Mac",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "machine": {"type": "string", "description": f"Machine ID ({machine_ids})"},
-                        "scope": {
-                            "type": "string",
-                            "enum": ["old_files", "test_binaries", "logs", "launchers", "all"],
-                            "default": "old_files",
-                            "description": "Cleanup scope: old_files (.old/.bak/.tmp), test_binaries (test_*.bin), logs (PT_*), launchers (LaunchAPPL*), all"
-                        },
-                        "dry_run": {
-                            "type": "boolean",
-                            "default": False,
-                            "description": "Preview what would be deleted without actually deleting"
-                        },
-                        "pattern": {
-                            "type": "string",
-                            "description": "Glob pattern to match files (e.g., 'test_*.bin')"
-                        }
-                    },
-                    "required": ["machine"]
-                }
-            )
         ]
 
     async def call_tool(self, name: str, arguments: dict) -> list[TextContent]:
@@ -407,14 +355,10 @@ class ClassicMacHardwareServer:
         try:
             if name == "list_machines":
                 return self._tool_list_machines()
-            elif name == "reload_config":
-                return self._tool_reload_config()
             elif name == "test_connection":
                 return self._tool_test_connection(arguments)
             elif name == "list_directory":
                 return self._tool_list_directory(arguments)
-            elif name == "create_directory":
-                return self._tool_create_directory(arguments)
             elif name == "delete_files":
                 return self._tool_delete_files(arguments)
             elif name == "upload_file":
@@ -423,21 +367,18 @@ class ClassicMacHardwareServer:
                 return self._tool_download_file(arguments)
             elif name == "execute_binary":
                 return self._tool_execute_binary(arguments)
-            elif name == "cleanup_machine":
-                return self._tool_cleanup_machine(arguments)
             else:
                 raise ValueError(f"Unknown tool: {name}")
         except Exception as e:
-            return [TextContent(type="text", text=f"❌ Error: {str(e)}")]
+            return [TextContent(type="text", text=f"Error: {str(e)}")]
 
     def _tool_list_machines(self) -> list[TextContent]:
         """List all configured machines."""
         if not self.machines:
-            return [TextContent(type="text", text="No machines configured.\nRun /setup-machine to add Classic Macs.")]
+            return [TextContent(type="text", text="No machines configured.\nEdit machines.json to add Classic Macs.")]
 
         lines = ["Configured machines:\n"]
         for mid, m in self.machines.items():
-            # Get host from ftp or launchappl config
             host = m.get('ftp', {}).get('host') or m.get('launchappl', {}).get('host', 'unknown')
             features = []
             if 'ftp' in m:
@@ -446,7 +387,6 @@ class ClassicMacHardwareServer:
                 features.append('LaunchAPPL')
             features_str = '+'.join(features) if features else 'no remote'
 
-            # Show build requirement and RAM
             build_type = m.get('build', 'standard')
             ram = m.get('ram', '')
             build_info = f" [{build_type}]" if build_type == 'lowmem' else ""
@@ -454,26 +394,11 @@ class ClassicMacHardwareServer:
 
             lines.append(f"  {mid}: {m['name']} ({m['platform']}) - {host} [{features_str}]{ram_info}{build_info}")
 
-        # Add helpful note if any machine requires lowmem builds
         if any(m.get('build') == 'lowmem' for m in self.machines.values()):
             lines.append("")
-            lines.append("⚠️ Machines marked [lowmem] require *_lowmem.bin builds!")
-            lines.append("   Build with: make -f Makefile.retro68 PLATFORM=mactcp lowmem_tests")
+            lines.append("Machines marked [lowmem] require *_lowmem.bin builds!")
 
         return [TextContent(type="text", text="\n".join(lines))]
-
-    def _tool_reload_config(self) -> list[TextContent]:
-        """Force reload configuration."""
-        old_count = len(self.machines)
-        self.machines = self._load_config()
-        self._config_mtime = os.path.getmtime(self.config_path)
-        new_count = len(self.machines)
-
-        return [TextContent(
-            type="text",
-            text=f"✅ Reloaded: {old_count} → {new_count} machines\n" +
-                 "\n".join(f"  - {mid}" for mid in self.machines.keys())
-        )]
 
     def _tool_test_connection(self, args: dict) -> list[TextContent]:
         """Test FTP and/or LaunchAPPL connection."""
@@ -489,34 +414,33 @@ class ClassicMacHardwareServer:
                 ftp = self._connect_ftp(machine_id)
                 pwd = ftp.pwd()
                 ftp.quit()
-                results.append(f"✓ FTP: Connected (root: {pwd})")
+                results.append(f"FTP: Connected (root: {pwd})")
             except Exception as e:
-                results.append(f"✗ FTP: {str(e)}")
+                results.append(f"FTP: FAILED - {str(e)}")
         else:
-            results.append("- FTP: Not configured")
+            results.append("FTP: Not configured")
 
         # Test LaunchAPPL if configured or explicitly requested
         if 'launchappl' in machine or args.get("test_launchappl"):
             import socket
             try:
-                # Get LaunchAPPL config or fall back to FTP host
                 la_config = machine.get('launchappl', {})
                 host = la_config.get('host') or machine.get('ftp', {}).get('host')
                 port = la_config.get('port', 1984)
 
                 if not host:
-                    results.append("✗ LaunchAPPL: No host configured")
+                    results.append("LaunchAPPL: No host configured")
                 else:
                     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     sock.settimeout(2)
                     result = sock.connect_ex((host, port))
                     sock.close()
                     if result == 0:
-                        results.append(f"✓ LaunchAPPL: Port {port} open")
+                        results.append(f"LaunchAPPL: Port {port} open")
                     else:
-                        results.append(f"✗ LaunchAPPL: Port {port} not responding")
+                        results.append(f"LaunchAPPL: Port {port} not responding")
             except Exception as e:
-                results.append(f"✗ LaunchAPPL: {str(e)}")
+                results.append(f"LaunchAPPL: FAILED - {str(e)}")
 
         return [TextContent(
             type="text",
@@ -545,41 +469,6 @@ class ClassicMacHardwareServer:
                  ("\n".join(items) if items else "(empty)")
         )]
 
-    def _tool_create_directory(self, args: dict) -> list[TextContent]:
-        """Create directory with parent directories."""
-        machine_id = args["machine"]
-        path = self._normalize_path(args["path"])
-
-        if not path:
-            return [TextContent(type="text", text="❌ Cannot create root directory")]
-
-        def operation(ftp):
-            # Create each directory in the path
-            parts = path.split(":")
-            created = []
-            current = ""
-
-            for part in parts:
-                current = f"{current}:{part}" if current else part
-                try:
-                    ftp.mkd(current)
-                    created.append(current)
-                except Exception as e:
-                    # Directory might already exist, that's OK
-                    if "exists" not in str(e).lower() and "550" not in str(e):
-                        pass  # Continue anyway
-
-            return created
-
-        created = self._ftp_operation(machine_id, operation)
-        machine = self.machines[machine_id]
-
-        if created:
-            return [TextContent(type="text", text=f"✅ Created on {machine['name']}:\n" +
-                               "\n".join(f"  - {d}" for d in created))]
-        else:
-            return [TextContent(type="text", text=f"✅ Directory exists: {path}")]
-
     def _tool_delete_files(self, args: dict) -> list[TextContent]:
         """Delete file or directory."""
         machine_id = args["machine"]
@@ -587,17 +476,15 @@ class ClassicMacHardwareServer:
         recursive = args.get("recursive", False)
 
         if not path:
-            return [TextContent(type="text", text="❌ Cannot delete root")]
+            return [TextContent(type="text", text="Cannot delete root")]
 
         deleted = []
 
         def delete_recursive(ftp, target):
             try:
-                # Try as file first
                 ftp.delete(target)
                 deleted.append(target)
             except:
-                # Try as directory
                 try:
                     original = ftp.pwd()
                     ftp.cwd(target)
@@ -627,7 +514,7 @@ class ClassicMacHardwareServer:
 
         return [TextContent(
             type="text",
-            text=f"✅ Deleted from {machine['name']}:\n" +
+            text=f"Deleted from {machine['name']}:\n" +
                  "\n".join(f"  - {d}" for d in deleted)
         )]
 
@@ -650,31 +537,28 @@ class ClassicMacHardwareServer:
         self._validate_machine_id(machine_id)
         machine = self.machines[machine_id]
 
-        # Check if FTP is configured
         if not self._has_ftp(machine_id):
             if self._has_launchappl(machine_id):
                 return [TextContent(
                     type="text",
-                    text=f"❌ Error: FTP not configured for {machine['name']}. This machine uses LaunchAPPL only.\n\n"
+                    text=f"Error: FTP not configured for {machine['name']}. This machine uses LaunchAPPL only.\n\n"
                          f"Use execute_binary instead to transfer and run in one step:\n"
-                         f"  mcp__classic-mac-hardware__execute_binary(machine=\"{machine_id}\", platform=\"mactcp\", binary_path=\"{local_path}\")"
+                         f"  execute_binary(machine=\"{machine_id}\", platform=\"mactcp\", binary_path=\"{local_path}\")"
                 )]
-            return [TextContent(type="text", text=f"❌ Error: No FTP or LaunchAPPL configured for {machine['name']}.")]
+            return [TextContent(type="text", text=f"Error: No FTP or LaunchAPPL configured for {machine['name']}.")]
 
-        # Verify local file exists
         if not Path(local_path).exists():
-            return [TextContent(type="text", text=f"❌ Local file not found: {local_path}")]
+            return [TextContent(type="text", text=f"Local file not found: {local_path}")]
 
         directory, filename = self._split_path(remote_path)
         file_size = Path(local_path).stat().st_size
 
         def operation(ftp):
-            # Navigate to directory if specified
             if directory:
                 try:
                     ftp.cwd(directory)
                 except:
-                    # Try to create directory
+                    # Create parent directories
                     parts = directory.split(":")
                     current = ""
                     for part in parts:
@@ -685,18 +569,16 @@ class ClassicMacHardwareServer:
                             pass
                     ftp.cwd(directory)
 
-            # Upload
             with open(local_path, 'rb') as f:
                 ftp.storbinary(f'STOR {filename}', f)
 
             return True
 
         self._ftp_operation(machine_id, operation)
-        machine = self.machines[machine_id]
 
         return [TextContent(
             type="text",
-            text=f"✅ Uploaded to {machine['name']}:\n\n"
+            text=f"Uploaded to {machine['name']}:\n\n"
                  f"  Local:  {local_path}\n"
                  f"  Remote: {remote_path}\n"
                  f"  Size:   {file_size:,} bytes"
@@ -710,7 +592,6 @@ class ClassicMacHardwareServer:
 
         directory, filename = self._split_path(remote_path)
 
-        # Determine local destination
         if not local_path:
             download_dir = Path(f"downloads/{machine_id}")
             download_dir.mkdir(parents=True, exist_ok=True)
@@ -731,7 +612,7 @@ class ClassicMacHardwareServer:
 
         return [TextContent(
             type="text",
-            text=f"✅ Downloaded from {machine['name']}:\n\n"
+            text=f"Downloaded from {machine['name']}:\n\n"
                  f"  Remote: {remote_path}\n"
                  f"  Local:  {local_path}\n"
                  f"  Size:   {file_size:,} bytes"
@@ -747,180 +628,59 @@ class ClassicMacHardwareServer:
         self._validate_machine_id(machine_id)
         machine = self.machines[machine_id]
 
-        launchappl = "/opt/Retro68-build/toolchain/bin/LaunchAPPL"
-        if not os.path.exists(launchappl):
-            return [TextContent(type="text", text=f"❌ LaunchAPPL not found at {launchappl}")]
+        # Find LaunchAPPL binary - check common locations
+        launchappl = None
+        candidates = [
+            os.path.expanduser("~/Retro68-build/toolchain/bin/LaunchAPPL"),
+            "/opt/Retro68-build/toolchain/bin/LaunchAPPL",
+        ]
+        for candidate in candidates:
+            if os.path.exists(candidate):
+                launchappl = candidate
+                break
+
+        if not launchappl:
+            return [TextContent(type="text", text=f"LaunchAPPL not found. Checked:\n" +
+                               "\n".join(f"  - {c}" for c in candidates))]
 
         if not binary_path or not Path(binary_path).exists():
-            return [TextContent(type="text", text=f"❌ Binary not found: {binary_path}")]
+            return [TextContent(type="text", text=f"Binary not found: {binary_path}")]
 
         # Get host from launchappl config first, fall back to ftp host
         la_config = machine.get('launchappl', {})
         machine_ip = la_config.get('host') or machine.get('ftp', {}).get('host')
 
         if not machine_ip:
-            return [TextContent(type="text", text=f"❌ No host configured for {machine['name']}. Add 'launchappl.host' or 'ftp.host' to machines.json")]
+            return [TextContent(type="text", text=f"No host configured for {machine['name']}. Add 'launchappl.host' or 'ftp.host' to machines.json")]
 
         binary_path = str(Path(binary_path).resolve())
 
         try:
             cmd = [launchappl, "-e", "tcp", "--tcp-address", machine_ip, binary_path]
-            # Use Popen instead of run() so we can properly kill on timeout.
-            # subprocess.run() with timeout does NOT kill the child process,
-            # leaving an orphaned LaunchAPPL client connected to the server
-            # and preventing LaunchAPPLServer from accepting new connections.
-            # Run from /tmp to prevent LaunchAPPL's temp directories from polluting workspace.
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                     text=True, cwd="/tmp")
             try:
-                stdout, stderr = proc.communicate(timeout=60)
+                stdout, stderr = proc.communicate(timeout=120)
             except subprocess.TimeoutExpired:
                 proc.kill()
                 proc.wait()
                 return [TextContent(
                     type="text",
-                    text=f"⏱️ Timed out after 60s. Binary may still be running.\nLogs will be streamed to perf_partner when test completes."
+                    text=f"Timed out after 120s. Binary may still be running on {machine['name']}.\n"
+                         f"Download logs via FTP when the test completes:\n"
+                         f"  download_file(machine=\"{machine_id}\", remote_path=\"PT_Log\")"
                 )]
 
             if proc.returncode == 0:
-                return [TextContent(type="text", text=f"✅ Executed on {machine['name']}:\n\n{stdout}")]
+                return [TextContent(type="text", text=f"Executed on {machine['name']}:\n\n{stdout}")]
             else:
                 return [TextContent(
                     type="text",
-                    text=f"⚠️ Execution failed:\n\n{stderr}\n\n"
+                    text=f"Execution failed:\n\n{stderr}\n\n"
                          f"Ensure LaunchAPPLServer is running on {machine['name']}"
                 )]
         except Exception as e:
-            return [TextContent(type="text", text=f"❌ Error: {e}")]
-
-    def _matches_pattern(self, filename: str, pattern: str) -> bool:
-        """Simple glob pattern matching (supports * and ?)."""
-        import fnmatch
-        return fnmatch.fnmatch(filename, pattern)
-
-    def _tool_cleanup_machine(self, args: dict) -> list[TextContent]:
-        """Clean up files from Classic Mac."""
-        machine_id = args["machine"]
-        scope = args.get("scope", "old_files")
-        dry_run = args.get("dry_run", False)
-        pattern = args.get("pattern")
-
-        found = []
-        removed = []
-
-        def operation(ftp):
-            items = []
-            ftp.retrlines('LIST', items.append)
-
-            for item in items:
-                parts = item.split(None, 8)
-                if len(parts) < 9:
-                    continue
-                filename = parts[8]
-                is_dir = item.startswith('d')
-
-                if filename in ['.', '..']:
-                    continue
-
-                # Skip directories for most operations
-                if is_dir:
-                    continue
-
-                should_delete = False
-
-                # If pattern is provided, use it exclusively
-                if pattern:
-                    should_delete = self._matches_pattern(filename, pattern)
-                else:
-                    # Otherwise use scope-based matching
-                    if scope == "old_files":
-                        should_delete = filename.endswith(('.old', '.bak', '.tmp'))
-                    elif scope == "test_binaries":
-                        should_delete = (filename.startswith('test_') and
-                                        filename.endswith('.bin'))
-                    elif scope == "logs":
-                        should_delete = filename.startswith('PT_')
-                    elif scope == "launchers":
-                        should_delete = filename.startswith('LaunchAPPL')
-                    elif scope == "all":
-                        should_delete = True
-
-                if should_delete:
-                    found.append(filename)
-                    if not dry_run:
-                        try:
-                            ftp.delete(filename)
-                            removed.append(filename)
-                        except Exception as e:
-                            pass  # Continue with other files
-
-            return True
-
-        self._ftp_operation(machine_id, operation)
-        machine = self.machines[machine_id]
-
-        if dry_run:
-            if found:
-                return [TextContent(
-                    type="text",
-                    text=f"🔍 DRY RUN - Would delete from {machine['name']}:\n\n" +
-                         "\n".join(f"  - {f}" for f in found) +
-                         f"\n\nRun without dry_run=true to actually delete."
-                )]
-            else:
-                return [TextContent(type="text", text=f"🔍 DRY RUN - Nothing matches on {machine['name']}")]
-        else:
-            if removed:
-                return [TextContent(
-                    type="text",
-                    text=f"✅ Cleaned {machine['name']}:\n\n" +
-                         "\n".join(f"  - {f}" for f in removed)
-                )]
-            else:
-                return [TextContent(type="text", text=f"✅ Nothing to clean on {machine['name']}")]
-
-    # =========================================================================
-    # Prompts
-    # =========================================================================
-
-    async def list_prompts(self) -> list:
-        """List available prompt templates."""
-        return [
-            {
-                "name": "deploy-and-test",
-                "description": "Deploy binary, run on Mac, fetch logs",
-                "arguments": [
-                    {"name": "machine", "required": True},
-                    {"name": "platform", "required": True},
-                    {"name": "binary_path", "required": True}
-                ]
-            }
-        ]
-
-    async def get_prompt(self, name: str, arguments: dict) -> dict:
-        """Get prompt template."""
-        if name == "deploy-and-test":
-            machine = arguments.get("machine", "performa6200")
-            platform = arguments.get("platform", "mactcp")
-            binary = arguments.get("binary_path", "build/mac/test_latency.bin")
-
-            return {
-                "messages": [{
-                    "role": "user",
-                    "content": {
-                        "type": "text",
-                        "text": f"""Deploy and test on {machine}:
-
-1. Upload: {binary}
-2. Run on Mac
-3. Fetch PT_Log
-4. Report results
-"""
-                    }
-                }]
-            }
-
-        raise ValueError(f"Unknown prompt: {name}")
+            return [TextContent(type="text", text=f"Error: {e}")]
 
 
 async def main():

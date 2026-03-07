@@ -1,203 +1,42 @@
-# =============================================================================
-# PeerTalk .gitignore
-# =============================================================================
+# Canonical build directories
+build/
+build-68k/
+build-68k-ot/
+build-ppc-ot/
+build-ppc-mactcp/
 
-# -----------------------------------------------------------------------------
-# Build Artifacts
-# -----------------------------------------------------------------------------
+# Stale dirs (root-owned, cannot delete)
+build-m68k/
+build-ppc/
+build-68k-fresh/
+build-68k-new/
+build-ppc-fresh/
 
-# Object files
-*.o
-*.obj
-*.lo
-*.ko
-*.elf
-
-# Executables
-*.exe
-*.out
-*.app
-a.out
-
-# Libraries
-*.lib
-*.a
-*.la
-*.so
-*.so.*
-*.dylib
-*.dll
-
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
-*.gdb
-
-# Build directories
-/build/
-bin/
-obj/
-dist/
-out/
-
-# Preserve build skill directory
-!.claude/skills/build/
-!tools/build/
-
-# -----------------------------------------------------------------------------
-# Classic Mac Build Artifacts (Retro68)
-# -----------------------------------------------------------------------------
-
-*.bin
-*.sit
-*.rsrc
-*.dsk
-*.img
-*.APPL
-*.CODE
-*.DATA
-*.rsrc.bin
-*.hqx
-*.sea
-*.xcoff
-*.pef
-*.ad
-%*.ad
-
-# Mac resource fork directories (created by file transfers)
-.finf/
-.rsrc/
-
-# LaunchAPPL build output
+# Other build artifacts
+packages/
 LaunchAPPL-build/
 
-# Temporary Retro68 sample builds
-/HelloWorld/
-/LaunchAPPL/
+# MCP config (local)
+.mcp.json
 
-# -----------------------------------------------------------------------------
-# Coverage and Profiling
-# -----------------------------------------------------------------------------
+# Downloads and temp files
+downloads/
+logs/
+*.o
+*.a
+*.bin
 
-*.gcda
-*.gcno
-*.gcov
-coverage/
-*.lcov
-htmlcov/
-coverage.info
+# Machine registry (contains FTP credentials)
+.claude/mcp-servers/classic-mac-hardware/machines.json
 
-# -----------------------------------------------------------------------------
-# IDE and Editor Files
-# -----------------------------------------------------------------------------
+# Reference books (12MB PDFs)
+books/
 
-.vscode/
-.idea/
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
 *.swp
 *.swo
 *~
-.DS_Store
-Thumbs.db
-*.orig
-
-# -----------------------------------------------------------------------------
-# Temporary Files
-# -----------------------------------------------------------------------------
-
-*.tmp
-*.temp
-*.log
-# Preserve performance test logs
-!plan/performance/**/*.log
-*.bak
-*.old
-*.pid
-*.dump
-.cache/
-
-# -----------------------------------------------------------------------------
-# CMake / Make
-# -----------------------------------------------------------------------------
-
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-compile_commands.json
-*.d
-.deps/
-
-# -----------------------------------------------------------------------------
-# Test Artifacts
-# -----------------------------------------------------------------------------
-
-# Test binaries (but keep test source files)
-test_*
-!test_*.c
-!test_*.h
-!test_*.r
-
-# Test results
-tools/testing/results/
-
-# Downloaded logs from Classic Mac hardware
-downloads/
-
-# Temporary Mac test log files (streamed from hardware, no extension)
-PT_*
-
-# -----------------------------------------------------------------------------
-# Python
-# -----------------------------------------------------------------------------
-
-tools/.venv/
-.venv/
-venv/
-__pycache__/
-*.pyc
-*.pyo
-*.egg-info/
-.python-version
-
-# -----------------------------------------------------------------------------
-# Node.js (Dashboard)
-# -----------------------------------------------------------------------------
-
-node_modules/
-_site/
-package-lock.json
-
-# -----------------------------------------------------------------------------
-# Secrets and Local Config
-# -----------------------------------------------------------------------------
-
-.env
-.env.local
-.env.*.local
-
-# Local settings (user-specific overrides)
-.claude/settings.local.json
-
-# MCP server configuration (user-specific, contains FTP credentials)
-.claude/mcp-servers/*/machines.json
-
-# MCP config (auto-generated)
-.mcp.json
-
-# -----------------------------------------------------------------------------
-# Package Output
-# -----------------------------------------------------------------------------
-
-packages/
-
-# -----------------------------------------------------------------------------
-# Claude Code Agent Output
-# -----------------------------------------------------------------------------
-
-# Task agent output directories (UUID format)
-????-????-????-????/
-
-# -----------------------------------------------------------------------------
-# Misc
-# -----------------------------------------------------------------------------

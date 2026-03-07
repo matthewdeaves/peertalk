@@ -1,552 +1,292 @@
 /*
- * PeerTalk Internal Declarations
- * Platform abstraction, internal peer structures, context definition
+ * pt_internal.h -- PeerTalk internal types and macros
+ *
+ * This header is private to the SDK. Never include from peertalk.h.
  */
 
 #ifndef PT_INTERNAL_H
 #define PT_INTERNAL_H
 
-#include "pt_types.h"
-#include "pt_log.h"
-#include "send.h"           /* Phase 3: pt_batch type */
-#include "direct_buffer.h"  /* Tier 2: large message buffers */
+#include "peertalk.h"
 
-/* ========================================================================== */
-/* PT_Log Integration (Phase 0)                                              */
-/* ========================================================================== */
+#include "clog.h"
 
-/**
- * Convenience Macros for Context-Based Logging
- *
- * These macros extract the log handle from a pt_context pointer,
- * reducing boilerplate in PeerTalk internal code.
- *
- * Usage:
- *     PT_CTX_ERR(ctx, PT_LOG_CAT_NETWORK, "Connection failed: %d", err);
- *     PT_CTX_INFO(ctx, PT_LOG_CAT_INIT, "PeerTalk initialized");
- */
-#define PT_CTX_ERR(ctx, cat, ...) \
-    PT_LOG_ERR((ctx)->log, cat, __VA_ARGS__)
+#include <string.h> /* memcpy, memset */
 
-#define PT_CTX_WARN(ctx, cat, ...) \
-    PT_LOG_WARN((ctx)->log, cat, __VA_ARGS__)
+/* ------------------------------------------------------------------ */
+/* Wire protocol constants                                             */
+/* ------------------------------------------------------------------ */
 
-#define PT_CTX_INFO(ctx, cat, ...) \
-    PT_LOG_INFO((ctx)->log, cat, __VA_ARGS__)
+#define PT_DISCOVERY_PORT   7353
+#define PT_TCP_PORT         7354
+#define PT_UDP_MSG_PORT     7355
 
-#define PT_CTX_DEBUG(ctx, cat, ...) \
-    PT_LOG_DEBUG((ctx)->log, cat, __VA_ARGS__)
+#define PT_MAGIC_0  0x50  /* 'P' */
+#define PT_MAGIC_1  0x54  /* 'T' */
+#define PT_MAGIC_2  0x4C  /* 'L' */
+#define PT_MAGIC_3  0x4B  /* 'K' */
 
-/* ========================================================================== */
-/* Platform Abstraction Layer                                                */
-/* ========================================================================== */
+#define PT_WIRE_VERSION     1
+#define PT_MSG_TYPE_GOODBYE 255
 
-/**
- * Platform-specific operations
- */
-typedef struct {
-    int             (*init)(struct pt_context *ctx);
-    void            (*shutdown)(struct pt_context *ctx);
-    int             (*poll)(struct pt_context *ctx);
-    int             (*poll_fast)(struct pt_context *ctx);  /* TCP I/O only */
-    pt_tick_t       (*get_ticks)(void);
-    unsigned long   (*get_free_mem)(void);
-    unsigned long   (*get_max_block)(void);
-    int             (*send_udp)(struct pt_context *ctx, struct pt_peer *peer,
-                                const void *data, uint16_t len);
+#define PT_NAME_MAX         31
+#define PT_DISCOVERY_HEADER 5   /* 4 magic + 1 version */
+#define PT_DISCOVERY_MAX    37  /* header + 32 name bytes */
 
-    /* Async send pipeline ops (NULL if platform doesn't support/need async) */
-    int             (*tcp_send_async)(struct pt_context *ctx, struct pt_peer *peer,
-                                      const void *data, uint16_t len, uint8_t flags);
-    int             (*poll_send_completions)(struct pt_context *ctx,
-                                             struct pt_peer *peer);
-    int             (*send_slots_available)(struct pt_context *ctx,
-                                            struct pt_peer *peer);
-    int             (*pipeline_init)(struct pt_context *ctx, struct pt_peer *peer);
-    void            (*pipeline_cleanup)(struct pt_context *ctx, struct pt_peer *peer);
-} pt_platform_ops;
+#define PT_TCP_HEADER_SIZE      4   /* 2 len + 1 type + 1 flags */
+#define PT_TCP_CHUNK_HEADER     8   /* 2 len + 1 type + 1 flags + 2 seq + 2 total */
+#define PT_UDP_HEADER_SIZE      3   /* 2 len + 1 type */
 
-/* Platform ops implementations (defined in platform-specific files) */
-#ifdef PT_PLATFORM_POSIX
-extern pt_platform_ops pt_posix_ops;
-#endif
+#define PT_CHUNK_FLAG           0x01
 
-#ifdef PT_PLATFORM_MACTCP
-extern pt_platform_ops pt_mactcp_ops;
-#endif
+#define PT_DISCOVERY_INTERVAL   2   /* seconds between broadcasts */
+#define PT_DISCOVERY_TIMEOUT    10  /* seconds before peer lost */
+#define PT_TCP_TIMEOUT          30  /* seconds of TCP inactivity */
+#define PT_CONNECT_TIMEOUT      10  /* seconds to establish TCP */
+#define PT_REASSEMBLY_TIMEOUT   5   /* seconds for chunk reassembly */
 
-#ifdef PT_PLATFORM_OT
-extern pt_platform_ops pt_ot_ops;
-#endif
+#define PT_UDP_MTU_SAFE         1400 /* max fast message payload */
 
-#if defined(PT_PLATFORM_APPLETALK) || defined(PT_HAS_APPLETALK)
-extern pt_platform_ops pt_appletalk_ops;
-#endif
+/* POSIX defaults */
+#define PT_DEFAULT_MAX_PEERS    32
+#define PT_DEFAULT_TCP_RECV     8192
+#define PT_DEFAULT_TCP_SEND     4096
+#define PT_DEFAULT_UDP_BUF      512
+#define PT_DEFAULT_REASSEMBLY   65536
 
-/* ========================================================================== */
-/* Async Send Pipeline Structures                                             */
-/* ========================================================================== */
+/* Global overhead for memory sizing */
+#define PT_GLOBAL_OVERHEAD      1024
+#define PT_PEER_METADATA        128
 
-/**
- * Platform-agnostic WDS entry (matches MacTCP wdsEntry layout)
- *
- * On MacTCP: used directly for TCPSend WDS array
- * On POSIX: not used (kernel handles buffering)
- * On OT: similar to TNetbuf
- */
-typedef struct {
-    uint16_t    length;     /* Length of buffer */
-    void       *ptr;        /* Pointer to buffer data */
-} pt_wds_entry;
+/* ------------------------------------------------------------------ */
+/* Byte-order helpers                                                  */
+/* ------------------------------------------------------------------ */
 
-/**
- * Send slot - holds one in-flight async message (24 bytes)
- *
- * Design notes:
- * - WDS embedded to avoid separate allocation
- * - ioResult cached locally for cache-efficient polling (avoids pointer chase)
- * - Hot fields (buffer, platform_data, ioResult) grouped first
- *
- * Per MacTCP Guide (Lines 2959-2961): "You must not modify or relocate the
- * WDS and the buffers it describes until the TCPSend command has been completed."
- */
-typedef struct {
-    uint8_t        *buffer;         /* 4 bytes - Message buffer (header + payload + CRC) */
-    void           *platform_data;  /* 4 bytes - Platform-specific (TCPiopb*, etc.) */
-    pt_wds_entry    wds[2];         /* 8 bytes - WDS[0]=message, WDS[1]=sentinel */
-    volatile int16_t ioResult;      /* 2 bytes - Cached from pb->ioResult for fast polling */
-    uint16_t        message_len;    /* 2 bytes - Actual message length */
-    uint8_t         in_use;         /* 1 byte  - 1 if send pending */
-    uint8_t         completed;      /* 1 byte  - 1 if send finished (success or error) */
-    uint16_t        buffer_size;    /* 2 bytes - Allocated size (cold - only at init) */
-} pt_send_slot;  /* Total: 24 bytes */
+/* Network byte order is big-endian. 68k is natively big-endian. */
 
-/**
- * Send pipeline - manages async send slots for a peer
- *
- * Hot field (pending_count) first for cache locality on 68030 (256-byte cache).
- *
- * Memory per peer (standard build, depth=4):
- *   - 4 x pt_send_slot = 96 bytes
- *   - 4 x buffer (~4KB each) = 16,448 bytes
- *   - 4 x TCPiopb (~92 bytes) = 368 bytes
- *   - Total: ~17KB per peer
- *
- * Memory per peer (lowmem build, depth=2):
- *   - 2 x pt_send_slot = 48 bytes
- *   - 2 x buffer (~1KB each) = 2,080 bytes
- *   - 2 x TCPiopb (~92 bytes) = 184 bytes
- *   - Total: ~2.3KB per peer
- */
-typedef struct {
-    uint8_t         pending_count;  /* Hot: checked every poll */
-    uint8_t         next_slot;      /* Warm: checked on send */
-    uint8_t         initialized;    /* Cold: rarely checked */
-    uint8_t         reserved;
-    pt_send_slot    slots[PT_SEND_PIPELINE_DEPTH];
-} pt_send_pipeline;
-
-/* ========================================================================== */
-/* Peer Capability Structure                                                  */
-/* ========================================================================== */
-
-/**
- * Per-peer capability storage
- *
- * Stored in pt_peer_cold (rarely accessed after negotiation).
- * Effective max is cached in pt_peer_hot for fast send-path access.
- *
- * Flow control: We track last_reported_pressure to detect when our local
- * pressure has changed significantly (crosses PT_PRESSURE_* thresholds).
- * When it changes, we send a capability update to inform the peer.
- * The peer stores our pressure in buffer_pressure and throttles sends.
- */
-typedef struct {
-    uint16_t max_message_size;   /* Peer's max (256-8192), 0=unknown */
-    uint16_t preferred_chunk;    /* Optimal chunk size */
-    uint16_t capability_flags;   /* PT_CAPFLAG_* */
-    uint16_t recv_buffer_size;   /* Peer's receive buffer size (0=unknown, default 8192) */
-    uint16_t optimal_chunk;      /* Peer's 25% threshold (recv_buf/4) - optimal send size */
-    uint16_t send_window;        /* Flow control: max queued messages (auto-calculated) */
-    uint8_t  buffer_pressure;    /* 0-100: peer's reported constraint level */
-    uint8_t  caps_exchanged;     /* 1 after exchange complete */
-    uint8_t  last_reported_pressure; /* 0-100: what we last told peer */
-    uint8_t  pressure_update_pending; /* 1 if need to send pressure update */
-    uint8_t  first_send_logged;  /* 1 after logging first send effective_max */
-    uint8_t  compact_mode;       /* 1 if compact headers negotiated with peer */
-    uint8_t  push_preferred;     /* 1 if peer needs pushFlag=1 always */
-    uint8_t  last_ibuf_pressure; /* MacTCP: ibuf level when last update sent */
-    uint8_t  peak_ibuf_pressure; /* MacTCP: peak ibuf during this poll cycle */
-    uint8_t  last_reported_ibuf_level; /* MacTCP: last threshold level (0/25/50/75) */
-
-    /* Rate limiting state (token bucket algorithm)
-     * When peer reports high pressure, we auto-throttle sends to avoid
-     * overwhelming them. rate_limit_bytes_per_sec=0 means no rate limit. */
-    uint32_t rate_limit_bytes_per_sec;  /* 0 = unlimited */
-    uint32_t rate_bucket_tokens;        /* Available tokens (bytes) */
-    uint32_t rate_bucket_max;           /* Max token accumulation */
-    pt_tick_t rate_last_update;         /* Last token refill time */
-
-    /* Capability send rate limiting.
-     * We must not flood the peer with capability messages, especially when
-     * their ibuf is congested (e.g., after a heavy receive phase). Cap updates
-     * are rate-limited to at most one per PT_CAP_MIN_INTERVAL_TICKS ticks.
-     * Units match platform get_ticks(): TickCount on Mac, ms on POSIX. */
-    pt_tick_t cap_last_sent;            /* Tick count when last capability was sent */
-} pt_peer_caps;
-
-/* ========================================================================== */
-/* Fragment Reassembly State                                                  */
-/* ========================================================================== */
-
-/**
- * Per-peer fragment reassembly state
- *
- * Uses existing recv_direct buffer for storage. Only one message
- * can be reassembled at a time per peer.
- */
-typedef struct {
-    uint16_t message_id;         /* Current message being reassembled */
-    uint16_t total_length;       /* Expected total message size */
-    uint16_t received_length;    /* Bytes received so far */
-    uint8_t  active;             /* 1 if reassembly in progress */
-    uint8_t  reserved;
-} pt_reassembly_state;
-
-/* ========================================================================== */
-/* Stream Transfer State                                                      */
-/* ========================================================================== */
-
-/**
- * Per-peer stream transfer state
- *
- * Tracks an active PeerTalk_StreamSend() operation. Only one stream
- * can be active per peer at a time.
- */
-typedef struct {
-    const uint8_t      *data;           /* Pointer to user's data buffer */
-    void               *user_data;      /* User callback context */
-    void               *on_complete;    /* PeerTalk_StreamCompleteCB (void* to avoid include) */
-    uint32_t            total_length;   /* Total bytes to send */
-    uint32_t            bytes_sent;     /* Bytes sent so far */
-    uint8_t             active;         /* 1 if stream in progress */
-    uint8_t             cancelled;      /* 1 if cancel requested */
-    uint8_t             reserved[2];
-} pt_peer_stream;
-
-/* ========================================================================== */
-/* Internal Peer Address Structure                                           */
-/* ========================================================================== */
-
-#define PT_MAX_PEER_ADDRESSES 2
-
-/**
- * Per-peer address entry
- */
-typedef struct {
-    uint32_t            address;        /* IP or synthesized AppleTalk address */
-    uint16_t            port;
-    uint16_t            transport;      /* PT_TRANSPORT_* */
-} pt_peer_address;  /* 8 bytes */
-
-/* ========================================================================== */
-/* Internal Peer Structure - Hot/Cold Split                                  */
-/* ========================================================================== */
-
-/**
- * Hot peer data - accessed every poll cycle
- * Optimized for cache efficiency (designed for 68030 32-byte cache lines)
- */
-typedef struct {
-    void               *connection;     /* Platform-specific connection handle (Phase 5) */
-    uint32_t            magic;          /* PT_PEER_MAGIC - validation */
-    pt_tick_t           last_seen;      /* Last activity timestamp */
-    PeerTalk_PeerID     id;
-    uint16_t            peer_flags;     /* PT_PEER_FLAG_* from discovery */
-    uint16_t            latency_ms;     /* Estimated RTT */
-    uint16_t            effective_max_msg; /* min(ours, theirs) - cached for send path */
-    uint16_t            effective_chunk;   /* Adaptive chunk size based on RTT */
-    pt_peer_state       state;
-    uint8_t             address_count;
-    uint8_t             preferred_transport;
-    uint8_t             send_seq;       /* Send sequence number (Phase 2) */
-    uint8_t             recv_seq;       /* Receive sequence number (Phase 2) */
-    uint8_t             name_idx;       /* Index into context name table */
-    uint8_t             pipeline_depth; /* Adaptive pipeline depth based on RTT */
-} pt_peer_hot;
-
-/**
- * Cold peer data - accessed infrequently
- */
-typedef struct {
-    char                name[PT_MAX_PEER_NAME + 1];     /* 32 bytes */
-    PeerTalk_PeerInfo   info;                           /* ~20 bytes */
-    pt_peer_address     addresses[PT_MAX_PEER_ADDRESSES];  /* 16 bytes */
-    pt_tick_t           last_discovery;
-    PeerTalk_PeerStats  stats;
-    pt_tick_t           ping_sent_time;
-    uint16_t            rtt_samples[8];     /* Rolling RTT samples */
-    uint8_t             rtt_index;
-    uint8_t             rtt_count;
-    pt_peer_caps        caps;               /* Peer capability info */
-    pt_reassembly_state reassembly;         /* Fragment reassembly state */
-    uint8_t             obuf[PT_FRAME_BUF_SIZE];  /* Output framing buffer */
-    uint8_t             ibuf[PT_FRAME_BUF_SIZE];  /* Input framing buffer */
-    uint16_t            obuflen;
-    uint16_t            ibuflen;
-#ifdef PT_DEBUG
-    uint32_t            obuf_canary;
-    uint32_t            ibuf_canary;
-#endif
-} pt_peer_cold;
-
-/**
- * Complete peer structure
- */
-struct pt_peer {
-    pt_peer_hot         hot;            /* 32 bytes - frequently accessed */
-    pt_peer_cold        cold;           /* ~1.4KB - rarely accessed */
-    struct pt_queue    *send_queue;     /* Tier 1: 256-byte slots for control messages */
-    struct pt_queue    *recv_queue;     /* Tier 1: 256-byte slots for control messages */
-    pt_direct_buffer    send_direct;    /* Tier 2: 4KB buffer for large outgoing messages */
-    pt_direct_buffer    recv_direct;    /* Tier 2: 4KB buffer for large incoming messages */
-    pt_peer_stream      stream;         /* Active stream transfer state */
-    pt_send_pipeline    pipeline;       /* Async send pipeline (MacTCP/OT optimization) */
-};
-
-/* ========================================================================== */
-/* Internal Context Structure                                                */
-/* ========================================================================== */
-
-#define PT_MAX_PEER_ID  256
-
-/**
- * PeerTalk context (opaque to public API)
- */
-struct pt_context {
-    uint32_t            magic;          /* PT_CONTEXT_MAGIC */
-    PeerTalk_Config     config;
-    PeerTalk_Callbacks  callbacks;
-    pt_platform_ops    *plat;
-    PeerTalk_PeerInfo   local_info;
-    PeerTalk_GlobalStats global_stats;
-    struct pt_peer     *peers;          /* Array of peers */
-
-    /* O(1) Peer ID Lookup Table */
-    uint8_t             peer_id_to_index[PT_MAX_PEER_ID];  /* 0xFF = invalid */
-
-    /* Centralized Name Table */
-    char                peer_names[PT_MAX_PEERS][PT_MAX_PEER_NAME + 1];
-
-    uint32_t            next_message_id;
-    uint32_t            peers_version;      /* Increments when peers added/removed */
-    uint16_t            local_flags;
-    uint16_t            max_peers;
-    uint16_t            peer_count;
-    PeerTalk_PeerID     next_peer_id;
-    uint16_t            available_transports;
-    uint16_t            active_transports;
-    uint16_t            log_categories;
-    uint8_t             discovery_active;
-    uint8_t             listening;
-    uint8_t             initialized;
-    uint8_t             reserved_byte;
-
-    PT_Log             *log;            /* PT_Log handle from Phase 0 */
-
-    /* Phase 3: Pre-allocated batch buffer (avoids 1.4KB stack allocation) */
-    pt_batch            send_batch;     /* For pt_drain_send_queue() */
-
-    /* Two-tier message queue configuration */
-    uint16_t            direct_threshold;   /* Messages > this go to Tier 2 (default 256) */
-    uint16_t            direct_buffer_size; /* Tier 2 buffer size (default 4096) */
-
-    /* Capability negotiation configuration */
-    uint16_t            local_max_message;      /* Our max message size (0=8192) */
-    uint16_t            local_preferred_chunk;  /* Our preferred chunk (0=1024) */
-    uint16_t            local_capability_flags; /* Our PT_CAPFLAG_* */
-    uint8_t             enable_fragmentation;   /* 1=auto-fragment (default 1) */
-    uint8_t             owns_buffer_pool;       /* 1=we allocated buffer_pool, must free */
-
-    /* Configurable pressure thresholds (from config, with defaults applied) */
-    uint8_t             pressure_medium;        /* Default: PT_PRESSURE_MEDIUM (50) */
-    uint8_t             pressure_high;          /* Default: PT_PRESSURE_HIGH (85) */
-    uint8_t             pressure_critical;      /* Default: PT_PRESSURE_CRITICAL (95) */
-    uint8_t             pressure_frag;          /* Default: PT_PRESSURE_FRAG_THRESHOLD (75) */
-
-    /* Connection timeout (ms) */
-    uint16_t            connect_timeout;        /* Default: 30000 */
-
-    /* Platform-specific data follows (allocated via pt_plat_extra_size) */
-};
-
-/* ========================================================================== */
-/* Validation Functions                                                       */
-/* ========================================================================== */
-
-/**
- * Validate context magic number (inline for performance)
- */
-static inline int pt_context_valid(const struct pt_context *ctx)
-{
-    return ctx != NULL && ctx->magic == PT_CONTEXT_MAGIC;
-}
-
-/**
- * Validate peer magic number (inline for performance)
- */
-static inline int pt_peer_valid(const struct pt_peer *peer)
-{
-    return peer != NULL && peer->hot.magic == PT_PEER_MAGIC;
-}
-
-/**
- * Validate context structure (full validation)
- */
-int pt_validate_context(struct pt_context *ctx);
-
-/**
- * Validate peer structure (full validation)
- */
-int pt_validate_peer(struct pt_peer *peer);
-
-/**
- * Validate configuration
- */
-int pt_validate_config(const PeerTalk_Config *config);
-
-/* Validation macros for debug builds */
-#ifdef PT_DEBUG
-    #define PT_VALIDATE_CONTEXT(ctx) \
-        do { \
-            if (!pt_context_valid(ctx)) { \
-                PT_Log_Err(ctx ? ctx->log : NULL, PT_LOG_CORE, \
-                           "Invalid context magic: 0x%08X", \
-                           ctx ? ctx->magic : 0); \
-                return PT_ERR_INVALID_PARAM; \
-            } \
-        } while (0)
-
-    #define PT_VALIDATE_PEER(peer) \
-        do { \
-            if (!pt_peer_valid(peer)) { \
-                return PT_ERR_INVALID_PARAM; \
-            } \
-        } while (0)
+#if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)
+/* 68k/PPC: already big-endian, no conversion needed */
+#define pt_htons(x) (x)
+#define pt_ntohs(x) (x)
 #else
-    #define PT_VALIDATE_CONTEXT(ctx) ((void)0)
-    #define PT_VALIDATE_PEER(peer)   ((void)0)
+/* POSIX: use system htons/ntohs */
+#include <arpa/inet.h>
+#define pt_htons(x) htons(x)
+#define pt_ntohs(x) ntohs(x)
 #endif
 
-/* ========================================================================== */
-/* Peer Management Functions                                                 */
-/* ========================================================================== */
+/* ------------------------------------------------------------------ */
+/* ISR-safe memcpy (byte copy, no Toolbox)                             */
+/* Only needed on Classic Mac where memcpy may call Toolbox routines.   */
+/* ------------------------------------------------------------------ */
 
-/**
- * O(1) peer lookup by ID
- *
- * Returns NULL if peer not found
- */
-static inline struct pt_peer *pt_find_peer_by_id(struct pt_context *ctx, PeerTalk_PeerID id)
+#if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)
+static void pt_memcpy_isr(void *dst, const void *src, size_t n)
 {
-    uint8_t index;
-
-    if (id == 0 || id >= PT_MAX_PEER_ID)
-        return NULL;
-
-    index = ctx->peer_id_to_index[id];
-    if (index == 0xFF || index >= ctx->peer_count)
-        return NULL;
-
-    return &ctx->peers[index];
+    unsigned char *d = (unsigned char *)dst;
+    const unsigned char *s = (const unsigned char *)src;
+    while (n-- > 0) {
+        *d++ = *s++;
+    }
 }
+#endif
 
-/**
- * Linear scan for address lookup (called rarely)
- */
-struct pt_peer *pt_find_peer_by_address(struct pt_context *ctx, uint32_t addr, uint16_t port);
+/* ------------------------------------------------------------------ */
+/* Forward declarations                                                */
+/* ------------------------------------------------------------------ */
 
-/**
- * Linear scan for name lookup (cold path)
- */
-struct pt_peer *pt_find_peer_by_name(struct pt_context *ctx, const char *name);
+struct PT_Context_Internal;
+struct PT_Peer_Internal;
 
-/**
- * Allocate peer slot (uses swap-back removal for O(1) allocation)
- */
-struct pt_peer *pt_alloc_peer(struct pt_context *ctx);
+/* ------------------------------------------------------------------ */
+/* Platform operations vtable                                          */
+/* ------------------------------------------------------------------ */
 
-/**
- * Free peer slot (uses swap-back removal for O(1) deallocation)
- *
- * Algorithm:
- * 1. Copy last peer to removed slot
- * 2. Update peer_id_to_index for moved peer's ID
- * 3. Decrement peer_count
- * 4. Invalidate old last slot
- *
- * IMPORTANT: Peer ordering is NOT preserved. Iterate by peer_id if ordering matters.
- */
-void pt_free_peer(struct pt_context *ctx, struct pt_peer *peer);
+typedef struct PT_PlatformOps {
+    PT_Status (*init)(struct PT_Context_Internal *ctx);
+    void      (*shutdown)(struct PT_Context_Internal *ctx);
+    PT_Status (*udp_broadcast)(struct PT_Context_Internal *ctx,
+                               unsigned short port,
+                               const void *data, size_t len);
+    PT_Status (*udp_send)(struct PT_Context_Internal *ctx,
+                          struct PT_Peer_Internal *peer,
+                          unsigned short port,
+                          const void *data, size_t len);
+    PT_Status (*udp_listen)(struct PT_Context_Internal *ctx,
+                            unsigned short port);
+    PT_Status (*tcp_listen)(struct PT_Context_Internal *ctx);
+    PT_Status (*tcp_connect)(struct PT_Context_Internal *ctx,
+                             struct PT_Peer_Internal *peer);
+    PT_Status (*tcp_send)(struct PT_Context_Internal *ctx,
+                          struct PT_Peer_Internal *peer,
+                          const void *data, size_t len);
+    void      (*tcp_disconnect)(struct PT_Context_Internal *ctx,
+                                struct PT_Peer_Internal *peer);
+    void      (*poll)(struct PT_Context_Internal *ctx);
+} PT_PlatformOps;
 
-/* ========================================================================== */
-/* Name Table Access                                                          */
-/* ========================================================================== */
+/* ------------------------------------------------------------------ */
+/* Platform peer state (union across platforms)                         */
+/* ------------------------------------------------------------------ */
 
-/**
- * Get peer name from centralized table
- */
-const char *pt_get_peer_name(struct pt_context *ctx, uint8_t name_idx);
+typedef struct PT_PlatformPeer {
+#if defined(PT_PLATFORM_POSIX)
+    int tcp_fd;           /* -1 if not connected */
+#elif defined(PT_PLATFORM_MACTCP)
+    void *tcp_stream;     /* pointer to TCPStreamSlot, NULL if not connected */
+#elif defined(PT_PLATFORM_OT)
+    void *endpoint;       /* EndpointRef */
+    unsigned long events; /* volatile event flags */
+#endif
+    int dummy; /* ensure non-empty struct on all platforms */
+} PT_PlatformPeer;
 
-/**
- * Allocate name slot in centralized table
- */
-uint8_t pt_alloc_peer_name(struct pt_context *ctx, const char *name);
+/* ------------------------------------------------------------------ */
+/* Callbacks struct                                                     */
+/* ------------------------------------------------------------------ */
 
-/**
- * Free name slot in centralized table
- */
-void pt_free_peer_name(struct pt_context *ctx, uint8_t name_idx);
+typedef struct PT_Callbacks {
+    PT_PeerCallback       on_peer_discovered;
+    void                 *on_peer_discovered_data;
+    PT_PeerCallback       on_peer_lost;
+    void                 *on_peer_lost_data;
+    PT_PeerCallback       on_connected;
+    void                 *on_connected_data;
+    PT_DisconnectCallback on_disconnected;
+    void                 *on_disconnected_data;
+    PT_MessageCallback    on_message[256];
+    void                 *on_message_data[256];
+    PT_ErrorCallback      on_error;
+    void                 *on_error_data;
+} PT_Callbacks;
 
-/* ========================================================================== */
-/* Platform-Specific Allocation                                              */
-/* ========================================================================== */
+/* ------------------------------------------------------------------ */
+/* PT_Peer_Internal                                                    */
+/* ------------------------------------------------------------------ */
 
-/**
- * Platform-agnostic memory allocation
- */
-void *pt_plat_alloc(size_t size);
+typedef struct PT_Peer_Internal {
+    /* Public-facing (cast to PT_Peer*) */
+    char          name[PT_NAME_MAX + 1];
+    PT_PeerState  state;
+    unsigned long ip_addr;          /* network byte order */
+    unsigned long last_seen;        /* timestamp (seconds) */
+    unsigned long last_tcp_activity;/* for TCP inactivity timeout */
+    unsigned long connect_start;    /* when tcp_connect was initiated */
+    int           in_use;
 
-/**
- * Platform-agnostic memory deallocation
- */
-void pt_plat_free(void *ptr);
+    /* Per-peer buffers (pointers into memory_block) */
+    unsigned char *tcp_recv_buf;
+    size_t         tcp_recv_size;
+    size_t         tcp_recv_len;    /* bytes currently buffered */
 
-/**
- * Platform-specific extra context size
- */
-size_t pt_plat_extra_size(void);
+    unsigned char *tcp_send_buf;
+    size_t         tcp_send_size;
 
-/* ========================================================================== */
-/* Buffer Pool Internal Functions                                             */
-/* ========================================================================== */
+    unsigned char *udp_buf;
+    size_t         udp_buf_size;
 
-/**
- * Get a buffer from the pool (marks it in-use).
- * Returns NULL if pool is NULL or exhausted.
- */
-void *pt_buffer_pool_get(PeerTalk_BufferPool *pool);
+    unsigned char *reassembly_buf;
+    size_t         reassembly_buf_size;
+    unsigned char  reassembly_type;
+    unsigned short reassembly_received;
+    unsigned short reassembly_total;
+    unsigned long  reassembly_timer;
+    size_t         reassembly_stride; /* payload size of first chunk */
 
-/**
- * Return a buffer to the pool (marks it available).
- * Returns 1 if buffer was from this pool, 0 otherwise.
- */
-int pt_buffer_pool_return(PeerTalk_BufferPool *pool, void *buffer);
+    /* Platform-specific per-peer state */
+    PT_PlatformPeer platform_peer;
+} PT_Peer_Internal;
 
-/**
- * Get the buffer size for a pool.
- * Returns 0 if pool is NULL.
- */
-uint32_t pt_buffer_pool_size(const PeerTalk_BufferPool *pool);
+/* ------------------------------------------------------------------ */
+/* PT_Context_Internal                                                 */
+/* ------------------------------------------------------------------ */
+
+typedef struct PT_Context_Internal {
+    char          name[PT_NAME_MAX + 1];
+    unsigned long local_ip;         /* network byte order */
+
+    /* Platform abstraction */
+    PT_PlatformOps *platform_ops;
+    void           *platform_state;
+
+    /* Peer management */
+    PT_Peer_Internal *peers;
+    int               max_peers;
+    int               peer_count;
+
+    /* Message type registry */
+    PT_Transport  message_types[256];
+
+    /* Callbacks */
+    PT_Callbacks  callbacks;
+
+    /* Discovery state */
+    int           discovery_active;    /* broadcasting? */
+    int           discovery_listening; /* receiving? */
+    unsigned long discovery_timer;     /* next broadcast time */
+
+    /* Memory */
+    void         *memory_block;
+    size_t        memory_size;
+
+    /* Time tracking */
+    unsigned long current_time;        /* updated each PT_Poll */
+
+    /* UDP send buffer (R48: moved from PT_Send stack to avoid
+       68k stack overflow on Mac SE with ~8KB stack) */
+    unsigned char udp_send_buf[PT_UDP_MTU_SAFE + PT_UDP_HEADER_SIZE];
+} PT_Context_Internal;
+
+/* ------------------------------------------------------------------ */
+/* Internal helpers (implemented in various .c files)                   */
+/* ------------------------------------------------------------------ */
+
+/* pt_memory.c */
+size_t pt_memory_calculate_size(int max_peers, size_t tcp_recv,
+                                size_t tcp_send, size_t udp_buf,
+                                size_t reassembly);
+int    pt_memory_allocate(PT_Context_Internal *ctx,
+                          int max_peers, size_t tcp_recv,
+                          size_t tcp_send, size_t udp_buf,
+                          size_t reassembly);
+void   pt_memory_free(PT_Context_Internal *ctx);
+
+/* pt_discovery.c */
+void      pt_discovery_broadcast(PT_Context_Internal *ctx);
+void      pt_discovery_receive(PT_Context_Internal *ctx,
+                               const void *data, size_t len,
+                               unsigned long source_ip);
+void      pt_discovery_check_timeouts(PT_Context_Internal *ctx);
+
+/* pt_messaging.c */
+void      pt_messaging_process_tcp_data(PT_Context_Internal *ctx,
+                                        PT_Peer_Internal *peer);
+void      pt_messaging_process_udp_data(PT_Context_Internal *ctx,
+                                        const void *data, size_t len,
+                                        unsigned long source_ip);
+void      pt_messaging_check_reassembly_timeouts(PT_Context_Internal *ctx);
+
+/* pt_core.c */
+void      pt_fire_error(PT_Context_Internal *ctx, PT_Status err,
+                        const char *desc);
+PT_Peer_Internal *pt_find_peer_by_ip(PT_Context_Internal *ctx,
+                                     unsigned long ip);
+PT_Peer_Internal *pt_alloc_peer(PT_Context_Internal *ctx);
+void      pt_handle_incoming_connection(PT_Context_Internal *ctx,
+                                        unsigned long peer_ip,
+                                        PT_PlatformPeer *ppeer);
+void      pt_handle_peer_disconnect(PT_Context_Internal *ctx,
+                                    PT_Peer_Internal *peer,
+                                    PT_DisconnectReason reason);
+unsigned long pt_get_time(void);
+
+/* Platform init functions */
+#if defined(PT_PLATFORM_POSIX)
+PT_PlatformOps *posix_get_ops(void);
+#elif defined(PT_PLATFORM_MACTCP)
+PT_PlatformOps *mactcp_get_ops(void);
+#elif defined(PT_PLATFORM_OT)
+PT_PlatformOps *ot_get_ops(void);
+#endif
 
 #endif /* PT_INTERNAL_H */

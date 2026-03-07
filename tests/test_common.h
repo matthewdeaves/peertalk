@@ -1,240 +1,272 @@
-/* test_common.h - Shared test macros and utilities
+/*
+ * test_common.h -- Shared test utilities for PeerTalk test apps
  *
- * Include this header in all test files to avoid duplication of
- * TEST/PASS/FAIL macros and common helper functions.
+ * Classic Mac builds: full Toolbox init, status window GUI, clog to file.
+ * POSIX builds: printf + clog, C11.
  */
 
 #ifndef TEST_COMMON_H
 #define TEST_COMMON_H
 
-/* Ensure POSIX features are available */
-#ifndef _POSIX_C_SOURCE
-#define _POSIX_C_SOURCE 200809L
-#endif
+#include "peertalk.h"
+#include "clog.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
+#include <signal.h>
 
-/* ========================================================================
- * Test Counters
- *
- * By default, this header declares the test counters.
- * If you need to define your own (e.g., for external linkage),
- * define TEST_NO_COUNTERS before including this header.
- * ======================================================================== */
-
-#ifndef TEST_NO_COUNTERS
-static int tests_passed = 0;
-static int tests_failed = 0;
-static int tests_skipped = 0;
-#endif
-
-/* ========================================================================
- * Core Test Macros
- * ======================================================================== */
-
-#define TEST(name) \
-    do { \
-        printf("Running %s... ", name); \
-        fflush(stdout); \
-    } while (0)
-
-#define PASS() \
-    do { \
-        printf("PASS\n"); \
-        tests_passed++; \
-    } while (0)
-
-#define FAIL(msg, ...) \
-    do { \
-        printf("FAIL: "); \
-        printf(msg, ##__VA_ARGS__); \
-        printf("\n"); \
-        tests_failed++; \
-    } while (0)
-
-#define SKIP(reason) \
-    do { \
-        printf("SKIP: %s\n", reason); \
-        tests_skipped++; \
-    } while (0)
-
-/* ========================================================================
- * Assertion Macros (for critical invariants)
- * ======================================================================== */
-
-/* Assert that should never fail - indicates bug in test or code */
-#define TEST_ASSERT(cond, msg) \
-    do { \
-        if (!(cond)) { \
-            fprintf(stderr, "ASSERTION FAILED: %s\n", msg); \
-            fprintf(stderr, "  at %s:%d in %s\n", __FILE__, __LINE__, __func__); \
-            abort(); \
-        } \
-    } while (0)
-
-/* Assert with formatted message */
-#define TEST_ASSERT_FMT(cond, fmt, ...) \
-    do { \
-        if (!(cond)) { \
-            fprintf(stderr, "ASSERTION FAILED: " fmt "\n", ##__VA_ARGS__); \
-            fprintf(stderr, "  at %s:%d in %s\n", __FILE__, __LINE__, __func__); \
-            abort(); \
-        } \
-    } while (0)
-
-/* Soft assertion - fails test but continues */
-#define TEST_EXPECT(cond, msg) \
-    do { \
-        if (!(cond)) { \
-            FAIL("%s", msg); \
-            return; \
-        } \
-    } while (0)
-
-/* ========================================================================
- * Comparison Macros
- * ======================================================================== */
-
-#define TEST_ASSERT_EQ(expected, actual, name) \
-    do { \
-        if ((expected) != (actual)) { \
-            FAIL("%s: expected %d, got %d", name, (int)(expected), (int)(actual)); \
-            return; \
-        } \
-    } while (0)
-
-#define TEST_ASSERT_EQ_U32(expected, actual, name) \
-    do { \
-        if ((expected) != (actual)) { \
-            FAIL("%s: expected %u, got %u", name, (unsigned)(expected), (unsigned)(actual)); \
-            return; \
-        } \
-    } while (0)
-
-#define TEST_ASSERT_NOT_NULL(ptr, name) \
-    do { \
-        if ((ptr) == NULL) { \
-            FAIL("%s should not be NULL", name); \
-            return; \
-        } \
-    } while (0)
-
-#define TEST_ASSERT_NULL(ptr, name) \
-    do { \
-        if ((ptr) != NULL) { \
-            FAIL("%s should be NULL", name); \
-            return; \
-        } \
-    } while (0)
-
-#define TEST_ASSERT_STR_EQ(expected, actual, name) \
-    do { \
-        if (strcmp((expected), (actual)) != 0) { \
-            FAIL("%s: expected \"%s\", got \"%s\"", name, expected, actual); \
-            return; \
-        } \
-    } while (0)
-
-/* ========================================================================
- * Test Summary
- * ======================================================================== */
-
-#define TEST_SUMMARY() \
-    do { \
-        printf("\n=== Results ===\n"); \
-        printf("Passed:  %d\n", tests_passed); \
-        printf("Failed:  %d\n", tests_failed); \
-        if (tests_skipped > 0) { \
-            printf("Skipped: %d\n", tests_skipped); \
-        } \
-        printf("Total:   %d\n", tests_passed + tests_failed + tests_skipped); \
-    } while (0)
-
-#define TEST_RESULT() (tests_failed > 0 ? 1 : 0)
-
-/* ========================================================================
- * Memory Helpers
- * ======================================================================== */
-
-/* Safe free that NULLs the pointer */
-#define SAFE_FREE(ptr) \
-    do { \
-        if (ptr) { \
-            free(ptr); \
-            ptr = NULL; \
-        } \
-    } while (0)
-
-/* ========================================================================
- * Timing Helpers (for benchmarks)
- * ======================================================================== */
-
-#ifdef __linux__
+#ifdef PT_PLATFORM_POSIX
+#include <unistd.h>
 #include <time.h>
-
-static inline uint64_t test_get_time_usec(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
-}
-
-static inline uint64_t test_get_time_ns(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
-}
-
-#elif defined(__APPLE__)
-#include <mach/mach_time.h>
-
-static inline uint64_t test_get_time_usec(void) {
-    static mach_timebase_info_data_t info = {0};
-    if (info.denom == 0) {
-        mach_timebase_info(&info);
-    }
-    uint64_t now = mach_absolute_time();
-    return (now * info.numer / info.denom) / 1000;
-}
-
-static inline uint64_t test_get_time_ns(void) {
-    static mach_timebase_info_data_t info = {0};
-    if (info.denom == 0) {
-        mach_timebase_info(&info);
-    }
-    return mach_absolute_time() * info.numer / info.denom;
-}
-
 #else
-/* Fallback for other platforms */
-#include <time.h>
-
-static inline uint64_t test_get_time_usec(void) {
-    return (uint64_t)clock() * 1000000ULL / CLOCKS_PER_SEC;
-}
-
-static inline uint64_t test_get_time_ns(void) {
-    return (uint64_t)clock() * 1000000000ULL / CLOCKS_PER_SEC;
-}
+/* Classic Mac: full Toolbox + Delay/TickCount + status window */
+#include <Quickdraw.h>
+#include <Fonts.h>
+#include <Windows.h>
+#include <Menus.h>
+#include <TextEdit.h>
+#include <Dialogs.h>
+#include <Memory.h>
+#include <Events.h>
+#include <Timer.h>
+#include "status_window.h"
 #endif
 
-/* ========================================================================
- * Benchmark Macros
- * ======================================================================== */
+/* ------------------------------------------------------------------ */
+/* Logging macro: printf on POSIX, CLOG_INFO + status_window on Mac    */
+/* ------------------------------------------------------------------ */
 
-#define BENCH_ITERATIONS 3  /* Run each benchmark multiple times */
+#ifdef PT_PLATFORM_POSIX
+#define TEST_LOG(fmt, ...) \
+    do { printf(fmt "\n", ##__VA_ARGS__); \
+         CLOG_INFO(fmt, ##__VA_ARGS__); } while(0)
+#define TEST_WARN(fmt, ...) \
+    do { fprintf(stderr, fmt "\n", ##__VA_ARGS__); \
+         CLOG_WARN(fmt, ##__VA_ARGS__); } while(0)
+#else
+/* Classic Mac: clog to PT_Log file + status window for GUI display */
+#define TEST_LOG(fmt, ...) \
+    do { CLOG_INFO(fmt, ##__VA_ARGS__); \
+         status_linef(fmt, ##__VA_ARGS__); } while(0)
+#define TEST_WARN(fmt, ...) \
+    do { CLOG_WARN(fmt, ##__VA_ARGS__); \
+         status_linef(fmt, ##__VA_ARGS__); } while(0)
+#endif
 
-/* Run benchmark and report median */
-#define BENCH_START() uint64_t _bench_start = test_get_time_usec()
+/* ------------------------------------------------------------------ */
+/* Message type constants for test apps                                */
+/* ------------------------------------------------------------------ */
 
-#define BENCH_END(ops, name) \
-    do { \
-        uint64_t _bench_end = test_get_time_usec(); \
-        uint64_t _elapsed = _bench_end - _bench_start; \
-        double _ops_per_sec = (_elapsed > 0) ? ((double)(ops) / _elapsed) * 1000000.0 : 0; \
-        printf("  %s: %.2f ops/sec (%.2f usec total)\n", name, _ops_per_sec, (double)_elapsed); \
-    } while (0)
+#define MSG_POSITION  1
+#define MSG_MOVE      2
+#define MSG_CHAT      3
+#define MSG_GAME_OVER 4
+
+/* ------------------------------------------------------------------ */
+/* Globals                                                             */
+/* ------------------------------------------------------------------ */
+
+static volatile int g_running = 1;
+
+/* ------------------------------------------------------------------ */
+/* Signal handler for clean shutdown                                   */
+/* ------------------------------------------------------------------ */
+
+static void test_signal_handler(int sig)
+{
+    (void)sig;
+    g_running = 0;
+}
+
+static void test_install_signal_handler(void)
+{
+#ifdef PT_PLATFORM_POSIX
+    signal(SIGINT, test_signal_handler);
+    signal(SIGTERM, test_signal_handler);
+#endif
+}
+
+/* ------------------------------------------------------------------ */
+/* Classic Mac platform init (call FIRST in main, before everything)   */
+/* ------------------------------------------------------------------ */
+
+static void test_init_toolbox(void)
+{
+#if !defined(PT_PLATFORM_POSIX)
+    MaxApplZone();
+    MoreMasters();
+    MoreMasters();
+    MoreMasters();
+    MoreMasters();
+
+    InitGraf(&qd.thePort);
+    InitFonts();
+    InitWindows();
+    InitMenus();
+    TEInit();
+    InitDialogs(NULL);
+    InitCursor();
+
+#endif
+}
+
+/* ------------------------------------------------------------------ */
+/* Logging init + status window (call after test_init_toolbox)         */
+/* ------------------------------------------------------------------ */
+
+static void test_init_logging(const char *app_name)
+{
+#if !defined(PT_PLATFORM_POSIX)
+    {
+        /* Use per-app log filenames to avoid collision across test runs.
+         * Format: "PT_{Name}" e.g. PT_Lifecycle, PT_Reliable (R20). */
+        char logname[48];
+        int i;
+        logname[0] = 'P'; logname[1] = 'T'; logname[2] = '_';
+        for (i = 0; i < 44 && app_name[i]; i++) {
+            logname[3 + i] = app_name[i];
+        }
+        logname[3 + i] = '\0';
+        clog_set_file(logname);
+    }
+#endif
+    clog_init(app_name, CLOG_LVL_INFO);
+#if !defined(PT_PLATFORM_POSIX)
+    status_init(app_name);
+#endif
+}
+
+static void test_shutdown_logging(void)
+{
+#if !defined(PT_PLATFORM_POSIX)
+    /* Pause while window is still visible so user can read results.
+     * Must happen BEFORE status_cleanup() disposes the window. */
+    {
+        EventRecord event;
+        int i;
+        status_linef("Press any key to exit.");
+        for (i = 0; i < 600; i++) {
+            WaitNextEvent(everyEvent, &event, 1, NULL);
+            if (event.what == keyDown || event.what == autoKey) break;
+        }
+    }
+    status_cleanup();
+#endif
+    clog_shutdown();
+}
+
+/* ------------------------------------------------------------------ */
+/* Command-line argument parsing                                       */
+/* ------------------------------------------------------------------ */
+
+static const char *test_parse_name(int argc, char **argv)
+{
+    int i;
+    for (i = 1; i < argc - 1; i++) {
+        if (strcmp(argv[i], "--name") == 0) {
+            return argv[i + 1];
+        }
+    }
+    return "Unnamed";
+}
+
+/* ------------------------------------------------------------------ */
+/* Platform-appropriate sleep                                          */
+/* ------------------------------------------------------------------ */
+
+static void test_sleep_ms(int ms)
+{
+#ifdef PT_PLATFORM_POSIX
+    usleep((unsigned)(ms * 1000));
+#else
+    {
+        EventRecord event;
+        long ticks = ms / 16;
+        if (ticks < 1) ticks = 1;
+        WaitNextEvent(everyEvent, &event, ticks, NULL);
+        if (event.what == keyDown || event.what == autoKey) {
+            g_running = 0;
+        }
+    }
+#endif
+}
+
+/* ------------------------------------------------------------------ */
+/* Timestamp (seconds)                                                 */
+/* ------------------------------------------------------------------ */
+
+static unsigned long test_time_sec(void)
+{
+#ifdef PT_PLATFORM_POSIX
+    return (unsigned long)time(NULL);
+#else
+    return (unsigned long)(TickCount() / 60);
+#endif
+}
+
+/* ------------------------------------------------------------------ */
+/* Peer state / disconnect reason strings                              */
+/* ------------------------------------------------------------------ */
+
+static const char *test_state_str(PT_PeerState state)
+{
+    switch (state) {
+        case PT_PEER_DISCOVERED:  return "DISCOVERED";
+        case PT_PEER_CONNECTED:   return "CONNECTED";
+        case PT_PEER_DISCONNECTED: return "DISCONNECTED";
+        default: return "UNKNOWN";
+    }
+}
+
+static const char *test_reason_str(PT_DisconnectReason reason)
+{
+    switch (reason) {
+        case PT_QUIT:             return "QUIT";
+        case PT_TIMEOUT:          return "TIMEOUT";
+        case PT_DISCONNECT_ERROR: return "ERROR";
+        default: return "UNKNOWN";
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* Solo-mode timeout: exit after N seconds if no peer connects.        */
+/* ------------------------------------------------------------------ */
+
+#define TEST_SOLO_TIMEOUT_SEC  60
+
+static unsigned long g_test_start_time = 0;
+static int g_ever_connected = 0;
+
+static void test_mark_start(void)
+{
+    g_test_start_time = test_time_sec();
+}
+
+static void test_mark_connected(void)
+{
+    g_ever_connected = 1;
+}
+
+/* Returns 1 if the solo timeout has elapsed (no peer ever connected) */
+static int test_solo_timeout(void)
+{
+    if (g_ever_connected) return 0;
+    if (g_test_start_time == 0) return 0;
+    return (test_time_sec() - g_test_start_time >= TEST_SOLO_TIMEOUT_SEC);
+}
+
+/* test_exit_pause removed -- pause is now inside test_shutdown_logging()
+ * so the status window stays visible until keypress */
+
+/* ------------------------------------------------------------------ */
+/* Helper: should we call PT_Connect on this peer? (R47)               */
+/* ------------------------------------------------------------------ */
+
+static int test_should_connect(PT_Peer *peer)
+{
+    PT_PeerState st = PT_GetPeerState(peer);
+    return (st == PT_PEER_DISCOVERED || st == PT_PEER_DISCONNECTED);
+}
 
 #endif /* TEST_COMMON_H */
