@@ -131,3 +131,18 @@ A developer evaluates whether callback function parameters can be made const. Th
 - Adding const qualifiers to local variables and parameters will not break any existing functionality
 - C89 requires variable declarations at the beginning of blocks, so scope reduction must be done carefully in SDK code
 - The callback const parameter changes (FR-015) may be deferred if they require extensive function pointer type changes
+
+## Intentionally Not Fixed
+
+The following cppcheck warnings are intentionally not fixed:
+
+1. **Public API parameter const warnings** (4 warnings):
+   - `PT_GetPeerCount(PT_Context *pub_ctx)` - pub_ctx could be const
+   - `PT_PeerName(PT_Peer *pub_peer)` - pub_peer could be const
+   - `PT_PeerAddress(PT_Peer *pub_peer)` - pub_peer could be const
+   - `PT_GetPeerState(PT_Peer *pub_peer)` - pub_peer could be const
+
+   **Reasoning**: These are public API functions declared in `peertalk.h`. Adding const would be a breaking API change requiring all callers to update their code. The functions work correctly as-is, and the const correctness of internal implementation was addressed without changing the public API surface.
+
+2. **False positive unsignedLessThanZero** (1 warning):
+   - The comparison `ctx->current_time >= ctx->discovery_timer` between two unsigned longs is valid but triggers a cppcheck false positive. An inline suppression comment was added.

@@ -114,10 +114,10 @@
 
 **Purpose**: Final verification across all platforms
 
-- [ ] T024 Run cppcheck with full options and verify zero warnings for addressed categories
-- [ ] T025 Run existing test suite to verify no behavioral changes
-- [ ] T026 Verify build succeeds on POSIX platform
-- [ ] T027 Document any warnings intentionally not fixed (with reasoning) in spec.md Assumptions section
+- [x] T024 Run cppcheck with full options and verify zero warnings for addressed categories
+- [x] T025 Run existing test suite to verify no behavioral changes
+- [x] T026 Verify build succeeds on POSIX platform
+- [x] T027 Document any warnings intentionally not fixed (with reasoning) in spec.md Assumptions section
 
 ---
 
