@@ -38,7 +38,7 @@ static int g_connected = 0;
 static int g_my_turn = 0;
 static int g_moves_sent = 0;
 static int g_moves_received = 0;
-static int g_is_first = 0;
+static int g_initiated = 0;
 static int g_order_valid = 1;
 static int g_payload_valid = 1;
 static int g_last_recv_num = 0;
@@ -79,6 +79,7 @@ static void on_discovered(PT_Peer *peer, void *data)
 {
     (void)data;
     TEST_LOG("[DISCOVERED] %s", safe_peer_name(peer));
+    g_initiated = 1;
     PT_Connect(g_ctx, peer);
 }
 
@@ -89,7 +90,7 @@ static void on_connected(PT_Peer *peer, void *data)
     test_mark_connected();
     TEST_LOG("[CONNECTED] %s", safe_peer_name(peer));
 
-    if (g_is_first) {
+    if (g_initiated) {
         g_my_turn = 1;
         TEST_LOG("I go first!");
         send_move(peer);
@@ -201,11 +202,8 @@ int main(int argc, char **argv)
     test_init_toolbox();
     test_init_logging("test_reliable");
 
-    g_is_first = (name[0] <= 'M');
-
     TEST_LOG("=== test_reliable ===");
-    TEST_LOG("Name: %s, Go: %s",
-             name, g_is_first ? "first" : "second");
+    TEST_LOG("Name: %s", name);
 
     if (PT_Init(&g_ctx, name) != PT_OK) {
         TEST_WARN("PT_Init FAILED");
@@ -248,7 +246,7 @@ int main(int argc, char **argv)
         /* T076: Broadcast phase — first mover broadcasts game-over
            after moves are done, then wait for receipt or timeout */
         if (g_moves_done && g_connected) {
-            if (g_is_first && !g_broadcast_sent) {
+            if (g_initiated && !g_broadcast_sent) {
                 PT_Status st = PT_Broadcast(g_ctx, MSG_GAME_OVER,
                                             "GAME_OVER", 9);
                 if (st == PT_OK) {
@@ -276,8 +274,8 @@ int main(int argc, char **argv)
 
     /* T075+T076: require payload validity + broadcast works */
     {
-        int broadcast_ok = g_is_first ? g_broadcast_sent
-                                      : g_broadcast_received;
+        int broadcast_ok = g_initiated ? g_broadcast_sent
+                                       : g_broadcast_received;
         passed = (g_moves_sent == TOTAL_TURNS &&
                   g_moves_received == TOTAL_TURNS &&
                   g_order_valid && g_payload_valid && broadcast_ok);

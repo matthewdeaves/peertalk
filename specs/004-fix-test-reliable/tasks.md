@@ -10,10 +10,10 @@
 
 **Goal**: Replace name-based tiebreaker with initiator-based tiebreaker. The side that calls PT_Connect (from on_discovered) goes first. This is deterministic because spec 003's IP tiebreaker ensures only one side initiates.
 
-- [ ] T001 [US1] In tests/test_reliable.c: remove `g_is_first = (name[0] <= 'M')` from main() (line 204). Change the g_is_first global initializer (line 41) to 0. First-mover will now be determined at connect time, not init time.
-- [ ] T002 [US1] In tests/test_reliable.c: add a `static int g_initiated = 0;` global. In on_discovered (line 78), set `g_initiated = 1;` before calling PT_Connect. This tracks whether we initiated the connection or received it.
-- [ ] T003 [US1] In tests/test_reliable.c on_connected (line 85): replace the `if (g_is_first)` check with `if (g_initiated)`. The initiating side sends the first move. The receiving side waits for opponent. Remove the now-unused `g_is_first` global entirely.
-- [ ] T004 [US1] Build POSIX target and run test_reliable locally to verify both sides complete 10 moves in build/
+- [x] T001 [US1] In tests/test_reliable.c: remove `g_is_first = (name[0] <= 'M')` from main() (line 204). Change the g_is_first global initializer (line 41) to 0. First-mover will now be determined at connect time, not init time.
+- [x] T002 [US1] In tests/test_reliable.c: add a `static int g_initiated = 0;` global. In on_discovered (line 78), set `g_initiated = 1;` before calling PT_Connect. This tracks whether we initiated the connection or received it.
+- [x] T003 [US1] In tests/test_reliable.c on_connected (line 85): replace the `if (g_is_first)` check with `if (g_initiated)`. The initiating side sends the first move. The receiving side waits for opponent. Remove the now-unused `g_is_first` global entirely.
+- [x] T004 [US1] Build POSIX target and run test_reliable locally to verify both sides complete 10 moves in build/
 
 **Checkpoint**: test_reliable passes on POSIX.
 
