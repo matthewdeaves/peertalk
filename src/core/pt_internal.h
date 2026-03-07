@@ -169,6 +169,7 @@ typedef struct PT_Peer_Internal {
     char          name[PT_NAME_MAX + 1];
     PT_PeerState  state;
     unsigned long ip_addr;          /* network byte order */
+    char          addr_str[16];     /* dotted-quad string */
     unsigned long last_seen;        /* timestamp (seconds) */
     unsigned long last_tcp_activity;/* for TCP inactivity timeout */
     unsigned long connect_start;    /* when tcp_connect was initiated */
@@ -267,6 +268,7 @@ void      pt_messaging_process_udp_data(PT_Context_Internal *ctx,
 void      pt_messaging_check_reassembly_timeouts(PT_Context_Internal *ctx);
 
 /* pt_core.c */
+void      pt_format_ip(unsigned long ip, char *buf);
 void      pt_fire_error(PT_Context_Internal *ctx, PT_Status err,
                         const char *desc);
 PT_Peer_Internal *pt_find_peer_by_ip(PT_Context_Internal *ctx,

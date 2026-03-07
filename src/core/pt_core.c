@@ -75,6 +75,35 @@ static void pt_log_platform_info(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* IP formatting                                                       */
+/* ------------------------------------------------------------------ */
+
+void pt_format_ip(unsigned long ip, char *buf)
+{
+    unsigned char *b = (unsigned char *)&ip;
+    int i;
+    int pos = 0;
+
+    for (i = 0; i < 4; i++) {
+        unsigned char val = b[i];
+        if (val >= 100) {
+            buf[pos++] = (char)('0' + val / 100);
+            buf[pos++] = (char)('0' + (val / 10) % 10);
+            buf[pos++] = (char)('0' + val % 10);
+        } else if (val >= 10) {
+            buf[pos++] = (char)('0' + val / 10);
+            buf[pos++] = (char)('0' + val % 10);
+        } else {
+            buf[pos++] = (char)('0' + val);
+        }
+        if (i < 3) {
+            buf[pos++] = '.';
+        }
+    }
+    buf[pos] = '\0';
+}
+
+/* ------------------------------------------------------------------ */
 /* Error firing                                                        */
 /* ------------------------------------------------------------------ */
 
@@ -114,6 +143,7 @@ PT_Peer_Internal *pt_alloc_peer(PT_Context_Internal *ctx)
             ctx->peers[i].name[0] = '\0';
             ctx->peers[i].state = PT_PEER_DISCOVERED;
             ctx->peers[i].ip_addr = 0;
+            ctx->peers[i].addr_str[0] = '\0';
             ctx->peers[i].last_seen = 0;
             ctx->peers[i].last_tcp_activity = 0;
             ctx->peers[i].connect_start = 0;
@@ -159,6 +189,7 @@ void pt_handle_incoming_connection(PT_Context_Internal *ctx,
             return;
         }
         peer->ip_addr = peer_ip;
+        pt_format_ip(peer_ip, peer->addr_str);
         peer->name[0] = '\0';
         ctx->peer_count++;
     }
@@ -581,6 +612,13 @@ const char *PT_PeerName(PT_Peer *pub_peer)
     PT_Peer_Internal *peer = (PT_Peer_Internal *)pub_peer;
     if (!peer) return "";
     return peer->name;
+}
+
+const char *PT_PeerAddress(PT_Peer *pub_peer)
+{
+    PT_Peer_Internal *peer = (PT_Peer_Internal *)pub_peer;
+    if (!peer) return "";
+    return peer->addr_str;
 }
 
 PT_PeerState PT_GetPeerState(PT_Peer *pub_peer)

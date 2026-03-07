@@ -3,7 +3,7 @@
 **Branch**: `001-peertalk-sdk` | **Date**: 2026-02-28
 
 This document defines the complete public API surface of the
-PeerTalk SDK. The API is 21 functions, 4 enums, 4 callback
+PeerTalk SDK. The API is 22 functions, 4 enums, 4 callback
 typedefs, and 2 opaque types. All types are C89-compatible.
 
 ## Opaque Types
@@ -88,7 +88,7 @@ typedef void (*PT_ErrorCallback)(
 );
 ```
 
-## Functions (21 total)
+## Functions (22 total)
 
 ### Lifecycle (2)
 
@@ -259,7 +259,7 @@ PT_Status PT_SetName(PT_Context *ctx, const char *name);
 - The next discovery broadcast will advertise the new name
 - Does not allocate memory
 
-### Peer Info (4)
+### Peer Info (5)
 
 ```c
 int PT_GetPeerCount(PT_Context *ctx);
@@ -276,6 +276,13 @@ PT_Peer *PT_GetPeer(PT_Context *ctx, int index);
 const char *PT_PeerName(PT_Peer *peer);
 ```
 - Returns the peer's display name (null-terminated)
+
+```c
+const char *PT_PeerAddress(PT_Peer *peer);
+```
+- Returns the peer's IP address as a dotted-quad string (e.g. "10.0.1.5")
+- Returns empty string if peer is NULL
+- The string is stored in the peer's internal buffer (valid for the peer's lifetime)
 
 ```c
 PT_PeerState PT_GetPeerState(PT_Peer *peer);

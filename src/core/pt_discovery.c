@@ -101,6 +101,7 @@ void pt_discovery_receive(PT_Context_Internal *ctx,
     }
 
     peer->ip_addr = source_ip;
+    pt_format_ip(source_ip, peer->addr_str);
     memcpy(peer->name, name, namelen + 1);
     peer->last_seen = ctx->current_time;
     peer->state = PT_PEER_DISCOVERED;
