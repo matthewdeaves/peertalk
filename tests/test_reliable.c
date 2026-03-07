@@ -79,8 +79,10 @@ static void on_discovered(PT_Peer *peer, void *data)
 {
     (void)data;
     TEST_LOG("[DISCOVERED] %s", safe_peer_name(peer));
-    g_initiated = 1;
-    PT_Connect(g_ctx, peer);
+    if (!g_connected && !g_moves_done) {
+        g_initiated = 1;
+        PT_Connect(g_ctx, peer);
+    }
 }
 
 static void on_connected(PT_Peer *peer, void *data)
