@@ -16,10 +16,21 @@ static int g_connect_count = 0;
 static int g_disconnect_count = 0;
 static unsigned long g_connect_time = 0;
 
+static int has_dot(const char *s)
+{
+    while (*s) { if (*s == '.') return 1; s++; }
+    return 0;
+}
+
 static void on_discovered(PT_Peer *peer, void *data)
 {
+    const char *addr = PT_PeerAddress(peer);
     (void)data;
-    TEST_LOG("[DISCOVERED] %s", PT_PeerName(peer));
+    TEST_LOG("[DISCOVERED] %s@%s", PT_PeerName(peer), addr);
+
+    if (!addr[0] || !has_dot(addr)) {
+        TEST_LOG("*** FAIL: PT_PeerAddress empty or invalid for discovered peer ***");
+    }
 
     if (test_should_connect(peer)) {
         TEST_LOG("  -> Connecting to %s...", PT_PeerName(peer));
@@ -40,14 +51,19 @@ static void on_peer_lost(PT_Peer *peer, void *data)
 
 static void on_connected(PT_Peer *peer, void *data)
 {
+    const char *addr = PT_PeerAddress(peer);
     (void)data;
     g_connect_count++;
     g_connect_time = test_time_sec();
     test_mark_connected();
 
-    TEST_LOG("[CONNECTED] %s (#%d, state: %s)",
-             PT_PeerName(peer), g_connect_count,
+    TEST_LOG("[CONNECTED] %s@%s (#%d, state: %s)",
+             PT_PeerName(peer), addr, g_connect_count,
              test_state_str(PT_GetPeerState(peer)));
+
+    if (!addr[0] || !has_dot(addr)) {
+        TEST_LOG("*** FAIL: PT_PeerAddress empty or invalid for connected peer ***");
+    }
 }
 
 static void on_disconnected(PT_Peer *peer,

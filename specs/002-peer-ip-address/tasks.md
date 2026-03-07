@@ -41,6 +41,14 @@
 
 ---
 
+## Phase 4: Test App Verification
+
+**Purpose**: Update test apps to exercise PT_PeerAddress and verify on hardware
+
+- [ ] T007 [US1] Update test_lifecycle in `tests/test_lifecycle.c` to log `PT_PeerAddress(peer)` alongside `PT_PeerName(peer)` in the `on_discovered` and `on_connected` callbacks. Format as `"name@ip"` (e.g., `"Player@10.188.1.213"`). Verify the address string is non-empty and contains at least one dot. Log a FAIL line if `PT_PeerAddress` returns empty string for a discovered/connected peer. Build POSIX, 68k MacTCP, and PPC OT. Run test_lifecycle on POSIX first to confirm output. Then run on real hardware: Mac SE (68k MacTCP via LaunchAPPL, 10.188.1.55), Performa 6200 (PPC MacTCP via LaunchAPPL, 10.188.1.213), and Performa 6400 (PPC OT via LaunchAPPL, 10.188.1.102). Start a POSIX test_lifecycle as the peer partner for each hardware test. Verify logs from each machine show the POSIX peer's IP in "name@ip" format. Download clog files (PT_test_lifecycle) from FTP machines to confirm. **Partial: Code updated, POSIX/68k-MacTCP/PPC-MacTCP builds OK. Mac SE PASS, Performa 6200 PASS (clog verified). Performa 6400 OFFLINE — PPC OT test pending.**
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -48,7 +56,9 @@
 - **Phase 1** (T001, T002): No dependencies, both tasks modify different parts of the codebase — can run in parallel
 - **Phase 2** (T003, T004): Depends on Phase 1 (needs addr_str field and pt_format_ip). T003 before T004 preferred but not required.
 - **Phase 3** (T005, T006): Depends on Phase 2 (need final function signature). Both can run in parallel.
+- **Phase 4** (T007): Depends on Phase 2 (needs PT_PeerAddress in public header).
 
 ### Build Verification
 
-After Phase 2: POSIX build should compile clean. Run test_lifecycle to verify no regression — peers should still discover and connect normally.
+After Phase 2: POSIX build should compile clean.
+After Phase 4: Run test_lifecycle on POSIX to verify PT_PeerAddress returns correct IP addresses.
