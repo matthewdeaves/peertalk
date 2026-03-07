@@ -94,11 +94,11 @@
 
 **Purpose**: Build all cross-compile targets and verify on real hardware.
 
-- [ ] T026 Build 68k MacTCP target (build-68k/) and verify clean compilation
-- [ ] T027 Build PPC OT target (build-ppc-ot/) and verify clean compilation
-- [ ] T028 Run test_lifecycle on Mac SE (68k MacTCP) via LaunchAPPL with POSIX peer — verify PASS and no spurious timeouts in clog
-- [ ] T029 Run test_lifecycle on Performa 6400 (PPC OT) via LaunchAPPL or FTP with POSIX peer — verify PASS
-- [ ] T030 Download and review clog files from hardware tests — confirm no TCP timeout disconnects during normal operation
+- [x] T026 Build 68k MacTCP target (build-68k/) and verify clean compilation
+- [x] T027 Build PPC OT target (build-ppc-ot/) and verify clean compilation
+- [ ] T028 Run test_lifecycle on Mac SE (68k MacTCP) via LaunchAPPL with POSIX peer — verify PASS and no spurious timeouts in clog (BLOCKED: Mac SE OFFLINE)
+- [x] T029 Run test_lifecycle on Performa 6400 (PPC OT) via LaunchAPPL with POSIX peer — PASS verified
+- [x] T030 Download and review clog files from hardware tests — Performa 6400: PASS, no TCP timeout disconnects; Mac SE: OFFLINE, skipped
 
 **Checkpoint**: All platforms verified on real hardware. Feature complete.
 
