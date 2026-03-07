@@ -92,3 +92,9 @@ All design docs live in `specs/001-peertalk-sdk/`:
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
+
+## Active Technologies
+- C89/C90 (SDK), C11 (POSIX test apps) + clog (logging), MacTCP (68k), Open Transport (PPC), BSD sockets (POSIX) (003-sdk-stability)
+
+## Recent Changes
+- 003-sdk-stability: Added C89/C90 (SDK), C11 (POSIX test apps) + clog (logging), MacTCP (68k), Open Transport (PPC), BSD sockets (POSIX)

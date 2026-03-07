@@ -2,12 +2,13 @@
 #
 # autorun.sh — Unattended speckit.implement loop for Claude Code
 #
-# Runs Claude Code in a loop, executing one task per iteration from
-# specs/001-peertalk-sdk/tasks.md. Designed to run overnight with
-# hardware (Performa 6400) available for Classic Mac testing.
+# Auto-detects the highest-numbered spec with incomplete tasks and runs
+# Claude Code in a loop to implement them. Designed to run overnight
+# with hardware (Performa 6400) available for Classic Mac testing.
 #
 # Usage:
-#   ./tools/autorun.sh              # Run from project root
+#   ./tools/autorun.sh              # Auto-detect feature, run from project root
+#   ./tools/autorun.sh --feature=003-sdk-stability  # Explicit feature
 #   ./tools/autorun.sh --dry-run    # Show what would happen without running Claude
 #   ./tools/autorun.sh --resume     # Skip build check, resume after manual fix
 #   ./tools/autorun.sh --notify     # Send desktop notification on completion
@@ -18,9 +19,6 @@ set -euo pipefail
 # Allow running from within a Claude Code session
 unset CLAUDECODE 2>/dev/null || true
 
-# Tell speckit which feature spec to use (branch detection won't work on main)
-export SPECIFY_FEATURE="002-peer-ip-address"
-
 # Detach from terminal stdin to prevent SIGTTIN when backgrounded.
 # Redirect script's own stdin from /dev/null so all child processes
 # (including Claude) inherit /dev/null instead of the terminal.
@@ -28,9 +26,38 @@ if [ -t 0 ]; then
     exec < /dev/null
 fi
 
+# --- Auto-detect feature ---
+# Find the highest-numbered spec directory with incomplete tasks.
+# Falls back to explicit --feature flag if auto-detection fails.
+auto_detect_feature() {
+    local best_dir=""
+    local best_num=0
+    for dir in specs/[0-9]*; do
+        [ -d "$dir" ] || continue
+        local tasks="$dir/tasks.md"
+        [ -f "$tasks" ] || continue
+        # Skip specs with no remaining tasks
+        local remaining
+        remaining=$(grep -c '^\- \[ \]' "$tasks" 2>/dev/null) || true
+        [ "${remaining:-0}" -gt 0 ] || continue
+        # Extract number prefix
+        local num
+        num=$(basename "$dir" | grep -oE '^[0-9]+' | sed 's/^0*//')
+        num="${num:-0}"
+        if [ "$num" -gt "$best_num" ]; then
+            best_num="$num"
+            best_dir="$dir"
+        fi
+    done
+    if [ -n "$best_dir" ]; then
+        echo "$best_dir"
+    fi
+}
+
 # --- Configuration ---
 MAX_ITERATIONS=100
-TASKS_FILE="specs/002-peer-ip-address/tasks.md"
+FEATURE_DIR=""
+TASKS_FILE=""
 COOLDOWN_SECONDS=15
 RATE_LIMIT_WAIT_INITIAL=300  # 5 minutes first backoff
 RATE_LIMIT_WAIT_MAX=3600     # 1 hour max backoff
@@ -47,11 +74,17 @@ for arg in "$@"; do
         --dry-run)  DRY_RUN=true ;;
         --resume)   RESUME=true ;;
         --notify)   NOTIFY=true ;;
+        --feature=*)
+            FEATURE_DIR="specs/${arg#--feature=}"
+            ;;
         --help|-h)
-            echo "Usage: $0 [--dry-run] [--resume] [--notify]"
-            echo "  --dry-run   Show status without running Claude"
-            echo "  --resume    Skip initial build check (after manual fix)"
-            echo "  --notify    Send desktop notification on completion (Linux)"
+            echo "Usage: $0 [--dry-run] [--resume] [--notify] [--feature=NNN-name]"
+            echo "  --dry-run          Show status without running Claude"
+            echo "  --resume           Skip initial build check (after manual fix)"
+            echo "  --notify           Send desktop notification on completion (Linux)"
+            echo "  --feature=NAME     Use specific spec dir (e.g., --feature=003-sdk-stability)"
+            echo ""
+            echo "Without --feature, auto-detects the highest-numbered spec with incomplete tasks."
             exit 0
             ;;
         *)
@@ -60,6 +93,23 @@ for arg in "$@"; do
             ;;
     esac
 done
+
+# --- Resolve feature directory and tasks file ---
+if [ -z "$FEATURE_DIR" ]; then
+    FEATURE_DIR="$(auto_detect_feature)"
+    if [ -z "$FEATURE_DIR" ]; then
+        echo "ERROR: No spec directory with incomplete tasks found."
+        echo "Hint: Use --feature=NNN-name to specify manually."
+        exit 1
+    fi
+    echo "Auto-detected feature: $FEATURE_DIR"
+fi
+
+TASKS_FILE="$FEATURE_DIR/tasks.md"
+
+# Tell speckit which feature to use (branch detection won't work on main)
+FEATURE_NAME="$(basename "$FEATURE_DIR")"
+export SPECIFY_FEATURE="$FEATURE_NAME"
 
 # --- Ensure we're in project root ---
 if [ ! -f "$TASKS_FILE" ]; then
