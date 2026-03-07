@@ -560,8 +560,8 @@ static PT_Status mactcp_tcp_connect(PT_Context_Internal *ctx,
     ts->open_pb.csParam.open.localPort = 0;
     ts->open_pb.csParam.open.remoteHost = peer->ip_addr;
     ts->open_pb.csParam.open.remotePort = PT_TCP_PORT;
-    ts->open_pb.csParam.open.commandTimeoutValue = 10;
-    ts->open_pb.csParam.open.ulpTimeoutValue = 30;
+    ts->open_pb.csParam.open.commandTimeoutValue = 15;
+    ts->open_pb.csParam.open.ulpTimeoutValue = 60;
     ts->open_pb.csParam.open.ulpTimeoutAction = 1;
     ts->open_pb.csParam.open.validityFlags = 0xC0;
     ts->open_pb.ioCompletion = NULL;

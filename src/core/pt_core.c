@@ -175,6 +175,35 @@ void pt_handle_incoming_connection(PT_Context_Internal *ctx,
     PT_Peer_Internal *peer;
 
     peer = pt_find_peer_by_ip(ctx, peer_ip);
+
+    /* T020: Reject duplicate -- peer already connected */
+    if (peer && peer->state == PT_PEER_CONNECTED) {
+        CLOG_INFO("Rejecting duplicate incoming from %s (already connected)",
+                  peer->name);
+        return;
+    }
+
+    /* T021/T022: IP tiebreaker -- outgoing in progress */
+    if (peer && peer->connect_start > 0) {
+        if (ctx->local_ip == peer_ip) {
+            /* T022: Same IP (loopback) -- accept incoming */
+            CLOG_INFO("Same-IP peer, accepting incoming");
+            ctx->platform_ops->tcp_disconnect(ctx, peer);
+            peer->connect_start = 0;
+        } else if (ctx->local_ip > peer_ip) {
+            /* We should NOT initiate (higher IP) -- cancel outgoing,
+               accept incoming */
+            CLOG_INFO("Tiebreaker: cancelling outgoing, accepting incoming");
+            ctx->platform_ops->tcp_disconnect(ctx, peer);
+            peer->connect_start = 0;
+        } else {
+            /* We ARE the initiator (lower IP) -- reject incoming,
+               let our outgoing complete */
+            CLOG_INFO("Tiebreaker: rejecting incoming, keeping outgoing");
+            return;
+        }
+    }
+
     if (!peer) {
         /* Unknown peer connecting -- allocate new slot */
         peer = pt_alloc_peer(ctx);
@@ -342,18 +371,16 @@ void PT_Shutdown(PT_Context *pub_ctx)
 
     if (!ctx) return;
 
+    /* FR-012: Clear all callbacks before teardown so no callbacks
+       fire during shutdown (T024) */
+    memset(&ctx->callbacks, 0, sizeof(ctx->callbacks));
+
     /* Send goodbye to all connected peers */
     for (i = 0; i < ctx->max_peers; i++) {
         if (ctx->peers[i].in_use &&
             ctx->peers[i].state == PT_PEER_CONNECTED) {
             send_goodbye(ctx, &ctx->peers[i]);
             ctx->platform_ops->tcp_disconnect(ctx, &ctx->peers[i]);
-
-            if (ctx->callbacks.on_disconnected) {
-                ctx->callbacks.on_disconnected(
-                    (PT_Peer *)&ctx->peers[i], PT_QUIT,
-                    ctx->callbacks.on_disconnected_data);
-            }
         }
     }
 

@@ -48,11 +48,11 @@
 
 ### Implementation for User Story 1
 
-- [ ] T015 [P] [US1] Change PT_TCP_TIMEOUT from 30 to 60 in src/core/pt_internal.h
-- [ ] T016 [P] [US1] Change PT_CONNECT_TIMEOUT from 10 to 15 in src/core/pt_internal.h
-- [ ] T017 [P] [US1] Change PT_DISCOVERY_TIMEOUT from 10 to 15 in src/core/pt_internal.h
-- [ ] T018 [US1] Update MacTCP ulpTimeoutValue from 30 to 60 and commandTimeoutValue from 10 to 15 for active connections in src/platform/mactcp/pt_mactcp.c
-- [ ] T019 [US1] Build all targets (POSIX, 68k MacTCP, PPC OT) and verify no regressions
+- [x] T015 [P] [US1] Change PT_TCP_TIMEOUT from 30 to 60 in src/core/pt_internal.h
+- [x] T016 [P] [US1] Change PT_CONNECT_TIMEOUT from 10 to 15 in src/core/pt_internal.h
+- [x] T017 [P] [US1] Change PT_DISCOVERY_TIMEOUT from 10 to 15 in src/core/pt_internal.h
+- [x] T018 [US1] Update MacTCP ulpTimeoutValue from 30 to 60 and commandTimeoutValue from 10 to 15 for active connections in src/platform/mactcp/pt_mactcp.c
+- [x] T019 [US1] Build all targets (POSIX, 68k MacTCP, PPC OT) and verify no regressions
 
 **Checkpoint**: Timeout values updated. All platforms build. Ready for hardware test.
 
@@ -66,10 +66,10 @@
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Add duplicate connection check at top of pt_handle_incoming_connection in src/core/pt_core.c — if peer already CONNECTED, reject incoming (log and close)
-- [ ] T021 [US2] Add IP tiebreaker logic in pt_handle_incoming_connection in src/core/pt_core.c — if peer has connect_start > 0 (outgoing pending), compare ctx->local_ip vs peer_ip; if local_ip > peer_ip (we should not initiate), cancel outgoing and accept incoming; if local_ip < peer_ip (we are the initiator), reject incoming
-- [ ] T022 [US2] Handle same-IP edge case in tiebreaker in src/core/pt_core.c — if local_ip == peer_ip, accept the incoming connection (loopback scenario)
-- [ ] T023 [US2] Build POSIX target and test with two local peers to verify dedup works in build/
+- [x] T020 [US2] Add duplicate connection check at top of pt_handle_incoming_connection in src/core/pt_core.c — if peer already CONNECTED, reject incoming (log and close)
+- [x] T021 [US2] Add IP tiebreaker logic in pt_handle_incoming_connection in src/core/pt_core.c — if peer has connect_start > 0 (outgoing pending), compare ctx->local_ip vs peer_ip; if local_ip > peer_ip (we should not initiate), cancel outgoing and accept incoming; if local_ip < peer_ip (we are the initiator), reject incoming
+- [x] T022 [US2] Handle same-IP edge case in tiebreaker in src/core/pt_core.c — if local_ip == peer_ip, accept the incoming connection (loopback scenario)
+- [x] T023 [US2] Build POSIX target and test with two local peers to verify dedup works in build/
 
 **Checkpoint**: Duplicate connection prevention working. Tiebreaker deterministic.
 
@@ -83,8 +83,8 @@
 
 ### Implementation for User Story 4
 
-- [ ] T024 [US4] Clear all callback pointers at top of PT_Shutdown before the disconnect loop in src/core/pt_core.c — zero out ctx->callbacks struct (memset or individual NULLs) before sending goodbyes
-- [ ] T025 [US4] Build POSIX target and verify test_lifecycle still passes (shutdown is clean, no callbacks after shutdown begins)
+- [x] T024 [US4] Clear all callback pointers at top of PT_Shutdown before the disconnect loop in src/core/pt_core.c — zero out ctx->callbacks struct (memset or individual NULLs) before sending goodbyes
+- [x] T025 [US4] Build POSIX target and verify test_lifecycle still passes (shutdown is clean, no callbacks after shutdown begins)
 
 **Checkpoint**: PT_Shutdown no longer fires stale callbacks on any platform.
 

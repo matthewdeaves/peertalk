@@ -40,9 +40,9 @@
 #define PT_CHUNK_FLAG           0x01
 
 #define PT_DISCOVERY_INTERVAL   2   /* seconds between broadcasts */
-#define PT_DISCOVERY_TIMEOUT    10  /* seconds before peer lost */
-#define PT_TCP_TIMEOUT          30  /* seconds of TCP inactivity */
-#define PT_CONNECT_TIMEOUT      10  /* seconds to establish TCP */
+#define PT_DISCOVERY_TIMEOUT    15  /* seconds before peer lost */
+#define PT_TCP_TIMEOUT          60  /* seconds of TCP inactivity */
+#define PT_CONNECT_TIMEOUT      15  /* seconds to establish TCP */
 #define PT_REASSEMBLY_TIMEOUT   5   /* seconds for chunk reassembly */
 
 #define PT_UDP_MTU_SAFE         1400 /* max fast message payload */
