@@ -109,7 +109,7 @@ typedef struct PT_PlatformOps {
                                unsigned short port,
                                const void *data, size_t len);
     PT_Status (*udp_send)(struct PT_Context_Internal *ctx,
-                          struct PT_Peer_Internal *peer,
+                          const struct PT_Peer_Internal *peer,
                           unsigned short port,
                           const void *data, size_t len);
     PT_Status (*udp_listen)(struct PT_Context_Internal *ctx,

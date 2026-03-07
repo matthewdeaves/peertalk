@@ -226,7 +226,7 @@ static PT_Status posix_udp_broadcast(PT_Context_Internal *ctx,
 }
 
 static PT_Status posix_udp_send(PT_Context_Internal *ctx,
-                                PT_Peer_Internal *peer,
+                                const PT_Peer_Internal *peer,
                                 unsigned short port,
                                 const void *data, size_t len)
 {

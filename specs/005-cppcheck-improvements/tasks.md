@@ -101,10 +101,10 @@
 
 ### Implementation for User Story 5
 
-- [ ] T020 [US5] Evaluate adding const to `peer` parameter in `mactcp_udp_send` at line 471 in src/platform/mactcp/pt_mactcp.c
-- [ ] T021 [US5] Evaluate adding const to `peer` parameter in `posix_udp_send` at line 229 in src/platform/posix/pt_posix.c
-- [ ] T022 [US5] If function pointer types need updating, modify typedef in include/peertalk.h or relevant header
-- [ ] T023 [US5] Verify callback changes compile on all platforms or document as intentionally deferred
+- [x] T020 [US5] Evaluate adding const to `peer` parameter in `mactcp_udp_send` at line 471 in src/platform/mactcp/pt_mactcp.c
+- [x] T021 [US5] Evaluate adding const to `peer` parameter in `posix_udp_send` at line 229 in src/platform/posix/pt_posix.c
+- [x] T022 [US5] If function pointer types need updating, modify typedef in include/peertalk.h or relevant header
+- [x] T023 [US5] Verify callback changes compile on all platforms or document as intentionally deferred
 
 **Checkpoint**: Callback const parameters either fixed or documented with reasoning.
 
