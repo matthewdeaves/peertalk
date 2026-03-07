@@ -44,8 +44,8 @@ See [Quickstart Guide](specs/001-peertalk-sdk/quickstart.md) and [API Reference]
 
 ## Prerequisites
 
-- [clog](https://github.com/matthewdeaves/clog) must be set up first (`$CLOG_DIR`, defaults to `~/clog`)
-- [Retro68](https://github.com/autc04/Retro68) cross-compiler for Classic Mac builds (`$RETRO68_TOOLCHAIN`)
+- [Retro68](https://github.com/matthewdeaves/Retro68) fork must be set up first — run its `setup.sh` to build the cross-compiler and extract MPW Interfaces (`$RETRO68_TOOLCHAIN`)
+- [clog](https://github.com/matthewdeaves/clog) must be set up next (`$CLOG_DIR`, defaults to `~/clog`)
 - Run `./setup.sh` to configure the environment (sets `$PEERTALK_DIR`, checks dependencies)
 
 ## Building
@@ -121,7 +121,7 @@ All test apps pass on real Classic Mac hardware:
 
 ## Dependency Chain
 
-[clog](https://github.com/matthewdeaves/clog) -> peertalk -> [csend](https://github.com/matthewdeaves/csend)
+[Retro68](https://github.com/matthewdeaves/Retro68) (setup.sh) -> [clog](https://github.com/matthewdeaves/clog) -> peertalk -> [csend](https://github.com/matthewdeaves/csend)
 
 ## Next Step
 

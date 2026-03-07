@@ -117,13 +117,13 @@ fi
 # ── Check MPW Interfaces ────────────────────────────────────────
 
 MPW_CINCLUDES="$RETRO68_SRC/InterfacesAndLibraries/MPW_Interfaces/Interfaces&Libraries/Interfaces/CIncludes"
-MPW_ZIP="$SCRIPT_DIR/resources/retro68/MPW_Interfaces.zip"
+MPW_ZIP="$RETRO68_SRC/resources/MPW_Interfaces.zip"
 echo ""
 echo "Checking MPW Interfaces..."
 if [ -f "$MPW_CINCLUDES/MacTCP.h" ] && [ -f "$MPW_CINCLUDES/OpenTransport.h" ]; then
     echo "  [ok] MacTCP.h and OpenTransport.h found"
 elif [ -f "$MPW_ZIP" ]; then
-    echo "  [--] MPW Interfaces not found. Extracting from $MPW_ZIP..."
+    echo "  [--] MPW Interfaces not found. Extracting from Retro68..."
     mkdir -p "$RETRO68_SRC/InterfacesAndLibraries"
     unzip -o "$MPW_ZIP" -d "$RETRO68_SRC/InterfacesAndLibraries/"
     if [ -f "$MPW_CINCLUDES/MacTCP.h" ] && [ -f "$MPW_CINCLUDES/OpenTransport.h" ]; then
@@ -133,8 +133,8 @@ elif [ -f "$MPW_ZIP" ]; then
         exit 1
     fi
 else
-    echo "  [!!] MPW Interfaces not found and no MPW_Interfaces.zip available"
-    echo "       Expected zip at: $MPW_ZIP"
+    echo "  [!!] MPW Interfaces not found"
+    echo "       Run: cd $RETRO68_SRC && ./setup.sh --mpw-only"
     exit 1
 fi
 

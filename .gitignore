@@ -19,7 +19,7 @@ LaunchAPPL-build/
 # MCP config (local)
 .mcp.json
 
-# Extracted MPW Interfaces (26MB, extracted from zip by setup.sh)
+# MPW Interfaces (extracted locally, canonical zip is in Retro68 repo)
 resources/retro68/MPW_Interfaces/
 
 # Downloads and temp files
