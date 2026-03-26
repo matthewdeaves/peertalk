@@ -146,33 +146,49 @@ int main(int argc, char **argv)
     TEST_LOG("Discovery started, waiting for peers...");
     test_mark_start();
 
-    /* Phase 2: Wait 30s for all peers to discover and connect.
-     * Classic Macs take 2-5s to init (Mac SE up to 30s), so a fixed
-     * wait ensures slow machines have time to come online. */
+    /* Phase 2: Wait for peers to discover and connect.
+     * Timer starts when the first peer connects (not at launch), so
+     * fast machines (POSIX) wait for slow ones (Mac SE ~30s init).
+     * After first connect, wait 30s more for additional peers. */
     {
-        unsigned long wait_start = test_time_sec();
-        unsigned long wait_secs = 30;
+        unsigned long connect_start = 0;
+        unsigned long wait_after_first = 30;
         unsigned long last_log = 0;
+        unsigned long abs_start = test_time_sec();
 
-        TEST_LOG("Waiting %lus for peers to connect...",
-                 (unsigned long)wait_secs);
+        TEST_LOG("Waiting for first peer, then %lus for others...",
+                 (unsigned long)wait_after_first);
 
         while (g_running) {
-            unsigned long elapsed;
+            unsigned long now = test_time_sec();
+            unsigned long elapsed = now - abs_start;
             PT_Poll(g_ctx);
 
-            elapsed = test_time_sec() - wait_start;
+            /* Start countdown from first connection */
+            if (g_num_connected > 0 && connect_start == 0) {
+                connect_start = now;
+                TEST_LOG("First peer connected! Waiting %lus for more...",
+                         (unsigned long)wait_after_first);
+            }
 
-            /* Log progress every 10 seconds (once per milestone) */
+            /* Log progress every 10 seconds */
             if (elapsed >= last_log + 10) {
                 last_log = elapsed;
                 TEST_LOG("  %lus: discovered=%d connected=%d",
                          elapsed, g_num_discovered, g_num_connected);
             }
 
-            if (elapsed >= wait_secs) {
+            /* Exit after wait_after_first seconds from first connect */
+            if (connect_start > 0 && now - connect_start >= wait_after_first) {
                 TEST_LOG("Discovery window closed: %d discovered, %d connected",
                          g_num_discovered, g_num_connected);
+                break;
+            }
+
+            /* Solo timeout: no peers at all after 60s */
+            if (test_solo_timeout()) {
+                TEST_LOG("Solo timeout (%ds). No peers found.",
+                         TEST_SOLO_TIMEOUT_SEC);
                 break;
             }
 
