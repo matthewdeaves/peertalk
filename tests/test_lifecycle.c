@@ -15,6 +15,11 @@ static PT_Context *g_ctx;
 static int g_connect_count = 0;
 static int g_disconnect_count = 0;
 static unsigned long g_connect_time = 0;
+static int g_stop_phase_done = 0;
+static unsigned long g_stop_phase_start = 0;
+static int g_peers_lost = 0;
+static int g_waiting_peer_lost = 0;
+static unsigned long g_peer_lost_wait_start = 0;
 
 static int has_dot(const char *s)
 {
@@ -41,12 +46,8 @@ static void on_discovered(PT_Peer *peer, void *data)
 static void on_peer_lost(PT_Peer *peer, void *data)
 {
     (void)data;
-    TEST_LOG("[PEER LOST] %s", PT_PeerName(peer));
-
-    if (g_connect_count >= 2 && g_disconnect_count >= 2) {
-        TEST_LOG("All phases complete, peer gone. Finishing.");
-        g_running = 0;
-    }
+    g_peers_lost++;
+    TEST_LOG("[PEER LOST] %s (count=%d)", PT_PeerName(peer), g_peers_lost);
 }
 
 static void on_connected(PT_Peer *peer, void *data)
@@ -76,10 +77,15 @@ static void on_disconnected(PT_Peer *peer,
              PT_PeerName(peer), test_reason_str(reason),
              g_disconnect_count);
 
-    /* Done after 2 disconnects */
+    /* After 2 disconnects, wait for peer-lost */
     if (g_disconnect_count >= 2) {
         TEST_LOG("All lifecycle phases complete.");
-        g_running = 0;
+        if (!g_waiting_peer_lost) {
+            g_waiting_peer_lost = 1;
+            g_peer_lost_wait_start = test_time_sec();
+            PT_StopDiscovery(g_ctx);
+            TEST_LOG("Waiting for peer-lost timeout...");
+        }
     }
 }
 
@@ -148,6 +154,34 @@ int main(int argc, char **argv)
                 TEST_LOG("--- Disconnecting (#%d) ---",
                          g_disconnect_count + 1);
                 PT_Disconnect(g_ctx, peer);
+            }
+        }
+
+        /* Peer-lost wait: exit after peer-lost fires or 20s timeout */
+        if (g_waiting_peer_lost) {
+            if (g_peers_lost > 0) {
+                TEST_LOG("Peer-lost received! Count: %d", g_peers_lost);
+                g_running = 0;
+            } else if (g_peer_lost_wait_start > 0 &&
+                       test_time_sec() - g_peer_lost_wait_start >= 20) {
+                TEST_LOG("Peer-lost wait timed out (20s).");
+                g_running = 0;
+            }
+        }
+
+        /* Stop/start discovery phase (after 1st disconnect, before reconnect) */
+        if (g_disconnect_count == 1 && !g_stop_phase_done &&
+            g_connect_count == g_disconnect_count) {
+            if (g_stop_phase_start == 0) {
+                TEST_LOG("--- Stop discovery phase ---");
+                PT_StopDiscovery(g_ctx);
+                g_stop_phase_start = test_time_sec();
+            } else if (test_time_sec() - g_stop_phase_start >= 5) {
+                PT_SetName(g_ctx, "Renamed");
+                TEST_LOG("Name changed to 'Renamed'");
+                PT_StartDiscovery(g_ctx);
+                g_stop_phase_done = 1;
+                TEST_LOG("Discovery restarted");
             }
         }
 
