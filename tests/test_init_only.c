@@ -25,6 +25,8 @@
 #include "peertalk.h"
 #include "clog.h"
 
+#define MSG_CHAT 3
+
 int main(void)
 {
     PT_Context *ctx;
@@ -69,6 +71,9 @@ int main(void)
     free_after = FreeMem();
     CLOG_INFO("PT_Init OK! FreeMem after: %ld", free_after);
 
+    /* Register MSG_CHAT for error path tests later */
+    PT_RegisterMessage(ctx, 3, PT_RELIABLE);
+
     /* Step 5: Start discovery (triggers MacTCP network operations) */
     CLOG_INFO("Calling PT_StartDiscovery...");
     if (PT_StartDiscovery(ctx) != PT_OK) {
@@ -95,7 +100,74 @@ int main(void)
         CLOG_INFO("Poll loop complete! Final FreeMem: %ld", FreeMem());
     }
 
-    /* Step 6: Shutdown */
+    /* Step 7: Error path tests */
+    {
+        int err_pass = 0;
+        int err_total = 0;
+        PT_Status st;
+
+        CLOG_INFO("=== Error path tests ===");
+
+        /* PT_Send with NULL peer */
+        err_total++;
+        st = PT_Send(ctx, NULL, MSG_CHAT, "test", 4);
+        if (st == PT_ERR_INVALID_ARG) {
+            CLOG_INFO("PT_Send(NULL peer) = INVALID_ARG: OK");
+            err_pass++;
+        } else {
+            CLOG_INFO("PT_Send(NULL peer) = %d: FAIL (expected INVALID_ARG)", (int)st);
+        }
+
+        /* PT_Send with NULL data and len > 0 */
+        err_total++;
+        st = PT_Send(ctx, NULL, MSG_CHAT, NULL, 10);
+        if (st == PT_ERR_INVALID_ARG) {
+            CLOG_INFO("PT_Send(NULL data, len>0) = INVALID_ARG: OK");
+            err_pass++;
+        } else {
+            CLOG_INFO("PT_Send(NULL data, len>0) = %d: FAIL", (int)st);
+        }
+
+        /* PT_Connect with NULL peer */
+        err_total++;
+        st = PT_Connect(ctx, NULL);
+        if (st == PT_ERR_INVALID_ARG) {
+            CLOG_INFO("PT_Connect(NULL peer) = INVALID_ARG: OK");
+            err_pass++;
+        } else {
+            CLOG_INFO("PT_Connect(NULL peer) = %d: FAIL", (int)st);
+        }
+
+        /* PT_Broadcast with no connected peers = PT_OK (no-op) */
+        err_total++;
+        st = PT_Broadcast(ctx, MSG_CHAT, "test", 4);
+        if (st == PT_OK) {
+            CLOG_INFO("PT_Broadcast(no peers) = OK: OK");
+            err_pass++;
+        } else {
+            CLOG_INFO("PT_Broadcast(no peers) = %d: FAIL (expected OK)", (int)st);
+        }
+
+        /* PT_Broadcast with NULL ctx */
+        err_total++;
+        st = PT_Broadcast(NULL, MSG_CHAT, "test", 4);
+        if (st == PT_ERR_INVALID_ARG) {
+            CLOG_INFO("PT_Broadcast(NULL ctx) = INVALID_ARG: OK");
+            err_pass++;
+        } else {
+            CLOG_INFO("PT_Broadcast(NULL ctx) = %d: FAIL", (int)st);
+        }
+
+        CLOG_INFO("Error paths: %d/%d passed", err_pass, err_total);
+        if (err_pass != err_total) {
+            CLOG_INFO("=== test_init_only FAILED (error paths) ===");
+            PT_Shutdown(ctx);
+            clog_shutdown();
+            return 1;
+        }
+    }
+
+    /* Step 8: Shutdown */
     CLOG_INFO("Calling PT_Shutdown...");
     PT_Shutdown(ctx);
 
