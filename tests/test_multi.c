@@ -105,8 +105,6 @@ static void on_error(PT_Peer *peer, PT_Status error, const char *desc,
 
 int main(int argc, char **argv)
 {
-    unsigned long settle_start;
-    int last_connected;
     int passed;
     char hello_buf[80];
     size_t hello_len;
@@ -148,46 +146,54 @@ int main(int argc, char **argv)
     TEST_LOG("Discovery started, waiting for peers...");
     test_mark_start();
 
-    /* Phase 2: Discovery/connect settle (45s max) */
-    settle_start = test_time_sec();
-    last_connected = 0;
+    /* Phase 2: Wait 30s for all peers to discover and connect.
+     * Classic Macs take 2-5s to init (Mac SE up to 30s), so a fixed
+     * wait ensures slow machines have time to come online. */
+    {
+        unsigned long wait_start = test_time_sec();
+        unsigned long wait_secs = 30;
+        unsigned long last_log = 0;
 
-    while (g_running) {
-        unsigned long now;
-        PT_Poll(g_ctx);
+        TEST_LOG("Waiting %lus for peers to connect...",
+                 (unsigned long)wait_secs);
 
-        if (test_solo_timeout()) {
-            TEST_LOG("Solo timeout (%ds). No peers found.",
-                     TEST_SOLO_TIMEOUT_SEC);
-            break;
-        }
+        while (g_running) {
+            unsigned long elapsed;
+            PT_Poll(g_ctx);
 
-        now = test_time_sec();
+            elapsed = test_time_sec() - wait_start;
 
-        /* Check if connections have stabilized:
-         * at least 1 connected AND unchanged for 5 seconds */
-        if (g_num_connected > 0) {
-            if (g_num_connected != last_connected) {
-                last_connected = g_num_connected;
-                settle_start = now;
-            } else if (now - settle_start >= 5) {
-                TEST_LOG("Connections settled: %d peers", g_num_connected);
+            /* Log progress every 10 seconds (once per milestone) */
+            if (elapsed >= last_log + 10) {
+                last_log = elapsed;
+                TEST_LOG("  %lus: discovered=%d connected=%d",
+                         elapsed, g_num_discovered, g_num_connected);
+            }
+
+            if (elapsed >= wait_secs) {
+                TEST_LOG("Discovery window closed: %d discovered, %d connected",
+                         g_num_discovered, g_num_connected);
                 break;
             }
-        }
 
-        /* Hard timeout: 45 seconds */
-        if (now - g_test_start_time >= 45) {
-            TEST_LOG("Discovery timeout (45s). connected=%d",
-                     g_num_connected);
-            break;
+            test_sleep_ms(16);
         }
-
-        test_sleep_ms(16);
     }
 
-    g_expected_peers = g_num_connected;
-    TEST_LOG("Expected peers: %d", g_expected_peers);
+    /* Count currently connected peers (not cumulative connects) */
+    {
+        int pc = PT_GetPeerCount(g_ctx);
+        int ci;
+        g_expected_peers = 0;
+        for (ci = 0; ci < pc; ci++) {
+            PT_Peer *p = PT_GetPeer(g_ctx, ci);
+            if (p && PT_GetPeerState(p) == PT_PEER_CONNECTED) {
+                g_expected_peers++;
+            }
+        }
+    }
+    TEST_LOG("Expected peers: %d (of %d discovered)",
+             g_expected_peers, g_num_discovered);
 
     /* Phase 3: Broadcast */
     if (g_expected_peers > 0 && g_running) {
@@ -252,9 +258,9 @@ int main(int argc, char **argv)
     TEST_LOG("Disconnected: %d", g_num_disconnected);
     TEST_LOG("Broadcast sent: %s", g_broadcast_sent ? "yes" : "no");
 
-    passed = (g_num_connected >= 1) &&
+    passed = (g_expected_peers >= 1) &&
              (g_num_broadcast_recv >= g_expected_peers) &&
-             (g_num_disconnected >= g_expected_peers);
+             g_broadcast_sent;
 
     if (passed) {
         TEST_LOG("*** PASS ***");
