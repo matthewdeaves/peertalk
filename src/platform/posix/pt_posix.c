@@ -389,17 +389,18 @@ static void posix_poll(PT_Context_Internal *ctx)
     ret = select(maxfd + 1, &readfds, &writefds, NULL, &tv);
     if (ret <= 0) return;
 
-    /* Check discovery socket */
+    /* Check discovery socket -- drain all queued datagrams */
     if (g_posix.discovery_fd >= 0 &&
         FD_ISSET(g_posix.discovery_fd, &readfds)) {
-        unsigned char buf[PT_DISCOVERY_MAX + 16];
-        struct sockaddr_in from;
-        socklen_t fromlen = sizeof(from);
-        ssize_t n;
+        for (;;) {
+            unsigned char buf[PT_DISCOVERY_MAX + 16];
+            struct sockaddr_in from;
+            socklen_t fromlen = sizeof(from);
+            ssize_t n;
 
-        n = recvfrom(g_posix.discovery_fd, buf, sizeof(buf), 0,
-                     (struct sockaddr *)&from, &fromlen);
-        if (n > 0) {
+            n = recvfrom(g_posix.discovery_fd, buf, sizeof(buf), 0,
+                         (struct sockaddr *)&from, &fromlen);
+            if (n <= 0) break;
             pt_discovery_receive(ctx, buf, (size_t)n,
                                  from.sin_addr.s_addr);
         }
@@ -438,17 +439,18 @@ static void posix_poll(PT_Context_Internal *ctx)
         }
     }
 
-    /* Check UDP message socket */
+    /* Check UDP message socket -- drain all queued datagrams */
     if (g_posix.udp_msg_fd >= 0 &&
         FD_ISSET(g_posix.udp_msg_fd, &readfds)) {
-        unsigned char buf[2048];
-        struct sockaddr_in from;
-        socklen_t fromlen = sizeof(from);
-        ssize_t n;
+        for (;;) {
+            unsigned char buf[2048];
+            struct sockaddr_in from;
+            socklen_t fromlen = sizeof(from);
+            ssize_t n;
 
-        n = recvfrom(g_posix.udp_msg_fd, buf, sizeof(buf), 0,
-                     (struct sockaddr *)&from, &fromlen);
-        if (n > 0) {
+            n = recvfrom(g_posix.udp_msg_fd, buf, sizeof(buf), 0,
+                         (struct sockaddr *)&from, &fromlen);
+            if (n <= 0) break;
             pt_messaging_process_udp_data(ctx, buf, (size_t)n,
                                           from.sin_addr.s_addr);
         }

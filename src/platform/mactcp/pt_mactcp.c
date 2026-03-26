@@ -113,6 +113,41 @@ static pascal void udp_asr(StreamPtr stream, unsigned short event,
 }
 
 /* ------------------------------------------------------------------ */
+/* Interrupt control                                                   */
+/* ------------------------------------------------------------------ */
+
+#ifdef __m68k__
+/* 68k: disable interrupts via SR manipulation (supervisor mode).
+   MacTCP ASRs fire at hardware interrupt level and can preempt the
+   main loop between flag read and clear. */
+static short pt_disable_interrupts(void)
+{
+    short old_sr;
+    __asm__ __volatile__(
+        "move.w %%sr, %0\n\t"
+        "ori.w #0x0700, %%sr"
+        : "=d"(old_sr) : : "cc"
+    );
+    return old_sr;
+}
+
+static void pt_restore_interrupts(short old_sr)
+{
+    __asm__ __volatile__(
+        "move.w %0, %%sr"
+        : : "d"(old_sr) : "cc"
+    );
+}
+#else
+/* PPC: single-byte read and write are atomic on PPC. MacTCP on PPC
+   uses the same ASR model but completion routines run at deferred
+   task time, not hardware interrupt time. The snapshot-and-clear
+   is effectively safe without SR manipulation. */
+static short pt_disable_interrupts(void) { return 0; }
+static void pt_restore_interrupts(short old_sr) { (void)old_sr; }
+#endif
+
+/* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -311,7 +346,7 @@ static PT_Status mactcp_init(PT_Context_Internal *ctx)
     g_mactcp.udp_upp = NewUDPNotifyUPP(udp_asr);
     if (!g_mactcp.tcp_upp || !g_mactcp.udp_upp) {
         CLOG_ERR("Failed to create UPPs (OOM)");
-        return PT_ERR_INIT;
+        goto fail_upps;
     }
 
     /* Create TCP stream pool (one per peer slot) */
@@ -331,23 +366,23 @@ static PT_Status mactcp_init(PT_Context_Internal *ctx)
 
     /* Create UDP discovery stream (port 7353) */
     g_mactcp.discovery_udp.buffer = NewPtrClear(UDP_BUF_SIZE);
-    if (!g_mactcp.discovery_udp.buffer) return PT_ERR_INIT;
+    if (!g_mactcp.discovery_udp.buffer) goto fail_tcp;
     g_mactcp.discovery_udp.stream = create_udp_stream(
         g_mactcp.driver_ref, g_mactcp.discovery_udp.buffer,
         UDP_BUF_SIZE, g_mactcp.udp_upp,
         (Ptr)&g_mactcp.discovery_udp,
         PT_DISCOVERY_PORT);
-    if (!g_mactcp.discovery_udp.stream) return PT_ERR_INIT;
+    if (!g_mactcp.discovery_udp.stream) goto fail_disc_buf;
 
     /* Create UDP message stream (port 7355) */
     g_mactcp.message_udp.buffer = NewPtrClear(UDP_BUF_SIZE);
-    if (!g_mactcp.message_udp.buffer) return PT_ERR_INIT;
+    if (!g_mactcp.message_udp.buffer) goto fail_disc_udp;
     g_mactcp.message_udp.stream = create_udp_stream(
         g_mactcp.driver_ref, g_mactcp.message_udp.buffer,
         UDP_BUF_SIZE, g_mactcp.udp_upp,
         (Ptr)&g_mactcp.message_udp,
         PT_UDP_MSG_PORT);
-    if (!g_mactcp.message_udp.stream) return PT_ERR_INIT;
+    if (!g_mactcp.message_udp.stream) goto fail_msg_buf;
 
     ctx->platform_state = &g_mactcp;
 
@@ -358,6 +393,52 @@ static PT_Status mactcp_init(PT_Context_Internal *ctx)
               g_mactcp.local_ip & 0xFF);
 
     return PT_OK;
+
+fail_msg_buf:
+    DisposePtr(g_mactcp.message_udp.buffer);
+    g_mactcp.message_udp.buffer = NULL;
+fail_disc_udp:
+    {
+        UDPiopb upb;
+        memset(&upb, 0, sizeof(upb));
+        upb.ioCRefNum = g_mactcp.driver_ref;
+        upb.udpStream = g_mactcp.discovery_udp.stream;
+        upb.csCode = UDPRelease;
+        PBControlSync((ParmBlkPtr)&upb);
+        g_mactcp.discovery_udp.stream = 0;
+    }
+fail_disc_buf:
+    DisposePtr(g_mactcp.discovery_udp.buffer);
+    g_mactcp.discovery_udp.buffer = NULL;
+fail_tcp:
+    {
+        int j;
+        TCPiopb pb;
+        for (j = 0; j < MAX_TCP_STREAMS; j++) {
+            if (g_mactcp.tcp_streams[j].stream) {
+                memset(&pb, 0, sizeof(pb));
+                pb.ioCRefNum = g_mactcp.driver_ref;
+                pb.tcpStream = g_mactcp.tcp_streams[j].stream;
+                pb.csCode = TCPRelease;
+                PBControlSync((ParmBlkPtr)&pb);
+                g_mactcp.tcp_streams[j].stream = 0;
+            }
+            if (g_mactcp.tcp_streams[j].buffer) {
+                DisposePtr(g_mactcp.tcp_streams[j].buffer);
+                g_mactcp.tcp_streams[j].buffer = NULL;
+            }
+        }
+    }
+fail_upps:
+    if (g_mactcp.tcp_upp) {
+        DisposeTCPNotifyUPP(g_mactcp.tcp_upp);
+        g_mactcp.tcp_upp = NULL;
+    }
+    if (g_mactcp.udp_upp) {
+        DisposeUDPNotifyUPP(g_mactcp.udp_upp);
+        g_mactcp.udp_upp = NULL;
+    }
+    return PT_ERR_INIT;
 }
 
 static void mactcp_shutdown(PT_Context_Internal *ctx)
@@ -720,12 +801,16 @@ static void mactcp_poll(PT_Context_Internal *ctx)
             ts->send_pending = 0;
         }
 
-        /* Snapshot and clear flags atomically (R27).
-           Single-byte write is atomic on both 68k and PPC.
-           ASR flags set after this clear are preserved for next poll. */
+        /* Snapshot and clear flags with interrupts disabled (R27).
+           ASR runs at hardware interrupt level (MacTCP Guide line 2153)
+           and can preempt between read and clear. Disabling interrupts
+           ensures the pair is atomic. */
         {
-            unsigned char local_flags = ts->flags;
+            unsigned char local_flags;
+            short saved_sr = pt_disable_interrupts();
+            local_flags = ts->flags;
             ts->flags = 0;
+            pt_restore_interrupts(saved_sr);
 
         /* Check data available (ASR flag) */
         if (local_flags & FLAG_DATA_AVAIL) {

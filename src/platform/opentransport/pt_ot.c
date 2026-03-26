@@ -39,17 +39,18 @@
 #define EP_CONNECTING       2
 #define EP_CONNECTED        3
 
-/* Event flag bits for notifier */
-#define EVT_DATA            0x0001UL
-#define EVT_DISCONNECT      0x0002UL
-#define EVT_ORDREL          0x0004UL
-#define EVT_CONNECT         0x0008UL
-#define EVT_LISTEN          0x0010UL
-#define EVT_PASSCON         0x0020UL
-#define EVT_GODATA          0x0040UL
+/* Event flag bit indices for OTAtomicSetBit/ClearBit (0-7 per byte).
+   OTAtomic* functions are in Table C-1: safe at hardware interrupt time. */
+#define EVT_BIT_DATA        0
+#define EVT_BIT_DISCONNECT  1
+#define EVT_BIT_ORDREL      2
+#define EVT_BIT_CONNECT     3
+#define EVT_BIT_LISTEN      4
+#define EVT_BIT_PASSCON     5
+#define EVT_BIT_GODATA      6
 
-/* UDP event flag bits */
-#define EVT_UDP_DATA        0x0001UL
+/* UDP uses same bit index */
+#define EVT_BIT_UDP_DATA    0
 
 /* ------------------------------------------------------------------ */
 /* Per-endpoint state                                                  */
@@ -57,14 +58,14 @@
 
 typedef struct {
     EndpointRef     ep;
-    volatile unsigned long flags;
+    volatile UInt8  flags;
     int             state;
     volatile int    flow_off;   /* flow control active (set by notifier) */
 } OTEndpointSlot;
 
 typedef struct {
     EndpointRef     ep;
-    volatile unsigned long flags;
+    volatile UInt8  flags;
 } OTUDPSlot;
 
 /* ------------------------------------------------------------------ */
@@ -76,7 +77,7 @@ typedef struct {
 
     /* Listener endpoint (tilisten,tcp) */
     EndpointRef     listener_ep;
-    volatile unsigned long listener_flags;
+    volatile UInt8  listener_flags;
 
     /* Per-peer TCP endpoints for data transfer */
     OTEndpointSlot  tcp_eps[OT_MAX_ENDPOINTS];
@@ -104,9 +105,9 @@ static pascal void listener_notifier(void *context, OTEventCode code,
     (void)result; (void)cookie;
 
     if (code == T_LISTEN) {
-        st->listener_flags |= EVT_LISTEN;
+        OTAtomicSetBit((UInt8 *)&st->listener_flags, EVT_BIT_LISTEN);
     } else if (code == T_PASSCON) {
-        st->listener_flags |= EVT_PASSCON;
+        OTAtomicSetBit((UInt8 *)&st->listener_flags, EVT_BIT_PASSCON);
     }
 }
 
@@ -118,23 +119,23 @@ static pascal void tcp_notifier(void *context, OTEventCode code,
 
     switch (code) {
     case T_DATA:
-        slot->flags |= EVT_DATA;
+        OTAtomicSetBit((UInt8 *)&slot->flags, EVT_BIT_DATA);
         break;
     case T_DISCONNECT:
-        slot->flags |= EVT_DISCONNECT;
+        OTAtomicSetBit((UInt8 *)&slot->flags, EVT_BIT_DISCONNECT);
         break;
     case T_ORDREL:
-        slot->flags |= EVT_ORDREL;
+        OTAtomicSetBit((UInt8 *)&slot->flags, EVT_BIT_ORDREL);
         break;
     case T_CONNECT:
-        slot->flags |= EVT_CONNECT;
+        OTAtomicSetBit((UInt8 *)&slot->flags, EVT_BIT_CONNECT);
         break;
     case T_GODATA:
-        slot->flags |= EVT_GODATA;
+        OTAtomicSetBit((UInt8 *)&slot->flags, EVT_BIT_GODATA);
         slot->flow_off = 0;
         break;
     case T_PASSCON:
-        slot->flags |= EVT_PASSCON;
+        OTAtomicSetBit((UInt8 *)&slot->flags, EVT_BIT_PASSCON);
         break;
     }
 }
@@ -146,7 +147,7 @@ static pascal void udp_notifier(void *context, OTEventCode code,
     (void)result; (void)cookie;
 
     if (code == T_DATA) {
-        slot->flags |= EVT_UDP_DATA;
+        OTAtomicSetBit((UInt8 *)&slot->flags, EVT_BIT_UDP_DATA);
     }
 }
 
@@ -314,8 +315,7 @@ static PT_Status ot_init(PT_Context_Internal *ctx)
     udp_upp = NewOTNotifyUPP(udp_notifier);
     if (!listener_upp || !tcp_upp || !udp_upp) {
         CLOG_ERR("Failed to create OT UPPs (OOM)");
-        CloseOpenTransport();
-        return PT_ERR_INIT;
+        goto fail_upps;
     }
     g_ot.listener_upp = listener_upp;
     g_ot.tcp_upp = tcp_upp;
@@ -326,15 +326,13 @@ static PT_Status ot_init(PT_Context_Internal *ctx)
         OTConfigurationRef lconfig = OTCreateConfiguration("tilisten,tcp");
         if (!lconfig) {
             CLOG_ERR("Failed to create listener config");
-            CloseOpenTransport();
-            return PT_ERR_INIT;
+            goto fail_upps;
         }
         g_ot.listener_ep = OTOpenEndpoint(lconfig, 0, NULL, &err);
     }
     if (err != kOTNoError || g_ot.listener_ep == kOTInvalidEndpointRef) {
         CLOG_ERR("Failed to create listener endpoint: %d", (int)err);
-        CloseOpenTransport();
-        return PT_ERR_INIT;
+        goto fail_upps;
     }
 
     /* Bind listener synchronously before switching to async mode.
@@ -349,8 +347,8 @@ static PT_Status ot_init(PT_Context_Internal *ctx)
     if (err != kOTNoError) {
         CLOG_ERR("Failed to bind listener: %d", (int)err);
         OTCloseProvider(g_ot.listener_ep);
-        CloseOpenTransport();
-        return PT_ERR_INIT;
+        g_ot.listener_ep = kOTInvalidEndpointRef;
+        goto fail_upps;
     }
 
     /* Now switch to async for runtime event handling */
@@ -358,8 +356,8 @@ static PT_Status ot_init(PT_Context_Internal *ctx)
     if (err != kOTNoError) {
         CLOG_ERR("Failed to install listener notifier: %d", (int)err);
         OTCloseProvider(g_ot.listener_ep);
-        CloseOpenTransport();
-        return PT_ERR_INIT;
+        g_ot.listener_ep = kOTInvalidEndpointRef;
+        goto fail_upps;
     }
     OTSetAsynchronous(g_ot.listener_ep);
     OTSetNonBlocking(g_ot.listener_ep);
@@ -381,8 +379,7 @@ static PT_Status ot_init(PT_Context_Internal *ctx)
         udp_upp, &g_ot.discovery_udp, PT_DISCOVERY_PORT);
     if (g_ot.discovery_udp.ep == kOTInvalidEndpointRef) {
         CLOG_ERR("Failed to create discovery UDP endpoint");
-        CloseOpenTransport();
-        return PT_ERR_INIT;
+        goto fail_tcp;
     }
 
     /* Create UDP message endpoint (port 7355) */
@@ -390,8 +387,7 @@ static PT_Status ot_init(PT_Context_Internal *ctx)
         udp_upp, &g_ot.message_udp, PT_UDP_MSG_PORT);
     if (g_ot.message_udp.ep == kOTInvalidEndpointRef) {
         CLOG_ERR("Failed to create message UDP endpoint");
-        CloseOpenTransport();
-        return PT_ERR_INIT;
+        goto fail_disc_udp;
     }
 
     ctx->platform_state = &g_ot;
@@ -403,6 +399,36 @@ static PT_Status ot_init(PT_Context_Internal *ctx)
               g_ot.local_ip & 0xFF);
 
     return PT_OK;
+
+fail_disc_udp:
+    OTCloseProvider(g_ot.discovery_udp.ep);
+    g_ot.discovery_udp.ep = kOTInvalidEndpointRef;
+fail_tcp:
+    for (i = 0; i < OT_MAX_ENDPOINTS; i++) {
+        if (g_ot.tcp_eps[i].ep != kOTInvalidEndpointRef) {
+            OTCloseProvider(g_ot.tcp_eps[i].ep);
+            g_ot.tcp_eps[i].ep = kOTInvalidEndpointRef;
+        }
+    }
+    if (g_ot.listener_ep != kOTInvalidEndpointRef) {
+        OTCloseProvider(g_ot.listener_ep);
+        g_ot.listener_ep = kOTInvalidEndpointRef;
+    }
+fail_upps:
+    if (g_ot.listener_upp) {
+        DisposeOTNotifyUPP(g_ot.listener_upp);
+        g_ot.listener_upp = NULL;
+    }
+    if (g_ot.tcp_upp) {
+        DisposeOTNotifyUPP(g_ot.tcp_upp);
+        g_ot.tcp_upp = NULL;
+    }
+    if (g_ot.udp_upp) {
+        DisposeOTNotifyUPP(g_ot.udp_upp);
+        g_ot.udp_upp = NULL;
+    }
+    CloseOpenTransport();
+    return PT_ERR_INIT;
 }
 
 static void ot_shutdown(PT_Context_Internal *ctx)
@@ -646,9 +672,7 @@ static void ot_tcp_disconnect(PT_Context_Internal *ctx,
 static void poll_udp(PT_Context_Internal *ctx, OTUDPSlot *us,
                      int is_discovery)
 {
-    if (!(us->flags & EVT_UDP_DATA)) return;
-    /* Snapshot-and-clear: single long write is atomic on PPC (R27) */
-    us->flags = 0;
+    if (!OTAtomicClearBit((UInt8 *)&us->flags, EVT_BIT_UDP_DATA)) return;
 
     /* Read all available datagrams */
     for (;;) {
@@ -686,13 +710,9 @@ static void ot_poll(PT_Context_Internal *ctx)
     unsigned long flags;
 
     /* ---- Handle listener events (T_LISTEN) ---- */
-    if (g_ot.listener_flags & EVT_LISTEN) {
-        /* Snapshot-and-clear: single long write is atomic on PPC (R27) */
-        {
-            unsigned long lf = g_ot.listener_flags;
-            g_ot.listener_flags = 0;
-            (void)lf;
-        }
+    if (OTAtomicClearBit((UInt8 *)&g_ot.listener_flags, EVT_BIT_LISTEN)) {
+        /* Also clear PASSCON on listener (processed below on data ep) */
+        OTAtomicClearBit((UInt8 *)&g_ot.listener_flags, EVT_BIT_PASSCON);
 
         /* Process all pending listen indications */
         for (;;) {
@@ -734,7 +754,7 @@ static void ot_poll(PT_Context_Internal *ctx)
                Use the peer->platform_peer.events field to stash the IP
                until passcon fires. We'll handle the actual connection
                setup when T_PASSCON arrives on the data endpoint. */
-            slot->flags |= EVT_PASSCON; /* trigger immediate processing */
+            OTAtomicSetBit((UInt8 *)&slot->flags, EVT_BIT_PASSCON); /* trigger immediate processing */
 
             /* Directly set up the connection now since tilisten
                guarantees OTAccept won't fail with kOTLookErr */
@@ -780,14 +800,30 @@ static void ot_poll(PT_Context_Internal *ctx)
         OTEndpointSlot *slot = &g_ot.tcp_eps[i];
         if (slot->ep == kOTInvalidEndpointRef) continue;
 
-        /* Snapshot-and-clear: single long write is atomic on PPC (R27).
-           Notifier flags set after this clear are preserved for next poll. */
-        flags = slot->flags;
-        slot->flags = 0;
+        /* Atomic test-and-clear each flag individually (R27).
+           OTAtomicClearBit returns previous state; notifier flags
+           set after clear are preserved for next poll. */
+        {
+            int had_data, had_discon, had_ordrel, had_connect;
+            int had_passcon, had_godata;
+            had_data    = OTAtomicClearBit((UInt8 *)&slot->flags, EVT_BIT_DATA);
+            had_discon  = OTAtomicClearBit((UInt8 *)&slot->flags, EVT_BIT_DISCONNECT);
+            had_ordrel  = OTAtomicClearBit((UInt8 *)&slot->flags, EVT_BIT_ORDREL);
+            had_connect = OTAtomicClearBit((UInt8 *)&slot->flags, EVT_BIT_CONNECT);
+            had_passcon = OTAtomicClearBit((UInt8 *)&slot->flags, EVT_BIT_PASSCON);
+            had_godata  = OTAtomicClearBit((UInt8 *)&slot->flags, EVT_BIT_GODATA);
+            flags = 0;
+            if (had_data)    flags |= (1UL << EVT_BIT_DATA);
+            if (had_discon)  flags |= (1UL << EVT_BIT_DISCONNECT);
+            if (had_ordrel)  flags |= (1UL << EVT_BIT_ORDREL);
+            if (had_connect) flags |= (1UL << EVT_BIT_CONNECT);
+            if (had_passcon) flags |= (1UL << EVT_BIT_PASSCON);
+            if (had_godata)  flags |= (1UL << EVT_BIT_GODATA);
+        }
         if (!flags && slot->state == EP_FREE) continue;
 
         /* ---- Active connect completion ---- */
-        if (slot->state == EP_CONNECTING && (flags & EVT_CONNECT)) {
+        if (slot->state == EP_CONNECTING && (flags & (1UL << EVT_BIT_CONNECT))) {
             PT_Peer_Internal *peer;
             OTResult res;
 
@@ -838,7 +874,7 @@ static void ot_poll(PT_Context_Internal *ctx)
         }
 
         /* ---- Disconnect event ---- */
-        if (flags & EVT_DISCONNECT) {
+        if (flags & (1UL << EVT_BIT_DISCONNECT)) {
             PT_Peer_Internal *peer;
 
             /* Drain remaining data before disconnect — goodbye frame
@@ -873,7 +909,7 @@ static void ot_poll(PT_Context_Internal *ctx)
         }
 
         /* ---- Orderly release ---- */
-        if (flags & EVT_ORDREL) {
+        if (flags & (1UL << EVT_BIT_ORDREL)) {
             PT_Peer_Internal *peer;
 
             /* Drain remaining data before orderly release — goodbye
@@ -911,7 +947,7 @@ static void ot_poll(PT_Context_Internal *ctx)
         if (slot->state != EP_CONNECTED) continue;
 
         /* ---- Data available ---- */
-        if (flags & EVT_DATA) {
+        if (flags & (1UL << EVT_BIT_DATA)) {
             PT_Peer_Internal *peer;
 
             peer = find_peer_for_ep(ctx, slot);
