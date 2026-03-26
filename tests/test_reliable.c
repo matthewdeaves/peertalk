@@ -157,6 +157,14 @@ static void on_move(PT_Peer *peer, const void *data,
     if (g_moves_sent < TOTAL_TURNS) {
         g_my_turn = 1;
         send_move(peer);
+        /* Responder's final send: mark done now (no future receive
+           will trigger the else branch). Fixes race where re-discovery
+           after disconnect flips g_initiated — see spec 007. */
+        if (g_moves_sent >= TOTAL_TURNS) {
+            TEST_LOG("All %d turns complete!", TOTAL_TURNS);
+            g_moves_done = 1;
+            g_moves_done_time = test_time_sec();
+        }
     } else {
         TEST_LOG("All %d turns complete!", TOTAL_TURNS);
         g_moves_done = 1;

@@ -145,7 +145,8 @@ PT_Status PT_Broadcast(PT_Context *pub_ctx, unsigned char type,
 {
     PT_Context_Internal *ctx = (PT_Context_Internal *)pub_ctx;
     int i;
-    int sent_any = 0;
+    int attempted = 0;
+    int succeeded = 0;
 
     if (!ctx) return PT_ERR_INVALID_ARG;
 
@@ -155,11 +156,13 @@ PT_Status PT_Broadcast(PT_Context *pub_ctx, unsigned char type,
             PT_Status st = PT_Send(pub_ctx,
                                    (PT_Peer *)&ctx->peers[i],
                                    type, data, len);
-            if (st == PT_OK) sent_any = 1;
+            attempted = 1;
+            if (st == PT_OK) succeeded = 1;
         }
     }
 
-    return sent_any ? PT_OK : PT_ERR_SEND_FAILED;
+    if (!attempted) return PT_OK;
+    return succeeded ? PT_OK : PT_ERR_SEND_FAILED;
 }
 
 /* ------------------------------------------------------------------ */
@@ -203,32 +206,20 @@ void pt_messaging_process_tcp_data(PT_Context_Internal *ctx,
 
             /* Process chunk */
             if (seq == 0) {
-                /* First chunk -- record stride and calculate total size.
-                   The stride is the first chunk's payload length, which
-                   reflects the SENDER's buffer size (may differ from ours
-                   on cross-platform connections). */
-                size_t total_size = (size_t)(total - 1) * chunk_payload +
-                                    chunk_payload;
-
-                if (total_size > peer->reassembly_buf_size) {
-                    /* Message too large */
-                    pt_fire_error(ctx, peer, PT_ERR_NO_ROOM,
-                                  "Reassembly buffer too small");
-                    peer->reassembly_total = 0;
-                    peer->reassembly_received = 0;
-                } else {
-                    peer->reassembly_type = msg_type;
-                    peer->reassembly_total = total;
-                    peer->reassembly_received = 0;
-                    peer->reassembly_timer = ctx->current_time;
-                    peer->reassembly_stride = chunk_payload;
-                }
+                /* First chunk -- record stride (the first chunk's
+                   payload length, which reflects the SENDER's buffer
+                   size and may differ from ours on cross-platform
+                   connections). */
+                peer->reassembly_type = msg_type;
+                peer->reassembly_total = total;
+                peer->reassembly_received = 0;
+                peer->reassembly_timer = ctx->current_time;
+                peer->reassembly_stride = chunk_payload;
             }
 
             if (peer->reassembly_total > 0 && seq < total &&
                 msg_type == peer->reassembly_type) {
-                /* Copy chunk into reassembly buffer using stride
-                   derived from first chunk's payload size */
+                /* Per-chunk bounds check against reassembly buffer */
                 size_t offset = (size_t)seq * peer->reassembly_stride;
 
                 if (offset + chunk_payload <=
@@ -237,6 +228,12 @@ void pt_messaging_process_tcp_data(PT_Context_Internal *ctx,
                            peer->tcp_recv_buf + PT_TCP_CHUNK_HEADER,
                            chunk_payload);
                     peer->reassembly_received++;
+                } else {
+                    /* Chunk exceeds reassembly buffer */
+                    pt_fire_error(ctx, peer, PT_ERR_NO_ROOM,
+                                  "Reassembly buffer too small");
+                    peer->reassembly_total = 0;
+                    peer->reassembly_received = 0;
                 }
 
                 /* Check if complete */
