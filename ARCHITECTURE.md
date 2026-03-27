@@ -95,36 +95,28 @@ C4Component
 C4Deployment
     title Test LAN Deployment
 
-    Deployment_Node(macse, "Mac SE", "68000 8MHz, 4MB, System 6") {
-        Deployment_Node(macse_net, "MacTCP") {
-            Container(macse_app, "68k test apps", "")
-        }
+    Deployment_Node(macse, "Mac SE", "68000 8MHz, 4MB RAM, System 6.0.8") {
+        Deployment_Node(macse_app, "PeerTalk", "68k MacTCP build")
     }
 
-    Deployment_Node(p6200, "Performa 6200", "PPC 603, 40MB, System 7.5") {
-        Deployment_Node(p6200_net, "MacTCP") {
-            Container(p6200_app, "PPC test apps", "")
-        }
+    Deployment_Node(p6200, "Performa 6200", "PPC 603 100MHz, 40MB RAM, System 7.5.3") {
+        Deployment_Node(p6200_app, "PeerTalk", "PPC MacTCP build")
     }
 
-    Deployment_Node(p6400, "Performa 6400", "PPC 603e, 48MB, System 7.6") {
-        Deployment_Node(p6400_net, "Open Transport") {
-            Container(p6400_app, "PPC test apps", "")
-        }
+    Deployment_Node(p6400, "Performa 6400", "PPC 603e 180MHz, 48MB RAM, System 7.6.1") {
+        Deployment_Node(p6400_app, "PeerTalk", "PPC Open Transport build")
     }
 
-    Deployment_Node(linux, "Linux", "x86_64") {
-        Deployment_Node(linux_net, "BSD Sockets") {
-            Container(linux_app, "POSIX test apps", "")
-        }
+    Deployment_Node(linux, "Linux Box", "x86_64") {
+        Deployment_Node(linux_app, "PeerTalk", "POSIX build")
     }
 
-    Rel(macse_app, linux_app, "LAN")
-    Rel(p6200_app, linux_app, "LAN")
-    Rel(p6400_app, linux_app, "LAN")
-    Rel(macse_app, p6400_app, "LAN")
-    Rel(p6200_app, p6400_app, "LAN")
-    Rel(macse_app, p6200_app, "LAN")
+    Rel(macse_app, linux_app, "Ethernet", "UDP/TCP")
+    Rel(p6200_app, linux_app, "Ethernet", "UDP/TCP")
+    Rel(p6400_app, linux_app, "Ethernet", "UDP/TCP")
+    Rel(macse_app, p6400_app, "Ethernet", "UDP/TCP")
+    Rel(p6200_app, p6400_app, "Ethernet", "UDP/TCP")
+    Rel(macse_app, p6200_app, "Ethernet", "UDP/TCP")
 ```
 
 ## Wire Protocol
