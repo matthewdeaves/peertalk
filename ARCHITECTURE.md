@@ -6,87 +6,86 @@
 
 ```mermaid
 C4Context
-    title System Context — PeerTalk SDK
+    title System Context
 
-    Person(dev, "App Developer", "Builds peer-to-peer LAN games and chat apps")
+    Person(dev, "App Developer", "Games and chat apps")
 
-    System(peertalk, "PeerTalk SDK", "C89 networking library for LAN peer-to-peer communication across Classic Mac and modern POSIX systems")
+    System(peertalk, "PeerTalk SDK", "C89 LAN peer-to-peer networking")
 
-    System_Ext(lan, "Local Area Network", "Ethernet — carries UDP discovery broadcasts and TCP/UDP messaging")
-    System_Ext(clog, "clog", "External logging library — linked statically, never exposed in public API")
+    System_Ext(lan, "LAN", "Ethernet")
+    System_Ext(clog, "clog", "Logging library")
 
-    Rel(dev, peertalk, "Links against", "21-function C89 API")
-    Rel(peertalk, lan, "Discovers peers and exchanges messages over", "UDP :7353 :7355, TCP :7354")
-    Rel(peertalk, clog, "Logs via", "Internal only")
+    Rel(dev, peertalk, "Links against")
+    Rel(peertalk, lan, "UDP/TCP", ":7353 :7354 :7355")
+    Rel(peertalk, clog, "Internal logging")
 ```
 
 ## Level 2: Container
 
 ```mermaid
 C4Container
-    title Container — PeerTalk SDK
+    title Containers — PeerTalk SDK (4,410 LOC)
 
     Person(dev, "App Developer")
 
-    Container_Boundary(sdk, "PeerTalk SDK (4,410 LOC)") {
-        Container(api, "peertalk.h", "C89 Header, 165 LOC", "21 public functions — lifecycle, discovery, messaging, callbacks, peer queries")
-        Container(core, "Core Layer", "C89, 1,674 LOC", "Platform-independent protocol: discovery, messaging/chunking, memory allocation, peer management")
-        Container(posix, "POSIX Backend", "C89, 548 LOC", "BSD sockets + select() — Linux, macOS")
-        Container(mactcp, "MacTCP Backend", "C89, 995 LOC", "Async parameter blocks + ASR callbacks — 68k and PPC")
-        Container(ot, "OT Backend", "C89, 1,028 LOC", "OT endpoints + notifiers + OTAtomic* — PPC")
+    Container_Boundary(sdk, "PeerTalk SDK") {
+        Container(api, "peertalk.h", "C89, 165 LOC", "22 public functions")
+        Container(core, "Core Layer", "C89, 1,674 LOC", "Discovery, messaging, memory")
+        Container(posix, "POSIX Backend", "C89, 548 LOC", "BSD sockets + select()")
+        Container(mactcp, "MacTCP Backend", "C89, 995 LOC", "Async PBs + ASR flags")
+        Container(ot, "OT Backend", "C89, 1,028 LOC", "Endpoints + notifiers")
     }
 
     Rel(dev, api, "Calls")
-    Rel(api, core, "Delegates to")
-    Rel(core, posix, "Platform vtable", "on Linux/macOS")
-    Rel(core, mactcp, "Platform vtable", "on 68k/PPC MacTCP")
-    Rel(core, ot, "Platform vtable", "on PPC Open Transport")
+    Rel(api, core, "Delegates")
+    Rel(core, posix, "vtable", "Linux/macOS")
+    Rel(core, mactcp, "vtable", "68k/PPC MacTCP")
+    Rel(core, ot, "vtable", "PPC OT")
 ```
 
-## Level 3: Component (Core Layer)
+## Level 3: Component — Core
 
 ```mermaid
 C4Component
-    title Component — Core Layer
+    title Core Layer (1,674 LOC)
 
-    Container_Boundary(core, "Core Layer") {
-        Component(ptcore, "pt_core.c", "C89, 669 LOC", "Lifecycle (PT_Init/Shutdown), peer management, callback dispatch, timeout checking, tiebreaker logic")
-        Component(disc, "pt_discovery.c", "C89, 151 LOC", "UDP broadcast discovery — send/receive/parse, peer timeout (15s), re-discovery after disconnect")
-        Component(msg, "pt_messaging.c", "C89, 356 LOC", "Message framing (TCP 4B header, UDP 3B header), chunking/reassembly, PT_Send/PT_Broadcast routing")
-        Component(mem, "pt_memory.c", "C89, 203 LOC", "Single-block allocation at init — sizes buffers from FreeMem() on Classic Mac, zero malloc after init")
-        Component(internal, "pt_internal.h", "C89, 295 LOC", "Internal types, wire protocol constants, platform vtable definition, per-peer state structs")
+    Container_Boundary(core, "Core") {
+        Component(ptcore, "pt_core.c", "669 LOC", "Lifecycle, peers, callbacks")
+        Component(disc, "pt_discovery.c", "151 LOC", "UDP broadcast discovery")
+        Component(msg, "pt_messaging.c", "356 LOC", "Framing, chunking, routing")
+        Component(mem, "pt_memory.c", "203 LOC", "Single-block allocator")
+        Component(internal, "pt_internal.h", "295 LOC", "Types, constants, vtable")
     }
 
-    Rel(ptcore, disc, "Calls for discovery broadcasts and timeout checks")
-    Rel(ptcore, msg, "Calls for send/receive/process")
-    Rel(ptcore, mem, "Calls at init for memory allocation")
-    Rel(ptcore, internal, "Uses types and constants")
-    Rel(disc, internal, "Uses wire format constants")
-    Rel(msg, internal, "Uses frame headers and chunk format")
+    Rel(ptcore, disc, "Discovery")
+    Rel(ptcore, msg, "Send/receive")
+    Rel(ptcore, mem, "Init alloc")
+    Rel(disc, internal, "Wire format")
+    Rel(msg, internal, "Frame headers")
 ```
 
-## Level 3: Component (Platform Backends)
+## Level 3: Component — Backends
 
 ```mermaid
 C4Component
-    title Component — Platform Backends
+    title Platform Backends
 
-    Container_Boundary(posix_be, "POSIX Backend (pt_posix.c, 548 LOC)") {
-        Component(posix_sock, "Socket Management", "", "3 sockets: UDP discovery :7353, UDP messages :7355, TCP listener :7354 — all non-blocking")
-        Component(posix_poll, "select() Poll Loop", "", "FD_SET on all active fds, dispatch recv data to core")
-        Component(posix_conn, "TCP Connect/Accept", "", "Non-blocking connect, accept incoming, per-peer fd tracking")
+    Container_Boundary(posix_be, "POSIX (548 LOC)") {
+        Component(posix_sock, "Sockets", "", "UDP :7353/:7355, TCP :7354")
+        Component(posix_poll, "select() loop", "", "Non-blocking poll")
+        Component(posix_conn, "Connections", "", "Connect/accept per peer")
     }
 
-    Container_Boundary(mactcp_be, "MacTCP Backend (pt_mactcp.c, 995 LOC)") {
-        Component(mactcp_stream, "TCP Stream Pool", "", "Up to 32 pre-created streams with 8KB buffers — async parameter blocks")
-        Component(mactcp_asr, "ASR Callbacks", "", "Interrupt-level flag setting — snapshot-and-clear with interrupts disabled (68k SR)")
-        Component(mactcp_udp, "UDP Streams", "", "Discovery + message UDP — async read with buffer return")
+    Container_Boundary(mactcp_be, "MacTCP (995 LOC)") {
+        Component(mactcp_stream, "TCP Streams", "", "32 async streams, 8KB buf")
+        Component(mactcp_asr, "ASR Callbacks", "", "Interrupt-safe flags (SR)")
+        Component(mactcp_udp, "UDP Streams", "", "Async read + buf return")
     }
 
-    Container_Boundary(ot_be, "OT Backend (pt_ot.c, 1,001 LOC)") {
-        Component(ot_ep, "Endpoint Pool", "", "Up to 32 TCP endpoints + tilisten,tcp listener — bind/connect/accept")
-        Component(ot_notify, "Notifier Callbacks", "", "Deferred-task-time flag setting — OTAtomicSetBit/ClearBit per Table C-1")
-        Component(ot_udp_ep, "UDP Endpoints", "", "Discovery + message UDP — OTRcvUData drain loop")
+    Container_Boundary(ot_be, "Open Transport (1,001 LOC)") {
+        Component(ot_ep, "TCP Endpoints", "", "32 endpoints + tilisten")
+        Component(ot_notify, "Notifiers", "", "OTAtomic* flags (Table C-1)")
+        Component(ot_udp_ep, "UDP Endpoints", "", "OTRcvUData drain loop")
     }
 ```
 
@@ -94,70 +93,70 @@ C4Component
 
 ```mermaid
 C4Deployment
-    title Deployment — PeerTalk Test LAN
+    title Test LAN Deployment
 
-    Deployment_Node(macse, "Mac SE", "68000 8MHz, 4MB RAM, System 6.0.8") {
-        Deployment_Node(macse_mactcp, "MacTCP") {
-            Container(macse_app, "test apps", "", "68k MacTCP backend")
+    Deployment_Node(macse, "Mac SE", "68000 8MHz, 4MB, System 6") {
+        Deployment_Node(macse_net, "MacTCP") {
+            Container(macse_app, "68k test apps", "")
         }
     }
 
-    Deployment_Node(p6200, "Performa 6200", "PPC 603 100MHz, 40MB RAM, System 7.5.3") {
-        Deployment_Node(p6200_mactcp, "MacTCP") {
-            Container(p6200_app, "test apps", "", "PPC MacTCP backend")
+    Deployment_Node(p6200, "Performa 6200", "PPC 603, 40MB, System 7.5") {
+        Deployment_Node(p6200_net, "MacTCP") {
+            Container(p6200_app, "PPC test apps", "")
         }
     }
 
-    Deployment_Node(p6400, "Performa 6400", "PPC 603e 180MHz, 48MB RAM, System 7.6.1") {
-        Deployment_Node(p6400_ot, "Open Transport") {
-            Container(p6400_app, "test apps", "", "PPC OT backend")
+    Deployment_Node(p6400, "Performa 6400", "PPC 603e, 48MB, System 7.6") {
+        Deployment_Node(p6400_net, "Open Transport") {
+            Container(p6400_app, "PPC test apps", "")
         }
     }
 
-    Deployment_Node(linux, "Linux Box", "x86_64, modern") {
-        Deployment_Node(linux_posix, "BSD Sockets") {
-            Container(linux_app, "test apps", "", "POSIX backend")
+    Deployment_Node(linux, "Linux", "x86_64") {
+        Deployment_Node(linux_net, "BSD Sockets") {
+            Container(linux_app, "POSIX test apps", "")
         }
     }
 
-    Rel(macse_app, linux_app, "LAN", "UDP :7353/:7355, TCP :7354")
-    Rel(p6200_app, linux_app, "LAN", "UDP :7353/:7355, TCP :7354")
-    Rel(p6400_app, linux_app, "LAN", "UDP :7353/:7355, TCP :7354")
-    Rel(macse_app, p6400_app, "LAN", "UDP :7353/:7355, TCP :7354")
-    Rel(p6200_app, p6400_app, "LAN", "UDP :7353/:7355, TCP :7354")
-    Rel(macse_app, p6200_app, "LAN", "UDP :7353/:7355, TCP :7354")
+    Rel(macse_app, linux_app, "LAN")
+    Rel(p6200_app, linux_app, "LAN")
+    Rel(p6400_app, linux_app, "LAN")
+    Rel(macse_app, p6400_app, "LAN")
+    Rel(p6200_app, p6400_app, "LAN")
+    Rel(macse_app, p6200_app, "LAN")
 ```
 
 ## Wire Protocol
 
 ```mermaid
 C4Component
-    title Wire Protocol — Message Formats
+    title Wire Protocol v1
 
-    Container_Boundary(wire, "Wire Protocol v1") {
-        Component(discovery, "Discovery Broadcast", "UDP :7353", "5B header (magic 'PTLK' + version 1) + name (max 31 chars) — every 2s, timeout 15s")
-        Component(tcp_frame, "TCP Reliable Frame", "TCP :7354", "4B header (2B length + 1B type + 1B flags) + payload — types 0-254 user, 255 GOODBYE")
-        Component(tcp_chunk, "TCP Chunked Frame", "TCP :7354", "8B header (4B base + 2B seq + 2B total) + payload — for messages exceeding send buffer")
-        Component(udp_fast, "UDP Fast Frame", "UDP :7355", "3B header (2B length + 1B type) + payload — max 1400 bytes MTU-safe")
+    Container_Boundary(wire, "Protocols") {
+        Component(discovery, "Discovery", "UDP :7353", "5B hdr + name, every 2s")
+        Component(tcp_frame, "TCP Frame", "TCP :7354", "4B hdr + payload")
+        Component(tcp_chunk, "TCP Chunk", "TCP :7354", "8B hdr + seq/total")
+        Component(udp_fast, "UDP Fast", "UDP :7355", "3B hdr, max 1400B")
     }
 
-    Rel(discovery, tcp_frame, "Peer discovered, then TCP connect")
-    Rel(tcp_frame, tcp_chunk, "Large messages auto-chunked")
+    Rel(discovery, tcp_frame, "Discover then connect")
+    Rel(tcp_frame, tcp_chunk, "Auto-chunk if large")
 ```
 
 ## Test Suite
 
 ```mermaid
 C4Component
-    title Test Suite — 7 Test Apps (2,040 LOC)
+    title Test Suite (2,040 LOC)
 
-    Container_Boundary(tests, "Test Applications") {
-        Component(t_life, "test_lifecycle", "210 LOC", "Discovery, connect, disconnect, reconnect, StopDiscovery, SetName, PeerLost — 2 cycles")
-        Component(t_fast, "test_fast", "308 LOC", "Bomberman pattern — 60Hz UDP position updates for 5s, bidirectional, latency tracking")
-        Component(t_rel, "test_reliable", "307 LOC", "Chess pattern — 10 alternating TCP moves, chunking/reassembly, broadcast game-over")
-        Component(t_chat, "test_chat", "259 LOC", "Chat pattern — variable-size bidirectional TCP messages, interactive")
-        Component(t_multi, "test_multi", "294 LOC", "Multi-peer — 2-4 peers discover, connect all, broadcast HELLO, verify receipt from all")
-        Component(t_init, "test_init_only", "186 LOC", "Init/shutdown isolation + 5 error path tests (NULL args, no peers)")
-        Component(t_clog, "test_clog_minimal", "43 LOC", "clog logging library verification — no PeerTalk dependency")
+    Container_Boundary(tests, "7 Test Apps") {
+        Component(t_life, "test_lifecycle", "210 LOC", "Connect/disconnect cycles")
+        Component(t_fast, "test_fast", "308 LOC", "60Hz UDP (Bomberman)")
+        Component(t_rel, "test_reliable", "307 LOC", "TCP moves (Chess)")
+        Component(t_chat, "test_chat", "259 LOC", "Bidirectional TCP chat")
+        Component(t_multi, "test_multi", "294 LOC", "2-4 peer broadcast")
+        Component(t_init, "test_init_only", "186 LOC", "Init + error paths")
+        Component(t_clog, "test_clog_minimal", "43 LOC", "Logging only")
     }
 ```
