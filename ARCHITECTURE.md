@@ -182,3 +182,168 @@ graph LR
     style t6 fill:#438dd5,stroke:#2e6295,color:#fff
     style t7 fill:#438dd5,stroke:#2e6295,color:#fff
 ```
+
+## Discovery and Connection Sequence
+
+```mermaid
+sequenceDiagram
+    participant A as Peer A (lower IP)
+    participant LAN as LAN :7353
+    participant B as Peer B (higher IP)
+
+    Note over A,B: Discovery Phase (every 2s)
+    A->>LAN: UDP broadcast (PTLK + v1 + "PeerA")
+    LAN->>B: Discovery packet
+    B->>B: Create peer record, fire on_discovered
+    B->>LAN: UDP broadcast (PTLK + v1 + "PeerB")
+    LAN->>A: Discovery packet
+    A->>A: Create peer record, fire on_discovered
+
+    Note over A,B: Both apps call PT_Connect
+    A->>B: TCP SYN to :7354
+    B->>A: TCP SYN to :7354
+
+    Note over A,B: Tiebreaker (lower IP wins as initiator)
+    B->>B: local_ip > peer_ip → cancel outgoing
+    B->>B: Accept incoming from A
+    A->>A: Outgoing completes
+
+    A->>A: on_connected fires
+    B->>B: on_connected fires
+```
+
+## Message Send/Receive Sequence
+
+```mermaid
+sequenceDiagram
+    participant App as App
+    participant Core as PT_Send
+    participant Plat as Platform
+    participant Net as Network
+    participant RPlat as Remote Platform
+    participant RCore as Remote Core
+    participant RApp as Remote App
+
+    App->>Core: PT_Send(ctx, peer, type, data, len)
+    Core->>Core: Check message_types[type]
+
+    alt PT_RELIABLE (TCP)
+        alt len <= send_buf - 4
+            Core->>Core: Build 4B header
+            Core->>Plat: tcp_send (single frame)
+        else len > send_buf (chunked)
+            loop Each chunk
+                Core->>Core: Build 8B chunk header (seq/total)
+                Core->>Plat: tcp_send (chunk frame)
+            end
+        end
+        Plat->>Net: TCP :7354
+    else PT_FAST (UDP)
+        Core->>Core: Build 3B header
+        Core->>Plat: udp_send
+        Plat->>Net: UDP :7355
+    end
+
+    Net->>RPlat: Data arrives
+    RPlat->>RCore: process_tcp_data / process_udp_data
+    RCore->>RCore: Parse header, reassemble if chunked
+    RCore->>RApp: on_message callback
+```
+
+## Init Memory Layout
+
+```mermaid
+graph LR
+    subgraph block ["Single Allocation Block"]
+        go["Global Overhead<br/><i>1,024 bytes</i>"]
+        pa["Peers Array<br/><i>N x sizeof(Peer)</i>"]
+        subgraph peer0 ["Per-Peer Buffers (x N)"]
+            tr["tcp_recv<br/><i>4,100 - 8,192</i>"]
+            ts["tcp_send<br/><i>1,024 - 4,096</i>"]
+            ub["udp_buf<br/><i>512</i>"]
+            rb["reassembly<br/><i>4,096 - 65,536</i>"]
+            md["metadata<br/><i>128</i>"]
+        end
+    end
+
+    go --> pa --> peer0
+
+    style go fill:#1168bd,stroke:#0b4884,color:#fff
+    style pa fill:#1168bd,stroke:#0b4884,color:#fff
+    style tr fill:#438dd5,stroke:#2e6295,color:#fff
+    style ts fill:#438dd5,stroke:#2e6295,color:#fff
+    style ub fill:#438dd5,stroke:#2e6295,color:#fff
+    style rb fill:#438dd5,stroke:#2e6295,color:#fff
+    style md fill:#438dd5,stroke:#2e6295,color:#fff
+```
+
+**Sizing**: On Classic Mac, `FreeMem() x 75%` determines the budget. Buffer sizes scale with available memory (3 tiers). Max 32 peers. Zero malloc after init.
+
+## Chunking and Reassembly Sequence
+
+```mermaid
+sequenceDiagram
+    participant S as Sender
+    participant N as TCP :7354
+    participant R as Receiver
+
+    Note over S: Message too large for send buffer
+    S->>S: total = ceil(len / max_chunk_payload)
+
+    S->>N: Chunk [seq=0, total=4] + payload
+    N->>R: Frame arrives
+    R->>R: seq=0: init reassembly, record stride
+
+    S->>N: Chunk [seq=1, total=4] + payload
+    N->>R: Frame arrives
+    R->>R: Copy to buf[1 x stride]
+
+    S->>N: Chunk [seq=2, total=4] + payload
+    N->>R: Frame arrives
+    R->>R: Copy to buf[2 x stride]
+
+    S->>N: Chunk [seq=3, total=4] + payload (last, may be smaller)
+    N->>R: Frame arrives
+    R->>R: received == total → deliver to callback
+
+    Note over R: 5s timeout if chunks stop arriving
+```
+
+## Poll Cycle
+
+```mermaid
+graph TB
+    poll["<b>PT_Poll(ctx)</b>"]
+    time["Update current_time"]
+    disc{"Discovery<br/>timer expired?"}
+    bcast["Broadcast UDP :7353<br/>(every 2s)"]
+    plat["<b>Platform poll()</b><br/>Check sockets/streams/endpoints"]
+    events["Process events:<br/>discovery_receive<br/>process_tcp_data<br/>process_udp_data<br/>handle_disconnect"]
+    dt{"Discovery<br/>timeout? (15s)"}
+    dtact["Fire on_peer_lost"]
+    ct{"Connect<br/>timeout? (15s)"}
+    ctact["Abort, fire error"]
+    tt{"TCP inactive?<br/>(60s)"}
+    ttact["Disconnect (TIMEOUT)"]
+    rt{"Reassembly<br/>timeout? (5s)"}
+    rtact["Reset reassembly"]
+    done["Return"]
+
+    poll --> time --> disc
+    disc -->|yes| bcast --> plat
+    disc -->|no| plat
+    plat --> events --> dt
+    dt -->|yes| dtact --> ct
+    dt -->|no| ct
+    ct -->|yes| ctact --> tt
+    ct -->|no| tt
+    tt -->|yes| ttact --> rt
+    tt -->|no| rt
+    rt -->|yes| rtact --> done
+    rt -->|no| done
+
+    style poll fill:#1168bd,stroke:#0b4884,color:#fff
+    style plat fill:#1168bd,stroke:#0b4884,color:#fff
+    style events fill:#438dd5,stroke:#2e6295,color:#fff
+    style done fill:#1168bd,stroke:#0b4884,color:#fff
+```
