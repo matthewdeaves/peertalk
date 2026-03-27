@@ -10,15 +10,65 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Clone and build clog
         run: |
           git clone https://github.com/matthewdeaves/clog.git "$HOME/clog"
           mkdir "$HOME/clog/build" && cd "$HOME/clog/build" && cmake .. && make
+
       - name: Build peertalk
         run: mkdir build && cd build && cmake .. -DCLOG_DIR="$HOME/clog" && make
-      - name: Package
-        run: tar czf libpeertalk-posix.tar.gz -C build libpeertalk.a -C ../include peertalk.h
+
+      - name: Package POSIX binary
+        run: |
+          mkdir -p pkg/include pkg/lib
+          cp include/peertalk.h pkg/include/
+          cp build/libpeertalk.a pkg/lib/
+          cp LICENSE pkg/
+          tar czf libpeertalk-posix-linux-x86_64.tar.gz -C pkg include lib LICENSE
+
+      - name: Package SDK source
+        run: |
+          tar czf peertalk-sdk-source.tar.gz \
+            include/peertalk.h \
+            src/core/ \
+            src/platform/ \
+            CMakeLists.txt \
+            LICENSE
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            NOTES=$(git log --oneline "$PREV_TAG"..HEAD^ | head -50)
+          else
+            NOTES=$(git log --oneline -20 HEAD^)
+          fi
+          {
+            echo "notes<<ENDOFNOTES"
+            echo "## What's in this release"
+            echo ""
+            echo "**Pre-built POSIX library** (\`libpeertalk-posix-linux-x86_64.tar.gz\`):"
+            echo "- \`lib/libpeertalk.a\` — static library for Linux x86_64"
+            echo "- \`include/peertalk.h\` — public header"
+            echo ""
+            echo "**SDK source** (\`peertalk-sdk-source.tar.gz\`):"
+            echo "- Everything needed for \`add_subdirectory()\` in CMake"
+            echo "- Build for any platform: POSIX, 68k MacTCP, PPC MacTCP, PPC OT"
+            echo ""
+            echo "## Changes since last release"
+            echo ""
+            echo "$NOTES"
+            echo "ENDOFNOTES"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: libpeertalk-posix.tar.gz
+          body: ${{ steps.notes.outputs.notes }}
+          files: |
+            libpeertalk-posix-linux-x86_64.tar.gz
+            peertalk-sdk-source.tar.gz
