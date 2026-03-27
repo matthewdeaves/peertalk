@@ -1,81 +1,99 @@
 ---
 name: architecture
 description: |
-  Regenerate ARCHITECTURE.md with accurate C4 Mermaid diagrams by reading
-  the actual codebase. Use when code structure changes — new files, renamed
-  functions, new platforms, updated test apps. Reads all source files,
-  counts lines and functions, and rewrites the diagrams to match reality.
+  Fact-check and update ARCHITECTURE.md against the actual codebase.
+  Reads source files, counts lines and functions, compares against
+  the existing diagrams, and fixes any drift. Only changes what's
+  wrong — does not regenerate from scratch.
 disable-model-invocation: true
-allowed-tools: Read, Write, Glob, Grep, Bash
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
-# Architecture Diagram Generator
+# Architecture Diagram Fact-Checker
 
-Regenerate `ARCHITECTURE.md` at the repo root with Mermaid C4 diagrams derived from the actual codebase. Every number, file name, and LOC count MUST come from reading the code — never from memory or prior conversations.
+Fact-check `ARCHITECTURE.md` against the actual codebase and fix any drift. Do NOT regenerate from scratch — read the existing file, compare each fact against the code, and use Edit to fix only what's wrong.
 
 ## Live Codebase Snapshot
 
-Use this data to build accurate diagrams:
+Compare these values against what ARCHITECTURE.md currently says:
 
-**Public API functions:**
-!`grep -c '^PT_Status\|^void PT_\|^int PT_\|^PT_Peer\|^const char \*PT_\|^PT_PeerState' include/peertalk.h 2>/dev/null || echo "?"`
+**Public API function count:**
+!`grep -cE '^\w.+PT_\w+\(' include/peertalk.h 2>/dev/null || echo "?"`
 
-**Source file line counts:**
-!`wc -l src/core/*.c src/core/*.h src/platform/*/*.c include/peertalk.h 2>/dev/null | tail -1`
+**SDK line counts (per file):**
+!`wc -l src/core/*.c src/core/*.h src/platform/*/*.c include/peertalk.h 2>/dev/null`
 
-**Test file line counts:**
-!`wc -l tests/test_*.c tests/test_common.h tests/status_window.c tests/status_window.h 2>/dev/null | tail -1`
+**Test line counts:**
+!`wc -l tests/test_*.c tests/test_common.h tests/status_window.c tests/status_window.h 2>/dev/null`
 
-**Platform backends discovered:**
+**Platform backends:**
 !`ls -d src/platform/*/ 2>/dev/null | sed 's|.*/||;s|/||'`
 
-**Test apps discovered:**
+**Test apps:**
 !`ls tests/test_*.c 2>/dev/null | sed 's|.*/test_||;s|\.c||' | grep -v common`
 
 **Port numbers:**
 !`grep -E 'PT_DISCOVERY_PORT|PT_TCP_PORT|PT_UDP_MSG_PORT' src/core/pt_internal.h 2>/dev/null`
 
-**Wire protocol version:**
-!`grep 'PT_WIRE_VERSION' src/core/pt_internal.h 2>/dev/null`
-
 ## Execution Steps
 
-### Step 1: Read the Code and Gather Exact Facts
+### Step 1: Read ARCHITECTURE.md
 
-You MUST read these files completely before writing any diagram:
+Read the existing `ARCHITECTURE.md` and extract every factual claim:
+- Function counts (e.g., "22 functions")
+- LOC counts per file and per layer (e.g., "669 LOC")
+- Total LOC counts (e.g., "4,410 LOC")
+- File names referenced in diagrams
+- Platform backend names
+- Test app names and descriptions
+- Port numbers and wire protocol details
+- Machine specs in deployment diagram
 
-1. **`include/peertalk.h`** — list every `PT_*` function, count them, group by category
-2. **`src/core/pt_internal.h`** — extract all port numbers, header sizes, timeouts, wire constants
-3. **Every `.c` file in `src/core/`** — read header comment for role, note LOC from wc -l
-4. **Every `.c` file in `src/platform/*/`** — read header comment, note key implementation pattern and LOC
-5. **Every `tests/test_*.c`** — read header comment for purpose, note LOC
-6. **Machine specs** — read `.claude/mcp-servers/classic-mac-hardware/machines.json` or CLAUDE.md for deployment node details
+### Step 2: Gather Current Facts from Code
 
-Run `wc -l` on all source files to get exact line counts. Do NOT estimate or use cached values.
+For each claim found in Step 1, verify against the codebase:
 
-### Step 2: Write ARCHITECTURE.md
+1. **Function count** — `grep -cE '^\w.+PT_\w+\(' include/peertalk.h`
+2. **Per-file LOC** — `wc -l` on each file mentioned in diagrams
+3. **Layer totals** — sum the per-file counts
+4. **File existence** — `ls` each file referenced. Flag missing files.
+5. **Platform backends** — `ls -d src/platform/*/` — flag any missing from diagrams or extra in diagrams
+6. **Test apps** — `ls tests/test_*.c` — flag any missing or extra
+7. **Port numbers** — grep `pt_internal.h` for port defines
+8. **Wire protocol** — grep for header sizes, version, magic bytes
+9. **Machine specs** — read `.claude/mcp-servers/classic-mac-hardware/machines.json` or CLAUDE.md
 
-Write the file with this structure. All diagrams use standard Mermaid flowcharts (`graph TB` or `graph LR`) with C4-style blue coloring via `style` directives. Do NOT use Mermaid C4 diagram types (C4Context, C4Container, etc.) — they render poorly on GitHub with overlapping labels and broken layouts.
+### Step 3: Compare and Fix
 
-**Style convention:** Use `fill:#1168bd,stroke:#0b4884,color:#fff` for primary elements, `fill:#438dd5,stroke:#2e6295,color:#fff` for components, `fill:#08427b,stroke:#052e56,color:#fff` for people, `fill:#999,stroke:#666,color:#fff` for external systems.
+For each discrepancy found:
+1. Log: `DRIFT: <section> says <old> but code shows <new>`
+2. Use the Edit tool to fix the specific value in ARCHITECTURE.md
+3. Do NOT rewrite entire sections — only change the wrong values
 
-**Required sections in order:**
+If a new file/backend/test app exists that isn't in the diagrams, add it to the appropriate section using Edit.
 
-1. **Header** — title + "Auto-generated by `/architecture` skill. Do not edit manually."
-2. **System Context** (`graph TB`) — Developer, PeerTalk SDK, LAN, clog. Include port numbers in relationships.
-3. **Containers** (`graph TB`) — subgraph for SDK boundary. API header, Core layer, each platform backend. Include exact LOC and function counts.
-4. **Core Components** (`graph LR`) — subgraph for Core. Each `.c` file with LOC and role. Arrow relationships.
-5. **Platform Backends** (`graph TB`) — one subgraph per backend, 2-3 items each. No cross-backend arrows.
-6. **Deployment** (`graph LR`) — one subgraph per machine with CPU/RAM specs. Bidirectional Ethernet arrows (`<-->`) for full mesh.
-7. **Wire Protocol** (`graph LR`) — each frame format with port and header size. Flow arrows between related formats.
-8. **Test Suite** (`graph LR`) — each test app with LOC and brief purpose. No arrows needed.
+If a file/backend/test app was removed, remove it from the appropriate section.
 
-### Step 3: Report
+### Step 4: Report
 
-After writing, print:
-- Total SDK LOC (API + core + platforms)
-- Total test LOC
-- Number of public API functions
-- Number of platform backends
-- Number of test apps
-- Any source files NOT represented in the diagrams
+Print a summary:
+```
+=== Architecture Fact-Check ===
+Checked: <N> facts
+Correct: <N>
+Fixed: <N> (list each fix)
+New items added: <N> (list each)
+Removed items: <N> (list each)
+```
+
+## Diagram Format Rules
+
+All diagrams use standard Mermaid flowcharts (`graph TB` or `graph LR`). Do NOT use Mermaid C4 diagram types (`C4Context`, `C4Container`, etc.) — they render poorly on GitHub.
+
+**Style convention:**
+- Primary elements: `fill:#1168bd,stroke:#0b4884,color:#fff`
+- Components: `fill:#438dd5,stroke:#2e6295,color:#fff`
+- People: `fill:#08427b,stroke:#052e56,color:#fff`
+- External systems: `fill:#999,stroke:#666,color:#fff`
+
+**Label convention:** Keep labels short — name on first line, LOC on second, brief role in italics on third. No sentences.
