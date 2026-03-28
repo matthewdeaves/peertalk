@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  CLOG_COMMIT: "9f512365ce09cf1eed592bd49b5d11307639456a"
+
 jobs:
   build-posix:
     strategy:
@@ -13,7 +16,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install deps (Linux)
         if: runner.os == 'Linux'
@@ -21,8 +24,9 @@ jobs:
 
       - name: Clone and build clog
         run: |
-          git clone --depth 1 https://github.com/matthewdeaves/clog.git "$HOME/clog"
-          mkdir "$HOME/clog/build" && cd "$HOME/clog/build"
+          git clone https://github.com/matthewdeaves/clog.git "$HOME/clog"
+          cd "$HOME/clog" && git checkout ${{ env.CLOG_COMMIT }}
+          mkdir build && cd build
           cmake .. && make
 
       - name: Build peertalk
@@ -41,7 +45,7 @@ jobs:
   static-analysis:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install cppcheck
         run: sudo apt-get update && sudo apt-get install -y cppcheck
@@ -60,14 +64,15 @@ jobs:
   build-68k-mactcp:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/matthewdeaves/retro68:latest
+      image: ghcr.io/matthewdeaves/retro68@sha256:11bc3005f2cd602ad311ab98d91e3999239648d89b1f6413810eafe93a2a145c
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Clone and build clog for 68k
         run: |
-          git clone --depth 1 https://github.com/matthewdeaves/clog.git /tmp/clog
-          mkdir /tmp/clog/build && cd /tmp/clog/build
+          git clone https://github.com/matthewdeaves/clog.git /tmp/clog
+          cd /tmp/clog && git checkout ${{ env.CLOG_COMMIT }}
+          mkdir build && cd build
           cmake .. -DCMAKE_TOOLCHAIN_FILE=/Retro68-build/toolchain/m68k-apple-macos/cmake/retro68.toolchain.cmake
           make
 
@@ -84,14 +89,15 @@ jobs:
   build-ppc-mactcp:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/matthewdeaves/retro68:latest
+      image: ghcr.io/matthewdeaves/retro68@sha256:11bc3005f2cd602ad311ab98d91e3999239648d89b1f6413810eafe93a2a145c
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Clone and build clog for PPC
         run: |
-          git clone --depth 1 https://github.com/matthewdeaves/clog.git /tmp/clog
-          mkdir /tmp/clog/build && cd /tmp/clog/build
+          git clone https://github.com/matthewdeaves/clog.git /tmp/clog
+          cd /tmp/clog && git checkout ${{ env.CLOG_COMMIT }}
+          mkdir build && cd build
           cmake .. -DCMAKE_TOOLCHAIN_FILE=/Retro68-build/toolchain/powerpc-apple-macos/cmake/retroppc.toolchain.cmake
           make
 
@@ -108,14 +114,15 @@ jobs:
   build-ppc-ot:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/matthewdeaves/retro68:latest
+      image: ghcr.io/matthewdeaves/retro68@sha256:11bc3005f2cd602ad311ab98d91e3999239648d89b1f6413810eafe93a2a145c
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Clone and build clog for PPC
         run: |
-          git clone --depth 1 https://github.com/matthewdeaves/clog.git /tmp/clog
-          mkdir /tmp/clog/build && cd /tmp/clog/build
+          git clone https://github.com/matthewdeaves/clog.git /tmp/clog
+          cd /tmp/clog && git checkout ${{ env.CLOG_COMMIT }}
+          mkdir build && cd build
           cmake .. -DCMAKE_TOOLCHAIN_FILE=/Retro68-build/toolchain/powerpc-apple-macos/cmake/retroppc.toolchain.cmake
           make
 
