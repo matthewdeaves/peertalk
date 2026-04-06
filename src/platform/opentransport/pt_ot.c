@@ -61,6 +61,7 @@ typedef struct {
     volatile UInt8  flags;
     int             state;
     volatile int    flow_off;   /* flow control active (set by notifier) */
+    struct PT_Peer_Internal *owner; /* back-pointer to owning peer, NULL if free */
 } OTEndpointSlot;
 
 typedef struct {
@@ -165,19 +166,6 @@ static int find_free_ep(void)
         }
     }
     return -1;
-}
-
-static PT_Peer_Internal *find_peer_for_ep(PT_Context_Internal *ctx,
-                                          const OTEndpointSlot *slot)
-{
-    int j;
-    for (j = 0; j < ctx->max_peers; j++) {
-        if (ctx->peers[j].in_use &&
-            ctx->peers[j].platform_peer.endpoint == slot) {
-            return &ctx->peers[j];
-        }
-    }
-    return NULL;
 }
 
 static EndpointRef create_tcp_endpoint(OTNotifyUPP notifyUPP,
@@ -372,6 +360,7 @@ static PT_Status ot_init(PT_Context_Internal *ctx)
         if (g_ot.tcp_eps[i].ep == kOTInvalidEndpointRef) break;
 
         g_ot.tcp_eps[i].state = EP_FREE;
+        g_ot.tcp_eps[i].owner = NULL;
     }
 
     /* Create UDP discovery endpoint (port 7353) */
@@ -589,6 +578,7 @@ static PT_Status ot_tcp_connect(PT_Context_Internal *ctx,
 
     peer->platform_peer.endpoint = slot;
     peer->platform_peer.events = 0;
+    slot->owner = peer;
 
     return PT_OK;
 }
@@ -664,6 +654,7 @@ static void ot_tcp_disconnect(PT_Context_Internal *ctx,
     slot->state = EP_FREE;
     slot->flags = 0;
     slot->flow_off = 0;
+    slot->owner = NULL;
 
     peer->platform_peer.endpoint = NULL;
     peer->platform_peer.events = 0;
@@ -769,8 +760,19 @@ static void ot_poll(PT_Context_Internal *ctx)
                 pt_handle_incoming_connection(
                     ctx, (unsigned long)remote_addr.fHost, &ppeer);
 
-                /* Check if peer accepted */
-                if (!find_peer_for_ep(ctx, slot)) {
+                /* Find which peer (if any) now owns this endpoint */
+                {
+                    int j;
+                    for (j = 0; j < ctx->max_peers; j++) {
+                        if (ctx->peers[j].in_use &&
+                            ctx->peers[j].platform_peer.endpoint == slot) {
+                            slot->owner = &ctx->peers[j];
+                            break;
+                        }
+                    }
+                }
+
+                if (!slot->owner) {
                     /* No room in peer table -- disconnect */
                     OTSndDisconnect(slot->ep, NULL);
                     OTSetSynchronous(slot->ep);
@@ -790,6 +792,7 @@ static void ot_poll(PT_Context_Internal *ctx)
                     OTSetNonBlocking(slot->ep);
                     slot->state = EP_FREE;
                     slot->flags = 0;
+                    slot->owner = NULL;
                 }
             }
         }
@@ -829,7 +832,7 @@ static void ot_poll(PT_Context_Internal *ctx)
 
             res = OTRcvConnect(slot->ep, NULL);
 
-            peer = find_peer_for_ep(ctx, slot);
+            peer = slot->owner;
             if (res == kOTNoError && peer) {
                 slot->state = EP_CONNECTED;
                 peer->state = PT_PEER_CONNECTED;
@@ -862,6 +865,7 @@ static void ot_poll(PT_Context_Internal *ctx)
                 OTSetNonBlocking(slot->ep);
                 slot->state = EP_FREE;
                 slot->flags = 0;
+                slot->owner = NULL;
                 if (peer) {
                     peer->connect_start = 0;
                     peer->state = PT_PEER_DISCONNECTED;
@@ -879,7 +883,7 @@ static void ot_poll(PT_Context_Internal *ctx)
 
             /* Drain remaining data before disconnect — goodbye frame
                may be readable even after T_DISCONNECT (R23). */
-            peer = find_peer_for_ep(ctx, slot);
+            peer = slot->owner;
             if (peer) {
                 size_t space = peer->tcp_recv_size -
                                peer->tcp_recv_len;
@@ -914,7 +918,7 @@ static void ot_poll(PT_Context_Internal *ctx)
 
             /* Drain remaining data before orderly release — goodbye
                frame may still be in the receive buffer (R23). */
-            peer = find_peer_for_ep(ctx, slot);
+            peer = slot->owner;
             if (peer) {
                 size_t space = peer->tcp_recv_size -
                                peer->tcp_recv_len;
@@ -950,7 +954,7 @@ static void ot_poll(PT_Context_Internal *ctx)
         if (flags & (1UL << EVT_BIT_DATA)) {
             PT_Peer_Internal *peer;
 
-            peer = find_peer_for_ep(ctx, slot);
+            peer = slot->owner;
             if (peer) {
                 size_t space = peer->tcp_recv_size - peer->tcp_recv_len;
                 if (space > 0) {
