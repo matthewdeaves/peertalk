@@ -99,6 +99,10 @@ tests/                      # 7 test apps
 | test_init_only | Init/shutdown | Memory allocation, error path validation (10 checks) |
 | test_clog_minimal | Logging | clog library verification |
 
+## Hardware Testing
+
+Deploy and run test binaries on real Classic Mac hardware using the [classic-mac-hardware-mcp](https://github.com/matthewdeaves/classic-mac-hardware-mcp) MCP server. See its README for setup.
+
 ## Hardware Verification
 
 All test apps verified on real Classic Mac hardware:
