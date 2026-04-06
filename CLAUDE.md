@@ -25,7 +25,7 @@ These 10 principles govern ALL implementation decisions. Full text: `.specify/me
 ## Project Structure
 
 ```
-include/peertalk.h          # Single public header (C89, 22 functions)
+include/peertalk.h          # Single public header (C89, 24 functions)
 src/core/                   # Platform-independent core
 src/platform/posix/         # BSD sockets + select()
 src/platform/mactcp/        # MacTCP async parameter blocks (68k)

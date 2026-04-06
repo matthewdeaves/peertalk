@@ -158,6 +158,60 @@ int main(void)
             CLOG_INFO("PT_Broadcast(NULL ctx) = %d: FAIL", (int)st);
         }
 
+        /* PT_LocalAddress after init should return dotted-quad */
+        err_total++;
+        {
+            const char *addr = PT_LocalAddress(ctx);
+            if (addr && addr[0] != '\0') {
+                CLOG_INFO("PT_LocalAddress = \"%s\": OK", addr);
+                err_pass++;
+            } else {
+                CLOG_INFO("PT_LocalAddress = empty: FAIL");
+            }
+        }
+
+        /* PT_LocalAddress(NULL) should return empty */
+        err_total++;
+        {
+            const char *addr = PT_LocalAddress(NULL);
+            if (addr && addr[0] == '\0') {
+                CLOG_INFO("PT_LocalAddress(NULL) = empty: OK");
+                err_pass++;
+            } else {
+                CLOG_INFO("PT_LocalAddress(NULL) = \"%s\": FAIL", addr ? addr : "(null)");
+            }
+        }
+
+        /* PT_SendUDPBroadcast with NULL ctx */
+        err_total++;
+        st = PT_SendUDPBroadcast(NULL, 7355, "test", 4);
+        if (st == PT_ERR_INVALID_ARG) {
+            CLOG_INFO("PT_SendUDPBroadcast(NULL ctx) = INVALID_ARG: OK");
+            err_pass++;
+        } else {
+            CLOG_INFO("PT_SendUDPBroadcast(NULL ctx) = %d: FAIL", (int)st);
+        }
+
+        /* PT_SendUDPBroadcast with NULL data and len > 0 */
+        err_total++;
+        st = PT_SendUDPBroadcast(ctx, 7355, NULL, 10);
+        if (st == PT_ERR_INVALID_ARG) {
+            CLOG_INFO("PT_SendUDPBroadcast(NULL data, len>0) = INVALID_ARG: OK");
+            err_pass++;
+        } else {
+            CLOG_INFO("PT_SendUDPBroadcast(NULL data, len>0) = %d: FAIL", (int)st);
+        }
+
+        /* PT_SendUDPBroadcast with valid data (broadcasts to nobody) */
+        err_total++;
+        st = PT_SendUDPBroadcast(ctx, 7355, "hello", 5);
+        if (st == PT_OK) {
+            CLOG_INFO("PT_SendUDPBroadcast(valid) = OK: OK");
+            err_pass++;
+        } else {
+            CLOG_INFO("PT_SendUDPBroadcast(valid) = %d: FAIL", (int)st);
+        }
+
         CLOG_INFO("Error paths: %d/%d passed", err_pass, err_total);
         if (err_pass != err_total) {
             CLOG_INFO("=== test_init_only FAILED (error paths) ===");

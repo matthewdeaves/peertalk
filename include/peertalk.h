@@ -155,7 +155,10 @@ PT_Status PT_SetName(PT_Context *ctx, const char *name);
 int              PT_GetPeerCount(const PT_Context *ctx);
 PT_Peer         *PT_GetPeer(PT_Context *ctx, int index);
 const char      *PT_PeerName(const PT_Peer *peer);
-const char      *PT_PeerAddress(const PT_Peer *peer);
+const char      *PT_PeerAddress(const PT_Peer *peer);   /* static buf, valid until next call */
+const char      *PT_LocalAddress(const PT_Context *ctx); /* static buf, valid until next call */
+PT_Status        PT_SendUDPBroadcast(PT_Context *ctx, unsigned short port,
+                                     const void *data, size_t len);
 PT_PeerState     PT_GetPeerState(const PT_Peer *peer);
 
 #ifdef __cplusplus
