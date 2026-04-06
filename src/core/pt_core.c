@@ -650,6 +650,24 @@ const char *PT_PeerAddress(const PT_Peer *pub_peer)
     return peer->addr_str;
 }
 
+const char *PT_LocalAddress(const PT_Context *pub_ctx)
+{
+    static char local_addr_str[16];
+    const PT_Context_Internal *ctx = (const PT_Context_Internal *)pub_ctx;
+    if (!ctx || ctx->local_ip == 0) return "";
+    pt_format_ip(ctx->local_ip, local_addr_str);
+    return local_addr_str;
+}
+
+PT_Status PT_SendUDPBroadcast(PT_Context *pub_ctx, unsigned short port,
+                              const void *data, size_t len)
+{
+    PT_Context_Internal *ctx = (PT_Context_Internal *)pub_ctx;
+    if (!ctx) return PT_ERR_INVALID_ARG;
+    if (!data && len > 0) return PT_ERR_INVALID_ARG;
+    return ctx->platform_ops->udp_broadcast(ctx, port, data, len);
+}
+
 PT_PeerState PT_GetPeerState(const PT_Peer *pub_peer)
 {
     const PT_Peer_Internal *peer = (const PT_Peer_Internal *)pub_peer;

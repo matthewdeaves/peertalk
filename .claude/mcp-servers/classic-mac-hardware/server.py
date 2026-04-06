@@ -48,6 +48,7 @@ class ClassicMacHardwareServer:
         self._config_mtime = 0
         self._first_load = True
         self._last_ftp_time = 0  # For rate limiting
+        self._exec_lock = asyncio.Lock()  # Serialize LaunchAPPL calls
         self._reload_if_changed()
         self._first_load = False
         self.server = Server("classic-mac-hardware")
@@ -366,7 +367,7 @@ class ClassicMacHardwareServer:
             elif name == "download_file":
                 return self._tool_download_file(arguments)
             elif name == "execute_binary":
-                return self._tool_execute_binary(arguments)
+                return await self._tool_execute_binary(arguments)
             else:
                 raise ValueError(f"Unknown tool: {name}")
         except Exception as e:
@@ -618,10 +619,8 @@ class ClassicMacHardwareServer:
                  f"  Size:   {file_size:,} bytes"
         )]
 
-    def _tool_execute_binary(self, args: dict) -> list[TextContent]:
-        """Execute binary via LaunchAPPL."""
-        import subprocess
-
+    async def _tool_execute_binary(self, args: dict) -> list[TextContent]:
+        """Execute binary via LaunchAPPL (serialized, non-blocking)."""
         machine_id = args["machine"]
         binary_path = args["binary_path"]
 
@@ -653,34 +652,63 @@ class ClassicMacHardwareServer:
         if not machine_ip:
             return [TextContent(type="text", text=f"No host configured for {machine['name']}. Add 'launchappl.host' or 'ftp.host' to machines.json")]
 
-        binary_path = str(Path(binary_path).resolve())
+        binary_path_resolved = str(Path(binary_path).resolve())
+        binary_size = Path(binary_path_resolved).stat().st_size
+        binary_name = Path(binary_path_resolved).name
 
-        try:
-            cmd = [launchappl, "-e", "tcp", "--tcp-address", machine_ip, binary_path]
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                    text=True, cwd="/tmp")
+        # Serialize all LaunchAPPL calls — one at a time to avoid
+        # network contention and port conflicts on the Mac side.
+        async with self._exec_lock:
             try:
-                stdout, stderr = proc.communicate(timeout=120)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait()
-                return [TextContent(
-                    type="text",
-                    text=f"Timed out after 120s. Binary may still be running on {machine['name']}.\n"
-                         f"Download logs via FTP when the test completes:\n"
-                         f"  download_file(machine=\"{machine_id}\", remote_path=\"PT_Log\")"
-                )]
+                cmd = [launchappl, "-e", "tcp", "--tcp-address", machine_ip,
+                       binary_path_resolved]
+                proc = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    cwd="/tmp"
+                )
 
-            if proc.returncode == 0:
-                return [TextContent(type="text", text=f"Executed on {machine['name']}:\n\n{stdout}")]
-            else:
-                return [TextContent(
-                    type="text",
-                    text=f"Execution failed:\n\n{stderr}\n\n"
-                         f"Ensure LaunchAPPLServer is running on {machine['name']}"
-                )]
-        except Exception as e:
-            return [TextContent(type="text", text=f"Error: {e}")]
+                timeout = 120
+                try:
+                    stdout, stderr = await asyncio.wait_for(
+                        proc.communicate(), timeout=timeout
+                    )
+                    stdout_text = stdout.decode() if stdout else ""
+                    stderr_text = stderr.decode() if stderr else ""
+                except asyncio.TimeoutError:
+                    # Kill so the lock is released cleanly
+                    proc.kill()
+                    await proc.wait()
+                    return [TextContent(
+                        type="text",
+                        text=f"Timed out after {timeout}s on {machine['name']}.\n"
+                             f"Binary: {binary_name} ({binary_size:,} bytes)\n\n"
+                             f"The app may still be running. Download logs via FTP:\n"
+                             f"  download_file(machine=\"{machine_id}\", remote_path=\"PT_Log\")"
+                    )]
+
+                # Brief pause after execution for Mac to clean up
+                await asyncio.sleep(2)
+
+                if proc.returncode == 0:
+                    output = stdout_text.strip()
+                    return [TextContent(
+                        type="text",
+                        text=f"Executed on {machine['name']} (exit 0):\n"
+                             f"  Binary: {binary_name} ({binary_size:,} bytes)\n"
+                             + (f"\n{output}\n" if output else "\n  (no stdout — check PT_Log)\n")
+                    )]
+                else:
+                    return [TextContent(
+                        type="text",
+                        text=f"FAILED on {machine['name']} (exit {proc.returncode}):\n"
+                             f"  Binary: {binary_name} ({binary_size:,} bytes)\n\n"
+                             f"{stderr_text}\n\n"
+                             f"Ensure LaunchAPPLServer is running on {machine['name']}"
+                    )]
+            except Exception as e:
+                return [TextContent(type="text", text=f"Error: {e}")]
 
 
 async def main():
