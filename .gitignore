@@ -12,6 +12,9 @@ build-68k-fresh/
 build-68k-new/
 build-ppc-fresh/
 
+# Stale plan directory (historical performance logs)
+plan/
+
 # Other build artifacts
 packages/
 LaunchAPPL-build/
