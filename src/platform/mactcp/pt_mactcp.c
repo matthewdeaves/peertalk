@@ -51,6 +51,7 @@ typedef struct {
     volatile unsigned char flags;
     int         state;
     int         send_pending;
+    struct PT_Peer_Internal *owner; /* back-pointer to owning peer, NULL if free */
 } TCPStreamSlot;
 
 typedef struct {
@@ -255,6 +256,7 @@ static void abort_stream(int idx)
     ts->flags = 0;
     ts->send_pending = 0;
     ts->state = STREAM_FREE;
+    ts->owner = NULL;
 }
 
 static void issue_passive_open(int idx, short driverRef,
@@ -298,20 +300,6 @@ static void issue_udp_read(UDPStreamSlot *us, short driverRef)
 
     PBControlAsync((ParmBlkPtr)&us->read_pb);
     us->read_pending = 1;
-}
-
-/* Find the peer that owns a specific TCP stream slot */
-static PT_Peer_Internal *find_peer_for_stream(PT_Context_Internal *ctx,
-                                              const TCPStreamSlot *ts)
-{
-    int j;
-    for (j = 0; j < ctx->max_peers; j++) {
-        if (ctx->peers[j].in_use &&
-            ctx->peers[j].platform_peer.tcp_stream == ts) {
-            return &ctx->peers[j];
-        }
-    }
-    return NULL;
 }
 
 /* ------------------------------------------------------------------ */
@@ -362,6 +350,7 @@ static PT_Status mactcp_init(PT_Context_Internal *ctx)
             (Ptr)&g_mactcp.tcp_streams[i]);
         if (!g_mactcp.tcp_streams[i].stream) break;
         g_mactcp.tcp_streams[i].state = STREAM_FREE;
+        g_mactcp.tcp_streams[i].owner = NULL;
     }
 
     /* Create UDP discovery stream (port 7353) */
@@ -651,6 +640,7 @@ static PT_Status mactcp_tcp_connect(PT_Context_Internal *ctx,
     ts->state = STREAM_CONNECTING;
 
     peer->platform_peer.tcp_stream = ts;
+    ts->owner = peer;
 
     return PT_OK;
 }
@@ -739,7 +729,6 @@ static void mactcp_poll(PT_Context_Internal *ctx)
             if (ts->open_pb.ioResult == noErr) {
                 ip_addr remote_ip;
                 PT_PlatformPeer ppeer;
-                const PT_Peer_Internal *peer;
 
                 remote_ip = ts->open_pb.csParam.open.remoteHost;
 
@@ -748,9 +737,19 @@ static void mactcp_poll(PT_Context_Internal *ctx)
 
                 pt_handle_incoming_connection(ctx, remote_ip, &ppeer);
 
-                /* Check if a peer accepted this stream */
-                peer = find_peer_for_stream(ctx, ts);
-                if (peer) {
+                /* Find which peer (if any) now owns this stream */
+                {
+                    int j;
+                    for (j = 0; j < ctx->max_peers; j++) {
+                        if (ctx->peers[j].in_use &&
+                            ctx->peers[j].platform_peer.tcp_stream == ts) {
+                            ts->owner = &ctx->peers[j];
+                            break;
+                        }
+                    }
+                }
+
+                if (ts->owner) {
                     ts->state = STREAM_CONNECTED;
                 } else {
                     /* No room -- abort the accepted connection */
@@ -766,7 +765,7 @@ static void mactcp_poll(PT_Context_Internal *ctx)
         if (ts->state == STREAM_CONNECTING &&
             ts->open_pb.ioResult != inProgress) {
 
-            PT_Peer_Internal *peer = find_peer_for_stream(ctx, ts);
+            PT_Peer_Internal *peer = ts->owner;
 
             if (ts->open_pb.ioResult == noErr && peer) {
                 ts->state = STREAM_CONNECTED;
@@ -815,7 +814,7 @@ static void mactcp_poll(PT_Context_Internal *ctx)
         /* Check data available (ASR flag) */
         if (local_flags & FLAG_DATA_AVAIL) {
             {
-                PT_Peer_Internal *peer = find_peer_for_stream(ctx, ts);
+                PT_Peer_Internal *peer = ts->owner;
                 if (peer) {
                     size_t space = peer->tcp_recv_size -
                                    peer->tcp_recv_len;
@@ -848,7 +847,7 @@ static void mactcp_poll(PT_Context_Internal *ctx)
         if (local_flags & (FLAG_REMOTE_CLOSE | FLAG_TERMINATED)) {
             PT_Peer_Internal *peer;
 
-            peer = find_peer_for_stream(ctx, ts);
+            peer = ts->owner;
             if (peer) {
                 /* Drain remaining TCP data — goodbye frame may be
                    buffered but unprocessed (R23). Read what we can
