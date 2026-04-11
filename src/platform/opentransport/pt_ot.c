@@ -837,6 +837,7 @@ static void ot_poll(PT_Context_Internal *ctx)
                 slot->state = EP_CONNECTED;
                 peer->state = PT_PEER_CONNECTED;
                 peer->last_tcp_activity = ctx->current_time;
+                peer->last_tcp_send = ctx->current_time;
                 peer->connect_start = 0;
 
                 CLOG_INFO("TCP connected to %s", peer->name);

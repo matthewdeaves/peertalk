@@ -11,27 +11,32 @@
 /* Discovery broadcast                                                 */
 /* ------------------------------------------------------------------ */
 
-void pt_discovery_broadcast(PT_Context_Internal *ctx)
+/*
+ * pt_discovery_build_packet -- Pre-build the cached discovery packet.
+ * Call after ctx->name changes (PT_Init, PT_SetName).
+ */
+void pt_discovery_build_packet(PT_Context_Internal *ctx)
 {
-    unsigned char packet[PT_DISCOVERY_MAX];
     size_t namelen;
-    size_t pktlen;
 
-    /* Build discovery packet: 4B magic + 1B version + name + null */
-    packet[0] = PT_MAGIC_0;
-    packet[1] = PT_MAGIC_1;
-    packet[2] = PT_MAGIC_2;
-    packet[3] = PT_MAGIC_3;
-    packet[4] = PT_WIRE_VERSION;
+    ctx->discovery_pkt[0] = PT_MAGIC_0;
+    ctx->discovery_pkt[1] = PT_MAGIC_1;
+    ctx->discovery_pkt[2] = PT_MAGIC_2;
+    ctx->discovery_pkt[3] = PT_MAGIC_3;
+    ctx->discovery_pkt[4] = PT_WIRE_VERSION;
 
     namelen = strlen(ctx->name);
     if (namelen > PT_NAME_MAX) namelen = PT_NAME_MAX;
-    memcpy(packet + PT_DISCOVERY_HEADER, ctx->name, namelen);
-    packet[PT_DISCOVERY_HEADER + namelen] = '\0';
-    pktlen = PT_DISCOVERY_HEADER + namelen + 1;
+    memcpy(ctx->discovery_pkt + PT_DISCOVERY_HEADER, ctx->name, namelen);
+    ctx->discovery_pkt[PT_DISCOVERY_HEADER + namelen] = '\0';
+    ctx->discovery_pkt_len = PT_DISCOVERY_HEADER + namelen + 1;
+}
 
+void pt_discovery_broadcast(PT_Context_Internal *ctx)
+{
     ctx->platform_ops->udp_broadcast(ctx, PT_DISCOVERY_PORT,
-                                     packet, pktlen);
+                                     ctx->discovery_pkt,
+                                     ctx->discovery_pkt_len);
 }
 
 /* ------------------------------------------------------------------ */

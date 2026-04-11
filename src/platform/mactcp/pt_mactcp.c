@@ -77,6 +77,11 @@ typedef struct {
 
     TCPNotifyUPP  tcp_upp;
     UDPNotifyUPP  udp_upp;
+    int           listener_count; /* track active listeners to avoid re-scan */
+
+    /* Reusable param blocks for hot-path operations (avoid per-call memset) */
+    TCPiopb       recv_pb;     /* TCPRcv in poll loop */
+    UDPiopb       bfr_ret_pb;  /* UDPBfrReturn in poll loop */
 } MacTCPState;
 
 static MacTCPState g_mactcp;
@@ -247,6 +252,10 @@ static void abort_stream(int idx)
     TCPiopb pb;
     TCPStreamSlot *ts = &g_mactcp.tcp_streams[idx];
 
+    if (ts->state == STREAM_LISTENING) {
+        g_mactcp.listener_count--;
+    }
+
     memset(&pb, 0, sizeof(pb));
     pb.ioCRefNum = g_mactcp.driver_ref;
     pb.tcpStream = ts->stream;
@@ -276,6 +285,7 @@ static void issue_passive_open(int idx, short driverRef,
 
     PBControlAsync((ParmBlkPtr)&ts->open_pb);
     ts->state = STREAM_LISTENING;
+    g_mactcp.listener_count++;
 }
 
 static void re_listen(void)
@@ -380,6 +390,14 @@ static PT_Status mactcp_init(PT_Context_Internal *ctx)
               (g_mactcp.local_ip >> 16) & 0xFF,
               (g_mactcp.local_ip >> 8) & 0xFF,
               g_mactcp.local_ip & 0xFF);
+
+    /* Pre-init reusable param blocks for hot-path poll operations.
+       Only stream, buffer, and length change per call. */
+    g_mactcp.recv_pb.ioCRefNum = g_mactcp.driver_ref;
+    g_mactcp.recv_pb.csCode = TCPRcv;
+    g_mactcp.recv_pb.ioCompletion = NULL;
+    g_mactcp.bfr_ret_pb.ioCRefNum = g_mactcp.driver_ref;
+    g_mactcp.bfr_ret_pb.csCode = UDPBfrReturn;
 
     return PT_OK;
 
@@ -730,6 +748,9 @@ static void mactcp_poll(PT_Context_Internal *ctx)
                 ip_addr remote_ip;
                 PT_PlatformPeer ppeer;
 
+                g_mactcp.listener_count--;
+                ts->state = STREAM_CONNECTED; /* tentative */
+
                 remote_ip = ts->open_pb.csParam.open.remoteHost;
 
                 memset(&ppeer, 0, sizeof(ppeer));
@@ -749,13 +770,12 @@ static void mactcp_poll(PT_Context_Internal *ctx)
                     }
                 }
 
-                if (ts->owner) {
-                    ts->state = STREAM_CONNECTED;
-                } else {
+                if (!ts->owner) {
                     /* No room -- abort the accepted connection */
                     abort_stream(i);
                 }
             } else {
+                g_mactcp.listener_count--;
                 ts->state = STREAM_FREE;
             }
             /* Re-listen happens at end of poll */
@@ -771,6 +791,7 @@ static void mactcp_poll(PT_Context_Internal *ctx)
                 ts->state = STREAM_CONNECTED;
                 peer->state = PT_PEER_CONNECTED;
                 peer->last_tcp_activity = ctx->current_time;
+                peer->last_tcp_send = ctx->current_time;
                 peer->connect_start = 0;
 
                 CLOG_INFO("TCP connected to %s", peer->name);
@@ -819,21 +840,16 @@ static void mactcp_poll(PT_Context_Internal *ctx)
                     size_t space = peer->tcp_recv_size -
                                    peer->tcp_recv_len;
                     if (space > 0) {
-                        TCPiopb rpb;
-                        memset(&rpb, 0, sizeof(rpb));
-                        rpb.ioCRefNum = g_mactcp.driver_ref;
-                        rpb.tcpStream = ts->stream;
-                        rpb.csCode = TCPRcv;
-                        rpb.csParam.receive.rcvBuff =
+                        g_mactcp.recv_pb.tcpStream = ts->stream;
+                        g_mactcp.recv_pb.csParam.receive.rcvBuff =
                             (Ptr)(peer->tcp_recv_buf +
                                   peer->tcp_recv_len);
-                        rpb.csParam.receive.rcvBuffLen =
+                        g_mactcp.recv_pb.csParam.receive.rcvBuffLen =
                             (unsigned short)space;
-                        rpb.ioCompletion = NULL;
 
-                        if (PBControlSync((ParmBlkPtr)&rpb) == noErr) {
+                        if (PBControlSync((ParmBlkPtr)&g_mactcp.recv_pb) == noErr) {
                             peer->tcp_recv_len +=
-                                rpb.csParam.receive.rcvBuffLen;
+                                g_mactcp.recv_pb.csParam.receive.rcvBuffLen;
                             peer->last_tcp_activity =
                                 ctx->current_time;
                             pt_messaging_process_tcp_data(ctx, peer);
@@ -857,22 +873,17 @@ static void mactcp_poll(PT_Context_Internal *ctx)
                     size_t space = peer->tcp_recv_size -
                                    peer->tcp_recv_len;
                     if (space > 0) {
-                        TCPiopb rpb;
-                        memset(&rpb, 0, sizeof(rpb));
-                        rpb.ioCRefNum = g_mactcp.driver_ref;
-                        rpb.tcpStream = ts->stream;
-                        rpb.csCode = TCPRcv;
-                        rpb.csParam.receive.rcvBuff =
+                        g_mactcp.recv_pb.tcpStream = ts->stream;
+                        g_mactcp.recv_pb.csParam.receive.rcvBuff =
                             (Ptr)(peer->tcp_recv_buf +
                                   peer->tcp_recv_len);
-                        rpb.csParam.receive.rcvBuffLen =
+                        g_mactcp.recv_pb.csParam.receive.rcvBuffLen =
                             (unsigned short)space;
-                        rpb.ioCompletion = NULL;
 
-                        if (PBControlSync((ParmBlkPtr)&rpb) == noErr &&
-                            rpb.csParam.receive.rcvBuffLen > 0) {
+                        if (PBControlSync((ParmBlkPtr)&g_mactcp.recv_pb) == noErr &&
+                            g_mactcp.recv_pb.csParam.receive.rcvBuffLen > 0) {
                             peer->tcp_recv_len +=
-                                rpb.csParam.receive.rcvBuffLen;
+                                g_mactcp.recv_pb.csParam.receive.rcvBuffLen;
                             pt_messaging_process_tcp_data(ctx, peer);
                         }
                     }
@@ -908,16 +919,10 @@ static void mactcp_poll(PT_Context_Internal *ctx)
 
             pt_discovery_receive(ctx, data_ptr, data_len, src_addr);
 
-            /* Return buffer to MacTCP */
-            {
-                UDPiopb rpb;
-                memset(&rpb, 0, sizeof(rpb));
-                rpb.ioCRefNum = g_mactcp.driver_ref;
-                rpb.udpStream = g_mactcp.discovery_udp.stream;
-                rpb.csCode = UDPBfrReturn;
-                rpb.csParam.receive.rcvBuff = data_ptr;
-                PBControlSync((ParmBlkPtr)&rpb);
-            }
+            /* Return buffer to MacTCP (reuse pooled param block) */
+            g_mactcp.bfr_ret_pb.udpStream = g_mactcp.discovery_udp.stream;
+            g_mactcp.bfr_ret_pb.csParam.receive.rcvBuff = data_ptr;
+            PBControlSync((ParmBlkPtr)&g_mactcp.bfr_ret_pb);
         }
 
         issue_udp_read(&g_mactcp.discovery_udp, g_mactcp.driver_ref);
@@ -940,32 +945,18 @@ static void mactcp_poll(PT_Context_Internal *ctx)
             pt_messaging_process_udp_data(ctx, data_ptr, data_len,
                                           src_addr);
 
-            {
-                UDPiopb rpb;
-                memset(&rpb, 0, sizeof(rpb));
-                rpb.ioCRefNum = g_mactcp.driver_ref;
-                rpb.udpStream = g_mactcp.message_udp.stream;
-                rpb.csCode = UDPBfrReturn;
-                rpb.csParam.receive.rcvBuff = data_ptr;
-                PBControlSync((ParmBlkPtr)&rpb);
-            }
+            /* Return buffer to MacTCP (reuse pooled param block) */
+            g_mactcp.bfr_ret_pb.udpStream = g_mactcp.message_udp.stream;
+            g_mactcp.bfr_ret_pb.csParam.receive.rcvBuff = data_ptr;
+            PBControlSync((ParmBlkPtr)&g_mactcp.bfr_ret_pb);
         }
 
         issue_udp_read(&g_mactcp.message_udp, g_mactcp.driver_ref);
     }
 
-    /* ---- Ensure a listener is active ---- */
-    if (g_mactcp.listen_active) {
-        int has_listener = 0;
-        for (i = 0; i < MAX_TCP_STREAMS; i++) {
-            if (g_mactcp.tcp_streams[i].state == STREAM_LISTENING) {
-                has_listener = 1;
-                break;
-            }
-        }
-        if (!has_listener) {
-            re_listen();
-        }
+    /* ---- Ensure a listener is active (O(1) via counter) ---- */
+    if (g_mactcp.listen_active && g_mactcp.listener_count <= 0) {
+        re_listen();
     }
 }
 

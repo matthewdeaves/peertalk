@@ -1,13 +1,13 @@
 <!--
 Sync Impact Report
-- Version change: 1.0.0 → 1.1.0
+- Version change: 1.1.0 → 1.1.1
 - Modified principles:
-  - VIII: Renamed "Test Apps Prove the SDK" → "Test Apps and Demo Apps Prove the SDK"
-    Added demo app category (flagship apps that rewrite existing apps on PeerTalk SDK)
-- Modified sections:
-  - "What Ships": Added "Demo applications (csend-pt: PeerTalk Chat)"
-  - "What Does Not Ship": Removed "GUI code" and "Application logic" (now allowed in demo apps)
-- Templates requiring updates: None (Constitution Check gate is generic)
+  - II: Added "connection liveness" to the list of invisible protocol concerns,
+    and explicit mention of keepalives so apps never need heartbeat logic.
+  - VI: Clarified that fixed-interval protocol behaviors (discovery broadcasts,
+    TCP keepalives) are not "runtime adaptation" — they run unconditionally on
+    a timer and require no decision-making.
+- Templates requiring updates: None (PATCH — clarifications only)
 - Follow-up TODOs: None
 -->
 
@@ -84,8 +84,10 @@ it, it does not ship.
 ### II. The SDK Handles the Protocol
 
 Message framing, type dispatch, transport selection, chunking,
-peer discovery, and connection lifecycle MUST be invisible to
-the application. The developer calls `PT_Send` with any size
+peer discovery, connection lifecycle, and connection liveness
+MUST be invisible to the application. The SDK sends keepalives
+on idle TCP connections so applications never need their own
+heartbeat logic. The developer calls `PT_Send` with any size
 payload. The SDK chunks large messages internally and
 reassembles on the receiving side — the callback always
 delivers the complete message. No explicit size parameter in
@@ -119,7 +121,10 @@ Mac SE gets smaller buffers and fewer peer slots. A 48 MB
 Performa 6400 gets more headroom. This happens automatically
 — the developer calls `PT_Init()` and the SDK does the right
 thing. There is no runtime adaptation, no capability
-negotiation, no dynamic tuning. The wire protocol and API are
+negotiation, no dynamic tuning. Fixed-interval protocol
+behaviors (discovery broadcasts, TCP keepalives) are not
+"runtime adaptation" — they run unconditionally on a timer and
+require no decision-making. The wire protocol and API are
 identical on every platform.
 
 ### VII. Logging Is a Separate Library
@@ -216,4 +221,4 @@ comply with these principles.
   apply Principle I — if none of the three target apps need it,
   it does not ship.
 
-**Version**: 1.1.0 | **Ratified**: 2026-02-28 | **Last Amended**: 2026-03-05
+**Version**: 1.1.1 | **Ratified**: 2026-02-28 | **Last Amended**: 2026-04-10

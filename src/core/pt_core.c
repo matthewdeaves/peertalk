@@ -228,6 +228,7 @@ void pt_handle_incoming_connection(PT_Context_Internal *ctx,
     peer->platform_peer = *ppeer;
     peer->state = PT_PEER_CONNECTED;
     peer->last_tcp_activity = ctx->current_time;
+    peer->last_tcp_send = ctx->current_time;
     peer->tcp_recv_len = 0;
     peer->connect_start = 0;
 
@@ -312,6 +313,7 @@ PT_Status PT_Init(PT_Context **out_ctx, const char *name)
     if (!ctx) return PT_ERR_INIT;
 
     memcpy(ctx->name, name, namelen + 1);
+    pt_discovery_build_packet(ctx);
 
     /* Default all message types to PT_RELIABLE */
     {
@@ -483,7 +485,8 @@ void PT_RegisterMessage(PT_Context *pub_ctx, unsigned char type,
                         PT_Transport transport)
 {
     PT_Context_Internal *ctx = (PT_Context_Internal *)pub_ctx;
-    if (!ctx || type == PT_MSG_TYPE_GOODBYE) return;
+    if (!ctx || type == PT_MSG_TYPE_GOODBYE ||
+        type == PT_MSG_TYPE_KEEPALIVE) return;
     ctx->message_types[type] = transport;
 }
 
@@ -531,6 +534,14 @@ void PT_Poll(PT_Context *pub_ctx)
             ctx->peers[i].state = PT_PEER_DISCONNECTED;
             pt_fire_error(ctx, &ctx->peers[i], PT_ERR_SEND_FAILED,
                           "Connection timeout");
+        }
+
+        /* TCP keepalive — send if no TCP data sent recently */
+        if (ctx->peers[i].state == PT_PEER_CONNECTED &&
+            ctx->peers[i].last_tcp_send > 0 &&
+            ctx->current_time - ctx->peers[i].last_tcp_send >=
+                PT_KEEPALIVE_INTERVAL) {
+            pt_messaging_send_keepalive(ctx, &ctx->peers[i]);
         }
 
         /* TCP inactivity timeout */
@@ -683,5 +694,6 @@ PT_Status PT_SetName(PT_Context *pub_ctx, const char *name)
     namelen = strlen(name);
     if (namelen > PT_NAME_MAX) return PT_ERR_INVALID_ARG;
     memcpy(ctx->name, name, namelen + 1);
+    pt_discovery_build_packet(ctx);
     return PT_OK;
 }

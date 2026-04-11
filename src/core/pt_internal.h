@@ -27,7 +27,8 @@
 #define PT_MAGIC_3  0x4B  /* 'K' */
 
 #define PT_WIRE_VERSION     1
-#define PT_MSG_TYPE_GOODBYE 255
+#define PT_MSG_TYPE_KEEPALIVE 254
+#define PT_MSG_TYPE_GOODBYE   255
 
 #define PT_NAME_MAX         31
 #define PT_DISCOVERY_HEADER 5   /* 4 magic + 1 version */
@@ -42,6 +43,7 @@
 #define PT_DISCOVERY_INTERVAL   2   /* seconds between broadcasts */
 #define PT_DISCOVERY_TIMEOUT    15  /* seconds before peer lost */
 #define PT_TCP_TIMEOUT          60  /* seconds of TCP inactivity */
+#define PT_KEEPALIVE_INTERVAL   20  /* seconds between TCP keepalives */
 #define PT_CONNECT_TIMEOUT      15  /* seconds to establish TCP */
 #define PT_REASSEMBLY_TIMEOUT   5   /* seconds for chunk reassembly */
 
@@ -172,6 +174,7 @@ typedef struct PT_Peer_Internal {
     char          addr_str[16];     /* dotted-quad string */
     unsigned long last_seen;        /* timestamp (seconds) */
     unsigned long last_tcp_activity;/* for TCP inactivity timeout */
+    unsigned long last_tcp_send;    /* for keepalive scheduling */
     unsigned long connect_start;    /* when tcp_connect was initiated */
     int           in_use;
 
@@ -225,6 +228,8 @@ typedef struct PT_Context_Internal {
     int           discovery_active;    /* broadcasting? */
     int           discovery_listening; /* receiving? */
     unsigned long discovery_timer;     /* next broadcast time */
+    unsigned char discovery_pkt[PT_DISCOVERY_MAX]; /* pre-built packet */
+    size_t        discovery_pkt_len;               /* cached length */
 
     /* Memory */
     void         *memory_block;
@@ -253,6 +258,7 @@ int    pt_memory_allocate(PT_Context_Internal *ctx,
 void   pt_memory_free(PT_Context_Internal *ctx);
 
 /* pt_discovery.c */
+void      pt_discovery_build_packet(PT_Context_Internal *ctx);
 void      pt_discovery_broadcast(PT_Context_Internal *ctx);
 void      pt_discovery_receive(PT_Context_Internal *ctx,
                                const void *data, size_t len,
@@ -260,6 +266,8 @@ void      pt_discovery_receive(PT_Context_Internal *ctx,
 void      pt_discovery_check_timeouts(PT_Context_Internal *ctx);
 
 /* pt_messaging.c */
+void      pt_messaging_send_keepalive(PT_Context_Internal *ctx,
+                                      PT_Peer_Internal *peer);
 void      pt_messaging_process_tcp_data(PT_Context_Internal *ctx,
                                         PT_Peer_Internal *peer);
 void      pt_messaging_process_udp_data(PT_Context_Internal *ctx,

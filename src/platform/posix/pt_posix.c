@@ -473,6 +473,7 @@ static void posix_poll(PT_Context_Internal *ctx)
                 ctx->peers[i].connect_start = 0;
                 ctx->peers[i].state = PT_PEER_CONNECTED;
                 ctx->peers[i].last_tcp_activity = ctx->current_time;
+                ctx->peers[i].last_tcp_send = ctx->current_time;
                 CLOG_INFO("TCP connected to %s",
                           ctx->peers[i].name);
                 if (ctx->callbacks.on_connected) {

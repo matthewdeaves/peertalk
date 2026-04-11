@@ -5,11 +5,11 @@
 These 10 principles govern ALL implementation decisions. Full text: `.specify/memory/constitution.md`
 
 1. **Three Apps Are the Spec** — Every feature MUST serve Bomberman, Chess, or Chat. If none need it, don't build it.
-2. **SDK Handles the Protocol** — Framing, chunking, transport selection, discovery are invisible to the app.
+2. **SDK Handles the Protocol** — Framing, chunking, transport selection, discovery, liveness are invisible to the app.
 3. **Honest About Platform Limits** — Measure on real hardware, document honestly. Never assume.
 4. **Simple Defaults, No Knobs** — One TCP + one UDP per peer. No config structs. Add a setter only if an app needs tuning.
 5. **Pre-Allocate Everything** — Zero malloc after PT_Init. All buffers allocated at init.
-6. **Adapt at Init, Not Runtime** — FreeMem() at startup sizes buffers. No runtime adaptation or capability negotiation.
+6. **Adapt at Init, Not Runtime** — FreeMem() at startup sizes buffers. No runtime adaptation or capability negotiation. Fixed-interval protocol timers (discovery, keepalive) are not adaptation.
 7. **Logging Is Separate** — clog is an external dependency, never exposed in peertalk.h.
 8. **Test Apps and Demo Apps Prove the SDK** — Four test apps exercise all three app patterns. Demo apps (csend-pt) prove the SDK with real applications.
 9. **Keep It Small** — Target under 15,000 lines total across all platforms.
@@ -63,6 +63,23 @@ cmake .. -DCMAKE_TOOLCHAIN_FILE=$RETRO68_TOOLCHAIN/powerpc-apple-macos/cmake/ret
   -DPT_PLATFORM=MACTCP -DCLOG_DIR=$CLOG_DIR -DCLOG_LIB_DIR=$CLOG_DIR/build-ppc && make
 ```
 
+## Architecture Notes
+
+### TCP Keepalive
+
+PeerTalk sends automatic keepalive frames (type `PT_MSG_TYPE_KEEPALIVE` = 254) every `PT_KEEPALIVE_INTERVAL` (20s) to prevent TCP inactivity timeout. This is critical for apps like BomberTalk where position updates go via UDP (`PT_FAST`) and TCP can starve during normal gameplay if no game events fire for 60s.
+
+- Zero-payload 4-byte TCP frame: `[0x00 0x00 0xFE 0x00]`
+- `last_tcp_send` per peer tracks when TCP data was last sent; keepalive fires when idle
+- Receiver silently consumes keepalive (no callback registered, `TCPRcv` updates `last_tcp_activity`)
+- Type 254 is reserved — `PT_RegisterMessage` rejects it (like type 255/GOODBYE)
+
+### MacTCP Poll Optimizations
+
+- **Listener counter**: `g_mactcp.listener_count` tracks active listeners via increment/decrement instead of scanning all 32 TCP streams at end of every `mactcp_poll()` call. O(1) vs O(32).
+- **Pooled param blocks**: `g_mactcp.recv_pb` (TCPRcv) and `g_mactcp.bfr_ret_pb` (UDPBfrReturn) are pre-initialized at `mactcp_init()` with immutable fields (`ioCRefNum`, `csCode`, `ioCompletion`). Hot-path poll only sets per-call fields (`tcpStream`, `rcvBuff`, `rcvBuffLen`). Eliminates 4+ `memset()` calls per poll cycle.
+- **Cached discovery packet**: `ctx->discovery_pkt[]` is pre-built by `pt_discovery_build_packet()` at init and on `PT_SetName()`. Broadcast sends the cached buffer directly — no `strlen()`, `memcpy()`, or stack allocation per broadcast.
+
 ## Code Style
 
 - C89/C90: no `//` comments, no mixed declarations, no VLAs, no stdint.h in public header
@@ -98,4 +115,5 @@ All design docs live in `specs/001-peertalk-sdk/`:
 - C11 (test apps), C89 (SDK unchanged) + PeerTalk SDK, clog, test_common.h framework (008-test-coverage)
 
 ## Recent Changes
+- TCP keepalive + poll optimizations: Automatic TCP keepalive frames (type 254, 20s interval) prevent inactivity timeout when apps use PT_FAST for frequent messages. MacTCP poll optimized: listener counter replaces 32-stream re-scan, pooled param blocks eliminate per-call memset, discovery packet cached at init.
 - 003-sdk-stability: Added C89/C90 (SDK), C11 (POSIX test apps) + clog (logging), MacTCP (68k), Open Transport (PPC), BSD sockets (POSIX)

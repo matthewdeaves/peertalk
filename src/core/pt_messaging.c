@@ -56,7 +56,23 @@ static PT_Status send_tcp_frame(PT_Context_Internal *ctx,
         memcpy(frame + hdr_size, payload, payload_len);
     }
 
-    return ctx->platform_ops->tcp_send(ctx, peer, frame, frame_size);
+    {
+        PT_Status st = ctx->platform_ops->tcp_send(ctx, peer, frame, frame_size);
+        if (st == PT_OK) {
+            peer->last_tcp_send = ctx->current_time;
+        }
+        return st;
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* Internal: TCP keepalive (zero-payload frame, type 254)              */
+/* ------------------------------------------------------------------ */
+
+void pt_messaging_send_keepalive(PT_Context_Internal *ctx,
+                                 PT_Peer_Internal *peer)
+{
+    send_tcp_frame(ctx, peer, PT_MSG_TYPE_KEEPALIVE, 0, 0, 0, NULL, 0);
 }
 
 /* ------------------------------------------------------------------ */
@@ -261,7 +277,14 @@ void pt_messaging_process_tcp_data(PT_Context_Internal *ctx,
 
             if (peer->tcp_recv_len < frame_size) return;
 
-            /* Check for goodbye message */
+            /* Internal frame types: keepalive (254) has no callback
+             * and is silently consumed; goodbye (255) disconnects. */
+            if (msg_type == PT_MSG_TYPE_KEEPALIVE) {
+                /* No-op — receipt already updated last_tcp_activity */
+                frame_size = PT_TCP_HEADER_SIZE;
+                goto consume;
+            }
+
             if (msg_type == PT_MSG_TYPE_GOODBYE) {
                 /* Consume frame then disconnect */
                 size_t remaining = peer->tcp_recv_len - frame_size;
@@ -287,6 +310,7 @@ void pt_messaging_process_tcp_data(PT_Context_Internal *ctx,
         }
 
         /* Consume frame from buffer */
+        consume:
         {
             size_t remaining = peer->tcp_recv_len - frame_size;
             if (remaining > 0) {
