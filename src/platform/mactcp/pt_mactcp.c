@@ -481,7 +481,7 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
      * PT_Shutdown's goodbye loop may leave the stream in a state where
      * MacTCP deferred tasks still reference it.  Give them time. */
     for (i = 0; i < MAX_TCP_STREAMS; i++) {
-        TCPStreamSlot *ts = &g_mactcp.tcp_streams[i];
+        const TCPStreamSlot *ts = &g_mactcp.tcp_streams[i];
         if (ts->stream) {
             long timeout_ticks = TickCount() + 30; /* 0.5 sec */
             while ((ts->open_pb.ioResult == inProgress ||

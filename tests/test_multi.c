@@ -27,7 +27,7 @@ static const char *g_name = "Unnamed";
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
 
-static const char *safe_peer_name(PT_Peer *p)
+static const char *safe_peer_name(const PT_Peer *p)
 {
     const char *n;
     if (!p) return "(unknown)";
@@ -106,8 +106,6 @@ static void on_error(PT_Peer *peer, PT_Status error, const char *desc,
 int main(int argc, char **argv)
 {
     int passed;
-    char hello_buf[80];
-    size_t hello_len;
     int i, count;
 
     g_name = test_parse_name(argc, argv);
@@ -214,6 +212,8 @@ int main(int argc, char **argv)
     /* Phase 3: Broadcast */
     if (g_expected_peers > 0 && g_running) {
         unsigned long bcast_start;
+        char hello_buf[80];
+        size_t hello_len;
 
         /* Build hello message */
         hello_len = 0;

@@ -23,7 +23,7 @@
 /* Time                                                                */
 /* ------------------------------------------------------------------ */
 
-unsigned long pt_get_time(void)
+static unsigned long pt_get_time(void)
 {
 #if defined(PT_PLATFORM_POSIX)
     return (unsigned long)time(NULL);
@@ -377,11 +377,14 @@ void PT_Shutdown(PT_Context *pub_ctx)
        fire during shutdown (T024) */
     memset(&ctx->callbacks, 0, sizeof(ctx->callbacks));
 
-    /* Send goodbye to all connected peers */
+    /* Disconnect all connected peers.  Do NOT send goodbye frames:
+     * on MacTCP, the synchronous TCPSend hangs if the remote peer is
+     * dead or quitting simultaneously (60-second TCP timeout = total
+     * machine freeze).  TCPAbort in tcp_disconnect sends RST, which
+     * is sufficient for the remote side to detect disconnection. */
     for (i = 0; i < ctx->max_peers; i++) {
         if (ctx->peers[i].in_use &&
             ctx->peers[i].state == PT_PEER_CONNECTED) {
-            send_goodbye(ctx, &ctx->peers[i]);
             ctx->platform_ops->tcp_disconnect(ctx, &ctx->peers[i]);
         }
     }

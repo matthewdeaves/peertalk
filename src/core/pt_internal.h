@@ -248,9 +248,6 @@ typedef struct PT_Context_Internal {
 /* ------------------------------------------------------------------ */
 
 /* pt_memory.c */
-size_t pt_memory_calculate_size(int max_peers, size_t tcp_recv,
-                                size_t tcp_send, size_t udp_buf,
-                                size_t reassembly);
 int    pt_memory_allocate(PT_Context_Internal *ctx,
                           int max_peers, size_t tcp_recv,
                           size_t tcp_send, size_t udp_buf,
@@ -289,8 +286,6 @@ void      pt_handle_incoming_connection(PT_Context_Internal *ctx,
 void      pt_handle_peer_disconnect(PT_Context_Internal *ctx,
                                     PT_Peer_Internal *peer,
                                     PT_DisconnectReason reason);
-unsigned long pt_get_time(void);
-
 /* Platform init functions */
 #if defined(PT_PLATFORM_POSIX)
 PT_PlatformOps *posix_get_ops(void);

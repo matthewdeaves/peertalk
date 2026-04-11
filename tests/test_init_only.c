@@ -31,7 +31,6 @@ int main(void)
 {
     PT_Context *ctx;
     long free_before, free_after;
-    EventRecord event;
 
     /* Step 1: Extend heap FIRST (before any other call) */
     MaxApplZone();

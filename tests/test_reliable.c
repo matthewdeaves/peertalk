@@ -47,7 +47,7 @@ static int g_broadcast_received = 0;
 static int g_moves_done = 0;
 static unsigned long g_moves_done_time = 0;
 
-static const char *safe_peer_name(PT_Peer *peer)
+static const char *safe_peer_name(const PT_Peer *peer)
 {
     const char *n = PT_PeerName(peer);
     return (n && n[0]) ? n : "(unknown)";

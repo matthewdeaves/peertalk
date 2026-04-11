@@ -263,7 +263,7 @@ static int test_solo_timeout(void)
 /* Helper: should we call PT_Connect on this peer? (R47)               */
 /* ------------------------------------------------------------------ */
 
-static int test_should_connect(PT_Peer *peer)
+static int test_should_connect(const PT_Peer *peer)
 {
     PT_PeerState st = PT_GetPeerState(peer);
     return (st == PT_PEER_DISCOVERED || st == PT_PEER_DISCONNECTED);

@@ -152,7 +152,9 @@ static void on_error(PT_Peer *peer, PT_Status error, const char *desc,
 int main(int argc, char **argv)
 {
     const char *name = test_parse_name(argc, argv);
+#if !(defined(PT_PLATFORM_MACTCP) && defined(__m68k__))
     unsigned long last_send = 0;
+#endif
     unsigned long poll_count = 0;
     int passed;
 

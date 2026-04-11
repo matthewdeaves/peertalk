@@ -14,9 +14,9 @@
 #include <Memory.h>
 #endif
 
-size_t pt_memory_calculate_size(int max_peers, size_t tcp_recv,
-                                size_t tcp_send, size_t udp_buf,
-                                size_t reassembly)
+static size_t pt_memory_calculate_size(int max_peers, size_t tcp_recv,
+                                       size_t tcp_send, size_t udp_buf,
+                                       size_t reassembly)
 {
     size_t per_peer;
     size_t peers_array;
