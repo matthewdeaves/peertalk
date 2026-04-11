@@ -150,8 +150,10 @@ static PT_Status posix_init(PT_Context_Internal *ctx)
         return PT_ERR_INIT;
     }
 
-    /* UDP message socket (port 7355) */
-    g_posix.udp_msg_fd = create_udp_socket(PT_UDP_MSG_PORT, 0);
+    /* UDP message socket (port 7355).
+     * Needs SO_BROADCAST because posix_udp_broadcast may send through
+     * this socket for non-discovery ports (e.g. clog on port 7356). */
+    g_posix.udp_msg_fd = create_udp_socket(PT_UDP_MSG_PORT, 1);
     if (g_posix.udp_msg_fd < 0) {
         CLOG_ERR("Failed to create UDP message socket");
         close(g_posix.discovery_fd);
