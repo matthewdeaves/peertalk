@@ -47,30 +47,50 @@ See [API Contract](specs/001-peertalk-sdk/contracts/peertalk-api.md) for the ful
 
 ## Prerequisites
 
-- [Retro68](https://github.com/matthewdeaves/Retro68) fork must be set up first — run its `setup.sh` to build the cross-compiler and extract MPW Interfaces (`$RETRO68_TOOLCHAIN`)
-- [clog](https://github.com/matthewdeaves/clog) must be set up next (`$CLOG_DIR`, defaults to `~/clog`)
+- [Retro68](https://github.com/matthewdeaves/Retro68) fork for Classic Mac cross-compilation (`$RETRO68_TOOLCHAIN`)
+- [clog](https://github.com/matthewdeaves/clog) — fetched automatically via FetchContent, or pass `-DCLOG_DIR=path` for a local checkout
 
 ## Building
 
 ```bash
 # POSIX
-mkdir -p build && cd build
-cmake .. -DCLOG_DIR=$CLOG_DIR && make
+mkdir -p build && cd build && cmake .. && make
 
 # 68k MacTCP (Retro68 cross-compiler)
 mkdir -p build-68k && cd build-68k
 cmake .. -DCMAKE_TOOLCHAIN_FILE=$RETRO68_TOOLCHAIN/m68k-apple-macos/cmake/retro68.toolchain.cmake \
-  -DPT_PLATFORM=MACTCP -DCLOG_DIR=$CLOG_DIR -DCLOG_LIB_DIR=$CLOG_DIR/build-m68k && make
+  -DPT_PLATFORM=MACTCP && make
 
 # PPC Open Transport (Retro68 cross-compiler)
 mkdir -p build-ppc-ot && cd build-ppc-ot
 cmake .. -DCMAKE_TOOLCHAIN_FILE=$RETRO68_TOOLCHAIN/powerpc-apple-macos/cmake/retroppc.toolchain.cmake \
-  -DPT_PLATFORM=OT -DCLOG_DIR=$CLOG_DIR -DCLOG_LIB_DIR=$CLOG_DIR/build-ppc && make
+  -DPT_PLATFORM=OT && make
 ```
 
 ## Using as a Library
 
 ```cmake
+# Option 1: FetchContent (automatic download of peertalk + clog)
+include(FetchContent)
+FetchContent_Declare(clog
+    GIT_REPOSITORY https://github.com/matthewdeaves/clog.git
+    GIT_TAG        main
+    GIT_SHALLOW    TRUE
+)
+set(CLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(clog)
+set(CLOG_LIB clog CACHE FILEPATH "" FORCE)
+
+FetchContent_Declare(peertalk
+    GIT_REPOSITORY https://github.com/matthewdeaves/peertalk.git
+    GIT_TAG        main
+    GIT_SHALLOW    TRUE
+)
+set(PEERTALK_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(peertalk)
+target_link_libraries(myapp PRIVATE peertalk clog)
+
+# Option 2: Local checkout
 set(PEERTALK_BUILD_TESTS OFF)
 add_subdirectory(${PEERTALK_DIR} ${CMAKE_BINARY_DIR}/peertalk)
 target_link_libraries(myapp PRIVATE peertalk)
@@ -128,6 +148,6 @@ All test apps verified on real Classic Mac hardware:
 - [Specification](specs/001-peertalk-sdk/spec.md)
 - [Research Decisions](specs/001-peertalk-sdk/research.md)
 
-## Dependency Chain
+## Dependencies
 
-[Retro68](https://github.com/matthewdeaves/Retro68) (setup.sh) -> [clog](https://github.com/matthewdeaves/clog) -> peertalk -> [csend](https://github.com/matthewdeaves/csend)
+[Retro68](https://github.com/matthewdeaves/Retro68) (cross-compilation) + [clog](https://github.com/matthewdeaves/clog) (auto-fetched) -> peertalk -> [csend](https://github.com/matthewdeaves/csend), [BomberTalk](https://github.com/matthewdeaves/BomberTalk)

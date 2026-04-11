@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  CLOG_COMMIT: "9f512365ce09cf1eed592bd49b5d11307639456a"
-
 jobs:
   build-posix:
     strategy:
@@ -22,25 +19,11 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y build-essential cmake
 
-      - name: Clone and build clog
-        run: |
-          git clone https://github.com/matthewdeaves/clog.git "$HOME/clog"
-          cd "$HOME/clog" && git checkout ${{ env.CLOG_COMMIT }}
-          mkdir build && cd build
-          cmake .. && make
+      - name: Build
+        run: cmake -B build && cmake --build build
 
-      - name: Build peertalk
-        run: |
-          mkdir build && cd build
-          cmake .. -DCLOG_DIR="$HOME/clog"
-          make
-
-      - name: Run tests
-        run: |
-          cd build
-          # test_clog_minimal verifies clog integration
-          # Other tests (test_fast, test_reliable, etc.) require network peers
-          ./test_clog_minimal
+      - name: Test
+        run: ./build/test_clog_minimal
 
   static-analysis:
     runs-on: ubuntu-latest
@@ -68,23 +51,12 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Clone and build clog for 68k
+      - name: Build for 68k (MacTCP)
         run: |
-          git clone https://github.com/matthewdeaves/clog.git /tmp/clog
-          cd /tmp/clog && git checkout ${{ env.CLOG_COMMIT }}
-          mkdir build && cd build
-          cmake .. -DCMAKE_TOOLCHAIN_FILE=/Retro68-build/toolchain/m68k-apple-macos/cmake/retro68.toolchain.cmake
-          make
-
-      - name: Build peertalk for 68k (MacTCP)
-        run: |
-          mkdir build-68k && cd build-68k
-          cmake .. \
+          cmake -B build-68k \
             -DCMAKE_TOOLCHAIN_FILE=/Retro68-build/toolchain/m68k-apple-macos/cmake/retro68.toolchain.cmake \
-            -DCLOG_DIR=/tmp/clog \
-            -DCLOG_LIB_DIR=/tmp/clog/build \
-            -DPT_PLATFORM=MACTCP
-          make
+            -DPT_PLATFORM=MACTCP -DPEERTALK_BUILD_TESTS=OFF
+          cmake --build build-68k
 
   build-ppc-mactcp:
     runs-on: ubuntu-latest
@@ -93,23 +65,12 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Clone and build clog for PPC
+      - name: Build for PPC (MacTCP)
         run: |
-          git clone https://github.com/matthewdeaves/clog.git /tmp/clog
-          cd /tmp/clog && git checkout ${{ env.CLOG_COMMIT }}
-          mkdir build && cd build
-          cmake .. -DCMAKE_TOOLCHAIN_FILE=/Retro68-build/toolchain/powerpc-apple-macos/cmake/retroppc.toolchain.cmake
-          make
-
-      - name: Build peertalk for PPC (MacTCP)
-        run: |
-          mkdir build-ppc && cd build-ppc
-          cmake .. \
+          cmake -B build-ppc \
             -DCMAKE_TOOLCHAIN_FILE=/Retro68-build/toolchain/powerpc-apple-macos/cmake/retroppc.toolchain.cmake \
-            -DCLOG_DIR=/tmp/clog \
-            -DCLOG_LIB_DIR=/tmp/clog/build \
-            -DPT_PLATFORM=MACTCP
-          make
+            -DPT_PLATFORM=MACTCP -DPEERTALK_BUILD_TESTS=OFF
+          cmake --build build-ppc
 
   build-ppc-ot:
     runs-on: ubuntu-latest
@@ -118,20 +79,9 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Clone and build clog for PPC
+      - name: Build for PPC (Open Transport)
         run: |
-          git clone https://github.com/matthewdeaves/clog.git /tmp/clog
-          cd /tmp/clog && git checkout ${{ env.CLOG_COMMIT }}
-          mkdir build && cd build
-          cmake .. -DCMAKE_TOOLCHAIN_FILE=/Retro68-build/toolchain/powerpc-apple-macos/cmake/retroppc.toolchain.cmake
-          make
-
-      - name: Build peertalk for PPC (Open Transport)
-        run: |
-          mkdir build-ppc-ot && cd build-ppc-ot
-          cmake .. \
+          cmake -B build-ppc-ot \
             -DCMAKE_TOOLCHAIN_FILE=/Retro68-build/toolchain/powerpc-apple-macos/cmake/retroppc.toolchain.cmake \
-            -DCLOG_DIR=/tmp/clog \
-            -DCLOG_LIB_DIR=/tmp/clog/build \
-            -DPT_PLATFORM=OT
-          make
+            -DPT_PLATFORM=OT -DPEERTALK_BUILD_TESTS=OFF
+          cmake --build build-ppc-ot

@@ -3,9 +3,6 @@ on:
   push:
     tags: ['v*']
 
-env:
-  CLOG_COMMIT: "9f512365ce09cf1eed592bd49b5d11307639456a"
-
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -16,14 +13,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Clone and build clog
-        run: |
-          git clone https://github.com/matthewdeaves/clog.git "$HOME/clog"
-          cd "$HOME/clog" && git checkout ${{ env.CLOG_COMMIT }}
-          mkdir build && cd build && cmake .. && make
-
-      - name: Build peertalk
-        run: mkdir build && cd build && cmake .. -DCLOG_DIR="$HOME/clog" && make
+      - name: Build
+        run: cmake -B build && cmake --build build
 
       - name: Package POSIX binary
         run: |
@@ -60,7 +51,7 @@ jobs:
             echo "- \`include/peertalk.h\` — public header"
             echo ""
             echo "**SDK source** (\`peertalk-sdk-source.tar.gz\`):"
-            echo "- Everything needed for \`add_subdirectory()\` in CMake"
+            echo "- Everything needed for \`add_subdirectory()\` or FetchContent in CMake"
             echo "- Build for any platform: POSIX, 68k MacTCP, PPC MacTCP, PPC OT"
             echo ""
             echo "## Changes since last release"
