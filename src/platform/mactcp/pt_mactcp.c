@@ -454,35 +454,44 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
     TCPiopb pb;
     UDPiopb upb;
 
-    /* Abort and release all TCP streams */
+    /* ---- TCP shutdown: wait for pending async ops, then abort/release ---- */
     for (i = 0; i < MAX_TCP_STREAMS; i++) {
-        if (g_mactcp.tcp_streams[i].stream) {
+        TCPStreamSlot *ts = &g_mactcp.tcp_streams[i];
+        if (ts->stream) {
+            /* Wait for pending async open (passive or active) to complete.
+             * TCPAbort on a stream with an in-progress open can crash because
+             * MacTCP may still be writing to the param block or callback. */
+            if (ts->state == STREAM_LISTENING || ts->state == STREAM_CONNECTING) {
+                long timeout_ticks = TickCount() + 120; /* 2 second timeout */
+                while (ts->open_pb.ioResult == inProgress &&
+                       TickCount() < timeout_ticks) {
+                    /* spin */
+                }
+            }
+
             memset(&pb, 0, sizeof(pb));
             pb.ioCRefNum = g_mactcp.driver_ref;
-            pb.tcpStream = g_mactcp.tcp_streams[i].stream;
+            pb.tcpStream = ts->stream;
             pb.csCode = TCPAbort;
             PBControlSync((ParmBlkPtr)&pb);
 
             memset(&pb, 0, sizeof(pb));
             pb.ioCRefNum = g_mactcp.driver_ref;
-            pb.tcpStream = g_mactcp.tcp_streams[i].stream;
+            pb.tcpStream = ts->stream;
             pb.csCode = TCPRelease;
             PBControlSync((ParmBlkPtr)&pb);
         }
-        if (g_mactcp.tcp_streams[i].buffer) {
-            DisposePtr(g_mactcp.tcp_streams[i].buffer);
+        if (ts->buffer) {
+            DisposePtr(ts->buffer);
         }
     }
 
-    /* Release UDP streams — spin-wait for pending reads (T125) */
-    if (g_mactcp.discovery_udp.stream) {
-        memset(&upb, 0, sizeof(upb));
-        upb.ioCRefNum = g_mactcp.driver_ref;
-        upb.udpStream = g_mactcp.discovery_udp.stream;
-        upb.csCode = UDPRelease;
-        PBControlSync((ParmBlkPtr)&upb);
-    }
-    /* Wait for pending UDPRead to complete before freeing buffer */
+    /* ---- UDP shutdown: wait for pending reads BEFORE releasing streams.
+     * Previous code released first then waited — the pending UDPRead would
+     * continue executing against a freed stream, causing crashes on both
+     * 68000 (address error) and PPC (bus error). ---- */
+
+    /* Discovery UDP */
     if (g_mactcp.discovery_udp.read_pending) {
         long timeout_ticks = TickCount() + 120; /* 2 second timeout */
         while (g_mactcp.discovery_udp.read_pb.ioResult == inProgress &&
@@ -490,19 +499,27 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
             /* spin */
         }
         g_mactcp.discovery_udp.read_pending = 0;
+        /* Return buffer to MacTCP if read completed with data */
+        if (g_mactcp.discovery_udp.read_pb.ioResult == noErr &&
+            g_mactcp.discovery_udp.stream) {
+            g_mactcp.bfr_ret_pb.udpStream = g_mactcp.discovery_udp.stream;
+            g_mactcp.bfr_ret_pb.csParam.receive.rcvBuff =
+                g_mactcp.discovery_udp.read_pb.csParam.receive.rcvBuff;
+            PBControlSync((ParmBlkPtr)&g_mactcp.bfr_ret_pb);
+        }
+    }
+    if (g_mactcp.discovery_udp.stream) {
+        memset(&upb, 0, sizeof(upb));
+        upb.ioCRefNum = g_mactcp.driver_ref;
+        upb.udpStream = g_mactcp.discovery_udp.stream;
+        upb.csCode = UDPRelease;
+        PBControlSync((ParmBlkPtr)&upb);
     }
     if (g_mactcp.discovery_udp.buffer) {
         DisposePtr(g_mactcp.discovery_udp.buffer);
     }
 
-    if (g_mactcp.message_udp.stream) {
-        memset(&upb, 0, sizeof(upb));
-        upb.ioCRefNum = g_mactcp.driver_ref;
-        upb.udpStream = g_mactcp.message_udp.stream;
-        upb.csCode = UDPRelease;
-        PBControlSync((ParmBlkPtr)&upb);
-    }
-    /* Wait for pending UDPRead to complete before freeing buffer */
+    /* Message UDP */
     if (g_mactcp.message_udp.read_pending) {
         long timeout_ticks = TickCount() + 120; /* 2 second timeout */
         while (g_mactcp.message_udp.read_pb.ioResult == inProgress &&
@@ -510,11 +527,27 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
             /* spin */
         }
         g_mactcp.message_udp.read_pending = 0;
+        /* Return buffer to MacTCP if read completed with data */
+        if (g_mactcp.message_udp.read_pb.ioResult == noErr &&
+            g_mactcp.message_udp.stream) {
+            g_mactcp.bfr_ret_pb.udpStream = g_mactcp.message_udp.stream;
+            g_mactcp.bfr_ret_pb.csParam.receive.rcvBuff =
+                g_mactcp.message_udp.read_pb.csParam.receive.rcvBuff;
+            PBControlSync((ParmBlkPtr)&g_mactcp.bfr_ret_pb);
+        }
+    }
+    if (g_mactcp.message_udp.stream) {
+        memset(&upb, 0, sizeof(upb));
+        upb.ioCRefNum = g_mactcp.driver_ref;
+        upb.udpStream = g_mactcp.message_udp.stream;
+        upb.csCode = UDPRelease;
+        PBControlSync((ParmBlkPtr)&upb);
     }
     if (g_mactcp.message_udp.buffer) {
         DisposePtr(g_mactcp.message_udp.buffer);
     }
 
+    /* Dispose UPPs only after ALL async operations are complete */
     if (g_mactcp.tcp_upp) DisposeTCPNotifyUPP(g_mactcp.tcp_upp);
     if (g_mactcp.udp_upp) DisposeUDPNotifyUPP(g_mactcp.udp_upp);
 
