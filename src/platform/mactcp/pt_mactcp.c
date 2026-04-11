@@ -454,26 +454,32 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
     TCPiopb pb;
     UDPiopb upb;
 
-    /* ---- TCP shutdown: wait for pending async ops, then abort/release ---- */
+    /* ---- TCP shutdown: abort first, wait for async ops, then release ---- */
     for (i = 0; i < MAX_TCP_STREAMS; i++) {
         TCPStreamSlot *ts = &g_mactcp.tcp_streams[i];
         if (ts->stream) {
-            /* Wait for pending async open (passive or active) to complete.
-             * TCPAbort on a stream with an in-progress open can crash because
-             * MacTCP may still be writing to the param block or callback. */
-            if (ts->state == STREAM_LISTENING || ts->state == STREAM_CONNECTING) {
-                long timeout_ticks = TickCount() + 120; /* 2 second timeout */
-                while (ts->open_pb.ioResult == inProgress &&
-                       TickCount() < timeout_ticks) {
-                    /* spin */
-                }
-            }
-
+            /* TCPAbort first — this cancels any pending PassiveOpen or
+             * ActiveOpen and causes their ioResult to transition out of
+             * inProgress.  Previous code waited BEFORE aborting, which
+             * timed out on listeners (PassiveOpen never completes if no
+             * connection arrives) then released the stream while the
+             * async open was still in-flight. */
             memset(&pb, 0, sizeof(pb));
             pb.ioCRefNum = g_mactcp.driver_ref;
             pb.tcpStream = ts->stream;
             pb.csCode = TCPAbort;
             PBControlSync((ParmBlkPtr)&pb);
+
+            /* Now wait for the pending async open to finish settling.
+             * TCPAbort triggers the open's completion; give it time to
+             * update ioResult and run any completion routine. */
+            if (ts->state == STREAM_LISTENING || ts->state == STREAM_CONNECTING) {
+                long timeout_ticks = TickCount() + 30; /* 0.5 sec is plenty */
+                while (ts->open_pb.ioResult == inProgress &&
+                       TickCount() < timeout_ticks) {
+                    /* spin */
+                }
+            }
 
             memset(&pb, 0, sizeof(pb));
             pb.ioCRefNum = g_mactcp.driver_ref;
