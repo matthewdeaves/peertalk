@@ -448,6 +448,67 @@ fail_upps:
     return PT_ERR_INIT;
 }
 
+static void mactcp_release_udp_stream(UDPStreamSlot *us, UDPiopb *upb,
+                                     const char *label)
+{
+    int safe;
+
+#ifdef __m68k__
+    /* 68k native MacTCP: UDPRelease correctly cancels pending reads.
+     * Always release — skipping corrupts driver state (persists across
+     * app launches on System 6) and crashes on next network use. */
+    safe = 1;
+#else
+    /* PPC MacTCP shim: UDPRelease bus-errors with pending UDPRead.
+     * Only release if no read is pending. */
+    safe = !us->read_pending ||
+           us->read_pb.ioResult != inProgress;
+#endif
+
+    if (!safe) {
+        CLOG_WARN("  %s UDP: skipped release (read pending)", label);
+        return;
+    }
+
+    /* Return any received buffer before releasing the stream */
+    if (us->read_pending &&
+        us->read_pb.ioResult == noErr &&
+        us->stream) {
+        g_mactcp.bfr_ret_pb.udpStream = us->stream;
+        g_mactcp.bfr_ret_pb.csParam.receive.rcvBuff =
+            us->read_pb.csParam.receive.rcvBuff;
+        PBControlSync((ParmBlkPtr)&g_mactcp.bfr_ret_pb);
+    }
+
+    /* Release the UDP stream — on 68k this also cancels pending reads */
+    if (us->stream) {
+        memset(upb, 0, sizeof(*upb));
+        upb->ioCRefNum = g_mactcp.driver_ref;
+        upb->udpStream = us->stream;
+        upb->csCode = UDPRelease;
+        PBControlSync((ParmBlkPtr)upb);
+        CLOG_DEBUG("  %s UDP: release result=%d", label, (int)upb->ioResult);
+    }
+
+#ifdef __m68k__
+    /* On 68k, spin-wait for the pending read to settle after release */
+    if (us->read_pending && us->read_pb.ioResult == inProgress) {
+        long timeout = TickCount() + 30; /* 0.5 sec */
+        while (us->read_pb.ioResult == inProgress &&
+               TickCount() < timeout) {
+            /* spin */
+        }
+        CLOG_DEBUG("  %s UDP: read settled, result=%d",
+                   label, (int)us->read_pb.ioResult);
+    }
+#endif
+
+    if (us->buffer) {
+        DisposePtr(us->buffer);
+    }
+    CLOG_DEBUG("  %s UDP: released", label);
+}
+
 static void mactcp_shutdown(PT_Context_Internal *ctx)
 {
     int i;
@@ -510,82 +571,24 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
         }
     }
 
-    CLOG_INFO("MacTCP shutdown: UDP discovery cleanup");
-
     /* ---- UDP shutdown ----
      *
-     * MacTCP PPC bug: UDPRelease crashes (bus error) when a UDPRead
-     * is pending (ioResult == inProgress).  There is no UDPAbort.
-     * Workaround: only release if the read has already completed.
-     * If still pending, skip release AND DisposePtr — ExitToShell
-     * will reclaim everything. ---- */
+     * Platform-specific handling for pending UDPRead:
+     *
+     * 68k (native MacTCP): UDPRelease correctly cancels pending reads.
+     * Call UDPRelease, spin-wait for read_pb.ioResult to leave inProgress,
+     * then DisposePtr.  Skipping release corrupts MacTCP driver state
+     * (persists across app launches) and crashes on next network use.
+     *
+     * PPC (MacTCP shim): UDPRelease bus-errors when UDPRead is pending.
+     * No UDPAbort exists.  Skip release entirely — ExitToShell reclaims
+     * everything and PPC apps get a fresh MacTCP state. */
 
-    /* Discovery UDP.
-     * MacTCP PPC bug: UDPRelease crashes (bus error) when a UDPRead
-     * is pending (ioResult == inProgress).  There is no UDPAbort to
-     * cancel the read first.  Workaround: only release if the read
-     * has already completed.  If still pending, skip release AND
-     * DisposePtr — ExitToShell will reclaim everything. */
-    {
-        int disc_safe = !g_mactcp.discovery_udp.read_pending ||
-                        g_mactcp.discovery_udp.read_pb.ioResult != inProgress;
-
-        if (disc_safe && g_mactcp.discovery_udp.read_pending &&
-            g_mactcp.discovery_udp.read_pb.ioResult == noErr &&
-            g_mactcp.discovery_udp.stream) {
-            g_mactcp.bfr_ret_pb.udpStream = g_mactcp.discovery_udp.stream;
-            g_mactcp.bfr_ret_pb.csParam.receive.rcvBuff =
-                g_mactcp.discovery_udp.read_pb.csParam.receive.rcvBuff;
-            PBControlSync((ParmBlkPtr)&g_mactcp.bfr_ret_pb);
-        }
-        if (disc_safe && g_mactcp.discovery_udp.stream) {
-            memset(&upb, 0, sizeof(upb));
-            upb.ioCRefNum = g_mactcp.driver_ref;
-            upb.udpStream = g_mactcp.discovery_udp.stream;
-            upb.csCode = UDPRelease;
-            PBControlSync((ParmBlkPtr)&upb);
-        }
-        if (disc_safe && g_mactcp.discovery_udp.buffer) {
-            DisposePtr(g_mactcp.discovery_udp.buffer);
-        }
-        if (disc_safe) {
-            CLOG_DEBUG("  Discovery UDP: released");
-        } else {
-            CLOG_WARN("  Discovery UDP: skipped release (read pending)");
-        }
-    }
+    CLOG_INFO("MacTCP shutdown: UDP discovery cleanup");
+    mactcp_release_udp_stream(&g_mactcp.discovery_udp, &upb, "Discovery");
 
     CLOG_INFO("MacTCP shutdown: UDP message cleanup");
-
-    /* Message UDP — same MacTCP bug workaround */
-    {
-        int msg_safe = !g_mactcp.message_udp.read_pending ||
-                       g_mactcp.message_udp.read_pb.ioResult != inProgress;
-
-        if (msg_safe && g_mactcp.message_udp.read_pending &&
-            g_mactcp.message_udp.read_pb.ioResult == noErr &&
-            g_mactcp.message_udp.stream) {
-            g_mactcp.bfr_ret_pb.udpStream = g_mactcp.message_udp.stream;
-            g_mactcp.bfr_ret_pb.csParam.receive.rcvBuff =
-                g_mactcp.message_udp.read_pb.csParam.receive.rcvBuff;
-            PBControlSync((ParmBlkPtr)&g_mactcp.bfr_ret_pb);
-        }
-        if (msg_safe && g_mactcp.message_udp.stream) {
-            memset(&upb, 0, sizeof(upb));
-            upb.ioCRefNum = g_mactcp.driver_ref;
-            upb.udpStream = g_mactcp.message_udp.stream;
-            upb.csCode = UDPRelease;
-            PBControlSync((ParmBlkPtr)&upb);
-        }
-        if (msg_safe && g_mactcp.message_udp.buffer) {
-            DisposePtr(g_mactcp.message_udp.buffer);
-        }
-        if (msg_safe) {
-            CLOG_DEBUG("  Message UDP: released");
-        } else {
-            CLOG_WARN("  Message UDP: skipped release (read pending)");
-        }
-    }
+    mactcp_release_udp_stream(&g_mactcp.message_udp, &upb, "Message");
 
     CLOG_INFO("MacTCP shutdown: disposing UPPs");
 
