@@ -512,29 +512,30 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
 
     CLOG_INFO("MacTCP shutdown: UDP discovery cleanup");
 
-    /* ---- UDP shutdown: wait for pending reads BEFORE releasing streams.
-     * Previous code released first then waited — the pending UDPRead would
-     * continue executing against a freed stream, causing crashes on both
-     * 68000 (address error) and PPC (bus error). ---- */
+    /* ---- UDP shutdown: release first, then wait, then free.
+     *
+     * UDPRead(timeout=0) waits forever for data.  Nothing cancels it
+     * except UDPRelease.  So the correct order is:
+     *   1. Return buffer if read already completed with data
+     *   2. UDPRelease — cancels any still-pending UDPRead
+     *   3. Spin-wait for the cancelled read's ioResult to settle
+     *   4. DisposePtr(buffer) — safe, the read is fully done
+     *
+     * The previous "wait then release" order was WRONG: the 2-second
+     * wait always timed out (nothing cancels the read), then release
+     * + DisposePtr ran without waiting for the cancellation to finish,
+     * crashing on PPC MacTCP when a deferred task touched the freed
+     * buffer. ---- */
 
     /* Discovery UDP */
-    if (g_mactcp.discovery_udp.read_pending) {
-        long timeout_ticks = TickCount() + 120; /* 2 second timeout */
-        while (g_mactcp.discovery_udp.read_pb.ioResult == inProgress &&
-               TickCount() < timeout_ticks) {
-            /* spin */
-        }
-        CLOG_DEBUG("  Discovery read settled: result=%d",
-                   (int)g_mactcp.discovery_udp.read_pb.ioResult);
-        g_mactcp.discovery_udp.read_pending = 0;
-        /* Return buffer to MacTCP if read completed with data */
-        if (g_mactcp.discovery_udp.read_pb.ioResult == noErr &&
-            g_mactcp.discovery_udp.stream) {
-            g_mactcp.bfr_ret_pb.udpStream = g_mactcp.discovery_udp.stream;
-            g_mactcp.bfr_ret_pb.csParam.receive.rcvBuff =
-                g_mactcp.discovery_udp.read_pb.csParam.receive.rcvBuff;
-            PBControlSync((ParmBlkPtr)&g_mactcp.bfr_ret_pb);
-        }
+    if (g_mactcp.discovery_udp.read_pending &&
+        g_mactcp.discovery_udp.read_pb.ioResult == noErr &&
+        g_mactcp.discovery_udp.stream) {
+        /* Read completed with data — return buffer before release */
+        g_mactcp.bfr_ret_pb.udpStream = g_mactcp.discovery_udp.stream;
+        g_mactcp.bfr_ret_pb.csParam.receive.rcvBuff =
+            g_mactcp.discovery_udp.read_pb.csParam.receive.rcvBuff;
+        PBControlSync((ParmBlkPtr)&g_mactcp.bfr_ret_pb);
     }
     if (g_mactcp.discovery_udp.stream) {
         memset(&upb, 0, sizeof(upb));
@@ -544,6 +545,16 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
         PBControlSync((ParmBlkPtr)&upb);
         CLOG_DEBUG("  Discovery UDP release: result=%d", (int)upb.ioResult);
     }
+    if (g_mactcp.discovery_udp.read_pending) {
+        long timeout_ticks = TickCount() + 120; /* 2 second timeout */
+        while (g_mactcp.discovery_udp.read_pb.ioResult == inProgress &&
+               TickCount() < timeout_ticks) {
+            /* spin — UDPRelease should have cancelled the read */
+        }
+        CLOG_DEBUG("  Discovery read settled: result=%d",
+                   (int)g_mactcp.discovery_udp.read_pb.ioResult);
+        g_mactcp.discovery_udp.read_pending = 0;
+    }
     if (g_mactcp.discovery_udp.buffer) {
         DisposePtr(g_mactcp.discovery_udp.buffer);
     }
@@ -551,23 +562,14 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
     CLOG_INFO("MacTCP shutdown: UDP message cleanup");
 
     /* Message UDP */
-    if (g_mactcp.message_udp.read_pending) {
-        long timeout_ticks = TickCount() + 120; /* 2 second timeout */
-        while (g_mactcp.message_udp.read_pb.ioResult == inProgress &&
-               TickCount() < timeout_ticks) {
-            /* spin */
-        }
-        CLOG_DEBUG("  Message read settled: result=%d",
-                   (int)g_mactcp.message_udp.read_pb.ioResult);
-        g_mactcp.message_udp.read_pending = 0;
-        /* Return buffer to MacTCP if read completed with data */
-        if (g_mactcp.message_udp.read_pb.ioResult == noErr &&
-            g_mactcp.message_udp.stream) {
-            g_mactcp.bfr_ret_pb.udpStream = g_mactcp.message_udp.stream;
-            g_mactcp.bfr_ret_pb.csParam.receive.rcvBuff =
-                g_mactcp.message_udp.read_pb.csParam.receive.rcvBuff;
-            PBControlSync((ParmBlkPtr)&g_mactcp.bfr_ret_pb);
-        }
+    if (g_mactcp.message_udp.read_pending &&
+        g_mactcp.message_udp.read_pb.ioResult == noErr &&
+        g_mactcp.message_udp.stream) {
+        /* Read completed with data — return buffer before release */
+        g_mactcp.bfr_ret_pb.udpStream = g_mactcp.message_udp.stream;
+        g_mactcp.bfr_ret_pb.csParam.receive.rcvBuff =
+            g_mactcp.message_udp.read_pb.csParam.receive.rcvBuff;
+        PBControlSync((ParmBlkPtr)&g_mactcp.bfr_ret_pb);
     }
     if (g_mactcp.message_udp.stream) {
         memset(&upb, 0, sizeof(upb));
@@ -576,6 +578,16 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
         upb.csCode = UDPRelease;
         PBControlSync((ParmBlkPtr)&upb);
         CLOG_DEBUG("  Message UDP release: result=%d", (int)upb.ioResult);
+    }
+    if (g_mactcp.message_udp.read_pending) {
+        long timeout_ticks = TickCount() + 120; /* 2 second timeout */
+        while (g_mactcp.message_udp.read_pb.ioResult == inProgress &&
+               TickCount() < timeout_ticks) {
+            /* spin — UDPRelease should have cancelled the read */
+        }
+        CLOG_DEBUG("  Message read settled: result=%d",
+                   (int)g_mactcp.message_udp.read_pb.ioResult);
+        g_mactcp.message_udp.read_pending = 0;
     }
     if (g_mactcp.message_udp.buffer) {
         DisposePtr(g_mactcp.message_udp.buffer);
