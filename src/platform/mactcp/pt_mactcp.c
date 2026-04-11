@@ -478,7 +478,7 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
 
     /* Phase 2: Wait for ALL async param blocks to settle on every stream.
      * Even though sends are synchronous, abort_stream() during
-     * PT_Shutdown's goodbye loop may leave the stream in a state where
+     * PT_Shutdown's disconnect loop may leave the stream in a state where
      * MacTCP deferred tasks still reference it.  Give them time. */
     for (i = 0; i < MAX_TCP_STREAMS; i++) {
         const TCPStreamSlot *ts = &g_mactcp.tcp_streams[i];
@@ -512,20 +512,13 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
 
     CLOG_INFO("MacTCP shutdown: UDP discovery cleanup");
 
-    /* ---- UDP shutdown: release first, then wait, then free.
+    /* ---- UDP shutdown ----
      *
-     * UDPRead(timeout=0) waits forever for data.  Nothing cancels it
-     * except UDPRelease.  So the correct order is:
-     *   1. Return buffer if read already completed with data
-     *   2. UDPRelease — cancels any still-pending UDPRead
-     *   3. Spin-wait for the cancelled read's ioResult to settle
-     *   4. DisposePtr(buffer) — safe, the read is fully done
-     *
-     * The previous "wait then release" order was WRONG: the 2-second
-     * wait always timed out (nothing cancels the read), then release
-     * + DisposePtr ran without waiting for the cancellation to finish,
-     * crashing on PPC MacTCP when a deferred task touched the freed
-     * buffer. ---- */
+     * MacTCP PPC bug: UDPRelease crashes (bus error) when a UDPRead
+     * is pending (ioResult == inProgress).  There is no UDPAbort.
+     * Workaround: only release if the read has already completed.
+     * If still pending, skip release AND DisposePtr — ExitToShell
+     * will reclaim everything. ---- */
 
     /* Discovery UDP.
      * MacTCP PPC bug: UDPRelease crashes (bus error) when a UDPRead
@@ -555,7 +548,11 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
         if (disc_safe && g_mactcp.discovery_udp.buffer) {
             DisposePtr(g_mactcp.discovery_udp.buffer);
         }
-        CLOG_DEBUG("  Discovery UDP: safe=%d", disc_safe);
+        if (disc_safe) {
+            CLOG_DEBUG("  Discovery UDP: released");
+        } else {
+            CLOG_WARN("  Discovery UDP: skipped release (read pending)");
+        }
     }
 
     CLOG_INFO("MacTCP shutdown: UDP message cleanup");
@@ -583,7 +580,11 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
         if (msg_safe && g_mactcp.message_udp.buffer) {
             DisposePtr(g_mactcp.message_udp.buffer);
         }
-        CLOG_DEBUG("  Message UDP: safe=%d", msg_safe);
+        if (msg_safe) {
+            CLOG_DEBUG("  Message UDP: released");
+        } else {
+            CLOG_WARN("  Message UDP: skipped release (read pending)");
+        }
     }
 
     CLOG_INFO("MacTCP shutdown: disposing UPPs");
@@ -595,7 +596,6 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
     CLOG_INFO("MacTCP shutdown complete");
 
     ctx->platform_state = NULL;
-    (void)ctx;
 }
 
 static PT_Status mactcp_udp_broadcast(PT_Context_Internal *ctx,
