@@ -454,43 +454,63 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
     TCPiopb pb;
     UDPiopb upb;
 
-    /* ---- TCP shutdown: abort first, wait for async ops, then release ---- */
+    CLOG_INFO("MacTCP shutdown: TCP phase 1 (abort)");
+
+    /* ---- TCP shutdown: abort all first, then wait, then release ---- */
+
+    /* Phase 1: TCPAbort every stream.  This cancels any pending
+     * PassiveOpen, ActiveOpen, or TCPSend and causes their ioResult
+     * to transition out of inProgress. */
     for (i = 0; i < MAX_TCP_STREAMS; i++) {
         TCPStreamSlot *ts = &g_mactcp.tcp_streams[i];
         if (ts->stream) {
-            /* TCPAbort first — this cancels any pending PassiveOpen or
-             * ActiveOpen and causes their ioResult to transition out of
-             * inProgress.  Previous code waited BEFORE aborting, which
-             * timed out on listeners (PassiveOpen never completes if no
-             * connection arrives) then released the stream while the
-             * async open was still in-flight. */
             memset(&pb, 0, sizeof(pb));
             pb.ioCRefNum = g_mactcp.driver_ref;
             pb.tcpStream = ts->stream;
             pb.csCode = TCPAbort;
             PBControlSync((ParmBlkPtr)&pb);
+            CLOG_DEBUG("  TCP stream %d abort: result=%d state=%d",
+                       i, (int)pb.ioResult, ts->state);
+        }
+    }
 
-            /* Now wait for the pending async open to finish settling.
-             * TCPAbort triggers the open's completion; give it time to
-             * update ioResult and run any completion routine. */
-            if (ts->state == STREAM_LISTENING || ts->state == STREAM_CONNECTING) {
-                long timeout_ticks = TickCount() + 30; /* 0.5 sec is plenty */
-                while (ts->open_pb.ioResult == inProgress &&
-                       TickCount() < timeout_ticks) {
-                    /* spin */
-                }
+    CLOG_INFO("MacTCP shutdown: TCP phase 2 (wait)");
+
+    /* Phase 2: Wait for ALL async param blocks to settle on every stream.
+     * Even though sends are synchronous, abort_stream() during
+     * PT_Shutdown's goodbye loop may leave the stream in a state where
+     * MacTCP deferred tasks still reference it.  Give them time. */
+    for (i = 0; i < MAX_TCP_STREAMS; i++) {
+        TCPStreamSlot *ts = &g_mactcp.tcp_streams[i];
+        if (ts->stream) {
+            long timeout_ticks = TickCount() + 30; /* 0.5 sec */
+            while ((ts->open_pb.ioResult == inProgress ||
+                    ts->send_pb.ioResult == inProgress) &&
+                   TickCount() < timeout_ticks) {
+                /* spin */
             }
+        }
+    }
 
+    CLOG_INFO("MacTCP shutdown: TCP phase 3 (release)");
+
+    /* Phase 3: Release streams and free buffers */
+    for (i = 0; i < MAX_TCP_STREAMS; i++) {
+        TCPStreamSlot *ts = &g_mactcp.tcp_streams[i];
+        if (ts->stream) {
             memset(&pb, 0, sizeof(pb));
             pb.ioCRefNum = g_mactcp.driver_ref;
             pb.tcpStream = ts->stream;
             pb.csCode = TCPRelease;
             PBControlSync((ParmBlkPtr)&pb);
+            CLOG_DEBUG("  TCP stream %d release: result=%d", i, (int)pb.ioResult);
         }
         if (ts->buffer) {
             DisposePtr(ts->buffer);
         }
     }
+
+    CLOG_INFO("MacTCP shutdown: UDP discovery cleanup");
 
     /* ---- UDP shutdown: wait for pending reads BEFORE releasing streams.
      * Previous code released first then waited — the pending UDPRead would
@@ -504,6 +524,8 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
                TickCount() < timeout_ticks) {
             /* spin */
         }
+        CLOG_DEBUG("  Discovery read settled: result=%d",
+                   (int)g_mactcp.discovery_udp.read_pb.ioResult);
         g_mactcp.discovery_udp.read_pending = 0;
         /* Return buffer to MacTCP if read completed with data */
         if (g_mactcp.discovery_udp.read_pb.ioResult == noErr &&
@@ -520,10 +542,13 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
         upb.udpStream = g_mactcp.discovery_udp.stream;
         upb.csCode = UDPRelease;
         PBControlSync((ParmBlkPtr)&upb);
+        CLOG_DEBUG("  Discovery UDP release: result=%d", (int)upb.ioResult);
     }
     if (g_mactcp.discovery_udp.buffer) {
         DisposePtr(g_mactcp.discovery_udp.buffer);
     }
+
+    CLOG_INFO("MacTCP shutdown: UDP message cleanup");
 
     /* Message UDP */
     if (g_mactcp.message_udp.read_pending) {
@@ -532,6 +557,8 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
                TickCount() < timeout_ticks) {
             /* spin */
         }
+        CLOG_DEBUG("  Message read settled: result=%d",
+                   (int)g_mactcp.message_udp.read_pb.ioResult);
         g_mactcp.message_udp.read_pending = 0;
         /* Return buffer to MacTCP if read completed with data */
         if (g_mactcp.message_udp.read_pb.ioResult == noErr &&
@@ -548,14 +575,19 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
         upb.udpStream = g_mactcp.message_udp.stream;
         upb.csCode = UDPRelease;
         PBControlSync((ParmBlkPtr)&upb);
+        CLOG_DEBUG("  Message UDP release: result=%d", (int)upb.ioResult);
     }
     if (g_mactcp.message_udp.buffer) {
         DisposePtr(g_mactcp.message_udp.buffer);
     }
 
+    CLOG_INFO("MacTCP shutdown: disposing UPPs");
+
     /* Dispose UPPs only after ALL async operations are complete */
     if (g_mactcp.tcp_upp) DisposeTCPNotifyUPP(g_mactcp.tcp_upp);
     if (g_mactcp.udp_upp) DisposeUDPNotifyUPP(g_mactcp.udp_upp);
+
+    CLOG_INFO("MacTCP shutdown complete");
 
     ctx->platform_state = NULL;
     (void)ctx;
