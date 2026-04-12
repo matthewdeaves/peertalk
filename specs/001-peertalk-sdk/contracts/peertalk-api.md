@@ -3,7 +3,7 @@
 **Branch**: `001-peertalk-sdk` | **Date**: 2026-02-28
 
 This document defines the complete public API surface of the
-PeerTalk SDK. The API is 23 functions, 4 enums, 4 callback
+PeerTalk SDK. The API is 29 functions, 4 enums, 4 callback
 typedefs, and 2 opaque types. All types are C89-compatible.
 
 ## Opaque Types
@@ -89,7 +89,7 @@ typedef void (*PT_ErrorCallback)(
 );
 ```
 
-## Functions (25 total)
+## Functions (29 total)
 
 ### Lifecycle (2)
 
@@ -316,6 +316,44 @@ PT_PeerState PT_GetPeerState(const PT_Peer *peer);
 ```
 - Returns the peer's current state
 
+### Peer Ranking (1)
+
+```c
+int PT_GetPeerRank(const PT_Context *ctx, const PT_Peer *peer);
+```
+- Returns 0-based rank of `peer` among all connected peers + self, sorted by IP address
+- Lowest IP = rank 0
+- Pass `NULL` for `peer` to get the local machine's rank
+- Returns -1 on error (NULL ctx, peer not connected)
+- Uses internal `ip_addr` fields directly — no string parsing
+
+### Debug Broadcast (3)
+
+```c
+PT_Status PT_EnableDebugBroadcast(PT_Context *ctx, unsigned short port);
+```
+- Enables UDP debug broadcast channel
+- `port`: UDP port to broadcast on. Pass 0 for default (7356)
+- Builds a prefix string `[name@ip] ` used by `PT_DebugSend`
+- Returns: PT_OK on success, PT_ERR_INVALID_ARG if ctx is NULL
+- If `PT_SetName()` is called while broadcast is active, the prefix is rebuilt automatically
+
+```c
+void PT_DebugSend(PT_Context *ctx, const char *msg, size_t len);
+```
+- Broadcasts a debug text message via UDP
+- Auto-prefixes with `[name@ip] ` and appends newline
+- No-op if debug broadcast is not enabled or ctx is NULL
+- Uses a separate static buffer (not `udp_send_buf`) — safe to call from message callbacks
+- Maximum message length: ~200 bytes (truncated to fit 256-byte buffer with prefix)
+- No clog dependency — apps wire clog's network sink into this function if desired
+
+```c
+void PT_DisableDebugBroadcast(PT_Context *ctx);
+```
+- Disables debug broadcast
+- Idempotent — safe to call multiple times or when already disabled
+
 ## C89 Compatibility Notes
 
 - All types use C89 primitives: `unsigned char`,
@@ -339,11 +377,14 @@ poll-based architecture eliminates the need for locks.
 | 7353 | UDP | Discovery broadcast/listen |
 | 7354 | TCP | Reliable messages + connections |
 | 7355 | UDP | Fast messages |
+| 7356 | UDP | Debug broadcast (default, configurable) |
 
 ## Reserved Values
 
 | Value | Reserved For |
 |-------|-------------|
+| Message type 254 | Internal TCP keepalive |
 | Message type 255 | Internal goodbye message |
 | Discovery magic "PTLK" | Protocol identification |
 | Discovery version 1 | Current wire protocol version |
+| Port 7356 | Default debug broadcast port (`PT_DEBUG_PORT`) |

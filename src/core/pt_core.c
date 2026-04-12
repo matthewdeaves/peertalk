@@ -731,5 +731,118 @@ PT_Status PT_SetName(PT_Context *pub_ctx, const char *name)
     if (namelen > PT_NAME_MAX) return PT_ERR_INVALID_ARG;
     memcpy(ctx->name, name, namelen + 1);
     pt_discovery_build_packet(ctx);
+
+    /* Rebuild debug prefix if debug broadcast is active */
+    if (ctx->debug_port != 0) {
+        PT_EnableDebugBroadcast((PT_Context *)ctx, ctx->debug_port);
+    }
     return PT_OK;
+}
+
+/* ------------------------------------------------------------------ */
+/* Public API: Peer Ranking                                            */
+/* ------------------------------------------------------------------ */
+
+int PT_GetPeerRank(const PT_Context *pub_ctx, const PT_Peer *pub_peer)
+{
+    const PT_Context_Internal *ctx = (const PT_Context_Internal *)pub_ctx;
+    const PT_Peer_Internal *peer = (const PT_Peer_Internal *)pub_peer;
+    unsigned long target_ip;
+    int rank = 0;
+    int i;
+
+    if (!ctx) return -1;
+
+    if (peer) {
+        if (peer->state != PT_PEER_CONNECTED) return -1;
+        target_ip = peer->ip_addr;
+    } else {
+        target_ip = ctx->local_ip;
+    }
+
+    /* Count connected peers + self with IP below target */
+    if (ctx->local_ip < target_ip) rank++;
+
+    for (i = 0; i < ctx->max_peers; i++) {
+        if (!ctx->peers[i].in_use) continue;
+        if (ctx->peers[i].state != PT_PEER_CONNECTED) continue;
+        if (peer && ctx->peers[i].ip_addr == target_ip) continue;
+        if (ctx->peers[i].ip_addr < target_ip) rank++;
+    }
+
+    return rank;
+}
+
+/* ------------------------------------------------------------------ */
+/* Public API: Debug Broadcast                                         */
+/* ------------------------------------------------------------------ */
+
+static void pt_build_debug_prefix(PT_Context_Internal *ctx)
+{
+    char ip_buf[16];
+    int pos = 0;
+    const char *s;
+
+    pt_format_ip(ctx->local_ip, ip_buf);
+
+    ctx->debug_prefix[pos++] = '[';
+    s = ctx->name;
+    while (*s && pos < 33) {
+        ctx->debug_prefix[pos++] = *s++;
+    }
+    ctx->debug_prefix[pos++] = '@';
+    s = ip_buf;
+    while (*s && pos < 49) {
+        ctx->debug_prefix[pos++] = *s++;
+    }
+    ctx->debug_prefix[pos++] = ']';
+    ctx->debug_prefix[pos++] = ' ';
+    ctx->debug_prefix[pos] = '\0';
+    ctx->debug_prefix_len = pos;
+}
+
+PT_Status PT_EnableDebugBroadcast(PT_Context *pub_ctx, unsigned short port)
+{
+    PT_Context_Internal *ctx = (PT_Context_Internal *)pub_ctx;
+    if (!ctx) return PT_ERR_INVALID_ARG;
+
+    ctx->debug_port = port ? port : PT_DEBUG_PORT;
+    pt_build_debug_prefix(ctx);
+
+    CLOG_INFO("Debug broadcast enabled on port %u", ctx->debug_port);
+    return PT_OK;
+}
+
+void PT_DebugSend(PT_Context *pub_ctx, const char *msg, size_t len)
+{
+    PT_Context_Internal *ctx = (PT_Context_Internal *)pub_ctx;
+    static char debug_buf[256];
+    int total;
+    int avail;
+
+    if (!ctx || !ctx->debug_port || !msg || len == 0) return;
+
+    /* Build: prefix + message + newline */
+    memcpy(debug_buf, ctx->debug_prefix, (size_t)ctx->debug_prefix_len);
+    total = ctx->debug_prefix_len;
+
+    avail = (int)sizeof(debug_buf) - total - 2; /* room for msg + newline */
+    if ((int)len > avail) len = (size_t)avail;
+    memcpy(debug_buf + total, msg, len);
+    total += (int)len;
+    debug_buf[total++] = '\n';
+
+    ctx->platform_ops->udp_broadcast(ctx, ctx->debug_port,
+                                     debug_buf, (size_t)total);
+}
+
+void PT_DisableDebugBroadcast(PT_Context *pub_ctx)
+{
+    PT_Context_Internal *ctx = (PT_Context_Internal *)pub_ctx;
+    if (!ctx) return;
+
+    if (ctx->debug_port != 0) {
+        CLOG_INFO("Debug broadcast disabled");
+    }
+    ctx->debug_port = 0;
 }

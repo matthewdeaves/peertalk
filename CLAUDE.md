@@ -25,7 +25,7 @@ These 10 principles govern ALL implementation decisions. Full text: `.specify/me
 ## Project Structure
 
 ```
-include/peertalk.h          # Single public header (C89, 25 functions)
+include/peertalk.h          # Single public header (C89, 29 functions)
 src/core/                   # Platform-independent core
 src/platform/posix/         # BSD sockets + select()
 src/platform/mactcp/        # MacTCP async parameter blocks (68k)
@@ -74,6 +74,21 @@ PeerTalk sends automatic keepalive frames (type `PT_MSG_TYPE_KEEPALIVE` = 254) e
 - Receiver silently consumes keepalive (no callback registered, `TCPRcv` updates `last_tcp_activity`)
 - Type 254 is reserved — `PT_RegisterMessage` rejects it (like type 255/GOODBYE)
 
+### Debug Broadcast Channel
+
+PeerTalk provides a general-purpose UDP debug broadcast channel (no clog coupling — Principle VII). Apps wire clog or any other output into it if desired.
+
+- `PT_EnableDebugBroadcast(ctx, 0)` — enables on default port `PT_DEBUG_PORT` (7356). Pass non-zero to override.
+- `PT_DebugSend(ctx, msg, len)` — auto-prefixes `[name@ip] `, appends newline, broadcasts via UDP. No-op if disabled.
+- `PT_DisableDebugBroadcast(ctx)` — tears down cleanly, idempotent.
+- Uses a separate static buffer (not `udp_send_buf`) to avoid conflicts with `PT_Send` during callbacks.
+- `PT_SetName()` rebuilds the debug prefix automatically if broadcast is active.
+- Monitor with: `socat -u UDP-RECV:7356,reuseaddr -`
+
+### Peer Ranking
+
+`PT_GetPeerRank(ctx, peer)` returns the 0-based rank of a peer among all connected peers + self, sorted by IP address (lowest IP = rank 0). Pass `NULL` for `peer` to get the local machine's rank. Returns -1 on error. Uses internal `ip_addr` fields directly — no string parsing needed.
+
 ### MacTCP Poll Optimizations
 
 - **Listener counter**: `g_mactcp.listener_count` tracks active listeners via increment/decrement instead of scanning all 32 TCP streams at end of every `mactcp_poll()` call. O(1) vs O(32).
@@ -116,5 +131,6 @@ All design docs live in `specs/001-peertalk-sdk/`:
 - PeerTalk SDK, test_common.h framework
 
 ## Recent Changes
+- v1.9.0: Added `PT_GetPeerRank()` for deterministic IP-sort peer ranking (Bomberman player IDs, Chess turn order). Added debug broadcast channel (`PT_EnableDebugBroadcast`, `PT_DebugSend`, `PT_DisableDebugBroadcast`) — general-purpose UDP debug pipe with no clog coupling (Principle VII). Apps wire clog into it via a 3-line bridge. Port 7356 by default. 29 functions total, ~4,700 LOC.
 - v1.7.0 (011-disconnect-poll-hardening): Added PT_DisconnectAll(ctx) for clean lifecycle transitions. Hardened OT poll (OTRcv error logging, slot->owner re-read after ordrel drain) and MacTCP poll (stream state guard before TCPRcv, error logging on terminated drain).
 - TCP keepalive + poll optimizations: Automatic TCP keepalive frames (type 254, 20s interval) prevent inactivity timeout when apps use PT_FAST for frequent messages. MacTCP poll optimized: listener counter replaces 32-stream re-scan, pooled param blocks eliminate per-call memset, discovery packet cached at init.

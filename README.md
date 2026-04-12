@@ -4,12 +4,12 @@ A C networking SDK for LAN peer-to-peer communication between modern POSIX syste
 
 ## Features
 
-- **25-function C89 API** with a single public header (`peertalk.h`)
+- **29-function C89 API** with a single public header (`peertalk.h`)
 - **3 platform backends**: POSIX (BSD sockets), MacTCP (68k/PPC), Open Transport (PPC)
 - **Zero allocation after init** — all buffers pre-allocated in a single block
 - **Automatic peer discovery** via UDP broadcast
 - **Reliable (TCP) and fast (UDP)** message transports
-- **~4,300 lines of SDK code** across all platforms
+- **~4,700 lines of SDK code** across all platforms
 
 ## Supported Platforms
 
@@ -43,7 +43,7 @@ while (running) {
 PT_Shutdown(ctx);
 ```
 
-See [API Contract](specs/001-peertalk-sdk/contracts/peertalk-api.md) for the full 25-function reference.
+See [API Contract](specs/001-peertalk-sdk/contracts/peertalk-api.md) for the full 29-function reference.
 
 ## Prerequisites
 
@@ -98,7 +98,7 @@ target_link_libraries(myapp PRIVATE peertalk)
 ## Project Structure
 
 ```
-include/peertalk.h          # Single public header (C89, 25 functions)
+include/peertalk.h          # Single public header (C89, 29 functions)
 src/core/                   # Platform-independent core
 src/platform/posix/         # BSD sockets + select()
 src/platform/mactcp/        # MacTCP async parameter blocks

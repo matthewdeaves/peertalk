@@ -48,6 +48,7 @@
 #define PT_REASSEMBLY_TIMEOUT   5   /* seconds for chunk reassembly */
 
 #define PT_UDP_MTU_SAFE         1400 /* max fast message payload */
+#define PT_DEBUG_PORT           7356 /* default debug broadcast port */
 
 /* POSIX defaults */
 #define PT_DEFAULT_MAX_PEERS    32
@@ -242,6 +243,11 @@ typedef struct PT_Context_Internal {
     /* UDP send buffer (R48: moved from PT_Send stack to avoid
        68k stack overflow on Mac SE with ~8KB stack) */
     unsigned char udp_send_buf[PT_UDP_MTU_SAFE + PT_UDP_HEADER_SIZE];
+
+    /* Debug broadcast (Option C: network pipe, no clog coupling) */
+    unsigned short debug_port;       /* 0 = disabled */
+    char           debug_prefix[52]; /* "[name@255.255.255.255] " + NUL */
+    int            debug_prefix_len;
 } PT_Context_Internal;
 
 /* ------------------------------------------------------------------ */

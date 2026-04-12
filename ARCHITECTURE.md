@@ -7,12 +7,12 @@
 ```mermaid
 graph TB
     Dev["App Developer<br/><i>Games and chat apps</i>"]
-    SDK["<b>PeerTalk SDK</b><br/>C89 LAN peer-to-peer networking<br/>25 functions, 4,136 LOC"]
+    SDK["<b>PeerTalk SDK</b><br/>C89 LAN peer-to-peer networking<br/>29 functions, 4,720 LOC"]
     LAN["LAN<br/><i>Ethernet</i>"]
     Clog["clog<br/><i>Logging library</i>"]
 
     Dev -->|"links against"| SDK
-    SDK -->|"UDP :7353 :7355<br/>TCP :7354"| LAN
+    SDK -->|"UDP :7353 :7355 :7356<br/>TCP :7354"| LAN
     SDK -.->|"internal"| Clog
 
     style SDK fill:#1168bd,stroke:#0b4884,color:#fff
@@ -27,12 +27,12 @@ graph TB
 graph TB
     Dev["App Developer"]
 
-    subgraph SDK ["PeerTalk SDK — 4,136 LOC"]
-        API["<b>peertalk.h</b><br/>25 functions<br/><i>C89, 168 LOC</i>"]
-        Core["<b>Core Layer</b><br/>Discovery, messaging, memory<br/><i>C89, 1,692 LOC</i>"]
-        POSIX["<b>POSIX Backend</b><br/>BSD sockets + select()<br/><i>C89, 548 LOC</i>"]
-        MacTCP["<b>MacTCP Backend</b><br/>Async PBs + ASR flags<br/><i>C89, 995 LOC</i>"]
-        OT["<b>OT Backend</b><br/>Endpoints + notifiers<br/><i>C89, 1,028 LOC</i>"]
+    subgraph SDK ["PeerTalk SDK — 4,720 LOC"]
+        API["<b>peertalk.h</b><br/>29 functions<br/><i>C89, 179 LOC</i>"]
+        Core["<b>Core Layer</b><br/>Discovery, messaging, memory, debug<br/><i>C89, 1,892 LOC</i>"]
+        POSIX["<b>POSIX Backend</b><br/>BSD sockets + select()<br/><i>C89, 552 LOC</i>"]
+        MacTCP["<b>MacTCP Backend</b><br/>Async PBs + ASR flags<br/><i>C89, 1,051 LOC</i>"]
+        OT["<b>OT Backend</b><br/>Endpoints + notifiers<br/><i>C89, 1,046 LOC</i>"]
     end
 
     Dev --> API
@@ -53,12 +53,12 @@ graph TB
 
 ```mermaid
 graph LR
-    subgraph Core ["Core Layer — 1,674 LOC"]
-        ptcore["<b>pt_core.c</b><br/>669 LOC<br/><i>Lifecycle, peers, callbacks</i>"]
-        disc["<b>pt_discovery.c</b><br/>151 LOC<br/><i>UDP broadcast discovery</i>"]
-        msg["<b>pt_messaging.c</b><br/>356 LOC<br/><i>Framing, chunking, routing</i>"]
+    subgraph Core ["Core Layer — 1,892 LOC"]
+        ptcore["<b>pt_core.c</b><br/>848 LOC<br/><i>Lifecycle, peers, callbacks, debug</i>"]
+        disc["<b>pt_discovery.c</b><br/>156 LOC<br/><i>UDP broadcast discovery</i>"]
+        msg["<b>pt_messaging.c</b><br/>380 LOC<br/><i>Framing, chunking, routing</i>"]
         mem["<b>pt_memory.c</b><br/>203 LOC<br/><i>Single-block allocator</i>"]
-        internal["<b>pt_internal.h</b><br/>295 LOC<br/><i>Types, constants, vtable</i>"]
+        internal["<b>pt_internal.h</b><br/>305 LOC<br/><i>Types, constants, vtable</i>"]
     end
 
     ptcore --> disc

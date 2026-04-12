@@ -150,7 +150,7 @@ void PT_OnError(PT_Context *ctx, PT_ErrorCallback cb,
 PT_Status PT_SetName(PT_Context *ctx, const char *name);
 
 /* ------------------------------------------------------------------ */
-/* Peer info (5)                                                       */
+/* Peer info (7)                                                       */
 /* ------------------------------------------------------------------ */
 
 int              PT_GetPeerCount(const PT_Context *ctx);
@@ -161,6 +161,16 @@ const char      *PT_LocalAddress(const PT_Context *ctx); /* static buf, valid un
 PT_Status        PT_SendUDPBroadcast(PT_Context *ctx, unsigned short port,
                                      const void *data, size_t len);
 PT_PeerState     PT_GetPeerState(const PT_Peer *peer);
+int              PT_GetPeerRank(const PT_Context *ctx,
+                                const PT_Peer *peer);   /* NULL = local rank */
+
+/* ------------------------------------------------------------------ */
+/* Debug broadcast (3)                                                 */
+/* ------------------------------------------------------------------ */
+
+PT_Status PT_EnableDebugBroadcast(PT_Context *ctx, unsigned short port);
+void      PT_DebugSend(PT_Context *ctx, const char *msg, size_t len);
+void      PT_DisableDebugBroadcast(PT_Context *ctx);
 
 #ifdef __cplusplus
 }
