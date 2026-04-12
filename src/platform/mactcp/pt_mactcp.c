@@ -305,20 +305,7 @@ static void issue_udp_read(UDPStreamSlot *us, short driverRef)
     us->read_pb.ioCRefNum = driverRef;
     us->read_pb.udpStream = us->stream;
     us->read_pb.csCode = UDPRead;
-#ifdef __m68k__
-    /* 68k native MacTCP: infinite wait is fine — UDPRelease correctly
-     * cancels pending reads at shutdown. */
-    us->read_pb.csParam.receive.timeOut = 0;
-#else
-    /* PPC: MacTCP 2.1 is 68k code under the emulator. UDPRelease
-     * bus-errors when a UDPRead is pending (Mixed Mode issue).
-     * Use a finite timeout so reads expire naturally, allowing
-     * clean UDPRelease at shutdown.  The poll loop re-issues
-     * unconditionally on any completion (including timeout).
-     * MacTCP Programmer's Guide: "The minimum allowed value for
-     * the command time-out is 2 seconds." */
-    us->read_pb.csParam.receive.timeOut = 2;
-#endif
+    us->read_pb.csParam.receive.timeOut = 0;  /* infinite -- UDPRelease cancels */
     us->read_pb.ioCompletion = NULL;
 
     PBControlAsync((ParmBlkPtr)&us->read_pb);
@@ -464,58 +451,10 @@ fail_upps:
 static void mactcp_release_udp_stream(UDPStreamSlot *us, UDPiopb *upb,
                                      const char *label)
 {
-    int safe;
-
-#ifdef __m68k__
-    /* 68k native MacTCP: UDPRelease correctly cancels pending reads.
-     * Always release — skipping corrupts driver state (persists across
-     * app launches on System 6) and crashes on next network use. */
-    safe = 1;
-#else
-    /* PPC: MacTCP 2.1 is 68k code under the emulator. UDPRelease
-     * bus-errors with pending reads (Mixed Mode issue).  Wait for the
-     * finite-timeout read (timeOut=2 in issue_udp_read) to expire so
-     * we can release cleanly.  MacTCP Programmer's Guide: "UDPRelease
-     * closes a UDP stream. Any outstanding commands on that stream are
-     * terminated with an error." — but this only works on native 68k. */
-    if (us->read_pending && us->read_pb.ioResult == inProgress) {
-        long timeout = TickCount() + 150; /* 2.5 sec: covers 2-sec UDP timeout + margin */
-        CLOG_INFO("  %s UDP: waiting for read timeout", label);
-        while (us->read_pb.ioResult == inProgress &&
-               TickCount() < timeout) {
-            /* spin */
-        }
-        if (us->read_pb.ioResult != inProgress) {
-            CLOG_INFO("  %s UDP: read expired, result=%d",
-                       label, (int)us->read_pb.ioResult);
-        }
-    }
-    safe = !us->read_pending ||
-           us->read_pb.ioResult != inProgress;
-    if (!safe) {
-        CLOG_ERR("  %s UDP: read still pending after timeout wait — "
-                 "skipping release (driver holds dangling refs)", label);
-        return;
-    }
-#endif
-
-    /* Return any received buffer before releasing the stream.
-     * MacTCP Programmer's Guide: UDPBfrReturn "returns a receive
-     * buffer to the UDP driver" — must be called before UDPRelease
-     * when a completed read delivered data. */
-    if (us->read_pending &&
-        us->read_pb.ioResult == noErr &&
-        us->stream) {
-        g_mactcp.bfr_ret_pb.udpStream = us->stream;
-        g_mactcp.bfr_ret_pb.csParam.receive.rcvBuff =
-            us->read_pb.csParam.receive.rcvBuff;
-        PBControlSync((ParmBlkPtr)&g_mactcp.bfr_ret_pb);
-    }
-
-    /* Release the UDP stream — on 68k this also cancels pending reads.
-     * MacTCP Programmer's Guide: "Before UDPRelease is called, you must
-     * make sure that all pending UDPWrite commands have been completed."
-     * UDPWrite is synchronous (PBControlSync) so no writes are pending. */
+    /* UDPRelease cancels pending reads per MacTCP Programmer's Guide
+     * line 1422: "Any outstanding commands on that stream are terminated
+     * with an error."  With cleanup_streams ensuring clean state before
+     * rediscovery, the old PPC-specific wait path is unnecessary. */
     if (us->stream) {
         memset(upb, 0, sizeof(*upb));
         upb->ioCRefNum = g_mactcp.driver_ref;
@@ -525,74 +464,30 @@ static void mactcp_release_udp_stream(UDPStreamSlot *us, UDPiopb *upb,
         CLOG_DEBUG("  %s UDP: release result=%d", label, (int)upb->ioResult);
     }
 
-#ifdef __m68k__
-    /* On 68k, spin-wait for the pending read to settle after release.
-     * UDPRelease terminates outstanding commands (per Programmer's Guide)
-     * but the ioResult update may lag by a few ticks. */
-    if (us->read_pending && us->read_pb.ioResult == inProgress) {
-        long timeout = TickCount() + 30; /* 0.5 sec */
-        while (us->read_pb.ioResult == inProgress &&
-               TickCount() < timeout) {
-            /* spin */
-        }
-        CLOG_DEBUG("  %s UDP: read settled, result=%d",
-                   label, (int)us->read_pb.ioResult);
-    }
-#endif
-
     if (us->buffer) {
         DisposePtr(us->buffer);
     }
     CLOG_DEBUG("  %s UDP: released", label);
 }
 
-static void mactcp_shutdown(PT_Context_Internal *ctx)
+/* ------------------------------------------------------------------ */
+/* Stream cleanup for rediscovery                                      */
+/* ------------------------------------------------------------------ */
+
+static void mactcp_cleanup_streams(PT_Context_Internal *ctx)
 {
     int i;
     TCPiopb pb;
     UDPiopb upb;
 
-    CLOG_INFO("MacTCP shutdown: TCP phase 1 (abort)");
+    (void)ctx;
 
-    /* ---- TCP shutdown: abort all first, then wait, then release ---- */
+    CLOG_INFO("Cleaning up streams for rediscovery");
 
-    /* Phase 1: TCPAbort every stream.  This cancels any pending
-     * PassiveOpen, ActiveOpen, or TCPSend and causes their ioResult
-     * to transition out of inProgress. */
-    for (i = 0; i < MAX_TCP_STREAMS; i++) {
-        TCPStreamSlot *ts = &g_mactcp.tcp_streams[i];
-        if (ts->stream) {
-            memset(&pb, 0, sizeof(pb));
-            pb.ioCRefNum = g_mactcp.driver_ref;
-            pb.tcpStream = ts->stream;
-            pb.csCode = TCPAbort;
-            PBControlSync((ParmBlkPtr)&pb);
-            CLOG_DEBUG("  TCP stream %d abort: result=%d state=%d",
-                       i, (int)pb.ioResult, ts->state);
-        }
-    }
-
-    CLOG_INFO("MacTCP shutdown: TCP phase 2 (wait)");
-
-    /* Phase 2: Wait for ALL async param blocks to settle on every stream.
-     * Even though sends are synchronous, abort_stream() during
-     * PT_Shutdown's disconnect loop may leave the stream in a state where
-     * MacTCP deferred tasks still reference it.  Give them time. */
-    for (i = 0; i < MAX_TCP_STREAMS; i++) {
-        const TCPStreamSlot *ts = &g_mactcp.tcp_streams[i];
-        if (ts->stream) {
-            long timeout_ticks = TickCount() + 30; /* 0.5 sec */
-            while ((ts->open_pb.ioResult == inProgress ||
-                    ts->send_pb.ioResult == inProgress) &&
-                   TickCount() < timeout_ticks) {
-                /* spin */
-            }
-        }
-    }
-
-    CLOG_INFO("MacTCP shutdown: TCP phase 3 (release)");
-
-    /* Phase 3: Release streams and free buffers */
+    /* TCP: TCPRelease each stream, then recreate fresh.
+     * TCPRelease does implicit abort per MacTCP docs line 4012.
+     * Buffer ownership returns to us (line 2440) -- reuse for
+     * fresh TCPCreate (zero allocation per Principle V). */
     for (i = 0; i < MAX_TCP_STREAMS; i++) {
         TCPStreamSlot *ts = &g_mactcp.tcp_streams[i];
         if (ts->stream) {
@@ -601,41 +496,84 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
             pb.tcpStream = ts->stream;
             pb.csCode = TCPRelease;
             PBControlSync((ParmBlkPtr)&pb);
-            CLOG_DEBUG("  TCP stream %d release: result=%d", i, (int)pb.ioResult);
+            /* Buffer returned -- reuse for fresh stream */
+            ts->stream = create_tcp_stream(g_mactcp.driver_ref,
+                                           ts->buffer, TCP_BUF_SIZE,
+                                           g_mactcp.tcp_upp, (Ptr)ts);
+            ts->state = STREAM_FREE;
+            ts->owner = NULL;
+            ts->flags = 0;
+            ts->send_pending = 0;
+        }
+    }
+    g_mactcp.listener_count = 0;
+    g_mactcp.listen_active = 0;
+
+    /* UDP: UDPRelease cancels pending reads per MacTCP docs line 1422.
+     * Buffer ownership returns to us (line 1424) -- reuse for
+     * fresh UDPCreate (zero allocation per Principle V). */
+    if (g_mactcp.discovery_udp.stream) {
+        memset(&upb, 0, sizeof(upb));
+        upb.ioCRefNum = g_mactcp.driver_ref;
+        upb.udpStream = g_mactcp.discovery_udp.stream;
+        upb.csCode = UDPRelease;
+        PBControlSync((ParmBlkPtr)&upb);
+        g_mactcp.discovery_udp.read_pending = 0;
+        g_mactcp.discovery_udp.stream = create_udp_stream(
+            g_mactcp.driver_ref, g_mactcp.discovery_udp.buffer,
+            UDP_BUF_SIZE, g_mactcp.udp_upp,
+            (Ptr)&g_mactcp.discovery_udp, PT_DISCOVERY_PORT);
+    }
+
+    if (g_mactcp.message_udp.stream) {
+        memset(&upb, 0, sizeof(upb));
+        upb.ioCRefNum = g_mactcp.driver_ref;
+        upb.udpStream = g_mactcp.message_udp.stream;
+        upb.csCode = UDPRelease;
+        PBControlSync((ParmBlkPtr)&upb);
+        g_mactcp.message_udp.read_pending = 0;
+        g_mactcp.message_udp.stream = create_udp_stream(
+            g_mactcp.driver_ref, g_mactcp.message_udp.buffer,
+            UDP_BUF_SIZE, g_mactcp.udp_upp,
+            (Ptr)&g_mactcp.message_udp, PT_UDP_MSG_PORT);
+    }
+
+    CLOG_INFO("Stream cleanup complete");
+}
+
+static void mactcp_shutdown(PT_Context_Internal *ctx)
+{
+    int i;
+    TCPiopb pb;
+    UDPiopb upb;
+
+    /* TCP: TCPRelease each stream (does implicit abort if connected).
+     * MacTCP Programmer's Guide line 4012: "If there is an open
+     * connection on the stream, the connection is first broken as
+     * though a TCPAbort command had been issued." */
+    for (i = 0; i < MAX_TCP_STREAMS; i++) {
+        TCPStreamSlot *ts = &g_mactcp.tcp_streams[i];
+        if (ts->stream) {
+            memset(&pb, 0, sizeof(pb));
+            pb.ioCRefNum = g_mactcp.driver_ref;
+            pb.tcpStream = ts->stream;
+            pb.csCode = TCPRelease;
+            PBControlSync((ParmBlkPtr)&pb);
         }
         if (ts->buffer) {
             DisposePtr(ts->buffer);
         }
     }
 
-    /* ---- UDP shutdown ----
-     *
-     * Platform-specific handling for pending UDPRead:
-     *
-     * 68k (native MacTCP): UDPRelease correctly cancels pending reads
-     * per MacTCP Programmer's Guide ("Any outstanding commands on that
-     * stream are terminated with an error").  Call UDPRelease, spin-wait
-     * for read_pb.ioResult to settle, then DisposePtr.
-     *
-     * PPC (MacTCP 2.1 under 68k emulator): UDPRelease bus-errors when
-     * UDPRead is pending (Mixed Mode issue).  Fix: issue_udp_read uses
-     * timeOut=2 on PPC (MacTCP minimum), so reads expire naturally.
-     * mactcp_release_udp_stream waits for expiry before releasing. */
-
-    CLOG_INFO("MacTCP shutdown: UDP discovery cleanup");
+    /* UDP: UDPRelease cancels pending reads per MacTCP docs */
     mactcp_release_udp_stream(&g_mactcp.discovery_udp, &upb, "Discovery");
-
-    CLOG_INFO("MacTCP shutdown: UDP message cleanup");
     mactcp_release_udp_stream(&g_mactcp.message_udp, &upb, "Message");
 
-    CLOG_INFO("MacTCP shutdown: disposing UPPs");
-
-    /* Dispose UPPs only after ALL async operations are complete */
+    /* Dispose UPPs after all async operations complete */
     if (g_mactcp.tcp_upp) DisposeTCPNotifyUPP(g_mactcp.tcp_upp);
     if (g_mactcp.udp_upp) DisposeUDPNotifyUPP(g_mactcp.udp_upp);
 
-    CLOG_INFO("MacTCP shutdown complete");
-
+    CLOG_INFO("PeerTalk shutdown complete");
     ctx->platform_state = NULL;
 }
 
@@ -1101,7 +1039,8 @@ static PT_PlatformOps mactcp_ops = {
     mactcp_tcp_connect,
     mactcp_tcp_send,
     mactcp_tcp_disconnect,
-    mactcp_poll
+    mactcp_poll,
+    mactcp_cleanup_streams
 };
 
 PT_PlatformOps *mactcp_get_ops(void)

@@ -125,6 +125,7 @@ typedef struct PT_PlatformOps {
     void      (*tcp_disconnect)(struct PT_Context_Internal *ctx,
                                 struct PT_Peer_Internal *peer);
     void      (*poll)(struct PT_Context_Internal *ctx);
+    void      (*cleanup_streams)(struct PT_Context_Internal *ctx);
 } PT_PlatformOps;
 
 /* ------------------------------------------------------------------ */

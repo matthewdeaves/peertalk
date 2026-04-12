@@ -540,7 +540,8 @@ static PT_PlatformOps posix_ops = {
     posix_tcp_connect,
     posix_tcp_send,
     posix_tcp_disconnect,
-    posix_poll
+    posix_poll,
+    NULL    /* cleanup_streams: POSIX sockets don't need explicit cleanup */
 };
 
 PT_PlatformOps *posix_get_ops(void)

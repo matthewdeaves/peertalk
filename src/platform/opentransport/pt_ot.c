@@ -1007,7 +1007,8 @@ static PT_PlatformOps ot_ops = {
     ot_tcp_connect,
     ot_tcp_send,
     ot_tcp_disconnect,
-    ot_poll
+    ot_poll,
+    NULL    /* cleanup_streams: OT handles stream reuse natively */
 };
 
 PT_PlatformOps *ot_get_ops(void)

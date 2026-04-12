@@ -412,6 +412,17 @@ PT_Status PT_StartDiscovery(PT_Context *pub_ctx)
 
     if (!ctx) return PT_ERR_INVALID_ARG;
 
+    /* If rediscovering after a previous session, release old streams
+     * and create fresh ones.  MacTCP requires explicit TCPRelease/
+     * UDPRelease before reusing stream slots -- aborted-but-not-released
+     * streams corrupt the driver's internal state on PPC.
+     * Ref: MacTCP Programmer's Guide (1989) line 1853:
+     * "UDP Release must be called to release memory held by the driver.
+     *  Failure to do so may produce unpredictable results." */
+    if (ctx->discovery_listening && ctx->platform_ops->cleanup_streams) {
+        ctx->platform_ops->cleanup_streams(ctx);
+    }
+
     ctx->discovery_active = 1;
     ctx->discovery_listening = 1;
     ctx->discovery_timer = 0;
