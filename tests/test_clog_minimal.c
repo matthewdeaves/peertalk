@@ -18,6 +18,7 @@ int main(void)
 #if !defined(PT_PLATFORM_POSIX)
     /* Redirect clog to file on Classic Mac */
     clog_set_file("PT_Log");
+    clog_set_flush(CLOG_FLUSH_ALL);
 #endif
 
     clog_init("clog_test", CLOG_LVL_INFO);

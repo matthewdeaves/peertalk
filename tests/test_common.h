@@ -129,6 +129,7 @@ static void test_init_logging(const char *app_name)
         }
         logname[3 + i] = '\0';
         clog_set_file(logname);
+        clog_set_flush(CLOG_FLUSH_ALL);
     }
 #endif
     clog_init(app_name, CLOG_LVL_INFO);

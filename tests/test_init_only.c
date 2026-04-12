@@ -52,6 +52,7 @@ int main(void)
 
     /* Step 3: clog to file */
     clog_set_file("PT_Log");
+    clog_set_flush(CLOG_FLUSH_ALL);
     clog_init("test_init", CLOG_LVL_INFO);
 
     CLOG_INFO("=== test_init_only starting ===");
