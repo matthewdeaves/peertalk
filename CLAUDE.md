@@ -104,16 +104,17 @@ PeerTalk sends automatic keepalive frames (type `PT_MSG_TYPE_KEEPALIVE` = 254) e
 All design docs live in `specs/001-peertalk-sdk/`:
 - `spec.md` — requirements and user stories
 - `tasks.md` — 148 tasks across 26 phases (147 complete)
-- `contracts/peertalk-api.md` — 23-function public API contract
+- `contracts/peertalk-api.md` — 25-function public API contract
 - `research.md` — platform research decisions (R1-R46)
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
 
 ## Active Technologies
-- C89/C90 (SDK), C11 (POSIX test apps) + clog (logging), MacTCP (68k), Open Transport (PPC), BSD sockets (POSIX) (003-sdk-stability)
-- C11 (test apps), C89 (SDK unchanged) + PeerTalk SDK, clog, test_common.h framework (008-test-coverage)
+- C89/C90 (SDK), C11 (POSIX test apps)
+- clog (logging), MacTCP (68k), Open Transport (PPC), BSD sockets (POSIX)
+- PeerTalk SDK, test_common.h framework
 
 ## Recent Changes
+- v1.7.0 (011-disconnect-poll-hardening): Added PT_DisconnectAll(ctx) for clean lifecycle transitions. Hardened OT poll (OTRcv error logging, slot->owner re-read after ordrel drain) and MacTCP poll (stream state guard before TCPRcv, error logging on terminated drain).
 - TCP keepalive + poll optimizations: Automatic TCP keepalive frames (type 254, 20s interval) prevent inactivity timeout when apps use PT_FAST for frequent messages. MacTCP poll optimized: listener counter replaces 32-stream re-scan, pooled param blocks eliminate per-call memset, discovery packet cached at init.
-- 003-sdk-stability: Added C89/C90 (SDK), C11 (POSIX test apps) + clog (logging), MacTCP (68k), Open Transport (PPC), BSD sockets (POSIX)

@@ -82,13 +82,14 @@ typedef void (*PT_MessageCallback)(
 );
 
 typedef void (*PT_ErrorCallback)(
+    PT_Peer *peer,
     PT_Status error,
     const char *description,
     void *user_data
 );
 ```
 
-## Functions (23 total)
+## Functions (25 total)
 
 ### Lifecycle (2)
 
@@ -270,7 +271,7 @@ PT_Status PT_SetName(PT_Context *ctx, const char *name);
 - The next discovery broadcast will advertise the new name
 - Does not allocate memory
 
-### Peer Info (5)
+### Peer Info (7)
 
 ```c
 int PT_GetPeerCount(PT_Context *ctx);
@@ -296,7 +297,22 @@ const char *PT_PeerAddress(PT_Peer *peer);
 - The string is stored in the peer's internal buffer (valid for the peer's lifetime)
 
 ```c
-PT_PeerState PT_GetPeerState(PT_Peer *peer);
+const char *PT_LocalAddress(const PT_Context *ctx);
+```
+- Returns the local peer's IP address as a dotted-quad string
+- Returns empty string if ctx is NULL
+- The string is stored in a static internal buffer (valid until next call)
+
+```c
+PT_Status PT_SendUDPBroadcast(PT_Context *ctx, unsigned short port,
+                              const void *data, size_t len);
+```
+- Sends a raw UDP broadcast to the specified port
+- Used for application-level broadcast (e.g., clog UDP sink)
+- Returns: PT_OK on success, PT_ERR_INVALID_ARG if ctx/data is NULL
+
+```c
+PT_PeerState PT_GetPeerState(const PT_Peer *peer);
 ```
 - Returns the peer's current state
 
