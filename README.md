@@ -79,7 +79,6 @@ FetchContent_Declare(clog
 )
 set(CLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(clog)
-set(CLOG_LIB clog CACHE FILEPATH "" FORCE)
 
 FetchContent_Declare(peertalk
     GIT_REPOSITORY https://github.com/matthewdeaves/peertalk.git

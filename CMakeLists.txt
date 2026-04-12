@@ -19,10 +19,9 @@ endif()
 message(STATUS "PeerTalk platform: ${PT_PLATFORM}")
 
 # --- clog dependency ---
-# When used as a subdirectory, the parent project can pre-set CLOG_LIB
-# as a cache variable pointing to the clog CMake target (bypasses find_library).
+# If the clog target already exists (parent project set it up), use it.
 # Otherwise: use local dir if provided, or fetch from GitHub.
-if(NOT DEFINED CLOG_LIB)
+if(NOT TARGET clog)
     if(NOT DEFINED CLOG_DIR AND DEFINED ENV{CLOG_DIR})
         set(CLOG_DIR "$ENV{CLOG_DIR}")
     endif()
@@ -31,7 +30,7 @@ if(NOT DEFINED CLOG_LIB)
         message(STATUS "Using local clog: ${CLOG_DIR}")
         set(CLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
         add_subdirectory(${CLOG_DIR} ${CMAKE_BINARY_DIR}/clog)
-    elseif(NOT TARGET clog)
+    else()
         message(STATUS "Fetching clog from GitHub")
         FetchContent_Declare(clog
             GIT_REPOSITORY https://github.com/matthewdeaves/clog.git
@@ -41,7 +40,6 @@ if(NOT DEFINED CLOG_LIB)
         set(CLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
         FetchContent_MakeAvailable(clog)
     endif()
-    set(CLOG_LIB clog)
 endif()
 
 # Core source files (always compiled)
@@ -85,7 +83,7 @@ if(PT_PLATFORM STREQUAL "MACTCP" OR PT_PLATFORM STREQUAL "OT")
 endif()
 
 # Link clog (target or pre-set cache variable from parent project)
-target_link_libraries(peertalk PRIVATE ${CLOG_LIB})
+target_link_libraries(peertalk PRIVATE clog)
 
 # OT needs both the application-level wrappers and the core library,
 # plus the internet provider library. Library names differ by architecture.
@@ -132,14 +130,14 @@ if(PT_PLATFORM STREQUAL "POSIX")
         target_compile_definitions(${TEST_APP} PRIVATE ${PLATFORM_DEFINE})
         set_target_properties(${TEST_APP} PROPERTIES C_STANDARD 11)
         target_compile_options(${TEST_APP} PRIVATE -Wall -Wextra)
-        target_link_libraries(${TEST_APP} PRIVATE peertalk ${CLOG_LIB})
+        target_link_libraries(${TEST_APP} PRIVATE peertalk clog)
     endforeach()
 
     # Minimal clog test (no peertalk dependency)
     add_executable(test_clog_minimal tests/test_clog_minimal.c)
     target_compile_definitions(test_clog_minimal PRIVATE ${PLATFORM_DEFINE})
     set_target_properties(test_clog_minimal PROPERTIES C_STANDARD 11)
-    target_link_libraries(test_clog_minimal PRIVATE ${CLOG_LIB})
+    target_link_libraries(test_clog_minimal PRIVATE clog)
 
 endif()
 
@@ -150,7 +148,7 @@ if(PT_PLATFORM STREQUAL "MACTCP" OR PT_PLATFORM STREQUAL "OT")
         add_application(${TEST_APP} tests/${TEST_APP}.c tests/status_window.c tests/peertalk_size.r)
         target_include_directories(${TEST_APP} PRIVATE include tests)
         target_compile_definitions(${TEST_APP} PRIVATE ${PLATFORM_DEFINE})
-        target_link_libraries(${TEST_APP} PRIVATE peertalk ${CLOG_LIB})
+        target_link_libraries(${TEST_APP} PRIVATE peertalk clog)
         if(PT_PLATFORM STREQUAL "OT")
             if(OT_APP_LIB)
                 target_link_libraries(${TEST_APP} PRIVATE ${OT_APP_LIB})
@@ -171,7 +169,7 @@ if(PT_PLATFORM STREQUAL "MACTCP" OR PT_PLATFORM STREQUAL "OT")
     add_application(test_init_only tests/test_init_only.c tests/peertalk_size.r)
     target_include_directories(test_init_only PRIVATE include tests)
     target_compile_definitions(test_init_only PRIVATE ${PLATFORM_DEFINE})
-    target_link_libraries(test_init_only PRIVATE peertalk ${CLOG_LIB})
+    target_link_libraries(test_init_only PRIVATE peertalk clog)
     if(PT_PLATFORM STREQUAL "OT")
         if(OT_APP_LIB)
             target_link_libraries(test_init_only PRIVATE ${OT_APP_LIB})
@@ -190,6 +188,6 @@ if(PT_PLATFORM STREQUAL "MACTCP" OR PT_PLATFORM STREQUAL "OT")
     # Minimal clog test (no peertalk dependency, no OT/MacTCP linkage)
     add_application(test_clog_minimal tests/test_clog_minimal.c tests/peertalk_size.r)
     target_compile_definitions(test_clog_minimal PRIVATE ${PLATFORM_DEFINE})
-    target_link_libraries(test_clog_minimal PRIVATE ${CLOG_LIB})
+    target_link_libraries(test_clog_minimal PRIVATE clog)
 
 endif()
