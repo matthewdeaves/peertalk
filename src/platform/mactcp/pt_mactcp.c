@@ -305,7 +305,20 @@ static void issue_udp_read(UDPStreamSlot *us, short driverRef)
     us->read_pb.ioCRefNum = driverRef;
     us->read_pb.udpStream = us->stream;
     us->read_pb.csCode = UDPRead;
+#ifdef __m68k__
+    /* 68k native MacTCP: infinite wait is fine — UDPRelease correctly
+     * cancels pending reads at shutdown. */
     us->read_pb.csParam.receive.timeOut = 0;
+#else
+    /* PPC: MacTCP 2.1 is 68k code under the emulator. UDPRelease
+     * bus-errors when a UDPRead is pending (Mixed Mode issue).
+     * Use a finite timeout so reads expire naturally, allowing
+     * clean UDPRelease at shutdown.  The poll loop re-issues
+     * unconditionally on any completion (including timeout).
+     * MacTCP Programmer's Guide: "The minimum allowed value for
+     * the command time-out is 2 seconds." */
+    us->read_pb.csParam.receive.timeOut = 2;
+#endif
     us->read_pb.ioCompletion = NULL;
 
     PBControlAsync((ParmBlkPtr)&us->read_pb);
@@ -459,18 +472,37 @@ static void mactcp_release_udp_stream(UDPStreamSlot *us, UDPiopb *upb,
      * app launches on System 6) and crashes on next network use. */
     safe = 1;
 #else
-    /* PPC MacTCP shim: UDPRelease bus-errors with pending UDPRead.
-     * Only release if no read is pending. */
+    /* PPC: MacTCP 2.1 is 68k code under the emulator. UDPRelease
+     * bus-errors with pending reads (Mixed Mode issue).  Wait for the
+     * finite-timeout read (timeOut=2 in issue_udp_read) to expire so
+     * we can release cleanly.  MacTCP Programmer's Guide: "UDPRelease
+     * closes a UDP stream. Any outstanding commands on that stream are
+     * terminated with an error." — but this only works on native 68k. */
+    if (us->read_pending && us->read_pb.ioResult == inProgress) {
+        long timeout = TickCount() + 150; /* 2.5 sec: covers 2-sec UDP timeout + margin */
+        CLOG_INFO("  %s UDP: waiting for read timeout", label);
+        while (us->read_pb.ioResult == inProgress &&
+               TickCount() < timeout) {
+            /* spin */
+        }
+        if (us->read_pb.ioResult != inProgress) {
+            CLOG_INFO("  %s UDP: read expired, result=%d",
+                       label, (int)us->read_pb.ioResult);
+        }
+    }
     safe = !us->read_pending ||
            us->read_pb.ioResult != inProgress;
-#endif
-
     if (!safe) {
-        CLOG_WARN("  %s UDP: skipped release (read pending)", label);
+        CLOG_ERR("  %s UDP: read still pending after timeout wait — "
+                 "skipping release (driver holds dangling refs)", label);
         return;
     }
+#endif
 
-    /* Return any received buffer before releasing the stream */
+    /* Return any received buffer before releasing the stream.
+     * MacTCP Programmer's Guide: UDPBfrReturn "returns a receive
+     * buffer to the UDP driver" — must be called before UDPRelease
+     * when a completed read delivered data. */
     if (us->read_pending &&
         us->read_pb.ioResult == noErr &&
         us->stream) {
@@ -480,7 +512,10 @@ static void mactcp_release_udp_stream(UDPStreamSlot *us, UDPiopb *upb,
         PBControlSync((ParmBlkPtr)&g_mactcp.bfr_ret_pb);
     }
 
-    /* Release the UDP stream — on 68k this also cancels pending reads */
+    /* Release the UDP stream — on 68k this also cancels pending reads.
+     * MacTCP Programmer's Guide: "Before UDPRelease is called, you must
+     * make sure that all pending UDPWrite commands have been completed."
+     * UDPWrite is synchronous (PBControlSync) so no writes are pending. */
     if (us->stream) {
         memset(upb, 0, sizeof(*upb));
         upb->ioCRefNum = g_mactcp.driver_ref;
@@ -491,7 +526,9 @@ static void mactcp_release_udp_stream(UDPStreamSlot *us, UDPiopb *upb,
     }
 
 #ifdef __m68k__
-    /* On 68k, spin-wait for the pending read to settle after release */
+    /* On 68k, spin-wait for the pending read to settle after release.
+     * UDPRelease terminates outstanding commands (per Programmer's Guide)
+     * but the ioResult update may lag by a few ticks. */
     if (us->read_pending && us->read_pb.ioResult == inProgress) {
         long timeout = TickCount() + 30; /* 0.5 sec */
         while (us->read_pb.ioResult == inProgress &&
@@ -575,14 +612,15 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
      *
      * Platform-specific handling for pending UDPRead:
      *
-     * 68k (native MacTCP): UDPRelease correctly cancels pending reads.
-     * Call UDPRelease, spin-wait for read_pb.ioResult to leave inProgress,
-     * then DisposePtr.  Skipping release corrupts MacTCP driver state
-     * (persists across app launches) and crashes on next network use.
+     * 68k (native MacTCP): UDPRelease correctly cancels pending reads
+     * per MacTCP Programmer's Guide ("Any outstanding commands on that
+     * stream are terminated with an error").  Call UDPRelease, spin-wait
+     * for read_pb.ioResult to settle, then DisposePtr.
      *
-     * PPC (MacTCP shim): UDPRelease bus-errors when UDPRead is pending.
-     * No UDPAbort exists.  Skip release entirely — ExitToShell reclaims
-     * everything and PPC apps get a fresh MacTCP state. */
+     * PPC (MacTCP 2.1 under 68k emulator): UDPRelease bus-errors when
+     * UDPRead is pending (Mixed Mode issue).  Fix: issue_udp_read uses
+     * timeOut=2 on PPC (MacTCP minimum), so reads expire naturally.
+     * mactcp_release_udp_stream waits for expiry before releasing. */
 
     CLOG_INFO("MacTCP shutdown: UDP discovery cleanup");
     mactcp_release_udp_stream(&g_mactcp.discovery_udp, &upb, "Discovery");
