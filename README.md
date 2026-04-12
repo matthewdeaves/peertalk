@@ -9,7 +9,7 @@ A C networking SDK for LAN peer-to-peer communication between modern POSIX syste
 - **Zero allocation after init** — all buffers pre-allocated in a single block
 - **Automatic peer discovery** via UDP broadcast
 - **Reliable (TCP) and fast (UDP)** message transports
-- **~4,100 lines of SDK code** across all platforms
+- **~4,300 lines of SDK code** across all platforms
 
 ## Supported Platforms
 
