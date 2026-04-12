@@ -7,7 +7,7 @@
 ```mermaid
 graph TB
     Dev["App Developer<br/><i>Games and chat apps</i>"]
-    SDK["<b>PeerTalk SDK</b><br/>C89 LAN peer-to-peer networking<br/>24 functions, 4,136 LOC"]
+    SDK["<b>PeerTalk SDK</b><br/>C89 LAN peer-to-peer networking<br/>25 functions, 4,136 LOC"]
     LAN["LAN<br/><i>Ethernet</i>"]
     Clog["clog<br/><i>Logging library</i>"]
 
@@ -28,7 +28,7 @@ graph TB
     Dev["App Developer"]
 
     subgraph SDK ["PeerTalk SDK — 4,136 LOC"]
-        API["<b>peertalk.h</b><br/>24 functions<br/><i>C89, 168 LOC</i>"]
+        API["<b>peertalk.h</b><br/>25 functions<br/><i>C89, 168 LOC</i>"]
         Core["<b>Core Layer</b><br/>Discovery, messaging, memory<br/><i>C89, 1,692 LOC</i>"]
         POSIX["<b>POSIX Backend</b><br/>BSD sockets + select()<br/><i>C89, 548 LOC</i>"]
         MacTCP["<b>MacTCP Backend</b><br/>Async PBs + ASR flags<br/><i>C89, 995 LOC</i>"]
