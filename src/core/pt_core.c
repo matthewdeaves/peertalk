@@ -480,6 +480,28 @@ void PT_Disconnect(PT_Context *pub_ctx, PT_Peer *pub_peer)
     pt_handle_peer_disconnect(ctx, peer, PT_QUIT);
 }
 
+void PT_DisconnectAll(PT_Context *pub_ctx)
+{
+    PT_Context_Internal *ctx = (PT_Context_Internal *)pub_ctx;
+    int i;
+    int count = 0;
+
+    if (!ctx) return;
+
+    for (i = 0; i < ctx->max_peers; i++) {
+        if (ctx->peers[i].in_use &&
+            ctx->peers[i].state == PT_PEER_CONNECTED) {
+            send_goodbye(ctx, &ctx->peers[i]);
+            pt_handle_peer_disconnect(ctx, &ctx->peers[i], PT_QUIT);
+            count++;
+        }
+    }
+
+    if (count > 0) {
+        CLOG_INFO("Disconnected all peers (%d)", count);
+    }
+}
+
 /* ------------------------------------------------------------------ */
 /* Public API: Messaging (stubs -- implemented in pt_messaging.c)      */
 /* ------------------------------------------------------------------ */

@@ -95,11 +95,12 @@ PT_Status PT_StartDiscovery(PT_Context *ctx);
 void      PT_StopDiscovery(PT_Context *ctx);
 
 /* ------------------------------------------------------------------ */
-/* Connections (2)                                                     */
+/* Connections (3)                                                     */
 /* ------------------------------------------------------------------ */
 
 PT_Status PT_Connect(PT_Context *ctx, PT_Peer *peer);
 void      PT_Disconnect(PT_Context *ctx, PT_Peer *peer);
+void      PT_DisconnectAll(PT_Context *ctx);
 
 /* ------------------------------------------------------------------ */
 /* Messaging (3)                                                       */
