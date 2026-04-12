@@ -895,7 +895,10 @@ static void ot_poll(PT_Context_Internal *ctx)
                                   peer->tcp_recv_buf +
                                       peer->tcp_recv_len,
                                   (OTByteCount)space, &rflags);
-                    if (nread > 0) {
+                    if (nread < 0) {
+                        CLOG_DEBUG("OTRcv error %ld in disconnect drain",
+                                   (long)nread);
+                    } else if (nread > 0) {
                         peer->tcp_recv_len += (size_t)nread;
                     }
                 }
@@ -930,7 +933,10 @@ static void ot_poll(PT_Context_Internal *ctx)
                                   peer->tcp_recv_buf +
                                       peer->tcp_recv_len,
                                   (OTByteCount)space, &rflags);
-                    if (nread > 0) {
+                    if (nread < 0) {
+                        CLOG_DEBUG("OTRcv error %ld in ordrel drain",
+                                   (long)nread);
+                    } else if (nread > 0) {
                         peer->tcp_recv_len += (size_t)nread;
                     }
                 }
@@ -942,6 +948,9 @@ static void ot_poll(PT_Context_Internal *ctx)
             OTRcvOrderlyDisconnect(slot->ep);
             OTSndOrderlyDisconnect(slot->ep);
 
+            /* Re-read owner — drain may have processed a goodbye frame
+               that triggered pt_handle_peer_disconnect (R4). */
+            peer = slot->owner;
             if (peer && peer->state == PT_PEER_CONNECTED) {
                 pt_handle_peer_disconnect(ctx, peer,
                                           PT_DISCONNECT_ERROR);
@@ -966,7 +975,10 @@ static void ot_poll(PT_Context_Internal *ctx)
                     nread = OTRcv(slot->ep,
                                   peer->tcp_recv_buf + peer->tcp_recv_len,
                                   (OTByteCount)space, &rflags);
-                    if (nread > 0) {
+                    if (nread < 0) {
+                        CLOG_DEBUG("OTRcv error %ld in data recv",
+                                   (long)nread);
+                    } else if (nread > 0) {
                         peer->tcp_recv_len += (size_t)nread;
                         peer->last_tcp_activity = ctx->current_time;
                         pt_messaging_process_tcp_data(ctx, peer);

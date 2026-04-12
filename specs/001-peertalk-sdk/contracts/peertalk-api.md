@@ -3,7 +3,7 @@
 **Branch**: `001-peertalk-sdk` | **Date**: 2026-02-28
 
 This document defines the complete public API surface of the
-PeerTalk SDK. The API is 22 functions, 4 enums, 4 callback
+PeerTalk SDK. The API is 23 functions, 4 enums, 4 callback
 typedefs, and 2 opaque types. All types are C89-compatible.
 
 ## Opaque Types
@@ -88,7 +88,7 @@ typedef void (*PT_ErrorCallback)(
 );
 ```
 
-## Functions (22 total)
+## Functions (23 total)
 
 ### Lifecycle (2)
 
@@ -125,7 +125,7 @@ void PT_StopDiscovery(PT_Context *ctx);
 - Stops broadcasting but continues listening
 - Already-discovered peers can still refresh their presence
 
-### Connections (2)
+### Connections (3)
 
 ```c
 PT_Status PT_Connect(PT_Context *ctx, PT_Peer *peer);
@@ -143,6 +143,17 @@ void PT_Disconnect(PT_Context *ctx, PT_Peer *peer);
 - Sends goodbye message and closes TCP connection
 - Peer state changes to DISCONNECTED
 - Fires on_disconnected with PT_QUIT on both sides
+
+```c
+void PT_DisconnectAll(PT_Context *ctx);
+```
+- Disconnects all currently connected peers with goodbye frames
+- Convenience function for lifecycle transitions (game to lobby)
+- Iterates all peer slots; only CONNECTED peers are affected
+- Fires on_disconnected with PT_QUIT for each disconnected peer
+- Discovery state is not affected
+- No-op if no peers are connected or ctx is NULL
+- Safe to call from on_disconnected callback (re-entrant)
 
 ### Messaging (3)
 

@@ -951,7 +951,9 @@ static void mactcp_poll(PT_Context_Internal *ctx)
                 {
                     size_t space = peer->tcp_recv_size -
                                    peer->tcp_recv_len;
-                    if (space > 0) {
+                    if (space > 0 && ts->stream &&
+                        ts->state != STREAM_FREE) {
+                        OSErr rcv_err;
                         g_mactcp.recv_pb.tcpStream = ts->stream;
                         g_mactcp.recv_pb.csParam.receive.rcvBuff =
                             (Ptr)(peer->tcp_recv_buf +
@@ -959,11 +961,19 @@ static void mactcp_poll(PT_Context_Internal *ctx)
                         g_mactcp.recv_pb.csParam.receive.rcvBuffLen =
                             (unsigned short)space;
 
-                        if (PBControlSync((ParmBlkPtr)&g_mactcp.recv_pb) == noErr &&
-                            g_mactcp.recv_pb.csParam.receive.rcvBuffLen > 0) {
+                        rcv_err = PBControlSync(
+                            (ParmBlkPtr)&g_mactcp.recv_pb);
+                        if (rcv_err == noErr &&
+                            g_mactcp.recv_pb.csParam.receive
+                                .rcvBuffLen > 0) {
                             peer->tcp_recv_len +=
-                                g_mactcp.recv_pb.csParam.receive.rcvBuffLen;
+                                g_mactcp.recv_pb.csParam.receive
+                                    .rcvBuffLen;
                             pt_messaging_process_tcp_data(ctx, peer);
+                        } else if (rcv_err != noErr) {
+                            CLOG_DEBUG("TCPRcv error %d in "
+                                       "terminated drain",
+                                       (int)rcv_err);
                         }
                     }
                     /* Also parse any data already in the buffer */

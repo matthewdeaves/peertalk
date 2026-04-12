@@ -25,7 +25,7 @@ These 10 principles govern ALL implementation decisions. Full text: `.specify/me
 ## Project Structure
 
 ```
-include/peertalk.h          # Single public header (C89, 24 functions)
+include/peertalk.h          # Single public header (C89, 25 functions)
 src/core/                   # Platform-independent core
 src/platform/posix/         # BSD sockets + select()
 src/platform/mactcp/        # MacTCP async parameter blocks (68k)
@@ -104,7 +104,7 @@ PeerTalk sends automatic keepalive frames (type `PT_MSG_TYPE_KEEPALIVE` = 254) e
 All design docs live in `specs/001-peertalk-sdk/`:
 - `spec.md` — requirements and user stories
 - `tasks.md` — 148 tasks across 26 phases (147 complete)
-- `contracts/peertalk-api.md` — 22-function public API contract
+- `contracts/peertalk-api.md` — 23-function public API contract
 - `research.md` — platform research decisions (R1-R46)
 
 <!-- MANUAL ADDITIONS START -->
