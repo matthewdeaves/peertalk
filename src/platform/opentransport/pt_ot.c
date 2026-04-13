@@ -156,6 +156,44 @@ static pascal void udp_notifier(void *context, OTEventCode code,
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
 
+/* Drain all pending events from an endpoint so it's clean for reuse.
+   OT refuses OTConnect/OTSndDisconnect with kOTLookErr (-3155) if
+   events are pending.  Must consume them before reusing the endpoint. */
+static void drain_endpoint_events(EndpointRef ep)
+{
+    OTResult look;
+    int safety = 10;
+
+    while (safety-- > 0) {
+        look = OTLook(ep);
+        switch (look) {
+        case T_DISCONNECT:
+            OTRcvDisconnect(ep, NULL);
+            CLOG_DEBUG("Drained T_DISCONNECT from endpoint");
+            break;
+        case T_ORDREL:
+            OTRcvOrderlyDisconnect(ep);
+            CLOG_DEBUG("Drained T_ORDREL from endpoint");
+            break;
+        case T_CONNECT:
+            OTRcvConnect(ep, NULL);
+            CLOG_DEBUG("Drained T_CONNECT from endpoint");
+            break;
+        case T_DATA:
+        case T_EXDATA:
+            {
+                unsigned char junk[256];
+                OTFlags fl = 0;
+                OTRcv(ep, junk, sizeof(junk), &fl);
+            }
+            CLOG_DEBUG("Drained pending data from endpoint");
+            break;
+        default:
+            return;
+        }
+    }
+}
+
 static int find_free_ep(void)
 {
     int i;
@@ -565,6 +603,12 @@ static PT_Status ot_tcp_connect(PT_Context_Internal *ctx,
     sndcall.addr.len = sizeof(dest);
     sndcall.addr.buf = (unsigned char *)&dest;
 
+    /* Drain stale events from previous use of this endpoint.
+       Without this, OTConnect returns kOTLookErr (-3155) if a
+       T_DISCONNECT from a prior session is still pending. */
+    drain_endpoint_events(slot->ep);
+    slot->flags = 0;
+
     res = OTConnect(slot->ep, &sndcall, NULL);
     /* Async connect returns kOTNoDataErr (not yet complete) */
     if (res != kOTNoError && res != kOTNoDataErr) {
@@ -631,6 +675,9 @@ static void ot_tcp_disconnect(PT_Context_Internal *ctx,
     slot = (OTEndpointSlot *)peer->platform_peer.endpoint;
     if (!slot) return;
 
+    /* Drain pending events before disconnect — OTSndDisconnect also
+       returns kOTLookErr if a T_DISCONNECT is already pending. */
+    drain_endpoint_events(slot->ep);
     OTSndDisconnect(slot->ep, NULL);
 
     /* Unbind and rebind synchronously to reset endpoint for reuse (R29).
@@ -994,6 +1041,51 @@ static void ot_poll(PT_Context_Internal *ctx)
 }
 
 /* ------------------------------------------------------------------ */
+/* Stream cleanup for rediscovery (feature parity with MacTCP backend) */
+/* ------------------------------------------------------------------ */
+
+static void ot_cleanup_streams(PT_Context_Internal *ctx)
+{
+    int i;
+    (void)ctx;
+
+    CLOG_INFO("Cleaning up OT endpoints for rediscovery");
+
+    for (i = 0; i < OT_MAX_ENDPOINTS; i++) {
+        OTEndpointSlot *slot = &g_ot.tcp_eps[i];
+        if (slot->ep == kOTInvalidEndpointRef) continue;
+
+        /* Drain any stale events left by the notifier after disconnect */
+        drain_endpoint_events(slot->ep);
+        slot->flags = 0;
+
+        /* If endpoint is still connected/connecting, force cleanup */
+        if (slot->state != EP_FREE && slot->state != EP_LISTENING) {
+            OTSndDisconnect(slot->ep, NULL);
+            OTSetSynchronous(slot->ep);
+            OTSetBlocking(slot->ep);
+            OTUnbind(slot->ep);
+            {
+                InetAddress addr;
+                TBind req;
+                OTInitInetAddress(&addr, 0, 0);
+                req.addr.maxlen = sizeof(addr);
+                req.addr.len = sizeof(addr);
+                req.addr.buf = (unsigned char *)&addr;
+                req.qlen = 0;
+                OTBind(slot->ep, &req, NULL);
+            }
+            OTSetAsynchronous(slot->ep);
+            OTSetNonBlocking(slot->ep);
+            slot->state = EP_FREE;
+            slot->owner = NULL;
+        }
+    }
+
+    CLOG_INFO("OT endpoint cleanup complete");
+}
+
+/* ------------------------------------------------------------------ */
 /* Ops table                                                           */
 /* ------------------------------------------------------------------ */
 
@@ -1008,7 +1100,7 @@ static PT_PlatformOps ot_ops = {
     ot_tcp_send,
     ot_tcp_disconnect,
     ot_poll,
-    NULL    /* cleanup_streams: OT handles stream reuse natively */
+    ot_cleanup_streams
 };
 
 PT_PlatformOps *ot_get_ops(void)
