@@ -827,8 +827,9 @@ static void ot_poll(PT_Context_Internal *ctx)
                setup when T_PASSCON arrives on the data endpoint. */
             OTAtomicSetBit((UInt8 *)&slot->flags, EVT_BIT_PASSCON); /* trigger immediate processing */
 
-            /* Directly set up the connection now since tilisten
-               guarantees OTAccept won't fail with kOTLookErr */
+            /* Set up the connection. tilisten serializes incoming
+               connections; kOTLookErr retry above handles the edge
+               case where T_DISCONNECT arrives between listen/accept */
             {
                 PT_PlatformPeer ppeer;
                 memset(&ppeer, 0, sizeof(ppeer));

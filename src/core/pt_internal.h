@@ -26,13 +26,16 @@
 #define PT_MAGIC_2  0x4C  /* 'L' */
 #define PT_MAGIC_3  0x4B  /* 'K' */
 
-#define PT_WIRE_VERSION     1
+#define PT_WIRE_VERSION     2
 #define PT_MSG_TYPE_KEEPALIVE 254
 #define PT_MSG_TYPE_GOODBYE   255
 
+#define PT_DISCOVERY_FLAG_ANNOUNCE 0x00
+#define PT_DISCOVERY_FLAG_LEAVE    0x01
+
 #define PT_NAME_MAX         31
-#define PT_DISCOVERY_HEADER 5   /* 4 magic + 1 version */
-#define PT_DISCOVERY_MAX    37  /* header + 32 name bytes */
+#define PT_DISCOVERY_HEADER 6   /* 4 magic + 1 version + 1 flags */
+#define PT_DISCOVERY_MAX    38  /* header + 32 name bytes */
 
 #define PT_TCP_HEADER_SIZE      4   /* 2 len + 1 type + 1 flags */
 #define PT_TCP_CHUNK_HEADER     8   /* 2 len + 1 type + 1 flags + 2 seq + 2 total */
@@ -270,6 +273,7 @@ void   pt_memory_free(PT_Context_Internal *ctx);
 /* pt_discovery.c */
 void      pt_discovery_build_packet(PT_Context_Internal *ctx);
 void      pt_discovery_broadcast(PT_Context_Internal *ctx);
+void      pt_discovery_broadcast_leave(PT_Context_Internal *ctx);
 void      pt_discovery_receive(PT_Context_Internal *ctx,
                                const void *data, size_t len,
                                unsigned long source_ip);

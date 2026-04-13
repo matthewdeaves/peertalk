@@ -373,6 +373,11 @@ void PT_Shutdown(PT_Context *pub_ctx)
 
     if (!ctx) return;
 
+    /* Broadcast leave on the discovery channel so lobby peers
+     * remove us immediately instead of waiting for the 15s timeout.
+     * Must happen before callbacks are cleared and UDP is torn down. */
+    pt_discovery_broadcast_leave(ctx);
+
     /* FR-012: Clear all callbacks before teardown so no callbacks
        fire during shutdown (T024) */
     memset(&ctx->callbacks, 0, sizeof(ctx->callbacks));

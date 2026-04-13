@@ -24,6 +24,7 @@ void pt_discovery_build_packet(PT_Context_Internal *ctx)
     ctx->discovery_pkt[2] = PT_MAGIC_2;
     ctx->discovery_pkt[3] = PT_MAGIC_3;
     ctx->discovery_pkt[4] = PT_WIRE_VERSION;
+    ctx->discovery_pkt[5] = PT_DISCOVERY_FLAG_ANNOUNCE;
 
     namelen = strlen(ctx->name);
     if (namelen > PT_NAME_MAX) namelen = PT_NAME_MAX;
@@ -37,6 +38,17 @@ void pt_discovery_broadcast(PT_Context_Internal *ctx)
     ctx->platform_ops->udp_broadcast(ctx, PT_DISCOVERY_PORT,
                                      ctx->discovery_pkt,
                                      ctx->discovery_pkt_len);
+}
+
+void pt_discovery_broadcast_leave(PT_Context_Internal *ctx)
+{
+    /* Send one leave packet — same as announce but with leave flag.
+     * Mutate the cached packet briefly; restore after send. */
+    ctx->discovery_pkt[5] = PT_DISCOVERY_FLAG_LEAVE;
+    ctx->platform_ops->udp_broadcast(ctx, PT_DISCOVERY_PORT,
+                                     ctx->discovery_pkt,
+                                     ctx->discovery_pkt_len);
+    ctx->discovery_pkt[5] = PT_DISCOVERY_FLAG_ANNOUNCE;
 }
 
 /* ------------------------------------------------------------------ */
@@ -74,6 +86,22 @@ void pt_discovery_receive(PT_Context_Internal *ctx,
 
     /* Filter own IP */
     if (source_ip == ctx->local_ip) return;
+
+    /* Handle leave packet — immediately remove peer */
+    if (pkt[5] == PT_DISCOVERY_FLAG_LEAVE) {
+        peer = pt_find_peer_by_ip(ctx, source_ip);
+        if (peer) {
+            CLOG_INFO("Peer leaving: %s", peer->name);
+            if (ctx->callbacks.on_peer_lost) {
+                ctx->callbacks.on_peer_lost(
+                    (PT_Peer *)peer,
+                    ctx->callbacks.on_peer_lost_data);
+            }
+            peer->in_use = 0;
+            ctx->peer_count--;
+        }
+        return;
+    }
 
     /* Find existing peer or create new one */
     peer = pt_find_peer_by_ip(ctx, source_ip);

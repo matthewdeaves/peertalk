@@ -573,7 +573,6 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
     if (g_mactcp.tcp_upp) DisposeTCPNotifyUPP(g_mactcp.tcp_upp);
     if (g_mactcp.udp_upp) DisposeUDPNotifyUPP(g_mactcp.udp_upp);
 
-    CLOG_INFO("PeerTalk shutdown complete");
     ctx->platform_state = NULL;
 }
 
