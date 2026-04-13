@@ -3,6 +3,10 @@
  *
  * C89-compatible public header. No stdint.h, no bool.
  * Include this single header to use the SDK.
+ *
+ * Threading model: PeerTalk is NOT thread-safe. All PT_* functions
+ * must be called from a single thread (the main loop). Do not call
+ * PT_Poll(), PT_Send(), or callback registration from different threads.
  */
 
 #ifndef PEERTALK_H

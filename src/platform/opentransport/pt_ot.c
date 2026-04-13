@@ -192,6 +192,8 @@ static void drain_endpoint_events(EndpointRef ep)
             return;
         }
     }
+    CLOG_WARN("Endpoint drain hit safety limit, events may remain (last=%ld)",
+              (long)OTLook(ep));
 }
 
 static int find_free_ep(void)
