@@ -109,6 +109,12 @@ static pascal void listener_notifier(void *context, OTEventCode code,
         OTAtomicSetBit((UInt8 *)&st->listener_flags, EVT_BIT_LISTEN);
     } else if (code == T_PASSCON) {
         OTAtomicSetBit((UInt8 *)&st->listener_flags, EVT_BIT_PASSCON);
+    } else if (code == T_DISCONNECT) {
+        /* A queued connection was aborted before we accepted it.
+         * Must track this so ot_poll can consume it via OTRcvDisconnect --
+         * OT won't deliver new T_LISTEN events while T_DISCONNECT is
+         * pending on the listener (per XTI state machine rules). */
+        OTAtomicSetBit((UInt8 *)&st->listener_flags, EVT_BIT_DISCONNECT);
     }
 }
 
@@ -749,12 +755,22 @@ static void ot_poll(PT_Context_Internal *ctx)
     int i;
     unsigned long flags;
 
+    /* ---- Handle listener T_DISCONNECT (queued connection aborted) ---- */
+    if (OTAtomicClearBit((UInt8 *)&g_ot.listener_flags, EVT_BIT_DISCONNECT)) {
+        /* A connection queued by tilisten was aborted before we accepted it.
+         * Must consume via OTRcvDisconnect or OT blocks future T_LISTEN
+         * events (XTI state machine requires all events be acknowledged). */
+        drain_endpoint_events(g_ot.listener_ep);
+    }
+
     /* ---- Handle listener events (T_LISTEN) ---- */
     if (OTAtomicClearBit((UInt8 *)&g_ot.listener_flags, EVT_BIT_LISTEN)) {
         /* Also clear PASSCON on listener (processed below on data ep) */
         OTAtomicClearBit((UInt8 *)&g_ot.listener_flags, EVT_BIT_PASSCON);
 
         /* Process all pending listen indications */
+        {
+        int look_retries = 3; /* safety limit for kOTLookErr drain-retry */
         for (;;) {
             TCall call;
             InetAddress remote_addr;
@@ -767,7 +783,16 @@ static void ot_poll(PT_Context_Internal *ctx)
             call.addr.buf = (unsigned char *)&remote_addr;
 
             res = OTListen(g_ot.listener_ep, &call);
-            if (res != kOTNoError) break;
+            if (res != kOTNoError) {
+                /* OTListen can fail with kOTLookErr if T_DISCONNECT is
+                 * pending on the listener (connection aborted between
+                 * T_LISTEN and our OTListen call).  Drain it and retry. */
+                if (res == kOTLookErr && look_retries-- > 0) {
+                    drain_endpoint_events(g_ot.listener_ep);
+                    continue;
+                }
+                break;
+            }
 
             /* Find a free endpoint to accept onto */
             idx = find_free_ep();
@@ -787,6 +812,12 @@ static void ot_poll(PT_Context_Internal *ctx)
             res = OTAccept(g_ot.listener_ep, slot->ep, &call);
             if (res != kOTNoError) {
                 slot->state = EP_FREE;
+                /* kOTLookErr means T_DISCONNECT arrived for this
+                 * connection while we were accepting.  Drain it so
+                 * the listener can process future connections. */
+                if (res == kOTLookErr) {
+                    drain_endpoint_events(g_ot.listener_ep);
+                }
                 continue;
             }
 
@@ -845,6 +876,7 @@ static void ot_poll(PT_Context_Internal *ctx)
                 }
             }
         }
+        } /* look_retries scope */
     }
 
     /* ---- Process TCP data endpoints ---- */
@@ -1052,6 +1084,17 @@ static void ot_cleanup_streams(PT_Context_Internal *ctx)
     (void)ctx;
 
     CLOG_INFO("Cleaning up OT endpoints for rediscovery");
+
+    /* Drain stale events from the listener endpoint.  If a queued
+     * connection was aborted (T_DISCONNECT) during the previous game's
+     * disconnect sequence, the event stays pending because the notifier
+     * only tracks it as a flag bit.  OT won't deliver new T_LISTEN
+     * events while T_DISCONNECT is unconsumed (XTI state machine).
+     * Draining here ensures the listener is clean for the next session. */
+    if (g_ot.listener_ep != kOTInvalidEndpointRef) {
+        drain_endpoint_events(g_ot.listener_ep);
+        g_ot.listener_flags = 0;
+    }
 
     for (i = 0; i < OT_MAX_ENDPOINTS; i++) {
         OTEndpointSlot *slot = &g_ot.tcp_eps[i];
