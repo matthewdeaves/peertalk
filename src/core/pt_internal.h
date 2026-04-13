@@ -80,7 +80,13 @@
 
 /* ------------------------------------------------------------------ */
 /* ISR-safe memcpy (byte copy, no Toolbox)                             */
-/* Only needed on Classic Mac where memcpy may call Toolbox routines.   */
+/* Standard memcpy may call Toolbox routines on Classic Mac, which are  */
+/* unsafe at interrupt time (MacTCP ASR, OT notifiers).  Currently     */
+/* unused because all backends use the "set flag, process later"       */
+/* pattern — no data copying happens at interrupt time.  Kept as a     */
+/* safety utility for future interrupt handlers that need to capture   */
+/* data (e.g. copying packet payload in an ASR before it's recycled).  */
+/* See .claude/rules/isr-safety.md for full interrupt safety rules.    */
 /* ------------------------------------------------------------------ */
 
 #if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)

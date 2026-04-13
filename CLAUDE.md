@@ -104,6 +104,8 @@ PeerTalk provides a general-purpose UDP debug broadcast channel (no clog couplin
 
 ## Known Platform Gotchas
 
+**pt_memcpy_isr unused warning**: `pt_memcpy_isr()` in `pt_internal.h` is intentionally unused. It exists as an ISR-safe memcpy for future interrupt handlers that need to copy data (standard memcpy may call Toolbox on Classic Mac). All current backends use "set flag, process later" so no data copying happens at interrupt time. Do not remove — see `.claude/rules/isr-safety.md`.
+
 **C89 + variadic macros**: clog uses variadic macros (C99). Do NOT use `-pedantic` — it rejects them. Use `-Wall -Wextra` only.
 
 **POSIX C89 code**: `vsnprintf` requires `#define _POSIX_C_SOURCE 200112L` before includes when compiling with `-std=c89`.
