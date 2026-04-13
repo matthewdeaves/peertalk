@@ -176,10 +176,15 @@ explicitly registered with `PT_RegisterMessage`.
 | Offset | Size | Field |
 |--------|------|-------|
 | 0 | 4 | Magic "PTLK" (0x50, 0x54, 0x4C, 0x4B) |
-| 4 | 1 | Version (1) |
-| 5 | N | Peer name (null-terminated, max 32 bytes incl. null) |
+| 4 | 1 | Version (2) |
+| 5 | 1 | Flags (0x00 = announce, 0x01 = leave) |
+| 6 | N | Peer name (null-terminated, max 32 bytes incl. null) |
 
-Total: 37 bytes max
+Total: 38 bytes max
+
+The **leave** flag (0x01) signals immediate peer removal. Sent automatically
+by `PT_Shutdown()` before teardown so lobby peers remove the quitting peer
+instantly instead of waiting for the 15-second discovery timeout.
 
 ### TCP Message Header
 

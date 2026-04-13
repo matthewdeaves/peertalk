@@ -144,8 +144,8 @@ graph LR
 
 ```mermaid
 graph LR
-    subgraph wire ["Wire Protocol v1"]
-        disc["<b>Discovery</b><br/>UDP :7353<br/><i>5B hdr + name, every 2s</i>"]
+    subgraph wire ["Wire Protocol v2"]
+        disc["<b>Discovery</b><br/>UDP :7353<br/><i>6B hdr + name, every 2s</i>"]
         tcp["<b>TCP Frame</b><br/>TCP :7354<br/><i>4B hdr + payload</i>"]
         chunk["<b>TCP Chunk</b><br/>TCP :7354<br/><i>8B hdr + seq/total</i>"]
         udp["<b>UDP Fast</b><br/>UDP :7355<br/><i>3B hdr, max 1400B</i>"]
@@ -192,10 +192,10 @@ sequenceDiagram
     participant B as Peer B (higher IP)
 
     Note over A,B: Discovery Phase (every 2s)
-    A->>LAN: UDP broadcast (PTLK + v1 + "PeerA")
+    A->>LAN: UDP broadcast (PTLK + v2 + "PeerA")
     LAN->>B: Discovery packet
     B->>B: Create peer record, fire on_discovered
-    B->>LAN: UDP broadcast (PTLK + v1 + "PeerB")
+    B->>LAN: UDP broadcast (PTLK + v2 + "PeerB")
     LAN->>A: Discovery packet
     A->>A: Create peer record, fire on_discovered
 

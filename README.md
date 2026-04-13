@@ -7,7 +7,7 @@ A C networking SDK for LAN peer-to-peer communication between modern POSIX syste
 - **29-function C89 API** with a single public header (`peertalk.h`)
 - **3 platform backends**: POSIX (BSD sockets), MacTCP (68k/PPC), Open Transport (PPC)
 - **Zero allocation after init** — all buffers pre-allocated in a single block
-- **Automatic peer discovery** via UDP broadcast
+- **Automatic peer discovery** via UDP broadcast with instant leave notification
 - **Reliable (TCP) and fast (UDP)** message transports
 - **~4,700 lines of SDK code** across all platforms
 

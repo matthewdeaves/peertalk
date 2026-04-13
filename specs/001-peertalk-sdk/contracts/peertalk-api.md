@@ -106,9 +106,9 @@ PT_Status PT_Init(PT_Context **ctx, const char *name);
 ```c
 void PT_Shutdown(PT_Context *ctx);
 ```
-- Sends goodbye to all connected peers
-- Closes all connections and releases all resources
-- Frees the memory block allocated at init
+- Broadcasts UDP leave packet so lobby peers remove us immediately
+- Closes all TCP connections (abortive on MacTCP to avoid 60s hang)
+- Releases all resources and frees the memory block allocated at init
 - After this call, `ctx` is invalid
 
 ### Discovery (2)
@@ -386,5 +386,6 @@ poll-based architecture eliminates the need for locks.
 | Message type 254 | Internal TCP keepalive |
 | Message type 255 | Internal goodbye message |
 | Discovery magic "PTLK" | Protocol identification |
-| Discovery version 1 | Current wire protocol version |
+| Discovery version 2 | Current wire protocol version |
+| Discovery flag 0x01 | Leave announcement (immediate peer removal) |
 | Port 7356 | Default debug broadcast port (`PT_DEBUG_PORT`) |
