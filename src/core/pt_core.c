@@ -521,8 +521,11 @@ void PT_RegisterMessage(PT_Context *pub_ctx, unsigned char type,
                         PT_Transport transport)
 {
     PT_Context_Internal *ctx = (PT_Context_Internal *)pub_ctx;
-    if (!ctx || type == PT_MSG_TYPE_GOODBYE ||
-        type == PT_MSG_TYPE_KEEPALIVE) return;
+    if (!ctx) return;
+    if (type == PT_MSG_TYPE_GOODBYE || type == PT_MSG_TYPE_KEEPALIVE) {
+        CLOG_WARN("Cannot register reserved message type %d", (int)type);
+        return;
+    }
     ctx->message_types[type] = transport;
 }
 
