@@ -198,8 +198,8 @@ static void drain_endpoint_events(EndpointRef ep)
             return;
         }
     }
-    CLOG_WARN("Endpoint drain hit safety limit, events may remain (last=%ld)",
-              (long)OTLook(ep));
+    CLOG_DEBUG("Endpoint drain hit safety limit, events may remain (last=%ld)",
+               (long)OTLook(ep));
 }
 
 /* Reset an endpoint to T_IDLE for reuse: unbind then rebind with
