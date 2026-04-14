@@ -147,6 +147,7 @@ PT_Peer_Internal *pt_alloc_peer(PT_Context_Internal *ctx)
             ctx->peers[i].addr_str[0] = '\0';
             ctx->peers[i].last_seen = 0;
             ctx->peers[i].last_tcp_activity = 0;
+            ctx->peers[i].last_tcp_send = 0;
             ctx->peers[i].connect_start = 0;
             ctx->peers[i].in_use = 1;
             ctx->peers[i].tcp_recv_len = 0;

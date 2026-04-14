@@ -207,18 +207,8 @@ static unsigned long test_time_sec(void)
 }
 
 /* ------------------------------------------------------------------ */
-/* Peer state / disconnect reason strings                              */
+/* Disconnect reason string                                            */
 /* ------------------------------------------------------------------ */
-
-static const char *test_state_str(PT_PeerState state)
-{
-    switch (state) {
-        case PT_PEER_DISCOVERED:  return "DISCOVERED";
-        case PT_PEER_CONNECTED:   return "CONNECTED";
-        case PT_PEER_DISCONNECTED: return "DISCONNECTED";
-        default: return "UNKNOWN";
-    }
-}
 
 static const char *test_reason_str(PT_DisconnectReason reason)
 {
@@ -264,7 +254,7 @@ static int test_solo_timeout(void)
 /* Helper: should we call PT_Connect on this peer? (R47)               */
 /* ------------------------------------------------------------------ */
 
-static int test_should_connect(const PT_Peer *peer)
+static __attribute__((unused)) int test_should_connect(const PT_Peer *peer)
 {
     PT_PeerState st = PT_GetPeerState(peer);
     return (st == PT_PEER_DISCOVERED || st == PT_PEER_DISCONNECTED);

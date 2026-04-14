@@ -252,8 +252,10 @@ void pt_messaging_process_tcp_data(PT_Context_Internal *ctx,
                     peer->reassembly_received = 0;
                 }
 
-                /* Check if complete */
-                if (peer->reassembly_received ==
+                /* Check if complete (guard >0 prevents false
+                   match after error path resets both to 0) */
+                if (peer->reassembly_received > 0 &&
+                    peer->reassembly_received ==
                     peer->reassembly_total) {
                     /* Total size = (N-1) full chunks + last chunk */
                     size_t total_len = (size_t)(total - 1) *

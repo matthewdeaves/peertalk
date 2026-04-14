@@ -202,6 +202,42 @@ static void drain_endpoint_events(EndpointRef ep)
               (long)OTLook(ep));
 }
 
+/* Reset an endpoint to T_IDLE for reuse: unbind then rebind with
+   ephemeral port.  If rebind fails, close the endpoint entirely so
+   find_free_ep never hands out an unusable slot. */
+static void reset_endpoint(OTEndpointSlot *slot)
+{
+    InetAddress addr;
+    TBind req;
+    OSStatus err;
+
+    OTSetSynchronous(slot->ep);
+    OTSetBlocking(slot->ep);
+    OTUnbind(slot->ep);
+
+    OTInitInetAddress(&addr, 0, 0);
+    req.addr.maxlen = sizeof(addr);
+    req.addr.len = sizeof(addr);
+    req.addr.buf = (unsigned char *)&addr;
+    req.qlen = 0;
+
+    err = OTBind(slot->ep, &req, NULL);
+    if (err != kOTNoError) {
+        CLOG_WARN("OTBind failed on reset (%d), closing endpoint",
+                  (int)err);
+        OTCloseProvider(slot->ep);
+        slot->ep = kOTInvalidEndpointRef;
+    } else {
+        OTSetAsynchronous(slot->ep);
+        OTSetNonBlocking(slot->ep);
+    }
+
+    slot->state = EP_FREE;
+    slot->flags = 0;
+    slot->flow_off = 0;
+    slot->owner = NULL;
+}
+
 static int find_free_ep(void)
 {
     int i;
@@ -688,28 +724,7 @@ static void ot_tcp_disconnect(PT_Context_Internal *ctx,
     drain_endpoint_events(slot->ep);
     OTSndDisconnect(slot->ep, NULL);
 
-    /* Unbind and rebind synchronously to reset endpoint for reuse (R29).
-       Async unbind/rebind races: completion may not arrive before next use. */
-    OTSetSynchronous(slot->ep);
-    OTSetBlocking(slot->ep);
-    OTUnbind(slot->ep);
-    {
-        InetAddress addr;
-        TBind req;
-        OTInitInetAddress(&addr, 0, 0);
-        req.addr.maxlen = sizeof(addr);
-        req.addr.len = sizeof(addr);
-        req.addr.buf = (unsigned char *)&addr;
-        req.qlen = 0;
-        OTBind(slot->ep, &req, NULL);
-    }
-    OTSetAsynchronous(slot->ep);
-    OTSetNonBlocking(slot->ep);
-
-    slot->state = EP_FREE;
-    slot->flags = 0;
-    slot->flow_off = 0;
-    slot->owner = NULL;
+    reset_endpoint(slot);
 
     peer->platform_peer.endpoint = NULL;
     peer->platform_peer.events = 0;
@@ -856,24 +871,7 @@ static void ot_poll(PT_Context_Internal *ctx)
                 if (!slot->owner) {
                     /* No room in peer table -- disconnect */
                     OTSndDisconnect(slot->ep, NULL);
-                    OTSetSynchronous(slot->ep);
-                    OTSetBlocking(slot->ep);
-                    OTUnbind(slot->ep);
-                    {
-                        InetAddress addr;
-                        TBind req;
-                        OTInitInetAddress(&addr, 0, 0);
-                        req.addr.maxlen = sizeof(addr);
-                        req.addr.len = sizeof(addr);
-                        req.addr.buf = (unsigned char *)&addr;
-                        req.qlen = 0;
-                        OTBind(slot->ep, &req, NULL);
-                    }
-                    OTSetAsynchronous(slot->ep);
-                    OTSetNonBlocking(slot->ep);
-                    slot->state = EP_FREE;
-                    slot->flags = 0;
-                    slot->owner = NULL;
+                    reset_endpoint(slot);
                 }
             }
         }
@@ -931,24 +929,7 @@ static void ot_poll(PT_Context_Internal *ctx)
             } else {
                 /* Connection failed */
                 OTSndDisconnect(slot->ep, NULL);
-                OTSetSynchronous(slot->ep);
-                OTSetBlocking(slot->ep);
-                OTUnbind(slot->ep);
-                {
-                    InetAddress addr;
-                    TBind req;
-                    OTInitInetAddress(&addr, 0, 0);
-                    req.addr.maxlen = sizeof(addr);
-                    req.addr.len = sizeof(addr);
-                    req.addr.buf = (unsigned char *)&addr;
-                    req.qlen = 0;
-                    OTBind(slot->ep, &req, NULL);
-                }
-                OTSetAsynchronous(slot->ep);
-                OTSetNonBlocking(slot->ep);
-                slot->state = EP_FREE;
-                slot->flags = 0;
-                slot->owner = NULL;
+                reset_endpoint(slot);
                 if (peer) {
                     peer->connect_start = 0;
                     peer->state = PT_PEER_DISCONNECTED;
@@ -1108,23 +1089,7 @@ static void ot_cleanup_streams(PT_Context_Internal *ctx)
         /* If endpoint is still connected/connecting, force cleanup */
         if (slot->state != EP_FREE && slot->state != EP_LISTENING) {
             OTSndDisconnect(slot->ep, NULL);
-            OTSetSynchronous(slot->ep);
-            OTSetBlocking(slot->ep);
-            OTUnbind(slot->ep);
-            {
-                InetAddress addr;
-                TBind req;
-                OTInitInetAddress(&addr, 0, 0);
-                req.addr.maxlen = sizeof(addr);
-                req.addr.len = sizeof(addr);
-                req.addr.buf = (unsigned char *)&addr;
-                req.qlen = 0;
-                OTBind(slot->ep, &req, NULL);
-            }
-            OTSetAsynchronous(slot->ep);
-            OTSetNonBlocking(slot->ep);
-            slot->state = EP_FREE;
-            slot->owner = NULL;
+            reset_endpoint(slot);
         }
     }
 

@@ -11,6 +11,16 @@
 
 #include "test_common.h"
 
+static const char *test_state_str(PT_PeerState state)
+{
+    switch (state) {
+        case PT_PEER_DISCOVERED:  return "DISCOVERED";
+        case PT_PEER_CONNECTED:   return "CONNECTED";
+        case PT_PEER_DISCONNECTED: return "DISCONNECTED";
+        default: return "UNKNOWN";
+    }
+}
+
 static PT_Context *g_ctx;
 static int g_connect_count = 0;
 static int g_disconnect_count = 0;
