@@ -133,6 +133,7 @@ All design docs live in `specs/001-peertalk-sdk/`:
 - PeerTalk SDK, test_common.h framework
 
 ## Recent Changes
+- v1.11.2: Downgraded drain_endpoint_events() safety-limit log from CLOG_WARN to CLOG_DEBUG in OT backend. The limit fires during normal game-over teardown (stale events accumulate on endpoint reset) and is not actionable.
 - v1.11.0: Discovery protocol v2 — adds flags byte to discovery header (6 bytes, was 5). New `PT_DISCOVERY_FLAG_LEAVE` (0x01) enables immediate peer removal on quit via UDP broadcast, instead of waiting for 15s timeout. `PT_Shutdown()` sends leave automatically. Fixed OT listener deadlock: stale T_DISCONNECT on listener endpoint blocked all future T_LISTEN delivery (XTI state machine). Three-layer defense: notifier tracking, accept-loop drain+retry, cleanup drain. Confirmed on real Performa 6400 across 4 consecutive games. Removed duplicate shutdown log from MacTCP.
 - v1.9.0: Added `PT_GetPeerRank()` for deterministic IP-sort peer ranking (Bomberman player IDs, Chess turn order). Added debug broadcast channel (`PT_EnableDebugBroadcast`, `PT_DebugSend`, `PT_DisableDebugBroadcast`) — general-purpose UDP debug pipe with no clog coupling (Principle VII). Apps wire clog into it via a 3-line bridge. Port 7356 by default. 29 functions total, ~4,700 LOC.
 - v1.7.0 (011-disconnect-poll-hardening): Added PT_DisconnectAll(ctx) for clean lifecycle transitions. Hardened OT poll (OTRcv error logging, slot->owner re-read after ordrel drain) and MacTCP poll (stream state guard before TCPRcv, error logging on terminated drain).
