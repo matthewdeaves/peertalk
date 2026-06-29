@@ -26,6 +26,13 @@ typedef struct {
     int tcp_listen_fd;  /* TCP listener, port 7354 */
     int udp_msg_fd;     /* UDP socket, port 7355 */
     int listening;       /* tcp_listen called? */
+
+    /* next_event() iterator state (one select() per poll round, then
+       one lifecycle event handed back per call). */
+    fd_set ev_readfds;
+    fd_set ev_writefds;
+    int    ev_have_select;  /* select() done for this round? */
+    int    ev_cursor;       /* next peer index to examine */
 } PosixState;
 
 static PosixState g_posix;
@@ -341,44 +348,41 @@ static void posix_tcp_disconnect(PT_Context_Internal *ctx,
     }
 }
 
-static void posix_poll(PT_Context_Internal *ctx)
+/* Build fd sets, run one non-blocking select(), and handle everything
+   that is NOT a per-peer lifecycle transition inline: discovery and UDP
+   datagrams (handed straight to core helpers, no duplicated state) and
+   inbound accepts (core's pt_handle_incoming_connection owns that). The
+   per-peer connect/data/close transitions are left for the iterator. */
+static void posix_select_round(PT_Context_Internal *ctx)
 {
-    fd_set readfds, writefds;
     int maxfd = -1;
     int i, ret;
     struct timeval tv;
 
-    FD_ZERO(&readfds);
-    FD_ZERO(&writefds);
+    FD_ZERO(&g_posix.ev_readfds);
+    FD_ZERO(&g_posix.ev_writefds);
+    g_posix.ev_cursor = 0;
 
-    /* Discovery socket */
     if (ctx->discovery_listening && g_posix.discovery_fd >= 0) {
-        FD_SET(g_posix.discovery_fd, &readfds);
+        FD_SET(g_posix.discovery_fd, &g_posix.ev_readfds);
         if (g_posix.discovery_fd > maxfd) maxfd = g_posix.discovery_fd;
     }
-
-    /* TCP listener */
     if (g_posix.listening && g_posix.tcp_listen_fd >= 0) {
-        FD_SET(g_posix.tcp_listen_fd, &readfds);
+        FD_SET(g_posix.tcp_listen_fd, &g_posix.ev_readfds);
         if (g_posix.tcp_listen_fd > maxfd) maxfd = g_posix.tcp_listen_fd;
     }
-
-    /* UDP message socket */
     if (g_posix.udp_msg_fd >= 0) {
-        FD_SET(g_posix.udp_msg_fd, &readfds);
+        FD_SET(g_posix.udp_msg_fd, &g_posix.ev_readfds);
         if (g_posix.udp_msg_fd > maxfd) maxfd = g_posix.udp_msg_fd;
     }
-
-    /* Per-peer TCP fds */
     for (i = 0; i < ctx->max_peers; i++) {
         int fd = ctx->peers[i].platform_peer.tcp_fd;
         if (ctx->peers[i].in_use && fd >= 0) {
             if (ctx->peers[i].state == PT_PEER_CONNECTED) {
-                FD_SET(fd, &readfds);
+                FD_SET(fd, &g_posix.ev_readfds);
                 if (fd > maxfd) maxfd = fd;
             } else if (ctx->peers[i].connect_start > 0) {
-                /* Connecting -- watch for writability */
-                FD_SET(fd, &writefds);
+                FD_SET(fd, &g_posix.ev_writefds);
                 if (fd > maxfd) maxfd = fd;
             }
         }
@@ -388,12 +392,17 @@ static void posix_poll(PT_Context_Internal *ctx)
 
     tv.tv_sec = 0;
     tv.tv_usec = 0;
-    ret = select(maxfd + 1, &readfds, &writefds, NULL, &tv);
-    if (ret <= 0) return;
+    ret = select(maxfd + 1, &g_posix.ev_readfds, &g_posix.ev_writefds,
+                 NULL, &tv);
+    if (ret <= 0) {
+        FD_ZERO(&g_posix.ev_readfds);
+        FD_ZERO(&g_posix.ev_writefds);
+        return;
+    }
 
-    /* Check discovery socket -- drain all queued datagrams */
+    /* Discovery datagrams -- drain all */
     if (g_posix.discovery_fd >= 0 &&
-        FD_ISSET(g_posix.discovery_fd, &readfds)) {
+        FD_ISSET(g_posix.discovery_fd, &g_posix.ev_readfds)) {
         for (;;) {
             unsigned char buf[PT_DISCOVERY_MAX + 16];
             struct sockaddr_in from;
@@ -408,9 +417,9 @@ static void posix_poll(PT_Context_Internal *ctx)
         }
     }
 
-    /* Check TCP listener for new connections */
+    /* Inbound TCP connection */
     if (g_posix.listening && g_posix.tcp_listen_fd >= 0 &&
-        FD_ISSET(g_posix.tcp_listen_fd, &readfds)) {
+        FD_ISSET(g_posix.tcp_listen_fd, &g_posix.ev_readfds)) {
         struct sockaddr_in from;
         socklen_t fromlen = sizeof(from);
         int newfd;
@@ -441,9 +450,9 @@ static void posix_poll(PT_Context_Internal *ctx)
         }
     }
 
-    /* Check UDP message socket -- drain all queued datagrams */
+    /* UDP message datagrams -- drain all */
     if (g_posix.udp_msg_fd >= 0 &&
-        FD_ISSET(g_posix.udp_msg_fd, &readfds)) {
+        FD_ISSET(g_posix.udp_msg_fd, &g_posix.ev_readfds)) {
         for (;;) {
             unsigned char buf[2048];
             struct sockaddr_in from;
@@ -457,51 +466,45 @@ static void posix_poll(PT_Context_Internal *ctx)
                                           from.sin_addr.s_addr);
         }
     }
+}
 
-    /* Check per-peer TCP fds */
-    for (i = 0; i < ctx->max_peers; i++) {
+/* Event iterator: on the first call of a round, run the select() and
+   handle non-lifecycle I/O; then return one per-peer lifecycle event
+   per call (CONNECTED / DATA / CLOSED).  The recv() that fills the
+   peer buffer stays here (it is irreducibly platform); the resulting
+   state transition is core's job via pt_apply_platform_event(). */
+static int posix_next_event(PT_Context_Internal *ctx, PT_Event *out)
+{
+    int i;
+
+    if (!g_posix.ev_have_select) {
+        posix_select_round(ctx);
+        g_posix.ev_have_select = 1;
+    }
+
+    for (i = g_posix.ev_cursor; i < ctx->max_peers; i++) {
         int fd = ctx->peers[i].platform_peer.tcp_fd;
         if (!ctx->peers[i].in_use || fd < 0) continue;
 
-        /* Check connecting peers for writability (connect complete) */
+        /* Outgoing connect completed (writable)? */
         if (ctx->peers[i].connect_start > 0 &&
-            FD_ISSET(fd, &writefds)) {
+            FD_ISSET(fd, &g_posix.ev_writefds)) {
             int err = 0;
             socklen_t errlen = sizeof(err);
             getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &errlen);
 
-            if (err == 0) {
-                /* Connection succeeded */
-                ctx->peers[i].connect_start = 0;
-                ctx->peers[i].state = PT_PEER_CONNECTED;
-                ctx->peers[i].last_tcp_activity = ctx->current_time;
-                ctx->peers[i].last_tcp_send = ctx->current_time;
-                CLOG_INFO("TCP connected to %s",
-                          ctx->peers[i].name);
-                if (ctx->callbacks.on_connected) {
-                    ctx->callbacks.on_connected(
-                        (PT_Peer *)&ctx->peers[i],
-                        ctx->callbacks.on_connected_data);
-                }
-            } else {
-                /* Connection failed */
-                ctx->peers[i].connect_start = 0;
-                close(fd);
-                ctx->peers[i].platform_peer.tcp_fd = -1;
-                ctx->peers[i].state = PT_PEER_DISCONNECTED;
-                pt_fire_error(ctx, &ctx->peers[i],
-                              PT_ERR_SEND_FAILED,
-                              "TCP connect failed");
-            }
+            g_posix.ev_cursor = i + 1;
+            out->type = PT_EVT_CONNECTED;
+            out->peer = &ctx->peers[i];
+            out->ok = (err == 0);
+            return 1;
         }
 
-        /* Check connected peers for readable data */
+        /* Readable data on a connected peer? */
         if (ctx->peers[i].state == PT_PEER_CONNECTED &&
-            FD_ISSET(fd, &readfds)) {
-            size_t space;
-
-            space = ctx->peers[i].tcp_recv_size -
-                    ctx->peers[i].tcp_recv_len;
+            FD_ISSET(fd, &g_posix.ev_readfds)) {
+            size_t space = ctx->peers[i].tcp_recv_size -
+                           ctx->peers[i].tcp_recv_len;
             if (space > 0) {
                 ssize_t n = recv(fd,
                          (char *)ctx->peers[i].tcp_recv_buf +
@@ -509,21 +512,31 @@ static void posix_poll(PT_Context_Internal *ctx)
                          space, 0);
                 if (n > 0) {
                     ctx->peers[i].tcp_recv_len += (size_t)n;
-                    ctx->peers[i].last_tcp_activity = ctx->current_time;
-                    pt_messaging_process_tcp_data(ctx, &ctx->peers[i]);
+                    g_posix.ev_cursor = i + 1;
+                    out->type = PT_EVT_DATA;
+                    out->peer = &ctx->peers[i];
+                    return 1;
                 } else if (n == 0) {
-                    /* Peer closed connection */
-                    pt_handle_peer_disconnect(ctx, &ctx->peers[i],
-                                              PT_DISCONNECT_ERROR);
-                } else {
-                    if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                        pt_handle_peer_disconnect(ctx, &ctx->peers[i],
-                                                  PT_DISCONNECT_ERROR);
-                    }
+                    g_posix.ev_cursor = i + 1;
+                    out->type = PT_EVT_CLOSED;
+                    out->peer = &ctx->peers[i];
+                    return 1;
+                } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                    g_posix.ev_cursor = i + 1;
+                    out->type = PT_EVT_CLOSED;
+                    out->peer = &ctx->peers[i];
+                    return 1;
                 }
+                /* EAGAIN: spurious readiness, no event */
             }
         }
     }
+
+    /* Round drained */
+    g_posix.ev_have_select = 0;
+    out->type = PT_EVT_NONE;
+    out->peer = NULL;
+    return 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -540,8 +553,9 @@ static PT_PlatformOps posix_ops = {
     posix_tcp_connect,
     posix_tcp_send,
     posix_tcp_disconnect,
-    posix_poll,
-    NULL    /* cleanup_streams: POSIX sockets don't need explicit cleanup */
+    NULL,   /* poll: POSIX is event-driven via next_event */
+    NULL,   /* cleanup_streams: POSIX sockets don't need explicit cleanup */
+    posix_next_event
 };
 
 PT_PlatformOps *posix_get_ops(void)

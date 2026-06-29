@@ -91,6 +91,10 @@ typedef struct {
     OTNotifyUPP     listener_upp;
     OTNotifyUPP     tcp_upp;
     OTNotifyUPP     udp_upp;
+
+    /* Event-iterator state (next_event) */
+    int             ev_started;  /* round's one-time work done? */
+    int             ev_cursor;   /* next TCP endpoint index to examine */
 } OTState;
 
 static OTState g_ot;
@@ -765,11 +769,37 @@ static void poll_udp(PT_Context_Internal *ctx, OTUDPSlot *us,
     }
 }
 
-static void ot_poll(PT_Context_Internal *ctx)
+/* Read available bytes into the peer's TCP receive buffer.  Shared by
+   the DATA path and the final-byte drain before a CLOSED event (a
+   buffered goodbye frame may still be readable after T_DISCONNECT /
+   T_ORDREL — R23).  Core parses the buffer; the adapter only fills it. */
+static void ot_recv_into_peer(OTEndpointSlot *slot, PT_Peer_Internal *peer)
 {
-    int i;
-    unsigned long flags;
+    size_t space;
+    OTResult nread;
+    OTFlags rflags;
 
+    space = peer->tcp_recv_size - peer->tcp_recv_len;
+    if (space == 0) return;
+
+    rflags = 0;
+    nread = OTRcv(slot->ep, peer->tcp_recv_buf + peer->tcp_recv_len,
+                  (OTByteCount)space, &rflags);
+    if (nread < 0) {
+        if (nread != kOTNoDataErr) {
+            CLOG_DEBUG("OTRcv error %ld", (long)nread);
+        }
+    } else if (nread > 0) {
+        peer->tcp_recv_len += (size_t)nread;
+    }
+}
+
+/* One-time work at the start of each drain round: service the listener
+   (accept incoming connections inline, as MacTCP does) and the UDP
+   endpoints.  These produce no PT_Event — incoming connections are wired
+   up via pt_handle_incoming_connection, which fires on_connected. */
+static void ot_round_start(PT_Context_Internal *ctx)
+{
     /* ---- Handle listener T_DISCONNECT (queued connection aborted) ---- */
     if (OTAtomicClearBit((UInt8 *)&g_ot.listener_flags, EVT_BIT_DISCONNECT)) {
         /* A connection queued by tilisten was aborted before we accepted it.
@@ -878,182 +908,117 @@ static void ot_poll(PT_Context_Internal *ctx)
         } /* look_retries scope */
     }
 
-    /* ---- Process TCP data endpoints ---- */
-    for (i = 0; i < OT_MAX_ENDPOINTS; i++) {
+    /* ---- UDP sockets ---- */
+    poll_udp(ctx, &g_ot.discovery_udp, 1);
+    poll_udp(ctx, &g_ot.message_udp, 0);
+}
+
+/* Event-driven seam: hand core one platform event per call, draining the
+   round when it returns 0.  Core owns every state transition via
+   pt_apply_platform_event (CONNECTED/DATA/CLOSED); the adapter only reports
+   what the OT notifier observed.  T_DISCONNECT and T_ORDREL collapse into a
+   single CLOSED after the final bytes (a buffered goodbye) are drained, so
+   core can choose QUIT vs ERROR in exactly one place. */
+static int ot_next_event(PT_Context_Internal *ctx, PT_Event *out)
+{
+    int i;
+
+    if (!g_ot.ev_started) {
+        ot_round_start(ctx);
+        g_ot.ev_started = 1;
+        g_ot.ev_cursor = 0;
+    }
+
+    for (i = g_ot.ev_cursor; i < OT_MAX_ENDPOINTS; i++) {
         OTEndpointSlot *slot = &g_ot.tcp_eps[i];
+        unsigned long flags;
+        int had_data, had_discon, had_ordrel, had_connect;
+        int had_passcon, had_godata;
+
         if (slot->ep == kOTInvalidEndpointRef) continue;
 
         /* Atomic test-and-clear each flag individually (R27).
            OTAtomicClearBit returns previous state; notifier flags
-           set after clear are preserved for next poll. */
-        {
-            int had_data, had_discon, had_ordrel, had_connect;
-            int had_passcon, had_godata;
-            had_data    = OTAtomicClearBit((UInt8 *)&slot->flags, EVT_BIT_DATA);
-            had_discon  = OTAtomicClearBit((UInt8 *)&slot->flags, EVT_BIT_DISCONNECT);
-            had_ordrel  = OTAtomicClearBit((UInt8 *)&slot->flags, EVT_BIT_ORDREL);
-            had_connect = OTAtomicClearBit((UInt8 *)&slot->flags, EVT_BIT_CONNECT);
-            had_passcon = OTAtomicClearBit((UInt8 *)&slot->flags, EVT_BIT_PASSCON);
-            had_godata  = OTAtomicClearBit((UInt8 *)&slot->flags, EVT_BIT_GODATA);
-            flags = 0;
-            if (had_data)    flags |= (1UL << EVT_BIT_DATA);
-            if (had_discon)  flags |= (1UL << EVT_BIT_DISCONNECT);
-            if (had_ordrel)  flags |= (1UL << EVT_BIT_ORDREL);
-            if (had_connect) flags |= (1UL << EVT_BIT_CONNECT);
-            if (had_passcon) flags |= (1UL << EVT_BIT_PASSCON);
-            if (had_godata)  flags |= (1UL << EVT_BIT_GODATA);
-        }
-        if (!flags && slot->state == EP_FREE) continue;
+           set after clear are preserved for the next round. */
+        had_data    = OTAtomicClearBit((UInt8 *)&slot->flags, EVT_BIT_DATA);
+        had_discon  = OTAtomicClearBit((UInt8 *)&slot->flags, EVT_BIT_DISCONNECT);
+        had_ordrel  = OTAtomicClearBit((UInt8 *)&slot->flags, EVT_BIT_ORDREL);
+        had_connect = OTAtomicClearBit((UInt8 *)&slot->flags, EVT_BIT_CONNECT);
+        had_passcon = OTAtomicClearBit((UInt8 *)&slot->flags, EVT_BIT_PASSCON);
+        had_godata  = OTAtomicClearBit((UInt8 *)&slot->flags, EVT_BIT_GODATA);
+        /* PASSCON/GODATA need no event: incoming accept is wired up in
+           ot_round_start, and flow-control resume is handled by the
+           notifier clearing slot->flow_off on T_GODATA. */
+        (void)had_passcon;
+        (void)had_godata;
 
-        /* ---- Active connect completion ---- */
+        flags = 0;
+        if (had_data)    flags |= (1UL << EVT_BIT_DATA);
+        if (had_discon)  flags |= (1UL << EVT_BIT_DISCONNECT);
+        if (had_ordrel)  flags |= (1UL << EVT_BIT_ORDREL);
+        if (had_connect) flags |= (1UL << EVT_BIT_CONNECT);
+
+        if (!flags) continue;
+
+        /* ---- Active connect completion -> CONNECTED event ---- */
         if (slot->state == EP_CONNECTING && (flags & (1UL << EVT_BIT_CONNECT))) {
-            PT_Peer_Internal *peer;
-            OTResult res;
+            OTResult res = OTRcvConnect(slot->ep, NULL);
 
-            res = OTRcvConnect(slot->ep, NULL);
-
-            peer = slot->owner;
-            if (res == kOTNoError && peer) {
+            g_ot.ev_cursor = i + 1;
+            out->type = PT_EVT_CONNECTED;
+            out->peer = slot->owner;
+            if (res == kOTNoError && slot->owner) {
                 slot->state = EP_CONNECTED;
-                peer->state = PT_PEER_CONNECTED;
-                peer->last_tcp_activity = ctx->current_time;
-                peer->last_tcp_send = ctx->current_time;
-                peer->connect_start = 0;
-
-                CLOG_INFO("TCP connected to %s", peer->name);
-                if (ctx->callbacks.on_connected) {
-                    ctx->callbacks.on_connected(
-                        (PT_Peer *)peer,
-                        ctx->callbacks.on_connected_data);
-                }
+                out->ok = 1;
             } else {
-                /* Connection failed */
-                OTSndDisconnect(slot->ep, NULL);
-                reset_endpoint(slot);
-                if (peer) {
-                    peer->connect_start = 0;
-                    peer->state = PT_PEER_DISCONNECTED;
-                    peer->platform_peer.endpoint = NULL;
-                    pt_fire_error(ctx, peer, PT_ERR_SEND_FAILED,
-                                  "OT connect failed");
-                }
+                /* core's pt_complete_connect(ok=0) calls ot_tcp_disconnect,
+                   which drains + OTSndDisconnect + resets the endpoint. */
+                out->ok = 0;
             }
-            continue;
+            return 1;
         }
 
-        /* ---- Disconnect event ---- */
-        if (flags & (1UL << EVT_BIT_DISCONNECT)) {
-            PT_Peer_Internal *peer;
+        /* ---- Disconnect / orderly release -> single CLOSED event ----
+           Drain final bytes (incl. a buffered goodbye) into the peer
+           buffer, consume the OT indication, then report CLOSED.  Core's
+           pt_drain_disconnect parses the buffer (QUIT) or fires ERROR. */
+        if (flags & ((1UL << EVT_BIT_DISCONNECT) | (1UL << EVT_BIT_ORDREL))) {
+            PT_Peer_Internal *peer = slot->owner;
 
-            /* Drain remaining data before disconnect — goodbye frame
-               may be readable even after T_DISCONNECT (R23). */
-            peer = slot->owner;
             if (peer) {
-                size_t space = peer->tcp_recv_size -
-                               peer->tcp_recv_len;
-                if (space > 0) {
-                    OTResult nread;
-                    OTFlags rflags = 0;
-                    nread = OTRcv(slot->ep,
-                                  peer->tcp_recv_buf +
-                                      peer->tcp_recv_len,
-                                  (OTByteCount)space, &rflags);
-                    if (nread < 0) {
-                        CLOG_DEBUG("OTRcv error %ld in disconnect drain",
-                                   (long)nread);
-                    } else if (nread > 0) {
-                        peer->tcp_recv_len += (size_t)nread;
-                    }
-                }
-                if (peer->tcp_recv_len > 0) {
-                    pt_messaging_process_tcp_data(ctx, peer);
-                }
+                ot_recv_into_peer(slot, peer);
             }
-
-            OTRcvDisconnect(slot->ep, NULL);
-
-            if (peer && peer->state == PT_PEER_CONNECTED) {
-                pt_handle_peer_disconnect(ctx, peer,
-                                          PT_DISCONNECT_ERROR);
+            if (flags & (1UL << EVT_BIT_DISCONNECT)) {
+                OTRcvDisconnect(slot->ep, NULL);
+            } else {
+                OTRcvOrderlyDisconnect(slot->ep);
+                OTSndOrderlyDisconnect(slot->ep);
             }
-            continue;
-        }
-
-        /* ---- Orderly release ---- */
-        if (flags & (1UL << EVT_BIT_ORDREL)) {
-            PT_Peer_Internal *peer;
-
-            /* Drain remaining data before orderly release — goodbye
-               frame may still be in the receive buffer (R23). */
-            peer = slot->owner;
-            if (peer) {
-                size_t space = peer->tcp_recv_size -
-                               peer->tcp_recv_len;
-                if (space > 0) {
-                    OTResult nread;
-                    OTFlags rflags = 0;
-                    nread = OTRcv(slot->ep,
-                                  peer->tcp_recv_buf +
-                                      peer->tcp_recv_len,
-                                  (OTByteCount)space, &rflags);
-                    if (nread < 0) {
-                        CLOG_DEBUG("OTRcv error %ld in ordrel drain",
-                                   (long)nread);
-                    } else if (nread > 0) {
-                        peer->tcp_recv_len += (size_t)nread;
-                    }
-                }
-                if (peer->tcp_recv_len > 0) {
-                    pt_messaging_process_tcp_data(ctx, peer);
-                }
-            }
-
-            OTRcvOrderlyDisconnect(slot->ep);
-            OTSndOrderlyDisconnect(slot->ep);
-
-            /* Re-read owner — drain may have processed a goodbye frame
-               that triggered pt_handle_peer_disconnect (R4). */
-            peer = slot->owner;
-            if (peer && peer->state == PT_PEER_CONNECTED) {
-                pt_handle_peer_disconnect(ctx, peer,
-                                          PT_DISCONNECT_ERROR);
-            }
-            continue;
+            g_ot.ev_cursor = i + 1;
+            out->type = PT_EVT_CLOSED;
+            out->peer = peer;
+            return 1;
         }
 
         if (slot->state != EP_CONNECTED) continue;
 
-        /* ---- Data available ---- */
+        /* ---- Data available -> DATA event ---- */
         if (flags & (1UL << EVT_BIT_DATA)) {
-            PT_Peer_Internal *peer;
-
-            peer = slot->owner;
-            if (peer) {
-                size_t space = peer->tcp_recv_size - peer->tcp_recv_len;
-                if (space > 0) {
-                    OTResult nread;
-                    OTFlags rflags;
-
-                    rflags = 0;
-                    nread = OTRcv(slot->ep,
-                                  peer->tcp_recv_buf + peer->tcp_recv_len,
-                                  (OTByteCount)space, &rflags);
-                    if (nread < 0) {
-                        CLOG_DEBUG("OTRcv error %ld in data recv",
-                                   (long)nread);
-                    } else if (nread > 0) {
-                        peer->tcp_recv_len += (size_t)nread;
-                        peer->last_tcp_activity = ctx->current_time;
-                        pt_messaging_process_tcp_data(ctx, peer);
-                    }
-                }
+            if (slot->owner) {
+                ot_recv_into_peer(slot, slot->owner);
             }
+            g_ot.ev_cursor = i + 1;
+            out->type = PT_EVT_DATA;
+            out->peer = slot->owner;
+            return 1;
         }
     }
 
-    /* ---- UDP sockets ---- */
-    poll_udp(ctx, &g_ot.discovery_udp, 1);
-    poll_udp(ctx, &g_ot.message_udp, 0);
+    /* Round drained. */
+    g_ot.ev_started = 0;
+    out->type = PT_EVT_NONE;
+    out->peer = NULL;
+    return 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1110,8 +1075,9 @@ static PT_PlatformOps ot_ops = {
     ot_tcp_connect,
     ot_tcp_send,
     ot_tcp_disconnect,
-    ot_poll,
-    ot_cleanup_streams
+    NULL,   /* poll: OT is event-driven via next_event */
+    ot_cleanup_streams,
+    ot_next_event
 };
 
 PT_PlatformOps *ot_get_ops(void)

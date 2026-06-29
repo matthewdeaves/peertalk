@@ -111,6 +111,25 @@ struct PT_Context_Internal;
 struct PT_Peer_Internal;
 
 /* ------------------------------------------------------------------ */
+/* Platform events (the "one card at a time" the adapter hands core)    */
+/* ------------------------------------------------------------------ */
+
+#define PT_MAX_EVENTS_PER_POLL 4096 /* runaway guard for the drain loop */
+
+typedef enum {
+    PT_EVT_NONE = 0,
+    PT_EVT_CONNECTED,   /* outgoing connect finished; ok = success */
+    PT_EVT_DATA,        /* adapter read bytes into peer->tcp_recv_buf */
+    PT_EVT_CLOSED       /* peer connection closed/terminated */
+} PT_EventType;
+
+typedef struct PT_Event {
+    PT_EventType             type;
+    struct PT_Peer_Internal *peer; /* CONNECTED / DATA / CLOSED */
+    int                      ok;   /* CONNECTED: 1 = success, 0 = failed */
+} PT_Event;
+
+/* ------------------------------------------------------------------ */
 /* Platform operations vtable                                          */
 /* ------------------------------------------------------------------ */
 
@@ -136,6 +155,11 @@ typedef struct PT_PlatformOps {
                                 struct PT_Peer_Internal *peer);
     void      (*poll)(struct PT_Context_Internal *ctx);
     void      (*cleanup_streams)(struct PT_Context_Internal *ctx);
+    /* Event-driven seam: return 1 and fill *out with the next event, or
+       0 when this poll round is drained.  Core prefers this over poll();
+       a backend implements one or the other. */
+    int       (*next_event)(struct PT_Context_Internal *ctx,
+                            struct PT_Event *out);
 } PT_PlatformOps;
 
 /* ------------------------------------------------------------------ */
@@ -303,6 +327,12 @@ void      pt_handle_incoming_connection(PT_Context_Internal *ctx,
 void      pt_handle_peer_disconnect(PT_Context_Internal *ctx,
                                     PT_Peer_Internal *peer,
                                     PT_DisconnectReason reason);
+/* Core-owned platform-event transitions (called from PT_Poll's drain
+   loop).  Adapters emit events; core applies them here. */
+void      pt_complete_connect(PT_Context_Internal *ctx,
+                              PT_Peer_Internal *peer, int ok);
+void      pt_drain_disconnect(PT_Context_Internal *ctx,
+                              PT_Peer_Internal *peer);
 /* Platform init functions */
 #if defined(PT_PLATFORM_POSIX)
 PT_PlatformOps *posix_get_ops(void);

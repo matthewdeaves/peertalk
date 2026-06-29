@@ -265,6 +265,80 @@ void pt_handle_peer_disconnect(PT_Context_Internal *ctx,
 }
 
 /* ------------------------------------------------------------------ */
+/* Core-owned platform-event transitions                               */
+/*                                                                      */
+/* Backends used to inline these state changes inside their poll()      */
+/* loops (one copy per platform).  Now the backend only reports an      */
+/* event and core owns the transition in exactly one place.            */
+/* ------------------------------------------------------------------ */
+
+void pt_complete_connect(PT_Context_Internal *ctx,
+                         PT_Peer_Internal *peer, int ok)
+{
+    if (!peer) return;
+
+    peer->connect_start = 0;
+
+    if (ok) {
+        peer->state = PT_PEER_CONNECTED;
+        peer->last_tcp_activity = ctx->current_time;
+        peer->last_tcp_send = ctx->current_time;
+        CLOG_INFO("TCP connected to %s", peer->name);
+        if (ctx->callbacks.on_connected) {
+            ctx->callbacks.on_connected(
+                (PT_Peer *)peer,
+                ctx->callbacks.on_connected_data);
+        }
+    } else {
+        /* tcp_disconnect closes the handle and clears it */
+        ctx->platform_ops->tcp_disconnect(ctx, peer);
+        peer->state = PT_PEER_DISCONNECTED;
+        pt_fire_error(ctx, peer, PT_ERR_SEND_FAILED,
+                      "TCP connect failed");
+    }
+}
+
+void pt_drain_disconnect(PT_Context_Internal *ctx,
+                         PT_Peer_Internal *peer)
+{
+    if (!peer) return;
+
+    /* The adapter has already read any final bytes into tcp_recv_buf
+       before reporting CLOSED (a buffered goodbye frame may still be
+       in there).  Parse it first; a goodbye transitions the peer to
+       DISCONNECTED with PT_QUIT and we must not also fire an error. */
+    if (peer->tcp_recv_len > 0 && peer->state == PT_PEER_CONNECTED) {
+        pt_messaging_process_tcp_data(ctx, peer);
+    }
+    if (peer->state == PT_PEER_CONNECTED) {
+        pt_handle_peer_disconnect(ctx, peer, PT_DISCONNECT_ERROR);
+    }
+}
+
+/* Apply one event reported by a backend's next_event(). */
+static void pt_apply_platform_event(PT_Context_Internal *ctx,
+                                    const PT_Event *ev)
+{
+    switch (ev->type) {
+    case PT_EVT_CONNECTED:
+        pt_complete_connect(ctx, ev->peer, ev->ok);
+        break;
+    case PT_EVT_DATA:
+        if (ev->peer) {
+            ev->peer->last_tcp_activity = ctx->current_time;
+            pt_messaging_process_tcp_data(ctx, ev->peer);
+        }
+        break;
+    case PT_EVT_CLOSED:
+        pt_drain_disconnect(ctx, ev->peer);
+        break;
+    case PT_EVT_NONE:
+    default:
+        break;
+    }
+}
+
+/* ------------------------------------------------------------------ */
 /* Internal: send goodbye frame to a connected peer                    */
 /* ------------------------------------------------------------------ */
 
@@ -559,8 +633,19 @@ void PT_Poll(PT_Context *pub_ctx)
                                PT_DISCOVERY_INTERVAL;
     }
 
-    /* Platform poll */
-    ctx->platform_ops->poll(ctx);
+    /* Platform poll.  Event-driven backends drain one event at a time
+       and core applies each transition; legacy backends still own the
+       loop via poll(). */
+    if (ctx->platform_ops->next_event) {
+        PT_Event ev;
+        int guard = 0;
+        while (guard++ < PT_MAX_EVENTS_PER_POLL &&
+               ctx->platform_ops->next_event(ctx, &ev)) {
+            pt_apply_platform_event(ctx, &ev);
+        }
+    } else {
+        ctx->platform_ops->poll(ctx);
+    }
 
     /* Discovery timeouts */
     pt_discovery_check_timeouts(ctx);

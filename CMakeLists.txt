@@ -123,7 +123,7 @@ endif()
 
 # POSIX test executables
 if(PT_PLATFORM STREQUAL "POSIX")
-    set(TEST_APPS test_fast test_reliable test_chat test_lifecycle test_multi)
+    set(TEST_APPS test_fast test_reliable test_chat test_lifecycle test_multi test_seam)
     foreach(TEST_APP ${TEST_APPS})
         add_executable(${TEST_APP} tests/${TEST_APP}.c)
         target_include_directories(${TEST_APP} PRIVATE include tests)

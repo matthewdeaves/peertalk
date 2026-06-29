@@ -82,6 +82,11 @@ typedef struct {
     /* Reusable param blocks for hot-path operations (avoid per-call memset) */
     TCPiopb       recv_pb;     /* TCPRcv in poll loop */
     UDPiopb       bfr_ret_pb;  /* UDPBfrReturn in poll loop */
+
+    /* next_event() iterator state: UDP + accepts handled once per round,
+       then one per-stream lifecycle event handed back per call. */
+    int           ev_started;  /* round's one-time work done? */
+    int           ev_cursor;   /* next TCP stream index to examine */
 } MacTCPState;
 
 static MacTCPState g_mactcp;
@@ -570,8 +575,14 @@ static void mactcp_shutdown(PT_Context_Internal *ctx)
     mactcp_release_udp_stream(&g_mactcp.message_udp, &upb, "Message");
 
     /* Dispose UPPs after all async operations complete */
-    if (g_mactcp.tcp_upp) DisposeTCPNotifyUPP(g_mactcp.tcp_upp);
-    if (g_mactcp.udp_upp) DisposeUDPNotifyUPP(g_mactcp.udp_upp);
+    if (g_mactcp.tcp_upp) {
+        DisposeTCPNotifyUPP(g_mactcp.tcp_upp);
+        g_mactcp.tcp_upp = NULL;
+    }
+    if (g_mactcp.udp_upp) {
+        DisposeUDPNotifyUPP(g_mactcp.udp_upp);
+        g_mactcp.udp_upp = NULL;
+    }
 
     ctx->platform_state = NULL;
 }
@@ -785,189 +796,34 @@ static void mactcp_tcp_disconnect(PT_Context_Internal *ctx,
     peer->platform_peer.tcp_stream = NULL;
 }
 
-static void mactcp_poll(PT_Context_Internal *ctx)
+/* One TCPRcv that appends whatever is available into the peer's recv
+   buffer.  The byte-pull is irreducibly platform; parsing the bytes and
+   any resulting state transition is core's job (pt_apply_platform_event).
+   Used for both DATA and the pre-CLOSE drain. */
+static void mactcp_recv_into_peer(TCPStreamSlot *ts, PT_Peer_Internal *peer)
 {
-    int i;
+    size_t space;
 
-    /* Process TCP streams */
-    for (i = 0; i < MAX_TCP_STREAMS; i++) {
-        TCPStreamSlot *ts = &g_mactcp.tcp_streams[i];
-        if (!ts->stream) continue;
+    if (!ts->stream || ts->state == STREAM_FREE) return;
+    space = peer->tcp_recv_size - peer->tcp_recv_len;
+    if (space == 0) return;
 
-        /* ---- Passive open completion ---- */
-        if (ts->state == STREAM_LISTENING &&
-            ts->open_pb.ioResult != inProgress) {
+    g_mactcp.recv_pb.tcpStream = ts->stream;
+    g_mactcp.recv_pb.csParam.receive.rcvBuff =
+        (Ptr)(peer->tcp_recv_buf + peer->tcp_recv_len);
+    g_mactcp.recv_pb.csParam.receive.rcvBuffLen = (unsigned short)space;
 
-            if (ts->open_pb.ioResult == noErr) {
-                ip_addr remote_ip;
-                PT_PlatformPeer ppeer;
-
-                g_mactcp.listener_count--;
-                ts->state = STREAM_CONNECTED; /* tentative */
-
-                remote_ip = ts->open_pb.csParam.open.remoteHost;
-
-                memset(&ppeer, 0, sizeof(ppeer));
-                ppeer.tcp_stream = ts;
-
-                pt_handle_incoming_connection(ctx, remote_ip, &ppeer);
-
-                /* Find which peer (if any) now owns this stream */
-                {
-                    int j;
-                    for (j = 0; j < ctx->max_peers; j++) {
-                        if (ctx->peers[j].in_use &&
-                            ctx->peers[j].platform_peer.tcp_stream == ts) {
-                            ts->owner = &ctx->peers[j];
-                            break;
-                        }
-                    }
-                }
-
-                if (!ts->owner) {
-                    /* No room -- abort the accepted connection */
-                    abort_stream(i);
-                }
-            } else {
-                g_mactcp.listener_count--;
-                ts->state = STREAM_FREE;
-            }
-            /* Re-listen happens at end of poll */
-        }
-
-        /* ---- Active open completion ---- */
-        if (ts->state == STREAM_CONNECTING &&
-            ts->open_pb.ioResult != inProgress) {
-
-            PT_Peer_Internal *peer = ts->owner;
-
-            if (ts->open_pb.ioResult == noErr && peer) {
-                ts->state = STREAM_CONNECTED;
-                peer->state = PT_PEER_CONNECTED;
-                peer->last_tcp_activity = ctx->current_time;
-                peer->last_tcp_send = ctx->current_time;
-                peer->connect_start = 0;
-
-                CLOG_INFO("TCP connected to %s", peer->name);
-                if (ctx->callbacks.on_connected) {
-                    ctx->callbacks.on_connected(
-                        (PT_Peer *)peer,
-                        ctx->callbacks.on_connected_data);
-                }
-            } else {
-                /* Connection failed */
-                abort_stream(i);
-                if (peer) {
-                    peer->connect_start = 0;
-                    peer->state = PT_PEER_DISCONNECTED;
-                    peer->platform_peer.tcp_stream = NULL;
-                    pt_fire_error(ctx, peer, PT_ERR_SEND_FAILED,
-                                  "TCP connect failed");
-                }
-            }
-        }
-
-        /* ---- Connected stream events ---- */
-        if (ts->state != STREAM_CONNECTED) continue;
-
-        /* Check send completion */
-        if (ts->send_pending && ts->send_pb.ioResult != inProgress) {
-            ts->send_pending = 0;
-        }
-
-        /* Snapshot and clear flags with interrupts disabled (R27).
-           ASR runs at hardware interrupt level (MacTCP Guide line 2153)
-           and can preempt between read and clear. Disabling interrupts
-           ensures the pair is atomic. */
-        {
-            unsigned char local_flags;
-            short saved_sr = pt_disable_interrupts();
-            local_flags = ts->flags;
-            ts->flags = 0;
-            pt_restore_interrupts(saved_sr);
-
-        /* Check data available (ASR flag) */
-        if (local_flags & FLAG_DATA_AVAIL) {
-            {
-                PT_Peer_Internal *peer = ts->owner;
-                if (peer) {
-                    size_t space = peer->tcp_recv_size -
-                                   peer->tcp_recv_len;
-                    if (space > 0) {
-                        g_mactcp.recv_pb.tcpStream = ts->stream;
-                        g_mactcp.recv_pb.csParam.receive.rcvBuff =
-                            (Ptr)(peer->tcp_recv_buf +
-                                  peer->tcp_recv_len);
-                        g_mactcp.recv_pb.csParam.receive.rcvBuffLen =
-                            (unsigned short)space;
-
-                        if (PBControlSync((ParmBlkPtr)&g_mactcp.recv_pb) == noErr) {
-                            peer->tcp_recv_len +=
-                                g_mactcp.recv_pb.csParam.receive.rcvBuffLen;
-                            peer->last_tcp_activity =
-                                ctx->current_time;
-                            pt_messaging_process_tcp_data(ctx, peer);
-                        }
-                    }
-                }
-            }
-        }
-
-        /* Check remote close / terminate */
-        if (local_flags & (FLAG_REMOTE_CLOSE | FLAG_TERMINATED)) {
-            PT_Peer_Internal *peer;
-
-            peer = ts->owner;
-            if (peer) {
-                /* Drain remaining TCP data — goodbye frame may be
-                   buffered but unprocessed (R23). Read what we can
-                   and parse; if goodbye is found, peer transitions
-                   to DISCONNECTED with PT_QUIT. */
-                {
-                    size_t space = peer->tcp_recv_size -
-                                   peer->tcp_recv_len;
-                    if (space > 0 && ts->stream &&
-                        ts->state != STREAM_FREE) {
-                        OSErr rcv_err;
-                        g_mactcp.recv_pb.tcpStream = ts->stream;
-                        g_mactcp.recv_pb.csParam.receive.rcvBuff =
-                            (Ptr)(peer->tcp_recv_buf +
-                                  peer->tcp_recv_len);
-                        g_mactcp.recv_pb.csParam.receive.rcvBuffLen =
-                            (unsigned short)space;
-
-                        rcv_err = PBControlSync(
-                            (ParmBlkPtr)&g_mactcp.recv_pb);
-                        if (rcv_err == noErr &&
-                            g_mactcp.recv_pb.csParam.receive
-                                .rcvBuffLen > 0) {
-                            peer->tcp_recv_len +=
-                                g_mactcp.recv_pb.csParam.receive
-                                    .rcvBuffLen;
-                            pt_messaging_process_tcp_data(ctx, peer);
-                        } else if (rcv_err != noErr) {
-                            CLOG_DEBUG("TCPRcv error %d in "
-                                       "terminated drain",
-                                       (int)rcv_err);
-                        }
-                    }
-                    /* Also parse any data already in the buffer */
-                    if (peer->tcp_recv_len > 0 &&
-                        peer->state == PT_PEER_CONNECTED) {
-                        pt_messaging_process_tcp_data(ctx, peer);
-                    }
-                }
-                /* Only fire ERROR if goodbye wasn't found */
-                if (peer->state == PT_PEER_CONNECTED) {
-                    pt_handle_peer_disconnect(ctx, peer,
-                                              PT_DISCONNECT_ERROR);
-                }
-            }
-        }
-        } /* end local_flags snapshot block */
+    if (PBControlSync((ParmBlkPtr)&g_mactcp.recv_pb) == noErr) {
+        peer->tcp_recv_len += g_mactcp.recv_pb.csParam.receive.rcvBuffLen;
+    } else {
+        CLOG_DEBUG("TCPRcv error in mactcp_recv_into_peer");
     }
+}
 
-    /* ---- UDP discovery socket ---- */
+/* Once-per-round work that is not a per-peer lifecycle transition:
+   drain the two UDP sockets, handing datagrams straight to core. */
+static void mactcp_poll_udp(PT_Context_Internal *ctx)
+{
     if (g_mactcp.discovery_udp.read_pending &&
         g_mactcp.discovery_udp.read_pb.ioResult != inProgress) {
         g_mactcp.discovery_udp.read_pending = 0;
@@ -983,7 +839,6 @@ static void mactcp_poll(PT_Context_Internal *ctx)
 
             pt_discovery_receive(ctx, data_ptr, data_len, src_addr);
 
-            /* Return buffer to MacTCP (reuse pooled param block) */
             g_mactcp.bfr_ret_pb.udpStream = g_mactcp.discovery_udp.stream;
             g_mactcp.bfr_ret_pb.csParam.receive.rcvBuff = data_ptr;
             PBControlSync((ParmBlkPtr)&g_mactcp.bfr_ret_pb);
@@ -992,7 +847,6 @@ static void mactcp_poll(PT_Context_Internal *ctx)
         issue_udp_read(&g_mactcp.discovery_udp, g_mactcp.driver_ref);
     }
 
-    /* ---- UDP message socket ---- */
     if (g_mactcp.message_udp.read_pending &&
         g_mactcp.message_udp.read_pb.ioResult != inProgress) {
         g_mactcp.message_udp.read_pending = 0;
@@ -1009,7 +863,6 @@ static void mactcp_poll(PT_Context_Internal *ctx)
             pt_messaging_process_udp_data(ctx, data_ptr, data_len,
                                           src_addr);
 
-            /* Return buffer to MacTCP (reuse pooled param block) */
             g_mactcp.bfr_ret_pb.udpStream = g_mactcp.message_udp.stream;
             g_mactcp.bfr_ret_pb.csParam.receive.rcvBuff = data_ptr;
             PBControlSync((ParmBlkPtr)&g_mactcp.bfr_ret_pb);
@@ -1017,11 +870,140 @@ static void mactcp_poll(PT_Context_Internal *ctx)
 
         issue_udp_read(&g_mactcp.message_udp, g_mactcp.driver_ref);
     }
+}
 
-    /* ---- Ensure a listener is active (O(1) via counter) ---- */
+/* Event iterator (mirrors posix_next_event).  Returns 1 with *out filled,
+   or 0 when the round is drained.  Core owns every state transition via
+   pt_apply_platform_event(); the adapter only does I/O and reports what
+   happened.  At most one event per stream per round: a stream carrying
+   both DATA and a close flag is reported as a single CLOSED after the
+   final bytes are drained, so no goodbye frame is lost. */
+static int mactcp_next_event(PT_Context_Internal *ctx, PT_Event *out)
+{
+    int i;
+
+    if (!g_mactcp.ev_started) {
+        mactcp_poll_udp(ctx);
+        g_mactcp.ev_started = 1;
+        g_mactcp.ev_cursor = 0;
+    }
+
+    for (i = g_mactcp.ev_cursor; i < MAX_TCP_STREAMS; i++) {
+        TCPStreamSlot *ts = &g_mactcp.tcp_streams[i];
+        if (!ts->stream) continue;
+
+        /* ---- Passive open completion (inbound accept) ---- */
+        if (ts->state == STREAM_LISTENING &&
+            ts->open_pb.ioResult != inProgress) {
+            if (ts->open_pb.ioResult == noErr) {
+                ip_addr remote_ip;
+                PT_PlatformPeer ppeer;
+                int j;
+
+                g_mactcp.listener_count--;
+                ts->state = STREAM_CONNECTED; /* tentative */
+                remote_ip = ts->open_pb.csParam.open.remoteHost;
+
+                memset(&ppeer, 0, sizeof(ppeer));
+                ppeer.tcp_stream = ts;
+                pt_handle_incoming_connection(ctx, remote_ip, &ppeer);
+
+                ts->owner = NULL;
+                for (j = 0; j < ctx->max_peers; j++) {
+                    if (ctx->peers[j].in_use &&
+                        ctx->peers[j].platform_peer.tcp_stream == ts) {
+                        ts->owner = &ctx->peers[j];
+                        break;
+                    }
+                }
+                if (!ts->owner) {
+                    abort_stream(i);
+                }
+            } else {
+                g_mactcp.listener_count--;
+                ts->state = STREAM_FREE;
+            }
+            continue; /* accept is handled inline; keep scanning */
+        }
+
+        /* ---- Active open completion -> CONNECTED event ---- */
+        if (ts->state == STREAM_CONNECTING &&
+            ts->open_pb.ioResult != inProgress) {
+            PT_Peer_Internal *peer = ts->owner;
+
+            if (ts->open_pb.ioResult == noErr && peer) {
+                ts->state = STREAM_CONNECTED;
+                g_mactcp.ev_cursor = i + 1;
+                out->type = PT_EVT_CONNECTED;
+                out->peer = peer;
+                out->ok = 1;
+                return 1;
+            }
+            if (peer) {
+                /* failure: pt_complete_connect(ok=0) calls tcp_disconnect,
+                   which aborts this stream — single abort, owned by core. */
+                g_mactcp.ev_cursor = i + 1;
+                out->type = PT_EVT_CONNECTED;
+                out->peer = peer;
+                out->ok = 0;
+                return 1;
+            }
+            /* orphan stream (no owner): abort inline, no event */
+            abort_stream(i);
+            continue;
+        }
+
+        /* ---- Connected stream ---- */
+        if (ts->state != STREAM_CONNECTED) continue;
+
+        if (ts->send_pending && ts->send_pb.ioResult != inProgress) {
+            ts->send_pending = 0;
+        }
+
+        /* Atomic snapshot+clear of ASR flags (R27): the ASR fires at
+           hardware interrupt level and can preempt between read and
+           clear. */
+        {
+            unsigned char local_flags;
+            short saved_sr = pt_disable_interrupts();
+            local_flags = ts->flags;
+            ts->flags = 0;
+            pt_restore_interrupts(saved_sr);
+
+            if (local_flags & (FLAG_REMOTE_CLOSE | FLAG_TERMINATED)) {
+                /* Drain any final bytes (incl. a buffered goodbye) into
+                   the peer buffer; core's pt_drain_disconnect parses it
+                   and chooses QUIT vs ERROR. */
+                if (ts->owner) {
+                    mactcp_recv_into_peer(ts, ts->owner);
+                }
+                g_mactcp.ev_cursor = i + 1;
+                out->type = PT_EVT_CLOSED;
+                out->peer = ts->owner;
+                return 1;
+            }
+
+            if (local_flags & FLAG_DATA_AVAIL) {
+                if (ts->owner) {
+                    mactcp_recv_into_peer(ts, ts->owner);
+                }
+                g_mactcp.ev_cursor = i + 1;
+                out->type = PT_EVT_DATA;
+                out->peer = ts->owner;
+                return 1;
+            }
+        }
+        /* no flags this round: keep scanning */
+    }
+
+    /* Round drained: re-arm the listener if needed, reset for next round. */
     if (g_mactcp.listen_active && g_mactcp.listener_count <= 0) {
         re_listen();
     }
+    g_mactcp.ev_started = 0;
+    out->type = PT_EVT_NONE;
+    out->peer = NULL;
+    return 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1038,8 +1020,9 @@ static PT_PlatformOps mactcp_ops = {
     mactcp_tcp_connect,
     mactcp_tcp_send,
     mactcp_tcp_disconnect,
-    mactcp_poll,
-    mactcp_cleanup_streams
+    NULL,   /* poll: MacTCP is event-driven via next_event */
+    mactcp_cleanup_streams,
+    mactcp_next_event
 };
 
 PT_PlatformOps *mactcp_get_ops(void)
