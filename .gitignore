@@ -1,5 +1,6 @@
 # Canonical build directories
 build/
+build-docker/
 build-posix/
 build-68k/
 build-68k-ot/
