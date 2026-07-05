@@ -53,6 +53,8 @@ static int                 g_disconnected;
 static int                 g_messages;
 static int                 g_disconnect_calls;   /* backend tcp_disconnect */
 static int                 g_errors;              /* on_error fired count */
+static int                 g_discovered;          /* on_peer_discovered count */
+static int                 g_lost;                /* on_peer_lost count */
 static PT_Status           g_last_error;
 static PT_DisconnectReason g_last_reason;
 static unsigned char       g_last_msg[64];
@@ -101,6 +103,18 @@ static void on_err(PT_Peer *peer, PT_Status error, const char *desc, void *ud)
     g_last_error = error;
 }
 
+static void on_disc_found(PT_Peer *peer, void *ud)
+{
+    (void)peer; (void)ud;
+    g_discovered++;
+}
+
+static void on_lost(PT_Peer *peer, void *ud)
+{
+    (void)peer; (void)ud;
+    g_lost++;
+}
+
 static void reset_recorders(void)
 {
     g_connected = 0;
@@ -108,6 +122,8 @@ static void reset_recorders(void)
     g_messages = 0;
     g_disconnect_calls = 0;
     g_errors = 0;
+    g_discovered = 0;
+    g_lost = 0;
     g_last_error = PT_OK;
     g_last_reason = (PT_DisconnectReason)-1;
     g_last_msg_len = 0;
@@ -145,6 +161,45 @@ static void stage_bytes(PT_Peer_Internal *p, const unsigned char *b, size_t n)
 {
     memcpy(p->tcp_recv_buf + p->tcp_recv_len, b, n);
     p->tcp_recv_len += n;
+}
+
+/* Return every peer slot to the free/idle state (in_use=0) so a test that
+   relies on pt_alloc_peer()/discovery/rank starts from an empty roster.
+   Buffer pointers are preserved (pt_alloc_peer never touches them). */
+static void reset_all_peers(void)
+{
+    int i;
+    for (i = 0; i < g_ctx->max_peers; i++) {
+        PT_Peer_Internal *p = &g_ctx->peers[i];
+        p->in_use = 0;
+        p->state = PT_PEER_DISCONNECTED;
+        p->ip_addr = 0;
+        p->name[0] = '\0';
+        p->last_seen = 0;
+        p->connect_start = 0;
+        p->tcp_recv_len = 0;
+        p->reassembly_total = 0;
+        p->reassembly_received = 0;
+        p->platform_peer.tcp_fd = -1;
+    }
+    g_ctx->peer_count = 0;
+}
+
+/* Build a v2 discovery packet (6-byte header + name + NUL) into buf and
+   return its length.  flags is PT_DISCOVERY_FLAG_ANNOUNCE / _LEAVE. */
+static size_t build_discovery(unsigned char *buf, unsigned char version,
+                              unsigned char flags, const char *name)
+{
+    size_t namelen = strlen(name);
+    buf[0] = PT_MAGIC_0;
+    buf[1] = PT_MAGIC_1;
+    buf[2] = PT_MAGIC_2;
+    buf[3] = PT_MAGIC_3;
+    buf[4] = version;
+    buf[5] = flags;
+    memcpy(buf + PT_DISCOVERY_HEADER, name, namelen);
+    buf[PT_DISCOVERY_HEADER + namelen] = '\0';
+    return PT_DISCOVERY_HEADER + namelen + 1;
 }
 
 static const unsigned char GOODBYE[4] = { 0x00, 0x00, PT_MSG_TYPE_GOODBYE, 0x00 };
@@ -527,6 +582,414 @@ static void test_no_room_leaves_fd_to_platform(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* TCP frame parsing / reassembly (pt_messaging_process_tcp_data)       */
+/*                                                                      */
+/* Pure buffer-in -> callback-out logic, the core of the wire protocol. */
+/* Each test stages raw bytes exactly as a backend would and asserts    */
+/* the parser's observable effects (callbacks + how much it consumed).  */
+/* ------------------------------------------------------------------ */
+
+static void test_frame_single(void)
+{
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_CONNECTED);
+    printf("[frame_single]\n");
+    stage_bytes(p, MSG_HI, sizeof(MSG_HI));
+    reset_recorders();
+
+    pt_messaging_process_tcp_data(g_ctx, p);
+
+    CHECK(g_messages == 1, "single frame delivered once");
+    CHECK(g_last_msg_len == 2 && memcmp(g_last_msg, "hi", 2) == 0,
+          "payload intact");
+    CHECK(p->tcp_recv_len == 0, "buffer fully consumed");
+}
+
+/* A frame split across two reads must not be delivered until complete,
+   and the partial bytes must survive in the buffer for the next read. */
+static void test_frame_partial_then_rest(void)
+{
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_CONNECTED);
+    printf("[frame_partial_then_rest]\n");
+    reset_recorders();
+
+    /* Header only (declares 2-byte payload, none present yet). */
+    stage_bytes(p, MSG_HI, PT_TCP_HEADER_SIZE);
+    pt_messaging_process_tcp_data(g_ctx, p);
+    CHECK(g_messages == 0, "incomplete frame not delivered");
+    CHECK(p->tcp_recv_len == PT_TCP_HEADER_SIZE, "partial bytes retained");
+
+    /* The rest arrives. */
+    stage_bytes(p, MSG_HI + PT_TCP_HEADER_SIZE,
+                sizeof(MSG_HI) - PT_TCP_HEADER_SIZE);
+    pt_messaging_process_tcp_data(g_ctx, p);
+    CHECK(g_messages == 1, "frame delivered once complete");
+    CHECK(g_last_msg_len == 2 && memcmp(g_last_msg, "hi", 2) == 0,
+          "reassembled payload intact");
+    CHECK(p->tcp_recv_len == 0, "buffer drained");
+}
+
+/* Two frames concatenated in one read: the while-loop must dispatch both. */
+static void test_frame_two_back_to_back(void)
+{
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_CONNECTED);
+    printf("[frame_two_back_to_back]\n");
+    stage_bytes(p, MSG_HI, sizeof(MSG_HI));
+    stage_bytes(p, MSG_HI, sizeof(MSG_HI));
+    reset_recorders();
+
+    pt_messaging_process_tcp_data(g_ctx, p);
+
+    CHECK(g_messages == 2, "both frames delivered");
+    CHECK(p->tcp_recv_len == 0, "buffer fully consumed");
+}
+
+/* A keepalive (type 254, zero payload) has no callback and must be
+   consumed silently -- and consuming exactly 4 bytes is what lets the
+   real frame right behind it still parse. */
+static void test_frame_keepalive_consumed(void)
+{
+    static const unsigned char KA[4] =
+        { 0x00, 0x00, PT_MSG_TYPE_KEEPALIVE, 0x00 };
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_CONNECTED);
+    printf("[frame_keepalive_consumed]\n");
+    stage_bytes(p, KA, sizeof(KA));
+    stage_bytes(p, MSG_HI, sizeof(MSG_HI));
+    reset_recorders();
+
+    pt_messaging_process_tcp_data(g_ctx, p);
+
+    CHECK(g_messages == 1, "keepalive fired no callback; only real msg did");
+    CHECK(g_last_msg_len == 2 && memcmp(g_last_msg, "hi", 2) == 0,
+          "trailing frame parsed after keepalive consumed");
+    CHECK(p->tcp_recv_len == 0, "buffer fully consumed");
+}
+
+/* Two-chunk reassembly: stride comes from chunk 0's payload length, the
+   final size is (total-1)*stride + last_chunk.  One message callback with
+   the concatenated payload. */
+static void test_chunked_reassembly(void)
+{
+    /* chunk 0: len=4 type=10 flags=CHUNK seq=0 total=2 "AAAA" */
+    static const unsigned char C0[12] = {
+        0x00, 0x04, MSG_TYPE, PT_CHUNK_FLAG, 0x00, 0x00, 0x00, 0x02,
+        'A', 'A', 'A', 'A' };
+    /* chunk 1: len=2 type=10 flags=CHUNK seq=1 total=2 "BB" */
+    static const unsigned char C1[10] = {
+        0x00, 0x02, MSG_TYPE, PT_CHUNK_FLAG, 0x00, 0x01, 0x00, 0x02,
+        'B', 'B' };
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_CONNECTED);
+    printf("[chunked_reassembly]\n");
+    stage_bytes(p, C0, sizeof(C0));
+    stage_bytes(p, C1, sizeof(C1));
+    reset_recorders();
+
+    pt_messaging_process_tcp_data(g_ctx, p);
+
+    CHECK(g_messages == 1, "reassembled message delivered once");
+    CHECK(g_last_msg_len == 6, "total length = stride*(N-1)+last");
+    CHECK(memcmp(g_last_msg, "AAAABB", 6) == 0, "chunks concatenated in order");
+    CHECK(p->reassembly_total == 0, "reassembly state cleared after delivery");
+}
+
+/* A chunk whose offset+payload exceeds the reassembly buffer must fire
+   PT_ERR_NO_ROOM and abort reassembly -- never overrun the buffer. */
+static void test_chunk_oversize_rejected(void)
+{
+    static const unsigned char C0[12] = {
+        0x00, 0x04, MSG_TYPE, PT_CHUNK_FLAG, 0x00, 0x00, 0x00, 0x02,
+        'A', 'A', 'A', 'A' };
+    static const unsigned char C1[12] = {
+        0x00, 0x04, MSG_TYPE, PT_CHUNK_FLAG, 0x00, 0x01, 0x00, 0x02,
+        'B', 'B', 'B', 'B' };
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_CONNECTED);
+    size_t saved_size = p->reassembly_buf_size;
+    printf("[chunk_oversize_rejected]\n");
+
+    /* Shrink the bound so chunk 1 (offset = stride 4) overflows. */
+    p->reassembly_buf_size = 4;
+    stage_bytes(p, C0, sizeof(C0));
+    stage_bytes(p, C1, sizeof(C1));
+    reset_recorders();
+
+    pt_messaging_process_tcp_data(g_ctx, p);
+
+    CHECK(g_errors == 1, "oversize chunk fired one error");
+    CHECK(g_last_error == PT_ERR_NO_ROOM, "error code is NO_ROOM");
+    CHECK(g_messages == 0, "no message delivered");
+    CHECK(p->reassembly_total == 0, "reassembly aborted");
+
+    p->reassembly_buf_size = saved_size;
+}
+
+/* ------------------------------------------------------------------ */
+/* UDP fast-message processing (pt_messaging_process_udp_data)          */
+/* ------------------------------------------------------------------ */
+
+static void test_udp_message(void)
+{
+    /* [len=2][type=10]"hi" */
+    static const unsigned char PKT[5] = { 0x00, 0x02, MSG_TYPE, 'h', 'i' };
+    PT_Peer_Internal *p;
+    printf("[udp_message]\n");
+
+    reset_all_peers();
+    p = &g_ctx->peers[0];
+    p->in_use = 1;
+    p->state = PT_PEER_CONNECTED;
+    p->ip_addr = 0x0A000005UL;
+
+    reset_recorders();
+    pt_messaging_process_udp_data(g_ctx, PKT, sizeof(PKT), 0x0A000005UL);
+    CHECK(g_messages == 1, "valid UDP message dispatched");
+    CHECK(g_last_msg_len == 2 && memcmp(g_last_msg, "hi", 2) == 0,
+          "UDP payload intact");
+
+    reset_recorders();
+    pt_messaging_process_udp_data(g_ctx, PKT, 2, 0x0A000005UL);
+    CHECK(g_messages == 0, "packet shorter than header ignored");
+
+    reset_recorders();
+    pt_messaging_process_udp_data(g_ctx, PKT, sizeof(PKT), 0x0A0000FFUL);
+    CHECK(g_messages == 0, "message from unknown peer ignored");
+
+    reset_recorders();
+    {   /* declares 100-byte payload but only 5 bytes present */
+        static const unsigned char BAD[5] =
+            { 0x00, 0x64, MSG_TYPE, 'h', 'i' };
+        pt_messaging_process_udp_data(g_ctx, BAD, sizeof(BAD), 0x0A000005UL);
+    }
+    CHECK(g_messages == 0, "declared length past packet end ignored");
+
+    reset_all_peers();
+}
+
+/* ------------------------------------------------------------------ */
+/* Discovery parse (pt_discovery_receive) -- v2 6-byte header           */
+/* ------------------------------------------------------------------ */
+
+static void test_discovery_announce(void)
+{
+    unsigned char pkt[PT_DISCOVERY_MAX];
+    size_t len;
+    PT_Peer_Internal *found;
+    printf("[discovery_announce]\n");
+
+    reset_all_peers();
+    g_ctx->local_ip = 0x0A000001UL;
+    len = build_discovery(pkt, PT_WIRE_VERSION,
+                          PT_DISCOVERY_FLAG_ANNOUNCE, "Bob");
+    reset_recorders();
+
+    pt_discovery_receive(g_ctx, pkt, len, 0x0A000009UL);
+
+    CHECK(g_discovered == 1, "on_peer_discovered fired once");
+    found = pt_find_peer_by_ip(g_ctx, 0x0A000009UL);
+    CHECK(found != NULL, "peer slot allocated");
+    CHECK(found && strcmp(found->name, "Bob") == 0, "peer name parsed");
+    CHECK(found && found->state == PT_PEER_DISCOVERED, "state DISCOVERED");
+
+    reset_all_peers();
+}
+
+/* Every malformed / non-matching packet must be dropped with no slot
+   allocated and no callback -- these guard the validation ladder. */
+static void test_discovery_rejects(void)
+{
+    unsigned char pkt[PT_DISCOVERY_MAX];
+    size_t len;
+    printf("[discovery_rejects]\n");
+
+    reset_all_peers();
+    g_ctx->local_ip = 0x0A000001UL;
+
+    /* Bad magic */
+    len = build_discovery(pkt, PT_WIRE_VERSION,
+                          PT_DISCOVERY_FLAG_ANNOUNCE, "Bob");
+    pkt[0] = 0xFF;
+    reset_recorders();
+    pt_discovery_receive(g_ctx, pkt, len, 0x0A000009UL);
+    CHECK(g_discovered == 0 && g_ctx->peer_count == 0, "bad magic dropped");
+
+    /* Wrong wire version */
+    len = build_discovery(pkt, PT_WIRE_VERSION + 1,
+                          PT_DISCOVERY_FLAG_ANNOUNCE, "Bob");
+    reset_recorders();
+    pt_discovery_receive(g_ctx, pkt, len, 0x0A000009UL);
+    CHECK(g_discovered == 0 && g_ctx->peer_count == 0, "wrong version dropped");
+
+    /* Too short (header only, no name/nul) */
+    len = build_discovery(pkt, PT_WIRE_VERSION,
+                          PT_DISCOVERY_FLAG_ANNOUNCE, "Bob");
+    reset_recorders();
+    pt_discovery_receive(g_ctx, pkt, PT_DISCOVERY_HEADER, 0x0A000009UL);
+    CHECK(g_discovered == 0 && g_ctx->peer_count == 0, "short packet dropped");
+
+    /* Name with no NUL terminator inside the received region */
+    len = build_discovery(pkt, PT_WIRE_VERSION,
+                          PT_DISCOVERY_FLAG_ANNOUNCE, "Bob");
+    reset_recorders();
+    pt_discovery_receive(g_ctx, pkt, len - 1, 0x0A000009UL); /* chop the NUL */
+    CHECK(g_discovered == 0 && g_ctx->peer_count == 0,
+          "unterminated name dropped");
+
+    /* Our own broadcast (source_ip == local_ip) */
+    len = build_discovery(pkt, PT_WIRE_VERSION,
+                          PT_DISCOVERY_FLAG_ANNOUNCE, "Me");
+    reset_recorders();
+    pt_discovery_receive(g_ctx, pkt, len, g_ctx->local_ip);
+    CHECK(g_discovered == 0 && g_ctx->peer_count == 0, "own IP filtered");
+
+    reset_all_peers();
+}
+
+/* A LEAVE packet (v2 flag 0x01) removes a known peer immediately and
+   fires on_peer_lost -- the v1.11.0 fast-quit path. */
+static void test_discovery_leave(void)
+{
+    unsigned char pkt[PT_DISCOVERY_MAX];
+    size_t len;
+    printf("[discovery_leave]\n");
+
+    reset_all_peers();
+    g_ctx->local_ip = 0x0A000001UL;
+
+    /* Announce first so there is a peer to lose. */
+    len = build_discovery(pkt, PT_WIRE_VERSION,
+                          PT_DISCOVERY_FLAG_ANNOUNCE, "Bob");
+    reset_recorders();
+    pt_discovery_receive(g_ctx, pkt, len, 0x0A000009UL);
+    CHECK(g_discovered == 1 && g_ctx->peer_count == 1, "peer present");
+
+    /* Now the leave broadcast. */
+    len = build_discovery(pkt, PT_WIRE_VERSION,
+                          PT_DISCOVERY_FLAG_LEAVE, "Bob");
+    reset_recorders();
+    pt_discovery_receive(g_ctx, pkt, len, 0x0A000009UL);
+    CHECK(g_lost == 1, "on_peer_lost fired on leave");
+    CHECK(pt_find_peer_by_ip(g_ctx, 0x0A000009UL) == NULL, "peer slot freed");
+    CHECK(g_ctx->peer_count == 0, "peer_count decremented");
+
+    reset_all_peers();
+}
+
+/* ------------------------------------------------------------------ */
+/* Peer ranking (PT_GetPeerRank) -- deterministic IP sort incl. self    */
+/* ------------------------------------------------------------------ */
+
+static void test_peer_rank(void)
+{
+    PT_Peer_Internal *lo, *hi;
+    printf("[peer_rank]\n");
+
+    reset_all_peers();
+    g_ctx->local_ip = 0x0A000002UL;         /* us: middle IP */
+
+    lo = &g_ctx->peers[0];
+    lo->in_use = 1; lo->state = PT_PEER_CONNECTED; lo->ip_addr = 0x0A000001UL;
+    hi = &g_ctx->peers[1];
+    hi->in_use = 1; hi->state = PT_PEER_CONNECTED; hi->ip_addr = 0x0A000003UL;
+
+    /* Sorted by IP: lo(.1)=0, self(.2)=1, hi(.3)=2 */
+    CHECK(PT_GetPeerRank((PT_Context *)g_ctx, NULL) == 1,
+          "self ranks between the two peers");
+    CHECK(PT_GetPeerRank((PT_Context *)g_ctx, (PT_Peer *)lo) == 0,
+          "lowest IP ranks 0");
+    CHECK(PT_GetPeerRank((PT_Context *)g_ctx, (PT_Peer *)hi) == 2,
+          "highest IP ranks 2");
+
+    /* A non-connected peer has no rank. */
+    hi->state = PT_PEER_DISCOVERED;
+    CHECK(PT_GetPeerRank((PT_Context *)g_ctx, (PT_Peer *)hi) == -1,
+          "unconnected peer ranks -1");
+
+    reset_all_peers();
+}
+
+/* pt_alloc_peer must hand out every slot then return NULL at capacity. */
+static void test_alloc_peer_exhaustion(void)
+{
+    int i;
+    int got = 0;
+    printf("[alloc_peer_exhaustion]\n");
+
+    reset_all_peers();
+    for (i = 0; i < g_ctx->max_peers; i++) {
+        if (pt_alloc_peer(g_ctx) != NULL) got++;
+    }
+    CHECK(got == g_ctx->max_peers, "every slot allocated");
+    CHECK(pt_alloc_peer(g_ctx) == NULL, "further alloc returns NULL");
+
+    reset_all_peers();
+}
+
+/* ------------------------------------------------------------------ */
+/* Timeout sweeps (driven by setting ctx->current_time directly)        */
+/* ------------------------------------------------------------------ */
+
+static void test_reassembly_timeout(void)
+{
+    PT_Peer_Internal *stale, *fresh;
+    printf("[reassembly_timeout]\n");
+
+    reset_all_peers();
+
+    stale = &g_ctx->peers[0];
+    stale->in_use = 1;
+    stale->reassembly_total = 2;
+    stale->reassembly_received = 1;
+    stale->reassembly_timer = 100;
+
+    fresh = &g_ctx->peers[1];
+    fresh->in_use = 1;
+    fresh->reassembly_total = 2;
+    fresh->reassembly_received = 1;
+    fresh->reassembly_timer = 104;
+
+    g_ctx->current_time = 100 + PT_REASSEMBLY_TIMEOUT; /* 105 */
+    pt_messaging_check_reassembly_timeouts(g_ctx);
+
+    CHECK(stale->reassembly_total == 0, "stale reassembly aborted");
+    CHECK(stale->reassembly_received == 0, "stale received cleared");
+    CHECK(fresh->reassembly_total == 2, "recent reassembly untouched");
+
+    reset_all_peers();
+}
+
+static void test_discovery_timeout(void)
+{
+    PT_Peer_Internal *stale, *live;
+    printf("[discovery_timeout]\n");
+
+    reset_all_peers();
+    g_ctx->discovery_listening = 1;
+
+    stale = &g_ctx->peers[0];
+    stale->in_use = 1;
+    stale->state = PT_PEER_DISCOVERED;
+    stale->ip_addr = 0x0A000009UL;
+    strcpy(stale->name, "gone");
+    stale->last_seen = 100;
+
+    /* A CONNECTED peer must never be timed out by discovery. */
+    live = &g_ctx->peers[1];
+    live->in_use = 1;
+    live->state = PT_PEER_CONNECTED;
+    live->ip_addr = 0x0A00000AUL;
+    live->last_seen = 100;
+
+    reset_recorders();
+    g_ctx->current_time = 100 + PT_DISCOVERY_TIMEOUT; /* 115 */
+    pt_discovery_check_timeouts(g_ctx);
+
+    CHECK(g_lost == 1, "on_peer_lost fired once");
+    CHECK(stale->in_use == 0, "timed-out peer slot freed");
+    CHECK(live->in_use == 1, "connected peer not timed out");
+
+    reset_all_peers();
+    g_ctx->discovery_listening = 0;
+}
+
+/* ------------------------------------------------------------------ */
 /* main                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -548,17 +1011,46 @@ int main(void)
     PT_OnDisconnected(pub, on_disc, NULL);
     PT_OnMessage(pub, MSG_TYPE, on_msg, NULL);
     PT_OnError(pub, on_err, NULL);
+    PT_OnPeerDiscovered(pub, on_disc_found, NULL);
+    PT_OnPeerLost(pub, on_lost, NULL);
 
+    /* Event-seam transitions */
     test_connect_success();
     test_connect_failure();
     test_close_clean_goodbye();
     test_close_abrupt();
     test_close_message_then_goodbye();
     test_poll_drain_order();
+
+    /* Simultaneous-connect tiebreaker + no-room */
     test_tiebreak_swap_outbound_for_incoming();
     test_tiebreak_lower_keeps_outbound();
     test_tiebreak_true_duplicate_rejected();
     test_no_room_leaves_fd_to_platform();
+
+    /* Wire protocol: TCP framing / reassembly */
+    test_frame_single();
+    test_frame_partial_then_rest();
+    test_frame_two_back_to_back();
+    test_frame_keepalive_consumed();
+    test_chunked_reassembly();
+    test_chunk_oversize_rejected();
+
+    /* Wire protocol: UDP fast messages */
+    test_udp_message();
+
+    /* Discovery v2 parse */
+    test_discovery_announce();
+    test_discovery_rejects();
+    test_discovery_leave();
+
+    /* Peer management + ranking */
+    test_peer_rank();
+    test_alloc_peer_exhaustion();
+
+    /* Timeout sweeps */
+    test_reassembly_timeout();
+    test_discovery_timeout();
 
     PT_Shutdown(pub);
 

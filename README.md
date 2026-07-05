@@ -129,6 +129,23 @@ tests/                      # 7 test apps
 | test_multi | Multi-peer | N-way discovery, connect all, broadcast to all, verify receipt |
 | test_init_only | Init/shutdown | Memory allocation, error path validation (10 checks) |
 | test_clog_minimal | Logging | clog library verification |
+| test_seam | Core logic (white-box) | Event-seam transitions, framing/reassembly, discovery v2 parse, ranking, timeouts — no sockets, 92 checks |
+
+### Core-logic unit tests (no hardware)
+
+`tests/test_seam.c` is the home for white-box unit tests of the
+platform-independent core. Because the event-driven seam moved connection
+lifecycle, framing/reassembly, discovery parsing, ranking, and timeout
+logic out of the backends and into core, all of it is testable with a mock
+backend and synthetic events — no sockets, no discovery, no real hardware.
+A PASS covers all three backends. Build and run it with the POSIX build:
+
+```bash
+cd build && make test_seam && ./test_seam   # 92 checks
+```
+
+Each test is written to **fail on pre-seam / broken logic** (verified by
+mutation), so it catches regressions rather than merely exercising code.
 
 ## Hardware Testing
 

@@ -72,6 +72,22 @@ CLOG_DIR=~/clog tools/build-macosx-fat.sh   # run on the OS X build host
 
 ## Architecture Notes
 
+### Core-Logic Unit Tests (`tests/test_seam.c`)
+
+The home for white-box unit tests of the platform-independent core. The
+event-driven seam moved connection lifecycle, TCP framing/reassembly,
+discovery v2 parsing, peer ranking, and timeout sweeps out of the backends
+into core, so all of it is testable with a mock backend + synthetic events
+— no sockets, no hardware. A PASS covers all three backends. Build with the
+POSIX build (`cd build && make test_seam && ./test_seam`, 92 checks).
+
+Conventions when adding tests here: include `pt_internal.h` for white-box
+access; drive core entry points directly (`pt_messaging_process_tcp_data`,
+`pt_discovery_receive`, `pt_handle_incoming_connection`, the `PT_Poll` drain
+loop, etc.); set `ctx->current_time` by hand to test timeouts; and make each
+test **fail on broken/pre-seam logic** (verify by mutation) so it catches
+regressions rather than merely exercising code. Wire new tests into `main()`.
+
 ### TCP Keepalive
 
 PeerTalk sends automatic keepalive frames (type `PT_MSG_TYPE_KEEPALIVE` = 254) every `PT_KEEPALIVE_INTERVAL` (20s) to prevent TCP inactivity timeout. This is critical for apps like BomberTalk where position updates go via UDP (`PT_FAST`) and TCP can starve during normal gameplay if no game events fire for 60s.
