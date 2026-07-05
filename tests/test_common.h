@@ -290,18 +290,18 @@ static const char *test_reason_str(PT_DisconnectReason reason)
 static unsigned long g_test_start_time = 0;
 static int g_ever_connected = 0;
 
-static void test_mark_start(void)
+static __attribute__((unused)) void test_mark_start(void)
 {
     g_test_start_time = test_time_sec();
 }
 
-static void test_mark_connected(void)
+static __attribute__((unused)) void test_mark_connected(void)
 {
     g_ever_connected = 1;
 }
 
 /* Returns 1 if the solo timeout has elapsed (no peer ever connected) */
-static int test_solo_timeout(void)
+static __attribute__((unused)) int test_solo_timeout(void)
 {
     if (g_ever_connected) return 0;
     if (g_test_start_time == 0) return 0;

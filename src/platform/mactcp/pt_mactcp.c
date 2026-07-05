@@ -813,10 +813,17 @@ static void mactcp_recv_into_peer(const TCPStreamSlot *ts, PT_Peer_Internal *pee
         (Ptr)(peer->tcp_recv_buf + peer->tcp_recv_len);
     g_mactcp.recv_pb.csParam.receive.rcvBuffLen = (unsigned short)space;
 
-    if (PBControlSync((ParmBlkPtr)&g_mactcp.recv_pb) == noErr) {
-        peer->tcp_recv_len += g_mactcp.recv_pb.csParam.receive.rcvBuffLen;
-    } else {
-        CLOG_DEBUG("TCPRcv error in mactcp_recv_into_peer");
+    {
+        OSErr rcv_err = PBControlSync((ParmBlkPtr)&g_mactcp.recv_pb);
+        if (rcv_err == noErr) {
+            peer->tcp_recv_len += g_mactcp.recv_pb.csParam.receive.rcvBuffLen;
+        } else {
+            /* Surface the actual MacTCP OSErr (INFO so test apps at
+               CLOG_LVL_INFO show it). Diagnostic for the simultaneous-connect
+               mesh link-death investigation. */
+            CLOG_INFO("TCPRcv err %d peer=%s", (int)rcv_err,
+                      peer->name[0] ? peer->name : "(unnamed)");
+        }
     }
 }
 
@@ -971,6 +978,14 @@ static int mactcp_next_event(PT_Context_Internal *ctx, PT_Event *out)
             pt_restore_interrupts(saved_sr);
 
             if (local_flags & (FLAG_REMOTE_CLOSE | FLAG_TERMINATED)) {
+                /* Diagnostic: which flavour of close, and on whose stream.
+                   TERMINATED == RST/abort (reason ERROR); REMOTE_CLOSE ==
+                   graceful FIN. For the simultaneous-connect investigation. */
+                CLOG_INFO("TCP close stream=%d flags=%s peer=%s", i,
+                          (local_flags & FLAG_TERMINATED) ? "TERMINATED"
+                                                          : "REMOTE_CLOSE",
+                          (ts->owner && ts->owner->name[0]) ? ts->owner->name
+                                                            : "(unnamed)");
                 /* Drain any final bytes (incl. a buffered goodbye) into
                    the peer buffer; core's pt_drain_disconnect parses it
                    and chooses QUIT vs ERROR. */

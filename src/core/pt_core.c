@@ -893,6 +893,20 @@ PT_Status PT_SetName(PT_Context *pub_ctx, const char *name)
 /* Public API: Peer Ranking                                            */
 /* ------------------------------------------------------------------ */
 
+int PT_ShouldInitiate(const PT_Context *pub_ctx, const PT_Peer *pub_peer)
+{
+    const PT_Context_Internal *ctx = (const PT_Context_Internal *)pub_ctx;
+    const PT_Peer_Internal *peer = (const PT_Peer_Internal *)pub_peer;
+
+    if (!ctx || !peer) return 0;
+
+    /* Lower IP dials, higher IP listens. Consistent with the tiebreaker's
+       "lower-IP-dialed connection wins" rule (pt_handle_incoming_connection),
+       so gating every PT_Connect on this means a pair is never dialed from
+       both sides at once -- the simultaneous-connect race cannot arise. */
+    return ctx->local_ip < peer->ip_addr;
+}
+
 int PT_GetPeerRank(const PT_Context *pub_ctx, const PT_Peer *pub_peer)
 {
     const PT_Context_Internal *ctx = (const PT_Context_Internal *)pub_ctx;

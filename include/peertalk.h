@@ -106,6 +106,18 @@ PT_Status PT_Connect(PT_Context *ctx, PT_Peer *peer);
 void      PT_Disconnect(PT_Context *ctx, PT_Peer *peer);
 void      PT_DisconnectAll(PT_Context *ctx);
 
+/* Deterministic mesh-connect direction. Returns 1 if THIS node is the one that
+   should PT_Connect to `peer` (this node has the lower IP), or 0 if it should
+   instead wait to receive `peer`'s incoming connection (peer has the lower IP
+   and will dial). In a full-mesh app, gate every PT_Connect with this so each
+   pair is dialed from exactly ONE side: no two peers ever connect to each other
+   simultaneously, which eliminates the simultaneous-connect tiebreaker race by
+   construction. The lower-IP initiator matches the tiebreaker's own
+   "lower-IP-dialed connection wins" rule, so the two are consistent. The
+   listening side needs no discovery of the initiator -- accept is passive --
+   and the initiator's normal reconnect-on-failure covers transient drops. */
+int       PT_ShouldInitiate(const PT_Context *ctx, const PT_Peer *peer);
+
 /* ------------------------------------------------------------------ */
 /* Messaging (3)                                                       */
 /* ------------------------------------------------------------------ */
