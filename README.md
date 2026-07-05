@@ -129,7 +129,7 @@ tests/                      # test apps + test_seam core-logic unit tests
 | test_multi | Multi-peer | N-way discovery, connect all, broadcast to all, verify receipt |
 | test_init_only | Init/shutdown | Memory allocation, error path validation (10 checks) |
 | test_clog_minimal | Logging | clog library verification |
-| test_seam | Core logic (white-box) | Event-seam transitions, framing/reassembly, discovery v2 parse, ranking, timeouts — no sockets, 92 checks |
+| test_seam | Core logic (white-box) | Event-seam transitions, framing/reassembly, discovery v2 parse, ranking, timeout sweeps, send-error paths — no sockets, 112 checks |
 
 ### Core-logic unit tests (no hardware)
 
@@ -141,7 +141,7 @@ backend and synthetic events — no sockets, no discovery, no real hardware.
 A PASS covers all three backends. Build and run it with the POSIX build:
 
 ```bash
-cd build && make test_seam && ./test_seam   # 92 checks
+cd build && make test_seam && ./test_seam   # 112 checks
 ```
 
 Each test is written to **fail on pre-seam / broken logic** (verified by

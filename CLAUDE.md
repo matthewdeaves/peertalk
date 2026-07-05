@@ -90,7 +90,7 @@ event-driven seam moved connection lifecycle, TCP framing/reassembly,
 discovery v2 parsing, peer ranking, and timeout sweeps out of the backends
 into core, so all of it is testable with a mock backend + synthetic events
 — no sockets, no hardware. A PASS covers all three backends. Build with the
-POSIX build (`cd build && make test_seam && ./test_seam`, 92 checks).
+POSIX build (`cd build && make test_seam && ./test_seam`, 112 checks).
 
 Conventions when adding tests here: include `pt_internal.h` for white-box
 access; drive core entry points directly (`pt_messaging_process_tcp_data`,
@@ -181,7 +181,7 @@ All design docs live in `specs/001-peertalk-sdk/`:
 - `spec.md` — requirements and user stories
 - `tasks.md` — 148 tasks across 26 phases (147 complete)
 - `contracts/peertalk-api.md` — 25-function public API contract
-- `research.md` — platform research decisions (R1-R46)
+- `research.md` — platform research decisions (R1-R50)
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
@@ -192,6 +192,11 @@ All design docs live in `specs/001-peertalk-sdk/`:
 - PeerTalk SDK, test_common.h framework
 
 ## Recent Changes
+- v1.12.1: Architecture-review follow-up (post-v1.12.0 deep-module pass). Core/test-only refinements to the event seam — no public API or behaviour change; identical wire protocol.
+  - **Dead code removed**: every backend drove the seam via `next_event()` with `.poll = NULL`, so `PT_Poll`'s legacy `poll()` fallback was unreachable and the vtable's `poll` slot supported a backend that never existed. Deleted the field, the branch, and the three `NULL` placeholders — platform interface narrowed 11→10 ops.
+  - **Testability**: extracted `pt_check_peer_timeouts()` (connect-timeout / keepalive / TCP-inactivity) out of `PT_Poll`, so the mock backend can drive it directly — matching its already-extracted sibling sweeps. Made the mock `tcp_send` counting + configurably-failing to cover send-failure propagation and chunked-send abort. `test_seam` 92→**112 checks**, every new one mutation-verified.
+  - **Investigated and declined** (recorded in `research.md` R50 so they are not re-proposed): routing inbound-accept and UDP through `PT_EVT_ACCEPT`/`PT_EVT_UDP` events (the three core helpers are already centralized + unit-tested; conversion would widen `PT_Event` and add backend drain cursors — relocation, not reduction); retiring the `udp_listen` vtable slot (it is the load-bearing arm/re-arm-UDP step on MacTCP discovery restart, symmetric with `tcp_listen`); and a dynamic event-handler registry (speculative generality against Constitution IV/IX). **Standing decision**: the platform seam stays a static vtable; non-lifecycle I/O calls shared core functions directly.
+  - **Hardware-validated** (vtable layout shifted, so re-run on the fleet): `test_lifecycle` PASS on Mac SE (68k MacTCP), OT Mac (PPC OT), .213 (PPC MacTCP), Intel mini (i386 10.7), iMac G5 (ppc 10.5.8), G4 Quicksilver (ppc 10.4.11). cppcheck clean; builds clean on POSIX, 68k MacTCP, PPC OT.
 - v1.12.0: Major release — event-driven platform seam, Mac OS X support (native POSIX + Carbon target), expanded testing, static analysis, and full cross-era hardware validation.
   - **Event-driven platform seam**: backends emit `PT_Event`s (CONNECTED/DATA/CLOSED); core applies every lifecycle transition in one place (`pt_complete_connect`/`pt_drain_disconnect`/the `PT_Poll` drain loop) instead of each backend inlining it. Makes core logic unit-testable without sockets. Hardware-validated on all three classic backends.
   - **Mac OS X 10.3+**: fat PPC+Intel universal build reusing `pt_posix.c` (`tools/build-macosx-fat.sh`) for 10.4–10.7; a PPC-only 10.3.9 build covers 10.3. Verified `test_lifecycle` PASS on Intel mini (10.7.5), iMac G5 (10.5.8), G4 Quicksilver (10.4.11), G3 (10.3.9). Makes BomberTalk-for-macOS feasible, interoperating with the classic Macs over the shared wire protocol. On-screen runs via `tools/osx-screen-run.sh` (Terminal window on the Mac's display).
