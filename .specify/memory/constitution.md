@@ -1,13 +1,11 @@
 <!--
 Sync Impact Report
-- Version change: 1.1.0 → 1.1.1
+- Version change: 1.1.1 → 1.2.0
 - Modified principles:
-  - II: Added "connection liveness" to the list of invisible protocol concerns,
-    and explicit mention of keepalives so apps never need heartbeat logic.
-  - VI: Clarified that fixed-interval protocol behaviors (discovery broadcasts,
-    TCP keepalives) are not "runtime adaptation" — they run unconditionally on
-    a timer and require no decision-making.
-- Templates requiring updates: None (PATCH — clarifications only)
+  - Added XI: Use Standard Tools, Don't Reinvent the Wheel — dev/test tooling
+    reuses standard programs (socat, jq, cmake, …); ask the user to install a
+    missing tool rather than hand-rolling a bespoke replacement.
+- Templates requiring updates: CLAUDE.md principle list (10 → 11) — done.
 - Follow-up TODOs: None
 -->
 
@@ -162,6 +160,18 @@ All SDK code MUST compile as C89/C90 for Classic Mac
 compatibility. POSIX-only code paths (test apps, build tools)
 MAY use C11.
 
+### XI. Use Standard Tools, Don't Reinvent the Wheel
+
+Development and test tooling MUST reuse standard, well-understood
+programs (e.g. socat, jq, cmake, standard CLI utilities) rather
+than hand-rolling bespoke replacements. If a needed tool is
+missing, ask the user to install it — they run the privileged
+install — instead of writing custom code to work around its
+absence. A purpose-built script is warranted only when no
+standard tool fits the job, and it MUST be justified on those
+grounds. This governs tooling and test infrastructure; the
+shipped SDK stays dependency-light per Principles VII and IX.
+
 ## Scope & Deliverables
 
 ### Platforms
@@ -221,4 +231,4 @@ comply with these principles.
   apply Principle I — if none of the three target apps need it,
   it does not ship.
 
-**Version**: 1.1.1 | **Ratified**: 2026-02-28 | **Last Amended**: 2026-04-10
+**Version**: 1.2.0 | **Ratified**: 2026-02-28 | **Last Amended**: 2026-07-05

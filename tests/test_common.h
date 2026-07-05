@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <stdarg.h>
 
 #ifdef PT_PLATFORM_POSIX
 #include <unistd.h>
@@ -34,25 +35,73 @@
 #endif
 
 /* ------------------------------------------------------------------ */
-/* Logging macro: printf on POSIX, CLOG_INFO + status_window on Mac    */
+/* Logging: one helper feeds every sink so a single call reaches the   */
+/* local log AND (when enabled) the network.                           */
+/*                                                                      */
+/*   - clog file (all platforms)                                       */
+/*   - printf/stderr (POSIX) or the Toolbox status window (Classic Mac) */
+/*   - PeerTalk's UDP debug broadcast, port 7356, when a test app has   */
+/*     called test_remote_log_enable() after PT_Init                    */
+/*                                                                      */
+/* The debug-broadcast sink is how we pull a full run log off a machine */
+/* with NO FTP (e.g. the Mac SE): a listener on the host captures the   */
+/* stream live.  LaunchAPPL's out-file cannot carry a GUI APPL's stdout */
+/* (that path is MPW-tool only), so the network is the portable channel.*/
+/* It also dogfoods the debug-broadcast SDK feature (Principle VIII).   */
+/* SDK is untouched (Principle VII) -- this is test-harness only.       */
 /* ------------------------------------------------------------------ */
 
-#ifdef PT_PLATFORM_POSIX
-#define TEST_LOG(fmt, ...) \
-    do { printf(fmt "\n", ##__VA_ARGS__); \
-         CLOG_INFO(fmt, ##__VA_ARGS__); } while(0)
-#define TEST_WARN(fmt, ...) \
-    do { fprintf(stderr, fmt "\n", ##__VA_ARGS__); \
-         CLOG_WARN(fmt, ##__VA_ARGS__); } while(0)
-#else
-/* Classic Mac: clog to PT_Log file + status window for GUI display */
-#define TEST_LOG(fmt, ...) \
-    do { CLOG_INFO(fmt, ##__VA_ARGS__); \
-         status_linef(fmt, ##__VA_ARGS__); } while(0)
-#define TEST_WARN(fmt, ...) \
-    do { CLOG_WARN(fmt, ##__VA_ARGS__); \
-         status_linef(fmt, ##__VA_ARGS__); } while(0)
+/* Set by test_remote_log_enable(); NULL disables the broadcast sink. */
+static PT_Context *g_test_log_ctx = NULL;
+
+/* Keep printf-style format checking across every TEST_LOG/TEST_WARN site
+   (funnelling through one varargs helper would otherwise lose -Wformat). */
+#if defined(__GNUC__)
+static void test_emit_log(int is_warn, const char *fmt, ...)
+    __attribute__((format(printf, 2, 3)));
 #endif
+
+static void test_emit_log(int is_warn, const char *fmt, ...)
+{
+    char line[256];
+    va_list ap;
+
+    va_start(ap, fmt);
+    vsnprintf(line, sizeof(line), fmt, ap);
+    va_end(ap);
+
+    if (is_warn) {
+        CLOG_WARN("%s", line);
+    } else {
+        CLOG_INFO("%s", line);
+    }
+
+#ifdef PT_PLATFORM_POSIX
+    if (is_warn) {
+        fprintf(stderr, "%s\n", line);
+    } else {
+        printf("%s\n", line);
+    }
+#else
+    status_linef("%s", line);
+#endif
+
+    if (g_test_log_ctx) {
+        PT_DebugSend(g_test_log_ctx, line, strlen(line));
+    }
+}
+
+#define TEST_LOG(fmt, ...)  test_emit_log(0, fmt, ##__VA_ARGS__)
+#define TEST_WARN(fmt, ...) test_emit_log(1, fmt, ##__VA_ARGS__)
+
+/* Enable the UDP debug-broadcast log sink.  Call once, right after
+   PT_Init, so subsequent TEST_LOG/TEST_WARN lines also stream to the
+   host on port 7356.  Harmless if nobody is listening. */
+static __attribute__((unused)) void test_remote_log_enable(PT_Context *ctx)
+{
+    g_test_log_ctx = ctx;
+    PT_EnableDebugBroadcast(ctx, 0);
+}
 
 /* ------------------------------------------------------------------ */
 /* Message type constants for test apps                                */
@@ -140,6 +189,10 @@ static void test_init_logging(const char *app_name)
 
 static void test_shutdown_logging(void)
 {
+    /* Called right after PT_Shutdown, which frees the context. Drop the
+       broadcast sink's dangling pointer so any later TEST_LOG can't send
+       through a freed ctx. */
+    g_test_log_ctx = NULL;
 #if !defined(PT_PLATFORM_POSIX)
     /* Pause while window is still visible so user can read results.
      * Must happen BEFORE status_cleanup() disposes the window. */

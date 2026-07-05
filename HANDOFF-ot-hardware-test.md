@@ -90,18 +90,33 @@ cd build && make test_lifecycle
 ./test_lifecycle posix-host > /tmp/ot_peer.log 2>&1 &
 ```
 
-### 4. Launch on the Mac via MCP, then read the POSIX log
+### 4. Capture the Mac's log over UDP, then launch on the Mac via MCP
+
+The test apps mirror their full log to PeerTalk's UDP debug broadcast
+(port 7356; `test_common.h` calls `test_remote_log_enable` after `PT_Init`).
+So you read the **Mac's own** log without FTP — start a `socat` sink first:
+
+```bash
+timeout 55 socat -u UDP-RECV:7356,reuseaddr - > /tmp/mac_run.log &   # truncates per run
+```
+
+Then launch (the POSIX peer from step 3 is still running and also broadcasts):
 
 ```
 execute_binary(machine="ot", platform="ppc",
                binary_path="<abs>/build-ppc-ot/test_lifecycle.bin")
 ```
 
-Then `cat /tmp/ot_peer.log` — **the POSIX peer's log is the verdict**, not
-the MCP return (FTP isn't configured on these Macs, so the Mac's own
-`PT_Log` can't be pulled; and `test_multi` runs ~70s which exceeds the
-LaunchAPPL ~45s window, so it will "time out" in the harness while the app
-actually completes — read the POSIX log).
+Then read the capture — both sides are in one file, tagged `[name@ip]`:
+
+```bash
+grep '10.188.1.102' /tmp/mac_run.log    # the OT Mac's own lines; verdict = *** PASS ***
+```
+
+(For FTP machines you can still `download_file(..., "PT_test_lifecycle")`
+for the clog copy, but the UDP capture works everywhere incl. the FTP-less
+Mac SE. `test_multi` runs ~70s > the LaunchAPPL ~45s window, so the MCP call
+"times out" while the app completes — the capture has the full run.)
 
 Expect, same as MacTCP: discovery both ways, connect, **disconnect reason
 = QUIT** (clean goodbye, not timeout/error), reconnect, `*** PASS ***`.

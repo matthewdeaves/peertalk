@@ -126,6 +126,7 @@ int main(int argc, char **argv)
         return 1;
     }
     TEST_LOG("PT_Init OK");
+    test_remote_log_enable(g_ctx);
 
     PT_OnPeerDiscovered(g_ctx, on_discovered, NULL);
     PT_OnPeerLost(g_ctx, on_peer_lost, NULL);

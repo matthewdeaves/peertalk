@@ -122,6 +122,24 @@ tests/                      # 7 test apps
 
 Deploy and run test binaries on real Classic Mac hardware using the [classic-mac-hardware-mcp](https://github.com/matthewdeaves/classic-mac-hardware-mcp) MCP server. See its README for setup.
 
+### Getting a run log off a machine with no FTP
+
+A Classic Mac GUI app's stdout does **not** reach the LaunchAPPL out-file, so
+`execute_binary` can't return the log inline. Instead the test apps mirror
+every log line to PeerTalk's UDP debug broadcast (port 7356); capture it on
+the host with `socat` — works for any machine on the LAN, including the
+FTP-less Mac SE:
+
+```bash
+timeout 55 socat -u UDP-RECV:7356,reuseaddr - > run.log &   # clean log each run
+timeout 55 ./build/test_lifecycle --name POSIXHOST &        # a peer to talk to
+# ...run the Mac binary via the MCP, then:
+grep '<mac-ip>' run.log     # that machine's own lines; verdict = *** PASS ***
+```
+
+Both peers' logs land in one file, tagged `[name@ip]`. Machines with FTP can
+still pull the `PT_<appname>` clog file directly.
+
 ## Hardware Verification
 
 All test apps verified on real Classic Mac hardware:

@@ -2,7 +2,7 @@
 
 ## Constitution (Binding)
 
-These 10 principles govern ALL implementation decisions. Full text: `.specify/memory/constitution.md`
+These 11 principles govern ALL implementation decisions. Full text: `.specify/memory/constitution.md`
 
 1. **Three Apps Are the Spec** — Every feature MUST serve Bomberman, Chess, or Chat. If none need it, don't build it.
 2. **SDK Handles the Protocol** — Framing, chunking, transport selection, discovery, liveness are invisible to the app.
@@ -14,6 +14,7 @@ These 10 principles govern ALL implementation decisions. Full text: `.specify/me
 8. **Test Apps and Demo Apps Prove the SDK** — Four test apps exercise all three app patterns. Demo apps (csend-pt) prove the SDK with real applications.
 9. **Keep It Small** — Target under 15,000 lines total across all platforms.
 10. **C89 for Portability** — All SDK code MUST be C89/C90. Test apps (POSIX only) may use C11.
+11. **Use Standard Tools, Don't Reinvent** — Dev/test tooling reuses standard programs (socat, jq, cmake). If a tool is missing, ask the user to install it — don't hand-roll a bespoke replacement. Tooling only; SDK stays dependency-light (VII, IX).
 
 ## Before Every Change
 
@@ -85,6 +86,23 @@ PeerTalk provides a general-purpose UDP debug broadcast channel (no clog couplin
 - `PT_SetName()` rebuilds the debug prefix automatically if broadcast is active.
 - Monitor with: `socat -u UDP-RECV:7356,reuseaddr -`
 
+### Remote Test-Log Capture (no FTP)
+
+The test harness (`tests/test_common.h`) mirrors every `TEST_LOG`/`TEST_WARN` line to the debug broadcast (each test app calls `test_remote_log_enable(ctx)` after `PT_Init`). So a full run log streams over UDP port 7356, tagged `[name@ip]` — the way to get logs off a machine with **no FTP** (the Mac SE), since a GUI APPL's stdout can't reach the LaunchAPPL out-file (see the Classic Mac test-apps gotcha).
+
+Procedure (run the sink + a POSIX peer on the host, launch the Mac binary, then read the capture):
+
+```bash
+# 1. capture (truncates per run -> always a clean log)
+timeout 55 socat -u UDP-RECV:7356,reuseaddr - > run.log &
+# 2. a POSIX peer for the Mac to talk to (also broadcasts; interleaved, tagged by IP)
+timeout 55 ./build/test_lifecycle --name POSIXHOST &
+# 3. run on the Mac (MCP execute_binary), then:
+grep '10.188.1.55' run.log   # SE's own lines; verdict line is "*** PASS ***"
+```
+
+Both sides' logs land in one file; filter by IP. Verified on the Mac SE (68k/MacTCP) and a PPC/OT Mac.
+
 ### Peer Ranking
 
 `PT_GetPeerRank(ctx, peer)` returns the 0-based rank of a peer among all connected peers + self, sorted by IP address (lowest IP = rank 0). Pass `NULL` for `peer` to get the local machine's rank. Returns -1 on error. Uses internal `ip_addr` fields directly — no string parsing needed.
@@ -110,7 +128,7 @@ PeerTalk provides a general-purpose UDP debug broadcast channel (no clog couplin
 
 **POSIX C89 code**: `vsnprintf` requires `#define _POSIX_C_SOURCE 200112L` before includes when compiling with `-std=c89`.
 
-**Classic Mac test apps** (R11, R17, R18): Retro68/LaunchAPPL console apps have no Toolbox init. Use `Delay()` for sleep (no Toolbox needed). Use `TickCount()/60` for timing (safe at main loop time, NOT at interrupt time). No stdio on Classic Mac — use clog with `clog_set_file("PT_Log")`. Do NOT call WaitNextEvent without Toolbox init (bus error in `_PortToMap`). Do NOT do Toolbox init before Retro68 console init (kills printf window). **MaxApplZone()/MoreMasters()** MUST be called before ANY Memory Manager or File Manager call — in test_init_toolbox() before clog_set_file, AND in PT_Init() before NewPtrClear. **No malloc after PT_Init** on Classic Mac — test apps must use static buffers. **Use CLOG_INFO** for test progress (printf may not reach LaunchAPPL).
+**Classic Mac test apps** (R11, R17, R18): Retro68/LaunchAPPL console apps have no Toolbox init. Use `Delay()` for sleep (no Toolbox needed). Use `TickCount()/60` for timing (safe at main loop time, NOT at interrupt time). No stdio on Classic Mac — use clog with `clog_set_file("PT_Log")`. Do NOT call WaitNextEvent without Toolbox init (bus error in `_PortToMap`). Do NOT do Toolbox init before Retro68 console init (kills printf window). **MaxApplZone()/MoreMasters()** MUST be called before ANY Memory Manager or File Manager call — in test_init_toolbox() before clog_set_file, AND in PT_Init() before NewPtrClear. **No malloc after PT_Init** on Classic Mac — test apps must use static buffers. **Use CLOG_INFO** for test progress. **stdout does NOT reach the LaunchAPPL out-file for our apps** (verified 2026-07-05): the out-file is populated only by MPW *tools* (ToolLauncher's `'dosc'` + `> "out"` redirect); GUI APPLs launched via `LaunchApplication` forward nothing, and RetroConsole's `_consolewrite` writes only to an on-screen window. So `execute_binary` returns "(no stdout — check PT_Log)" for our test apps. To get a full run log off a machine WITH NO FTP (the Mac SE), use the **UDP debug-broadcast log capture** — see the Remote Test-Log Capture section below.
 
 **OT linker** (R12, R46): PPC builds link `OpenTransportAppPPC` + `OpenTransportLib` + `OpenTptInternetLib`. 68k OT builds link `OpenTransportApp` + `OpenTransport` + `OpenTptInet` + `ot_slm_stubs` (provides SLM dispatch symbols missing from Retro68 import libs). OT headers `#define` non-InContext names as InContext macros — add `#undef OTOpenEndpoint`, `#undef InitOpenTransport`, `#undef CloseOpenTransport` after OT includes.
 
