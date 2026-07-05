@@ -99,7 +99,7 @@ PT_Status PT_StartDiscovery(PT_Context *ctx);
 void      PT_StopDiscovery(PT_Context *ctx);
 
 /* ------------------------------------------------------------------ */
-/* Connections (3)                                                     */
+/* Connections (5)                                                     */
 /* ------------------------------------------------------------------ */
 
 PT_Status PT_Connect(PT_Context *ctx, PT_Peer *peer);
@@ -117,6 +117,22 @@ void      PT_DisconnectAll(PT_Context *ctx);
    listening side needs no discovery of the initiator -- accept is passive --
    and the initiator's normal reconnect-on-failure covers transient drops. */
 int       PT_ShouldInitiate(const PT_Context *ctx, const PT_Peer *peer);
+
+/* Automatic full-mesh maintenance. When enabled, PeerTalk keeps a TCP
+   connection open to every peer it has discovered, without the app calling
+   PT_Connect at all: each poll it dials any discovered-but-unconnected peer
+   for which this node is the designated initiator (PT_ShouldInitiate), and
+   re-dials after a drop. Because every pair is dialed from exactly one side,
+   the simultaneous-connect race cannot arise, and the mesh self-heals.
+
+   This is the topology layer any full-mesh LAN app needs (the app decides
+   WHEN to play and WHO is who; PeerTalk decides who is connected to whom).
+   It is opt-in and composes with the primitives: an app wanting a different
+   topology (e.g. a star/host model) simply leaves it off and calls PT_Connect
+   itself. Enable once after PT_Init; PT_StartDiscovery still gates which peers
+   become known. enable=0 turns it off (existing connections are left intact;
+   use PT_Disconnect/PT_DisconnectAll to tear them down). */
+void      PT_EnableAutoMesh(PT_Context *ctx, int enable);
 
 /* ------------------------------------------------------------------ */
 /* Messaging (3)                                                       */

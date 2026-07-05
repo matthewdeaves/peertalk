@@ -49,6 +49,7 @@
 #define PT_KEEPALIVE_INTERVAL   20  /* seconds between TCP keepalives */
 #define PT_CONNECT_TIMEOUT      15  /* seconds to establish TCP */
 #define PT_REASSEMBLY_TIMEOUT   5   /* seconds for chunk reassembly */
+#define PT_MESH_RETRY_INTERVAL  2   /* seconds between auto-mesh dial sweeps */
 
 #define PT_UDP_MTU_SAFE         1400 /* max fast message payload */
 #define PT_DEBUG_PORT           7356 /* default debug broadcast port */
@@ -263,6 +264,10 @@ typedef struct PT_Context_Internal {
     int           discovery_active;    /* broadcasting? */
     int           discovery_listening; /* receiving? */
     unsigned long discovery_timer;     /* next broadcast time */
+
+    /* Auto-mesh state (opt-in full-mesh topology maintenance) */
+    int           auto_mesh;           /* dial discovered peers automatically? */
+    unsigned long mesh_dial_timer;     /* next auto-mesh dial sweep time */
     unsigned char discovery_pkt[PT_DISCOVERY_MAX]; /* pre-built packet */
     size_t        discovery_pkt_len;               /* cached length */
 
@@ -331,6 +336,11 @@ void      pt_handle_peer_disconnect(PT_Context_Internal *ctx,
    PT_Poll each round; driven directly (with ctx->current_time set by
    hand) from the core-logic unit tests. */
 void      pt_check_peer_timeouts(PT_Context_Internal *ctx);
+/* Auto-mesh dial sweep.  When enabled (PT_EnableAutoMesh), periodically
+   dials every discovered peer this node is the designated initiator for.
+   Called from PT_Poll; driven directly (with ctx->current_time set by
+   hand) from the core-logic unit tests, matching the other sweeps. */
+void      pt_mesh_dial_sweep(PT_Context_Internal *ctx);
 /* Core-owned platform-event transitions (called from PT_Poll's drain
    loop).  Adapters emit events; core applies them here. */
 void      pt_complete_connect(PT_Context_Internal *ctx,

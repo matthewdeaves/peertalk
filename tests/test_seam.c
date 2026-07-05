@@ -52,6 +52,7 @@ static int                 g_connected;
 static int                 g_disconnected;
 static int                 g_messages;
 static int                 g_disconnect_calls;   /* backend tcp_disconnect */
+static int                 g_connect_calls;       /* backend tcp_connect */
 static int                 g_errors;              /* on_error fired count */
 static int                 g_tcp_sends;           /* mock tcp_send call count */
 static int                 g_tcp_send_fail_at;    /* 1-based call to fail at; 0=never */
@@ -125,6 +126,7 @@ static void reset_recorders(void)
     g_disconnected = 0;
     g_messages = 0;
     g_disconnect_calls = 0;
+    g_connect_calls = 0;
     g_errors = 0;
     g_tcp_sends = 0;
     g_tcp_send_fail_at = 0;
@@ -363,6 +365,11 @@ static PT_Status mock_tcp_send(PT_Context_Internal *c, PT_Peer_Internal *pe,
 static void mock_tcp_disconnect(PT_Context_Internal *c, PT_Peer_Internal *pe)
 { (void)c; g_disconnect_calls++; pe->platform_peer.tcp_fd = -1; }
 
+/* Records auto-mesh / manual dials.  Returns PT_OK so PT_Connect sets
+   connect_start (marking a dial in flight), exactly like a real backend. */
+static PT_Status mock_tcp_connect(PT_Context_Internal *c, PT_Peer_Internal *pe)
+{ (void)c; (void)pe; g_connect_calls++; return PT_OK; }
+
 /* Install a fully-wired mock backend (all no-ops) and return the ops that
    were in place, so the caller can restore them. */
 static PT_PlatformOps g_mock_ops;
@@ -373,6 +380,7 @@ static PT_PlatformOps *install_mock_ops(void)
     g_mock_ops.udp_broadcast  = mock_udp_broadcast;
     g_mock_ops.udp_send       = mock_udp_send;
     g_mock_ops.tcp_send       = mock_tcp_send;
+    g_mock_ops.tcp_connect    = mock_tcp_connect;
     g_mock_ops.tcp_disconnect = mock_tcp_disconnect;
     g_mock_ops.next_event     = mock_next_event;
     g_ctx->platform_ops = &g_mock_ops;
@@ -598,6 +606,83 @@ static void test_no_room_leaves_fd_to_platform(void)
         g_ctx->peers[i].platform_peer.tcp_fd = -1;
         g_ctx->peers[i].state = PT_PEER_DISCONNECTED;
     }
+}
+
+/* ------------------------------------------------------------------ */
+/* Auto-mesh dial sweep (pt_mesh_dial_sweep)                            */
+/*                                                                      */
+/* The topology layer: when enabled, keep a dial open to every          */
+/* discovered peer THIS node is the designated initiator for            */
+/* (local_ip < peer ip), throttled by a retry timer, self-healing after */
+/* a drop, and never dialing a pair from both sides.                    */
+/* ------------------------------------------------------------------ */
+
+static void test_auto_mesh_sweep(void)
+{
+    PT_PlatformOps *saved;
+    PT_Peer_Internal *hi, *lo;
+
+    printf("[auto_mesh_sweep]\n");
+    reset_all_peers();
+    reset_recorders();
+    saved = install_mock_ops();
+
+    g_ctx->local_ip = 0x0A000002UL;             /* us */
+
+    hi = &g_ctx->peers[0];                      /* higher IP -> we dial it  */
+    hi->in_use = 1; hi->state = PT_PEER_DISCOVERED;
+    hi->ip_addr = 0x0A000003UL; hi->connect_start = 0;
+    strcpy(hi->name, "hi");
+
+    lo = &g_ctx->peers[1];                      /* lower IP -> it dials us  */
+    lo->in_use = 1; lo->state = PT_PEER_DISCOVERED;
+    lo->ip_addr = 0x0A000001UL; lo->connect_start = 0;
+    strcpy(lo->name, "lo");
+
+    g_ctx->peer_count = 2;
+    g_ctx->current_time = 100;
+
+    /* Disabled: the sweep is a pure no-op regardless of dialable peers. */
+    g_ctx->auto_mesh = 0;
+    g_ctx->mesh_dial_timer = 0;
+    pt_mesh_dial_sweep(g_ctx);
+    CHECK(g_connect_calls == 0, "auto-mesh off: no dials");
+
+    /* Enabled: dials only the higher-IP peer -- each pair from one side. */
+    g_ctx->auto_mesh = 1;
+    g_ctx->mesh_dial_timer = 0;
+    pt_mesh_dial_sweep(g_ctx);
+    CHECK(g_connect_calls == 1, "auto-mesh: exactly one dial this sweep");
+    CHECK(hi->connect_start != 0, "higher-IP peer dialed (in flight)");
+    CHECK(lo->connect_start == 0, "lower-IP peer not dialed (it dials us)");
+
+    /* Retry timer: a sweep before the interval elapses does nothing. */
+    pt_mesh_dial_sweep(g_ctx);
+    CHECK(g_connect_calls == 1, "within retry interval: no extra dials");
+
+    /* Even once the timer elapses, a dial still in flight is not repeated. */
+    g_ctx->current_time += PT_MESH_RETRY_INTERVAL;
+    pt_mesh_dial_sweep(g_ctx);
+    CHECK(g_connect_calls == 1, "in-flight dial not repeated");
+
+    /* The dial fails: peer back to DISCONNECTED, connect_start cleared.
+       The next sweep after the interval re-dials it (self-heal). */
+    hi->connect_start = 0;
+    hi->state = PT_PEER_DISCONNECTED;
+    g_ctx->current_time += PT_MESH_RETRY_INTERVAL;
+    pt_mesh_dial_sweep(g_ctx);
+    CHECK(g_connect_calls == 2, "dropped peer re-dialed on next sweep");
+
+    /* A connected peer is left alone. */
+    hi->state = PT_PEER_CONNECTED; hi->connect_start = 0;
+    g_ctx->current_time += PT_MESH_RETRY_INTERVAL;
+    pt_mesh_dial_sweep(g_ctx);
+    CHECK(g_connect_calls == 2, "connected peer not re-dialed");
+
+    g_ctx->platform_ops = saved;
+    reset_all_peers();
+    g_ctx->auto_mesh = 0;
+    g_ctx->local_ip = 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1200,6 +1285,9 @@ int main(void)
     test_tiebreak_lower_keeps_outbound();
     test_tiebreak_true_duplicate_rejected();
     test_no_room_leaves_fd_to_platform();
+
+    /* Auto-mesh topology maintenance */
+    test_auto_mesh_sweep();
 
     /* Wire protocol: TCP framing / reassembly */
     test_frame_single();

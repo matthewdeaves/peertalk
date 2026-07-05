@@ -4,10 +4,11 @@ A C networking SDK for LAN peer-to-peer communication between modern POSIX syste
 
 ## Features
 
-- **29-function C89 API** with a single public header (`peertalk.h`)
+- **31-function C89 API** with a single public header (`peertalk.h`)
 - **3 platform backends**: POSIX (BSD sockets), MacTCP (68k/PPC), Open Transport (PPC)
 - **Zero allocation after init** — all buffers pre-allocated in a single block
 - **Automatic peer discovery** via UDP broadcast with instant leave notification
+- **Automatic full-mesh topology** (`PT_EnableAutoMesh`) — opt-in, race-free (each pair dialed from one side), self-healing
 - **Reliable (TCP) and fast (UDP)** message transports
 - **~4,700 lines of SDK code** across all platforms
 
@@ -44,7 +45,7 @@ while (running) {
 PT_Shutdown(ctx);
 ```
 
-See [API Contract](specs/001-peertalk-sdk/contracts/peertalk-api.md) for the full 29-function reference.
+See [API Contract](specs/001-peertalk-sdk/contracts/peertalk-api.md) for the full 31-function reference.
 
 ## Prerequisites
 
@@ -110,7 +111,7 @@ target_link_libraries(myapp PRIVATE peertalk)
 ## Project Structure
 
 ```
-include/peertalk.h          # Single public header (C89, 29 functions)
+include/peertalk.h          # Single public header (C89, 31 functions)
 src/core/                   # Platform-independent core
 src/platform/posix/         # BSD sockets + select()
 src/platform/mactcp/        # MacTCP async parameter blocks
@@ -129,7 +130,7 @@ tests/                      # test apps + test_seam core-logic unit tests
 | test_multi | Multi-peer | N-way discovery, connect all, broadcast to all, verify receipt |
 | test_init_only | Init/shutdown | Memory allocation, error path validation (10 checks) |
 | test_clog_minimal | Logging | clog library verification |
-| test_seam | Core logic (white-box) | Event-seam transitions, framing/reassembly, discovery v2 parse, ranking, timeout sweeps, send-error paths — no sockets, 112 checks |
+| test_seam | Core logic (white-box) | Event-seam transitions, framing/reassembly, discovery v2 parse, ranking, timeout sweeps, send-error paths — no sockets, 120 checks |
 
 ### Core-logic unit tests (no hardware)
 
@@ -141,7 +142,7 @@ backend and synthetic events — no sockets, no discovery, no real hardware.
 A PASS covers all three backends. Build and run it with the POSIX build:
 
 ```bash
-cd build && make test_seam && ./test_seam   # 112 checks
+cd build && make test_seam && ./test_seam   # 120 checks
 ```
 
 Each test is written to **fail on pre-seam / broken logic** (verified by

@@ -709,6 +709,36 @@ void pt_check_peer_timeouts(PT_Context_Internal *ctx)
     }
 }
 
+/* Auto-mesh dial sweep.  When enabled, keep a connection open to every
+   discovered peer this node should dial.  Gated on a retry timer so a
+   peer whose dial fails instantly (connection refused) is not re-dialed
+   every poll -- PT_CONNECT_TIMEOUT / connect_start throttles an in-flight
+   dial, and this timer throttles the retry after it clears.  Each pair is
+   dialed from one side only (PT_ShouldInitiate == local_ip < peer ip), so
+   two peers never dial each other at once: the simultaneous-connect race
+   is impossible by construction and the mesh self-heals after any drop. */
+void pt_mesh_dial_sweep(PT_Context_Internal *ctx)
+{
+    int i;
+
+    if (!ctx->auto_mesh) return;
+    /* cppcheck-suppress unsignedLessThanZero ; comparing two unsigned longs */
+    if (ctx->current_time < ctx->mesh_dial_timer) return;
+    ctx->mesh_dial_timer = ctx->current_time + PT_MESH_RETRY_INTERVAL;
+
+    for (i = 0; i < ctx->max_peers; i++) {
+        PT_Peer_Internal *p = &ctx->peers[i];
+        if (!p->in_use) continue;
+        /* Only idle, dialable peers we are the designated initiator for.
+           connect_start == 0 means no dial is in flight for this peer. */
+        if (p->connect_start != 0) continue;
+        if (p->state != PT_PEER_DISCOVERED &&
+            p->state != PT_PEER_DISCONNECTED) continue;
+        if (ctx->local_ip >= p->ip_addr) continue;   /* higher IP listens */
+        PT_Connect((PT_Context *)ctx, (PT_Peer *)p);
+    }
+}
+
 void PT_Poll(PT_Context *pub_ctx)
 {
     PT_Context_Internal *ctx = (PT_Context_Internal *)pub_ctx;
@@ -743,6 +773,9 @@ void PT_Poll(PT_Context *pub_ctx)
     pt_discovery_check_timeouts(ctx);
     pt_check_peer_timeouts(ctx);
     pt_messaging_check_reassembly_timeouts(ctx);
+
+    /* Maintain the full mesh (no-op unless PT_EnableAutoMesh was called). */
+    pt_mesh_dial_sweep(ctx);
 }
 
 /* ------------------------------------------------------------------ */
@@ -905,6 +938,16 @@ int PT_ShouldInitiate(const PT_Context *pub_ctx, const PT_Peer *pub_peer)
        so gating every PT_Connect on this means a pair is never dialed from
        both sides at once -- the simultaneous-connect race cannot arise. */
     return ctx->local_ip < peer->ip_addr;
+}
+
+void PT_EnableAutoMesh(PT_Context *pub_ctx, int enable)
+{
+    PT_Context_Internal *ctx = (PT_Context_Internal *)pub_ctx;
+    if (!ctx) return;
+    ctx->auto_mesh = enable ? 1 : 0;
+    /* Dial ASAP on the next poll rather than after a full retry interval. */
+    ctx->mesh_dial_timer = 0;
+    CLOG_INFO("Auto-mesh %s", enable ? "enabled" : "disabled");
 }
 
 int PT_GetPeerRank(const PT_Context *pub_ctx, const PT_Peer *pub_peer)

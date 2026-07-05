@@ -212,6 +212,24 @@ sequenceDiagram
     B->>B: on_connected fires
 ```
 
+### Automatic full-mesh (`PT_EnableAutoMesh`)
+
+The sequence above is the primitive: the app decides when to `PT_Connect`, and
+the tiebreaker resolves a simultaneous dial. A full-mesh app (every peer
+connected to every other) does not want to manage that by hand. Calling
+`PT_EnableAutoMesh(ctx, 1)` once makes PeerTalk maintain the mesh itself: each
+`PT_Poll`, a throttled sweep (`pt_mesh_dial_sweep`, 2 s retry interval) dials
+every discovered peer this node is the designated initiator for — the one with
+the lower IP (`PT_ShouldInitiate`, `local_ip < peer_ip`). Because each pair is
+therefore dialed from **exactly one side**, two peers never dial each other at
+once: the simultaneous-connect race cannot arise by construction (the
+tiebreaker above remains only as a safety net), and a dropped link is
+re-dialed automatically, so the mesh self-heals. It is opt-in and composes with
+the primitive — an app wanting a star/host topology leaves it off and calls
+`PT_Connect` itself. This is the topology layer any full-mesh LAN app needs:
+the SDK owns *who is connected to whom*; the app owns *when to act and who is
+who*.
+
 ## Message Send/Receive Sequence
 
 ```mermaid
