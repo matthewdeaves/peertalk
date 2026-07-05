@@ -49,6 +49,7 @@ static int g_failures = 0;
 static int                 g_connected;
 static int                 g_disconnected;
 static int                 g_messages;
+static int                 g_disconnect_calls;   /* backend tcp_disconnect */
 static PT_DisconnectReason g_last_reason;
 static unsigned char       g_last_msg[64];
 static size_t              g_last_msg_len;
@@ -94,6 +95,7 @@ static void reset_recorders(void)
     g_connected = 0;
     g_disconnected = 0;
     g_messages = 0;
+    g_disconnect_calls = 0;
     g_last_reason = (PT_DisconnectReason)-1;
     g_last_msg_len = 0;
     memset(g_last_msg, 0, sizeof(g_last_msg));
@@ -270,7 +272,24 @@ static PT_Status mock_tcp_send(PT_Context_Internal *c, PT_Peer_Internal *pe,
 { (void)c; (void)pe; (void)d; (void)l; return PT_OK; }
 
 static void mock_tcp_disconnect(PT_Context_Internal *c, PT_Peer_Internal *pe)
-{ (void)c; pe->platform_peer.tcp_fd = -1; }
+{ (void)c; g_disconnect_calls++; pe->platform_peer.tcp_fd = -1; }
+
+/* Install a fully-wired mock backend (all no-ops) and return the ops that
+   were in place, so the caller can restore them. */
+static PT_PlatformOps g_mock_ops;
+static PT_PlatformOps *install_mock_ops(void)
+{
+    PT_PlatformOps *saved = g_ctx->platform_ops;
+    memset(&g_mock_ops, 0, sizeof(g_mock_ops));
+    g_mock_ops.udp_broadcast  = mock_udp_broadcast;
+    g_mock_ops.udp_send       = mock_udp_send;
+    g_mock_ops.tcp_send       = mock_tcp_send;
+    g_mock_ops.tcp_disconnect = mock_tcp_disconnect;
+    g_mock_ops.poll           = NULL;
+    g_mock_ops.next_event     = mock_next_event;
+    g_ctx->platform_ops = &g_mock_ops;
+    return saved;
+}
 
 static void test_poll_drain_order(void)
 {
@@ -325,6 +344,119 @@ static void test_poll_drain_order(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* Simultaneous-connect tiebreaker (pt_handle_incoming_connection)      */
+/*                                                                      */
+/* Deterministic rule: the connection dialed by the LOWER-IP peer wins. */
+/* The classic tiebreaker only fires while our outbound is still        */
+/* pending; these cover the race where our own outbound COMPLETED first */
+/* (peer already CONNECTED) and the remote's incoming then arrives --   */
+/* the exact window that looped the Mac SE ~16x in test_multi.          */
+/* ------------------------------------------------------------------ */
+
+/* We are the HIGHER-IP peer, already connected via our own outbound.
+   The remote (lower IP) will keep its outbound and drop ours, so we
+   must swap to the incoming -- silently, since the app already saw a
+   connect.  Blindly rejecting here is what caused both sides to hold a
+   different connection and both abort ~200ms later.
+
+   This is the ONLY tiebreak test that FAILS on the pre-fix code (which
+   returned early, rejecting the incoming).  The other two land in the
+   reject branch on both old and new code -- they are regression guards
+   for behaviour the fix must preserve, not validators of the fix. */
+static void test_tiebreak_swap_outbound_for_incoming(void)
+{
+    PT_PlatformOps *saved;
+    PT_PlatformPeer incoming;
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_CONNECTED);
+
+    printf("[tiebreak_swap_outbound_for_incoming]\n");
+    p->ip_addr = 0x0A000001UL;          /* remote = lower IP */
+    p->inbound = 0;                     /* connected via our own dial */
+    p->platform_peer.tcp_fd = 7;        /* our outbound socket */
+    g_ctx->local_ip = 0x0A000002UL;     /* us = higher IP */
+    reset_recorders();
+
+    saved = install_mock_ops();
+    memset(&incoming, 0, sizeof(incoming));
+    incoming.tcp_fd = 42;               /* accepted incoming socket */
+    pt_handle_incoming_connection(g_ctx, p->ip_addr, &incoming);
+    g_ctx->platform_ops = saved;
+
+    CHECK(g_disconnect_calls == 1, "old outbound transport closed");
+    CHECK(p->platform_peer.tcp_fd == 42, "incoming socket adopted");
+    CHECK(p->inbound == 1, "peer now marked inbound");
+    CHECK(p->state == PT_PEER_CONNECTED, "still CONNECTED (no flap)");
+    CHECK(g_connected == 0, "on_connected NOT re-fired");
+    CHECK(g_disconnected == 0, "on_disconnected NOT fired");
+
+    /* Fabricated fds are not real sockets -- clear so PT_Shutdown's
+       disconnect sweep does not close() an unrelated descriptor. */
+    p->platform_peer.tcp_fd = -1;
+    p->state = PT_PEER_DISCONNECTED;
+}
+
+/* We are the LOWER-IP peer, connected via our own outbound.  We keep it
+   and reject the higher peer's incoming (which they will abandon). */
+static void test_tiebreak_lower_keeps_outbound(void)
+{
+    PT_PlatformOps *saved;
+    PT_PlatformPeer incoming;
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_CONNECTED);
+
+    printf("[tiebreak_lower_keeps_outbound]\n");
+    p->ip_addr = 0x0A000002UL;          /* remote = higher IP */
+    p->inbound = 0;                     /* connected via our own dial */
+    p->platform_peer.tcp_fd = 7;
+    g_ctx->local_ip = 0x0A000001UL;     /* us = lower IP */
+    reset_recorders();
+
+    saved = install_mock_ops();
+    memset(&incoming, 0, sizeof(incoming));
+    incoming.tcp_fd = 42;
+    pt_handle_incoming_connection(g_ctx, p->ip_addr, &incoming);
+    g_ctx->platform_ops = saved;
+
+    CHECK(g_disconnect_calls == 0, "our outbound left intact");
+    CHECK(p->platform_peer.tcp_fd == 7, "incoming rejected, fd unchanged");
+    CHECK(p->inbound == 0, "still outbound");
+    CHECK(p->state == PT_PEER_CONNECTED, "still CONNECTED");
+
+    p->platform_peer.tcp_fd = -1;
+    p->state = PT_PEER_DISCONNECTED;
+}
+
+/* We already hold the AGREED inbound connection.  A further incoming from
+   the same peer is a true duplicate and must be rejected even though we
+   are the higher IP -- no swap, no flap. */
+static void test_tiebreak_true_duplicate_rejected(void)
+{
+    PT_PlatformOps *saved;
+    PT_PlatformPeer incoming;
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_CONNECTED);
+
+    printf("[tiebreak_true_duplicate_rejected]\n");
+    p->ip_addr = 0x0A000001UL;          /* remote = lower IP */
+    p->inbound = 1;                     /* already the accepted connection */
+    p->platform_peer.tcp_fd = 7;
+    g_ctx->local_ip = 0x0A000002UL;     /* us = higher IP */
+    reset_recorders();
+
+    saved = install_mock_ops();
+    memset(&incoming, 0, sizeof(incoming));
+    incoming.tcp_fd = 42;
+    pt_handle_incoming_connection(g_ctx, p->ip_addr, &incoming);
+    g_ctx->platform_ops = saved;
+
+    CHECK(g_disconnect_calls == 0, "agreed connection left intact");
+    CHECK(p->platform_peer.tcp_fd == 7, "duplicate rejected, fd unchanged");
+    CHECK(p->state == PT_PEER_CONNECTED, "still CONNECTED");
+    CHECK(g_disconnected == 0, "no disconnect on duplicate reject");
+
+    p->platform_peer.tcp_fd = -1;
+    p->state = PT_PEER_DISCONNECTED;
+}
+
+/* ------------------------------------------------------------------ */
 /* main                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -352,6 +484,9 @@ int main(void)
     test_close_abrupt();
     test_close_message_then_goodbye();
     test_poll_drain_order();
+    test_tiebreak_swap_outbound_for_incoming();
+    test_tiebreak_lower_keeps_outbound();
+    test_tiebreak_true_duplicate_rejected();
 
     PT_Shutdown(pub);
 

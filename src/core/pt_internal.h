@@ -212,6 +212,7 @@ typedef struct PT_Peer_Internal {
     unsigned long last_tcp_send;    /* for keepalive scheduling */
     unsigned long connect_start;    /* when tcp_connect was initiated */
     int           in_use;
+    int           inbound;          /* 1 = we accepted it, 0 = we dialed */
 
     /* Per-peer buffers (pointers into memory_block) */
     unsigned char *tcp_recv_buf;

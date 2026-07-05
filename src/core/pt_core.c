@@ -149,6 +149,7 @@ PT_Peer_Internal *pt_alloc_peer(PT_Context_Internal *ctx)
             ctx->peers[i].last_tcp_activity = 0;
             ctx->peers[i].last_tcp_send = 0;
             ctx->peers[i].connect_start = 0;
+            ctx->peers[i].inbound = 0;
             ctx->peers[i].in_use = 1;
             ctx->peers[i].tcp_recv_len = 0;
             ctx->peers[i].reassembly_type = 0;
@@ -174,18 +175,35 @@ void pt_handle_incoming_connection(PT_Context_Internal *ctx,
                                    const PT_PlatformPeer *ppeer)
 {
     PT_Peer_Internal *peer;
+    int swap = 0;   /* replacing a live transport -- do not re-fire callbacks */
 
     peer = pt_find_peer_by_ip(ctx, peer_ip);
 
-    /* T020: Reject duplicate -- peer already connected */
+    /* T020: peer already connected. */
     if (peer && peer->state == PT_PEER_CONNECTED) {
-        CLOG_INFO("Rejecting duplicate incoming from %s (already connected)",
-                  peer->name);
-        return;
+        /* Deterministic simultaneous-connect rule: the connection dialed
+           BY THE LOWER-IP PEER wins.  The connect_start tiebreaker below
+           only fires while OUR outbound is still pending; if our own
+           outbound completed before this incoming arrived we land here
+           instead.  If our live connection is that outbound and the
+           remote has a lower IP, the remote keeps its outbound and drops
+           ours -- so blindly rejecting here leaves each side holding a
+           DIFFERENT connection and BOTH abort (~200ms later, reason 2),
+           looping forever on slow links.  Adopt the incoming instead. */
+        if (!peer->inbound && ctx->local_ip > peer_ip) {
+            CLOG_INFO("Tiebreaker: replacing our outbound with incoming "
+                      "(lower IP wins)");
+            ctx->platform_ops->tcp_disconnect(ctx, peer);
+            swap = 1;
+        } else {
+            CLOG_INFO("Rejecting duplicate incoming from %s "
+                      "(already connected)", peer->name);
+            return;
+        }
     }
 
-    /* T021/T022: IP tiebreaker -- outgoing in progress */
-    if (peer && peer->connect_start > 0) {
+    /* T021/T022: IP tiebreaker -- our outbound still in progress */
+    if (!swap && peer && peer->connect_start > 0) {
         if (ctx->local_ip == peer_ip) {
             /* T022: Same IP (loopback) -- accept incoming */
             CLOG_INFO("Same-IP peer, accepting incoming");
@@ -225,19 +243,30 @@ void pt_handle_incoming_connection(PT_Context_Internal *ctx,
         ctx->peer_count++;
     }
 
-    /* Accept the connection */
+    /* Accept (or, on a swap, adopt) the connection.  Reset the receive
+       and reassembly state so an adopted transport starts as clean as a
+       freshly allocated one -- no bytes from the replaced connection can
+       bleed into the new one. */
     peer->platform_peer = *ppeer;
     peer->state = PT_PEER_CONNECTED;
+    peer->inbound = 1;
     peer->last_tcp_activity = ctx->current_time;
     peer->last_tcp_send = ctx->current_time;
     peer->tcp_recv_len = 0;
+    peer->reassembly_total = 0;
+    peer->reassembly_received = 0;
     peer->connect_start = 0;
 
-    CLOG_INFO("Incoming TCP connection accepted");
-
-    if (ctx->callbacks.on_connected) {
-        ctx->callbacks.on_connected((PT_Peer *)peer,
-                                    ctx->callbacks.on_connected_data);
+    if (swap) {
+        /* Transport swapped underneath an already-connected peer; the app
+           already saw on_connected, so stay silent. */
+        CLOG_INFO("Incoming TCP connection adopted (replaced our outbound)");
+    } else {
+        CLOG_INFO("Incoming TCP connection accepted");
+        if (ctx->callbacks.on_connected) {
+            ctx->callbacks.on_connected((PT_Peer *)peer,
+                                        ctx->callbacks.on_connected_data);
+        }
     }
 }
 
@@ -281,6 +310,7 @@ void pt_complete_connect(PT_Context_Internal *ctx,
 
     if (ok) {
         peer->state = PT_PEER_CONNECTED;
+        peer->inbound = 0;
         peer->last_tcp_activity = ctx->current_time;
         peer->last_tcp_send = ctx->current_time;
         CLOG_INFO("TCP connected to %s", peer->name);
