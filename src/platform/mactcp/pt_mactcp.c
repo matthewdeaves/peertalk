@@ -800,7 +800,7 @@ static void mactcp_tcp_disconnect(PT_Context_Internal *ctx,
    buffer.  The byte-pull is irreducibly platform; parsing the bytes and
    any resulting state transition is core's job (pt_apply_platform_event).
    Used for both DATA and the pre-CLOSE drain. */
-static void mactcp_recv_into_peer(TCPStreamSlot *ts, PT_Peer_Internal *peer)
+static void mactcp_recv_into_peer(const TCPStreamSlot *ts, PT_Peer_Internal *peer)
 {
     size_t space;
 

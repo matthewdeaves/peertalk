@@ -1,0 +1,42 @@
+# cppcheck suppressions for the PeerTalk SDK.
+#
+# Policy: never silently ignore a static-analysis finding.  Every entry here
+# is a documented rationale for why the finding is not actionable.  Real
+# defects, dead code, and unused variables are NOT suppressed -- fix those.
+
+# --- Library analysed without its consumers -------------------------------
+# cppcheck sees only src/ (the library), not tests/ or the demo apps, so:
+#  * every exported PT_* function looks "never used" (unusedFunction), and
+#  * public entry points only called by a sibling in the same .c (e.g.
+#    PT_Send from PT_Broadcast, PT_EnableDebugBroadcast) look TU-local
+#    (staticFunction).
+# They are the SDK's public interface (include/peertalk.h) and must stay
+# extern.  Two internal helpers -- pt_complete_connect / pt_drain_disconnect
+# -- are likewise flagged staticFunction: they are deliberately exposed via
+# src/core/pt_internal.h so tests/test_seam.c can drive them white-box.
+unusedFunction
+staticFunction
+
+# --- Deliberate public/internal naming convention -------------------------
+# Public wrappers name the pointer parameter pub_ctx / pub_peer (before the
+# cast to the *_Internal type); the header (peertalk.h) uses ctx / peer.
+# Intentional, not a declaration/definition mismatch.
+funcArgNamesDifferent
+
+# --- House C89 style ------------------------------------------------------
+# All locals are declared at the top of the function, consistently across
+# every backend (C89, Constitution X).  cppcheck's "reduce scope" hints
+# fight that convention; declarations stay at function top for readability.
+variableScope
+
+# --- Classic Mac Toolbox / cross-compile headers --------------------------
+# MacTCP.h, OpenTransport.h and friends (and some system headers) are absent
+# on the Linux analysis host; the backends cross-compile against them under
+# Retro68.  Missing-include noise is expected here, not a code problem.
+missingInclude
+missingIncludeSystem
+
+# --- Informational only ---------------------------------------------------
+checkersReport
+# Not every suppression id matches in every per-platform pass.
+unmatchedSuppression
