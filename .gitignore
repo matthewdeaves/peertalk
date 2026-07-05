@@ -6,6 +6,9 @@ build-68k/
 build-68k-ot/
 build-ppc-ot/
 build-ppc-mactcp/
+build-carbon/
+build-macosx-fat/
+build-macosx-ppc103/
 
 # Stale dirs (root-owned, cannot delete)
 build-m68k/

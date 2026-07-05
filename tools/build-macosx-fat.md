@@ -74,12 +74,38 @@ outside the SDK and cannot be fixed from this repo:
 The clog header's `#pragma GCC diagnostic push/pop` (unknown to gcc-4.0)
 is silenced by including clog via `-isystem`.
 
-## Runtime verification
+## Runtime verification — full OS X hardware matrix, all PASS
 
-- **Intel (i386 slice), OS X 10.7.5** — `test_lifecycle` ran on the Lion
-  mini against a POSIX peer on Linux x86-64: full discover → connect →
-  disconnect → reconnect → peer-lost, `Connects: 2, Disconnects: 2
-  *** PASS ***` on both sides. `Platform: Darwin 11.4.2 i386`.
-- **PPC slice** — present and lipo-verified in every fat binary, compiled
-  with the powerpc backend, but not yet run on real PPC hardware. Pending:
-  execute on the iMac G5 (10.5 PPC) once SSH/login access to it is set up.
+`test_lifecycle` run against a POSIX peer on the Linux host, both sides
+`Connects: 2, Disconnects: 2 *** PASS ***`:
+
+| Mac | OS / CPU | Build | Result |
+|-----|----------|-------|--------|
+| Intel mini (`mini-intel`) | 10.7.5 / i386 | fat (min 10.4) | PASS |
+| iMac G5 (`imac-g5`) | 10.5.8 / ppc970 | fat ppc slice | PASS |
+| G4 Quicksilver (`quicksilver`) | 10.4.11 / ppc7450 | fat ppc slice | PASS |
+| G3 Yosemite (`yosemite`) | 10.3.9 / ppc750 | **ppc-only, 10.3.9** | PASS |
+
+The G3 runs 10.3.9, below the fat binary's 10.4 floor, so it needs a
+PPC-only build against the 10.3.9 SDK (Intel didn't exist pre-10.4):
+
+```bash
+SDK=/Developer/SDKs/MacOSX10.3.9.sdk MIN=10.3.9 ARCHS=ppc \
+  OUT=build-macosx-ppc103 CLOG_DIR=~/pt-fat/clog \
+  bash tools/build-macosx-fat.sh
+```
+
+## Seeing it on the Mac's screen
+
+These are native **console** apps, so `ssh host ./test_lifecycle` runs them
+headless (stdout returns over SSH). To watch one run **on the Mac's own
+display**, `tools/osx-screen-run.sh <host> [app]` opens a Terminal window on
+the logged-in desktop via `osascript`. Works on every OS X Mac (Intel + PPC)
+because it uses the supported POSIX/BSD-sockets build.
+
+A *native app window* on OS X is the Retro68 **Carbon** path (LaunchAPPL +
+a Carbon build of the test apps, using the Open Transport backend — the
+Retro68 Carbon SDK exposes `OpenTransport.h`, and OT does run for Carbon
+apps on PPC OS X). That build is tracked/added separately; see the Carbon
+build target. On the Intel mini (10.7, no Carbon PPC), the Terminal launcher
+is the on-screen path.
