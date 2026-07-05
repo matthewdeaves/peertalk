@@ -8,9 +8,8 @@
 #include <string.h>
 
 #ifdef PT_PLATFORM_POSIX
-#include <time.h>
-#include <unistd.h>
-#include <sys/utsname.h>
+#include <time.h>       /* time() */
+#include <sys/utsname.h> /* uname() */
 #endif
 
 #if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)
@@ -227,12 +226,13 @@ void pt_handle_incoming_connection(PT_Context_Internal *ctx,
         /* Unknown peer connecting -- allocate new slot */
         peer = pt_alloc_peer(ctx);
         if (!peer) {
-            /* No room -- close connection */
-#if defined(PT_PLATFORM_POSIX)
-            if (ppeer->tcp_fd >= 0) {
-                close(ppeer->tcp_fd);
-            }
-#endif
+            /* No room. The transport in *ppeer was never adopted by a
+               peer slot, so the platform layer that accepted it owns the
+               teardown -- POSIX's accept path closes the fd when it finds
+               no peer took it (T069 guard), MacTCP/OT tear down likewise.
+               Core must NOT close here: a core-side POSIX close() would be
+               a second close of the same fd (double-close / fd-reuse
+               hazard) and would reach across the platform seam. */
             pt_fire_error(ctx, NULL, PT_ERR_NO_ROOM,
                           "No peer slots for incoming connection");
             return;

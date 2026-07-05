@@ -22,6 +22,8 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>   /* dup, close -- real fd for the no-room test */
+#include <fcntl.h>    /* fcntl(F_GETFD) -- probe whether an fd is still open */
 
 /* ------------------------------------------------------------------ */
 /* Tiny assertion harness                                              */
@@ -50,6 +52,8 @@ static int                 g_connected;
 static int                 g_disconnected;
 static int                 g_messages;
 static int                 g_disconnect_calls;   /* backend tcp_disconnect */
+static int                 g_errors;              /* on_error fired count */
+static PT_Status           g_last_error;
 static PT_DisconnectReason g_last_reason;
 static unsigned char       g_last_msg[64];
 static size_t              g_last_msg_len;
@@ -90,12 +94,21 @@ static void on_msg(PT_Peer *peer, const void *data, size_t len, void *ud)
     rec_order('M');
 }
 
+static void on_err(PT_Peer *peer, PT_Status error, const char *desc, void *ud)
+{
+    (void)peer; (void)desc; (void)ud;
+    g_errors++;
+    g_last_error = error;
+}
+
 static void reset_recorders(void)
 {
     g_connected = 0;
     g_disconnected = 0;
     g_messages = 0;
     g_disconnect_calls = 0;
+    g_errors = 0;
+    g_last_error = PT_OK;
     g_last_reason = (PT_DisconnectReason)-1;
     g_last_msg_len = 0;
     memset(g_last_msg, 0, sizeof(g_last_msg));
@@ -457,6 +470,63 @@ static void test_tiebreak_true_duplicate_rejected(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* No-room incoming connection (pt_handle_incoming_connection)          */
+/*                                                                      */
+/* When every peer slot is full, an unknown peer's incoming transport   */
+/* cannot be adopted.  Core must fire PT_ERR_NO_ROOM and return WITHOUT  */
+/* closing the transport -- the platform layer that accepted it owns the */
+/* teardown (POSIX's accept guard closes the fd once when it sees no     */
+/* peer took it).  The old code close()d the fd here too, so the fd was  */
+/* closed twice: a latent double-close / fd-reuse hazard.               */
+/*                                                                      */
+/* This FAILS on the pre-fix code: we hand core a REAL fd (dup of        */
+/* stdout); the old core would close() it, so the post-call F_GETFD      */
+/* probe would report it gone.  The fix leaves it open. */
+static void test_no_room_leaves_fd_to_platform(void)
+{
+    PT_PlatformOps *saved;
+    PT_PlatformPeer incoming;
+    int realfd;
+    int i;
+
+    printf("[no_room_leaves_fd_to_platform]\n");
+
+    realfd = dup(1);   /* a genuine open descriptor core must not touch */
+    if (realfd < 0) {
+        CHECK(0, "dup(1) for real-fd probe");
+        return;
+    }
+
+    /* Fill every slot so pt_alloc_peer() fails for an unknown peer. */
+    for (i = 0; i < g_ctx->max_peers; i++) {
+        g_ctx->peers[i].in_use = 1;
+        g_ctx->peers[i].ip_addr = 0;   /* none match the probe IP below */
+    }
+    reset_recorders();
+
+    saved = install_mock_ops();
+    memset(&incoming, 0, sizeof(incoming));
+    incoming.tcp_fd = realfd;
+    /* 0x0A0000FE matches no slot (all ip_addr == 0) -> unknown peer path. */
+    pt_handle_incoming_connection(g_ctx, 0x0A0000FEUL, &incoming);
+    g_ctx->platform_ops = saved;
+
+    CHECK(g_errors == 1, "PT_ERR_NO_ROOM error fired");
+    CHECK(g_last_error == PT_ERR_NO_ROOM, "error code is NO_ROOM");
+    CHECK(g_disconnect_calls == 0, "core did not call tcp_disconnect");
+    CHECK(fcntl(realfd, F_GETFD) != -1,
+          "core left the fd open (no double-close)");
+
+    close(realfd);
+    /* Release the slots we commandeered so later state stays clean. */
+    for (i = 0; i < g_ctx->max_peers; i++) {
+        g_ctx->peers[i].in_use = 0;
+        g_ctx->peers[i].platform_peer.tcp_fd = -1;
+        g_ctx->peers[i].state = PT_PEER_DISCONNECTED;
+    }
+}
+
+/* ------------------------------------------------------------------ */
 /* main                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -477,6 +547,7 @@ int main(void)
     PT_OnConnected(pub, on_conn, NULL);
     PT_OnDisconnected(pub, on_disc, NULL);
     PT_OnMessage(pub, MSG_TYPE, on_msg, NULL);
+    PT_OnError(pub, on_err, NULL);
 
     test_connect_success();
     test_connect_failure();
@@ -487,6 +558,7 @@ int main(void)
     test_tiebreak_swap_outbound_for_incoming();
     test_tiebreak_lower_keeps_outbound();
     test_tiebreak_true_duplicate_rejected();
+    test_no_room_leaves_fd_to_platform();
 
     PT_Shutdown(pub);
 
