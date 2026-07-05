@@ -195,8 +195,15 @@ static PT_Status posix_init(PT_Context_Internal *ctx)
     ctx->local_ip = get_local_ip();
     ctx->platform_state = &g_posix;
 
-    CLOG_INFO("Initialized (IP: %s)",
-              inet_ntoa(*(struct in_addr *)&ctx->local_ip));
+    {
+        /* Assign s_addr rather than type-punning unsigned long* -> in_addr*
+           (breaks strict aliasing, and on a 64-bit big-endian host the first
+           4 bytes are the wrong half). local_ip is already network byte order
+           in the low 32 bits. */
+        struct in_addr addr;
+        addr.s_addr = (in_addr_t)ctx->local_ip;
+        CLOG_INFO("Initialized (IP: %s)", inet_ntoa(addr));
+    }
 
     return PT_OK;
 }

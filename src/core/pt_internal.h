@@ -94,7 +94,11 @@
 /* ------------------------------------------------------------------ */
 
 #if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)
-static void pt_memcpy_isr(void *dst, const void *src, size_t n)
+/* static inline: kept as a documented future-ISR utility (see comment above)
+   without a -Wunused-function warning while no handler calls it yet. Safe in
+   -std=c89 here because the build never passes -pedantic (clog needs C99
+   variadic macros), so the "inline is C99" pedantic warning cannot fire. */
+static inline void pt_memcpy_isr(void *dst, const void *src, size_t n)
 {
     unsigned char *d = (unsigned char *)dst;
     const unsigned char *s = (const unsigned char *)src;
