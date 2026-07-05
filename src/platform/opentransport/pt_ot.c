@@ -1089,7 +1089,6 @@ static PT_PlatformOps ot_ops = {
     ot_tcp_connect,
     ot_tcp_send,
     ot_tcp_disconnect,
-    NULL,   /* poll: OT is event-driven via next_event */
     ot_cleanup_streams,
     ot_next_event
 };

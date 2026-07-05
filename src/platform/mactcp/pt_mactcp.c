@@ -1020,7 +1020,6 @@ static PT_PlatformOps mactcp_ops = {
     mactcp_tcp_connect,
     mactcp_tcp_send,
     mactcp_tcp_disconnect,
-    NULL,   /* poll: MacTCP is event-driven via next_event */
     mactcp_cleanup_streams,
     mactcp_next_event
 };

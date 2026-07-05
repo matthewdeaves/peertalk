@@ -296,9 +296,9 @@ void pt_handle_peer_disconnect(PT_Context_Internal *ctx,
 /* ------------------------------------------------------------------ */
 /* Core-owned platform-event transitions                               */
 /*                                                                      */
-/* Backends used to inline these state changes inside their poll()      */
-/* loops (one copy per platform).  Now the backend only reports an      */
-/* event and core owns the transition in exactly one place.            */
+/* Backends used to inline these state changes inside their per-platform */
+/* poll loops (one copy each).  Now the backend only reports an event via */
+/* next_event() and core owns the transition in exactly one place.       */
 /* ------------------------------------------------------------------ */
 
 void pt_complete_connect(PT_Context_Internal *ctx,
@@ -666,42 +666,14 @@ void PT_RegisterMessage(PT_Context *pub_ctx, unsigned char type,
 /* Public API: Event Loop                                              */
 /* ------------------------------------------------------------------ */
 
-void PT_Poll(PT_Context *pub_ctx)
+/* Per-peer connect/keepalive/inactivity sweep.  Split out of PT_Poll so
+   the core-logic unit tests can drive it directly by setting
+   ctx->current_time -- matching pt_discovery_check_timeouts() and
+   pt_messaging_check_reassembly_timeouts(), the sibling sweeps. */
+void pt_check_peer_timeouts(PT_Context_Internal *ctx)
 {
-    PT_Context_Internal *ctx = (PT_Context_Internal *)pub_ctx;
     int i;
 
-    if (!ctx) return;
-
-    ctx->current_time = pt_get_time();
-
-    /* Discovery broadcast timer */
-    if (ctx->discovery_active &&
-        /* cppcheck-suppress unsignedLessThanZero ; false positive: comparing two unsigned longs */
-        ctx->current_time >= ctx->discovery_timer) {
-        pt_discovery_broadcast(ctx);
-        ctx->discovery_timer = ctx->current_time +
-                               PT_DISCOVERY_INTERVAL;
-    }
-
-    /* Platform poll.  Event-driven backends drain one event at a time
-       and core applies each transition; legacy backends still own the
-       loop via poll(). */
-    if (ctx->platform_ops->next_event) {
-        PT_Event ev;
-        int guard = 0;
-        while (guard++ < PT_MAX_EVENTS_PER_POLL &&
-               ctx->platform_ops->next_event(ctx, &ev)) {
-            pt_apply_platform_event(ctx, &ev);
-        }
-    } else {
-        ctx->platform_ops->poll(ctx);
-    }
-
-    /* Discovery timeouts */
-    pt_discovery_check_timeouts(ctx);
-
-    /* Connection timeouts */
     for (i = 0; i < ctx->max_peers; i++) {
         if (!ctx->peers[i].in_use) continue;
 
@@ -735,8 +707,41 @@ void PT_Poll(PT_Context *pub_ctx)
                                       PT_TIMEOUT);
         }
     }
+}
 
-    /* Reassembly timeouts */
+void PT_Poll(PT_Context *pub_ctx)
+{
+    PT_Context_Internal *ctx = (PT_Context_Internal *)pub_ctx;
+
+    if (!ctx) return;
+
+    ctx->current_time = pt_get_time();
+
+    /* Discovery broadcast timer */
+    if (ctx->discovery_active &&
+        /* cppcheck-suppress unsignedLessThanZero ; false positive: comparing two unsigned longs */
+        ctx->current_time >= ctx->discovery_timer) {
+        pt_discovery_broadcast(ctx);
+        ctx->discovery_timer = ctx->current_time +
+                               PT_DISCOVERY_INTERVAL;
+    }
+
+    /* Platform poll.  Backends drain one event at a time via next_event()
+       and core applies each transition. */
+    {
+        PT_Event ev;
+        int guard = 0;
+        while (guard++ < PT_MAX_EVENTS_PER_POLL &&
+               ctx->platform_ops->next_event(ctx, &ev)) {
+            pt_apply_platform_event(ctx, &ev);
+        }
+    }
+
+    /* Timeout sweeps: discovery, per-peer connect/keepalive/inactivity,
+       reassembly.  All three are extracted so the core-logic unit tests
+       can drive each directly with a hand-set ctx->current_time. */
+    pt_discovery_check_timeouts(ctx);
+    pt_check_peer_timeouts(ctx);
     pt_messaging_check_reassembly_timeouts(ctx);
 }
 

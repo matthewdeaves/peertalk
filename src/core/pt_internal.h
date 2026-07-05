@@ -153,11 +153,10 @@ typedef struct PT_PlatformOps {
                           const void *data, size_t len);
     void      (*tcp_disconnect)(struct PT_Context_Internal *ctx,
                                 struct PT_Peer_Internal *peer);
-    void      (*poll)(struct PT_Context_Internal *ctx);
     void      (*cleanup_streams)(struct PT_Context_Internal *ctx);
     /* Event-driven seam: return 1 and fill *out with the next event, or
-       0 when this poll round is drained.  Core prefers this over poll();
-       a backend implements one or the other. */
+       0 when this poll round is drained.  Every backend implements this;
+       core drains it each PT_Poll round. */
     int       (*next_event)(struct PT_Context_Internal *ctx,
                             struct PT_Event *out);
 } PT_PlatformOps;
@@ -328,6 +327,10 @@ void      pt_handle_incoming_connection(PT_Context_Internal *ctx,
 void      pt_handle_peer_disconnect(PT_Context_Internal *ctx,
                                     PT_Peer_Internal *peer,
                                     PT_DisconnectReason reason);
+/* Per-peer connect/keepalive/inactivity timeout sweep.  Called from
+   PT_Poll each round; driven directly (with ctx->current_time set by
+   hand) from the core-logic unit tests. */
+void      pt_check_peer_timeouts(PT_Context_Internal *ctx);
 /* Core-owned platform-event transitions (called from PT_Poll's drain
    loop).  Adapters emit events; core applies them here. */
 void      pt_complete_connect(PT_Context_Internal *ctx,

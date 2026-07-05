@@ -53,6 +53,10 @@ static int                 g_disconnected;
 static int                 g_messages;
 static int                 g_disconnect_calls;   /* backend tcp_disconnect */
 static int                 g_errors;              /* on_error fired count */
+static int                 g_tcp_sends;           /* mock tcp_send call count */
+static int                 g_tcp_send_fail_at;    /* 1-based call to fail at; 0=never */
+static size_t              g_tcp_last_frame_len;  /* len passed to last tcp_send */
+static unsigned char       g_tcp_last_frame[8];   /* first bytes (header) of it */
 static int                 g_discovered;          /* on_peer_discovered count */
 static int                 g_lost;                /* on_peer_lost count */
 static PT_Status           g_last_error;
@@ -122,6 +126,10 @@ static void reset_recorders(void)
     g_messages = 0;
     g_disconnect_calls = 0;
     g_errors = 0;
+    g_tcp_sends = 0;
+    g_tcp_send_fail_at = 0;
+    g_tcp_last_frame_len = 0;
+    memset(g_tcp_last_frame, 0, sizeof(g_tcp_last_frame));
     g_discovered = 0;
     g_lost = 0;
     g_last_error = PT_OK;
@@ -335,9 +343,22 @@ static PT_Status mock_udp_send(PT_Context_Internal *c,
                                unsigned short p, const void *d, size_t l)
 { (void)c; (void)pe; (void)p; (void)d; (void)l; return PT_OK; }
 
+/* Counts calls and captures each frame's header so tests can assert what
+   was sent (keepalive frames, chunk seq/total).  Set g_tcp_send_fail_at to
+   a 1-based call index to make that call (and any after it) fail -- used to
+   test send-error propagation and chunked-send abort. */
 static PT_Status mock_tcp_send(PT_Context_Internal *c, PT_Peer_Internal *pe,
                                const void *d, size_t l)
-{ (void)c; (void)pe; (void)d; (void)l; return PT_OK; }
+{
+    size_t n = l < sizeof(g_tcp_last_frame) ? l : sizeof(g_tcp_last_frame);
+    (void)c; (void)pe;
+    g_tcp_sends++;
+    g_tcp_last_frame_len = l;
+    memcpy(g_tcp_last_frame, d, n);
+    if (g_tcp_send_fail_at != 0 && g_tcp_sends >= g_tcp_send_fail_at)
+        return PT_ERR_SEND_FAILED;
+    return PT_OK;
+}
 
 static void mock_tcp_disconnect(PT_Context_Internal *c, PT_Peer_Internal *pe)
 { (void)c; g_disconnect_calls++; pe->platform_peer.tcp_fd = -1; }
@@ -353,7 +374,6 @@ static PT_PlatformOps *install_mock_ops(void)
     g_mock_ops.udp_send       = mock_udp_send;
     g_mock_ops.tcp_send       = mock_tcp_send;
     g_mock_ops.tcp_disconnect = mock_tcp_disconnect;
-    g_mock_ops.poll           = NULL;
     g_mock_ops.next_event     = mock_next_event;
     g_ctx->platform_ops = &g_mock_ops;
     return saved;
@@ -374,7 +394,6 @@ static void test_poll_drain_order(void)
     mock.udp_send       = mock_udp_send;
     mock.tcp_send       = mock_tcp_send;
     mock.tcp_disconnect = mock_tcp_disconnect;
-    mock.poll           = NULL;
     mock.next_event     = mock_next_event;
 
     p = fresh_peer(PT_PEER_DISCONNECTED);
@@ -990,6 +1009,160 @@ static void test_discovery_timeout(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* Per-peer timeout sweep (pt_check_peer_timeouts, extracted from       */
+/* PT_Poll so it is reachable without a real backend).  Each branch is  */
+/* driven by hand-setting ctx->current_time relative to the peer's      */
+/* timers, exactly as PT_Poll does after pt_get_time().                 */
+/* ------------------------------------------------------------------ */
+
+static void test_peer_timeouts(void)
+{
+    PT_PlatformOps *saved;
+    PT_Peer_Internal *p;
+    printf("[peer_timeouts]\n");
+
+    saved = install_mock_ops();
+
+    /* --- connect timeout: a pending outbound that never completes --- */
+    reset_all_peers();
+    reset_recorders();
+    p = &g_ctx->peers[0];
+    p->in_use = 1;
+    p->state = PT_PEER_DISCONNECTED;   /* connecting == connect_start > 0 */
+    p->connect_start = 1000;
+    p->platform_peer.tcp_fd = -1;
+    strcpy(p->name, "slow");
+    g_ctx->current_time = 1000 + PT_CONNECT_TIMEOUT;
+    pt_check_peer_timeouts(g_ctx);
+    CHECK(g_disconnect_calls == 1, "connect-timeout: backend disconnect called");
+    CHECK(p->state == PT_PEER_DISCONNECTED, "connect-timeout: state stays DISCONNECTED");
+    CHECK(p->connect_start == 0, "connect-timeout: connect_start cleared");
+    CHECK(g_errors == 1 && g_last_error == PT_ERR_SEND_FAILED,
+          "connect-timeout: on_error fired");
+
+    /* --- keepalive: connected, TX idle >= interval, RX recent --- */
+    reset_all_peers();
+    reset_recorders();
+    p = &g_ctx->peers[0];
+    p->in_use = 1;
+    p->state = PT_PEER_CONNECTED;
+    p->connect_start = 0;
+    p->last_tcp_send = 1000;
+    p->last_tcp_activity = 1000 + PT_KEEPALIVE_INTERVAL; /* recent RX */
+    g_ctx->current_time = 1000 + PT_KEEPALIVE_INTERVAL;
+    pt_check_peer_timeouts(g_ctx);
+    CHECK(g_tcp_sends == 1, "keepalive: exactly one frame sent");
+    CHECK(g_tcp_last_frame_len == PT_TCP_HEADER_SIZE &&
+          g_tcp_last_frame[2] == PT_MSG_TYPE_KEEPALIVE,
+          "keepalive: zero-payload type-254 frame");
+    CHECK(g_disconnected == 0, "keepalive: peer not disconnected");
+
+    /* --- inactivity: connected, no RX for PT_TCP_TIMEOUT --- */
+    reset_all_peers();
+    reset_recorders();
+    p = &g_ctx->peers[0];
+    p->in_use = 1;
+    p->state = PT_PEER_CONNECTED;
+    p->connect_start = 0;
+    p->last_tcp_activity = 1000;
+    p->last_tcp_send = 1000 + PT_TCP_TIMEOUT; /* recent TX: no keepalive due */
+    p->platform_peer.tcp_fd = -1;
+    strcpy(p->name, "silent");
+    g_ctx->current_time = 1000 + PT_TCP_TIMEOUT;
+    pt_check_peer_timeouts(g_ctx);
+    CHECK(g_disconnected == 1, "inactivity: on_disconnected fired");
+    CHECK(g_last_reason == PT_TIMEOUT, "inactivity: reason is TIMEOUT");
+
+    /* --- healthy peer: every timer recent, nothing fires --- */
+    reset_all_peers();
+    reset_recorders();
+    p = &g_ctx->peers[0];
+    p->in_use = 1;
+    p->state = PT_PEER_CONNECTED;
+    p->connect_start = 0;
+    p->last_tcp_send = 1000;
+    p->last_tcp_activity = 1000;
+    g_ctx->current_time = 1001; /* 1s later -- nothing is due */
+    pt_check_peer_timeouts(g_ctx);
+    CHECK(g_tcp_sends == 0, "healthy: no keepalive sent");
+    CHECK(g_disconnected == 0 && g_disconnect_calls == 0,
+          "healthy: no disconnect");
+
+    g_ctx->platform_ops = saved;
+    reset_all_peers();
+}
+
+/* ------------------------------------------------------------------ */
+/* TCP send error paths.  The mock tcp_send is configured to fail so    */
+/* PT_Send's failure propagation and chunked-send abort -- previously   */
+/* reachable only via a real backend -- can be verified directly.       */
+/* ------------------------------------------------------------------ */
+
+#define TCP_TYPE 11  /* a PT_RELIABLE type registered just for these tests */
+
+static void test_send_error_paths(void)
+{
+    PT_PlatformOps *saved;
+    PT_Peer_Internal *p;
+    unsigned char big[64];
+    size_t orig_size;
+    PT_Status st;
+    int i;
+    printf("[send_error_paths]\n");
+
+    for (i = 0; i < (int)sizeof(big); i++) big[i] = (unsigned char)i;
+
+    saved = install_mock_ops();
+    g_ctx->message_types[TCP_TYPE] = PT_RELIABLE;
+    orig_size = g_ctx->peers[0].tcp_send_size;
+
+    /* --- single-frame send failure propagates, timer untouched --- */
+    reset_all_peers();
+    reset_recorders();
+    p = &g_ctx->peers[0];
+    p->in_use = 1;
+    p->state = PT_PEER_CONNECTED;
+    p->last_tcp_send = 5;
+    g_tcp_send_fail_at = 1;             /* first (only) send fails */
+    st = PT_Send((PT_Context *)g_ctx, (PT_Peer *)p, TCP_TYPE, "hi", 2);
+    CHECK(st == PT_ERR_SEND_FAILED, "single send: failure propagated");
+    CHECK(g_tcp_sends == 1, "single send: exactly one attempt");
+    CHECK(p->last_tcp_send == 5,
+          "single send: last_tcp_send NOT advanced on failure");
+
+    /* --- chunked send aborts at the failing chunk --- */
+    reset_all_peers();
+    reset_recorders();
+    p = &g_ctx->peers[0];
+    p->in_use = 1;
+    p->state = PT_PEER_CONNECTED;
+    p->tcp_send_size = 20;             /* max_chunk_payload = 12 -> 3 chunks/30B */
+    g_tcp_send_fail_at = 2;            /* second chunk fails */
+    st = PT_Send((PT_Context *)g_ctx, (PT_Peer *)p, TCP_TYPE, big, 30);
+    CHECK(st == PT_ERR_SEND_FAILED, "chunked: failure propagated");
+    CHECK(g_tcp_sends == 2, "chunked: aborted at failing chunk (no 3rd send)");
+
+    /* --- chunked send success: all chunks sent, CHUNK flag + total set --- */
+    reset_all_peers();
+    reset_recorders();
+    p = &g_ctx->peers[0];
+    p->in_use = 1;
+    p->state = PT_PEER_CONNECTED;
+    p->tcp_send_size = 20;
+    st = PT_Send((PT_Context *)g_ctx, (PT_Peer *)p, TCP_TYPE, big, 30);
+    CHECK(st == PT_OK, "chunked ok: PT_Send succeeded");
+    CHECK(g_tcp_sends == 3, "chunked ok: 3 chunks for 30 bytes @ 12/chunk");
+    CHECK((g_tcp_last_frame[3] & PT_CHUNK_FLAG) != 0,
+          "chunked ok: last frame carries the CHUNK flag");
+    CHECK(g_tcp_last_frame[7] == 3, "chunked ok: total-chunks field == 3");
+
+    g_ctx->peers[0].tcp_send_size = orig_size;
+    g_ctx->message_types[TCP_TYPE] = PT_FAST;
+    g_ctx->platform_ops = saved;
+    reset_all_peers();
+}
+
+/* ------------------------------------------------------------------ */
 /* main                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -1051,6 +1224,10 @@ int main(void)
     /* Timeout sweeps */
     test_reassembly_timeout();
     test_discovery_timeout();
+    test_peer_timeouts();
+
+    /* TCP send error paths */
+    test_send_error_paths();
 
     PT_Shutdown(pub);
 

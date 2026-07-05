@@ -578,7 +578,6 @@ static PT_PlatformOps posix_ops = {
     posix_tcp_connect,
     posix_tcp_send,
     posix_tcp_disconnect,
-    NULL,   /* poll: POSIX is event-driven via next_event */
     NULL,   /* cleanup_streams: POSIX sockets don't need explicit cleanup */
     posix_next_event
 };
