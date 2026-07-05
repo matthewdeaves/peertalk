@@ -1682,3 +1682,91 @@ on_discovered callback, matching test_lifecycle and test_chat.
 POSIX log shows dual [CONNECTED] events at timestamps 3487 and 3535,
 followed by ERROR disconnect at 3632. P6400 log shows PASS (12/12)
 because it used the first connection. Retry passed clean (60/60).
+
+## R50. Post-v1.12.0 Architecture Review — Seam Refinements + What Was Declined
+
+**Context**: A deep-module review (Ousterhout, *A Philosophy of Software
+Design*) was run over core + all three backends after v1.12.0, using the
+deletion test as the decision heuristic: if removing a module concentrates
+complexity it was load-bearing; if it merely relocates, the module was
+shallow. Six candidates surfaced. Three were implemented (they passed the
+test cleanly); three were investigated at code level and **declined** —
+recorded here so they are not re-proposed.
+
+**Implemented (v1.12.x, "PR1")**:
+
+- **A — deleted the dead `poll` vtable slot.** Every backend set
+  `.poll = NULL` and drives the seam via `next_event()`, so `PT_Poll`'s
+  `else { poll(ctx); }` fallback was unreachable and the slot supported a
+  backend that does not exist. Removing it (field + branch + three `NULL`
+  placeholders) makes the complexity vanish, not relocate. Platform
+  interface narrowed 11→10 ops.
+- **B — extracted `pt_check_peer_timeouts()`.** The per-peer
+  connect/keepalive/inactivity sweep was inlined in `PT_Poll`, unreachable
+  by the mock backend — unlike its already-extracted siblings
+  `pt_discovery_check_timeouts` and
+  `pt_messaging_check_reassembly_timeouts`. Extraction added
+  mutation-verified unit coverage for three transitions (incl. the
+  BomberTalk-critical keepalive) that previously only real hardware caught.
+- **E — made the mock `tcp_send` counting + configurably-failing.** Added
+  unit tests for send-failure propagation and chunked-send abort. test_seam
+  92→112 checks.
+
+**Declined after code-level investigation**:
+
+- **C — converting inbound-accept and UDP reception into
+  `PT_EVT_ACCEPT` / `PT_EVT_UDP` events.** The premise (that the seam is
+  "partial" because backends call `pt_handle_incoming_connection`,
+  `pt_discovery_receive`, `pt_messaging_process_udp_data` directly rather
+  than via events) does not survive inspection. Those three helpers are
+  **core** functions and are **already unit-tested directly** in
+  `test_seam.c` (tiebreak, no-room, UDP-message, discovery-parse suites).
+  The per-backend code around them is irreducibly platform-specific I/O
+  (recvfrom / UDPBfrReturn / OTRcvUData; `accept` / passive-open), not
+  duplicated logic. Converting to events would *widen* `PT_Event` (data
+  pointer + len + port + source_ip), add a stateful UDP drain cursor to
+  every backend, couple the received-buffer lifetime to core, and require a
+  net-new "reject a platform peer" vtable op for the accept cleanup path
+  (POSIX `close`, MacTCP `abort_stream`, OT disconnect are all
+  platform-specific). That relocates and *grows* complexity to centralize a
+  trivial port→function dispatch that is already effectively centralized —
+  a reverse deletion-test result, and against Constitution IX (Keep It
+  Small) and II (SDK Handles the Protocol; the split is already invisible
+  to apps). Deferred UDP features (filtering, rate-limiting) that might
+  justify a single dispatch point are speculative (Constitution I, IV) —
+  YAGNI.
+
+- **D — retiring the `udp_listen` vtable slot as a shallow module.** It
+  *looks* shallow (POSIX and OT implementations are no-ops), but it is the
+  named "arm/re-arm UDP reception on discovery (re)start" seam step,
+  symmetric with `tcp_listen`, and does real correctly-timed work on
+  MacTCP: `PT_StartDiscovery`'s re-entry path recreates the UDP streams via
+  `cleanup_streams` (`read_pending = 0`, no read armed), and `udp_listen`
+  is what re-arms them afterward. The POSIX/OT bodies are honest "nothing to
+  arm on this platform" (the socket/endpoint is already listening from
+  init), not dead code. Deleting the slot would scatter MacTCP's arming
+  into `init` + `cleanup_streams` and break the `tcp_listen`/`udp_listen`
+  symmetry — relocation, not reduction. Kept.
+
+- **F — a dynamic event-handler registry**
+  (`register_event_handler(type, callback)`) so future event types could be
+  added without editing the vtable. Rejected as speculative generality
+  against Constitution IV (Simple Defaults, No Knobs) and IX (Keep It
+  Small). The static `PT_PlatformOps` vtable is the correct shape for a
+  fixed-scope, zero-allocation, C89 SDK whose event set is bounded by
+  "Three Apps Are the Spec" (I). If a genuinely new event category ever
+  arrives, widening the `PT_EventType` enum is a good, compile-checked,
+  reviewable diff — not a design flaw to pre-empt with runtime indirection.
+
+**Standing decision**: the platform seam stays a **static vtable**;
+non-lifecycle I/O (accept, UDP) stays as direct calls from each backend
+into shared, already-tested core functions rather than being routed through
+`PT_Event`. Only the per-peer TCP lifecycle (CONNECTED / DATA / CLOSED) is
+event-driven, because that is where core genuinely owns cross-backend state
+transitions.
+
+**Source**: Architecture review, 2026-07-05. Report archived at
+`architecture-review-2026-07-05.html`. All findings verified against the
+working tree (line numbers checked); A/B/E landed with test_seam at 112
+checks (all mutation-verified) and cppcheck clean, building on POSIX, 68k
+MacTCP, and PPC Open Transport.
