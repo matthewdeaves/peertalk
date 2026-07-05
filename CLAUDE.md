@@ -63,9 +63,13 @@ mkdir -p build-ppc-mactcp && cd build-ppc-mactcp && \
 cmake .. -DCMAKE_TOOLCHAIN_FILE=$RETRO68_TOOLCHAIN/powerpc-apple-macos/cmake/retroppc.toolchain.cmake \
   -DPT_PLATFORM=MACTCP -DCLOG_DIR=$CLOG_DIR && make
 
-# Carbon (build-carbon/) — GUI app for PPC Mac OS X (10.3-10.5) via LaunchAPPL.
-# Same OT backend, carbonised: a classic-style RetroConsole window on OS X PPC.
-# (The alternative on OS X PPC is the native fat POSIX build above — dev's choice.)
+# Carbon (build-carbon/) — carbonised OT backend, RetroConsole GUI app.
+# Runtime target is Classic Mac OS 8.6-9 (has OT + CarbonLib), NOT OS X:
+# Open Transport is absent from every OS X version (CarbonLib is present but
+# there's no OT CFM lib), so a Carbon-OT app dies with cfragNoLibraryErr on
+# OS X — verified on the G3 (10.3.9) and G5 (10.5). On OS X PPC use the native
+# fat POSIX build above (BSD sockets). No 8.6-9 machine is in the fleet, so
+# this target currently builds-clean but has no local runtime.
 mkdir -p build-carbon && cd build-carbon && \
 cmake .. -DCMAKE_TOOLCHAIN_FILE=$RETRO68_TOOLCHAIN/powerpc-apple-macos/cmake/retrocarbon.toolchain.cmake \
   -DPT_PLATFORM=OT -DCLOG_DIR=$CLOG_DIR && make

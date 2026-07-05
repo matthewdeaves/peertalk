@@ -103,9 +103,14 @@ display**, `tools/osx-screen-run.sh <host> [app]` opens a Terminal window on
 the logged-in desktop via `osascript`. Works on every OS X Mac (Intel + PPC)
 because it uses the supported POSIX/BSD-sockets build.
 
-A *native app window* on OS X is the Retro68 **Carbon** path (LaunchAPPL +
-a Carbon build of the test apps, using the Open Transport backend — the
-Retro68 Carbon SDK exposes `OpenTransport.h`, and OT does run for Carbon
-apps on PPC OS X). That build is tracked/added separately; see the Carbon
-build target. On the Intel mini (10.7, no Carbon PPC), the Terminal launcher
-is the on-screen path.
+There is **no native app-window path on OS X**. The Retro68 Carbon build
+uses the OT backend (the only networking the Carbon SDK exposes — no BSD
+sockets), and **Open Transport does not exist on OS X**: CarbonLib is
+present but there is no OT CFM library on any version. Verified on real
+hardware — a Carbon PeerTalk app imports `OTInetClientLib` /
+`InitOpenTransportInContext` and dies at launch with `cfragNoLibraryErr`
+(-2804) on the G3 (10.3.9) and the G5 (10.5). The Carbon-OT build is
+therefore only runnable on **Classic Mac OS 8.6–9** (which has OT +
+CarbonLib), not OS X. On OS X the on-screen path is the Terminal launcher
+above; a genuine native window would require a Cocoa/Carbon-**Mach-O** app
+wrapping `pt_posix` (BSD sockets), which is separate from Retro68.
