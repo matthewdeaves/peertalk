@@ -62,6 +62,12 @@ cmake .. -DCMAKE_TOOLCHAIN_FILE=$RETRO68_TOOLCHAIN/m68k-apple-macos/cmake/retro6
 mkdir -p build-ppc-mactcp && cd build-ppc-mactcp && \
 cmake .. -DCMAKE_TOOLCHAIN_FILE=$RETRO68_TOOLCHAIN/powerpc-apple-macos/cmake/retroppc.toolchain.cmake \
   -DPT_PLATFORM=MACTCP -DCLOG_DIR=$CLOG_DIR && make
+
+# Fat Mac OS X (PPC + Intel, 10.4-10.7) -- NOT CMake. Reuses pt_posix.c on
+# a vintage Intel Lion host (Xcode 3.2.6 / 10.4u SDK). Driven over ssh:
+#   rsync repo + clog to the host, then:
+CLOG_DIR=~/clog tools/build-macosx-fat.sh   # run on the OS X build host
+# See tools/build-macosx-fat.md for the full workflow + known warnings.
 ```
 
 ## Architecture Notes

@@ -14,6 +14,10 @@
 
 #include "test_common.h"
 
+#ifdef PT_PLATFORM_POSIX
+#include <sys/time.h>   /* gettimeofday (macOS pre-10.12 has no clock_gettime) */
+#endif
+
 #define SEND_HZ     60
 #define SEND_MS     (1000 / SEND_HZ)
 #define TEST_SECS   5
@@ -43,9 +47,18 @@ static unsigned long g_last_recv_ms = 0;
 static unsigned long test_time_ms_now(void)
 {
 #ifdef PT_PLATFORM_POSIX
+#if defined(__APPLE__)
+    /* clock_gettime/CLOCK_MONOTONIC did not arrive on macOS until 10.12;
+       the fat OS X build targets 10.4. gettimeofday is universal and
+       precise enough for this test's 60 Hz receive-interval timing. */
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (unsigned long)(tv.tv_sec * 1000UL + tv.tv_usec / 1000UL);
+#else
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (unsigned long)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+#endif
 #else
     /* TickCount = 1/60s ticks. Convert to ms: ticks * 1000 / 60 */
     return (unsigned long)(TickCount() * 1000UL / 60UL);

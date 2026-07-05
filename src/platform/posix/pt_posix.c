@@ -17,6 +17,16 @@
 #include <errno.h>
 #include <string.h>
 
+/* Suppress SIGPIPE on send() to a dead peer. Linux exposes the per-call
+   MSG_NOSIGNAL flag; Darwin/BSD lack it but offer the per-socket
+   SO_NOSIGPIPE option instead. Fall back to 0 so send() compiles
+   everywhere, and set SO_NOSIGPIPE on each TCP socket where available
+   (see set_nosigpipe). No global SIGPIPE handler -- the SDK never
+   touches process-wide signal disposition. */
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+
 /* ------------------------------------------------------------------ */
 /* Platform state                                                      */
 /* ------------------------------------------------------------------ */
@@ -46,6 +56,19 @@ static int make_nonblocking(int fd)
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags < 0) return -1;
     return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+}
+
+/* On Darwin/BSD there is no MSG_NOSIGNAL send flag; suppress SIGPIPE on
+   a dead-peer write via the SO_NOSIGPIPE socket option instead. Compiled
+   out on Linux, which lacks SO_NOSIGPIPE and uses MSG_NOSIGNAL. */
+static void set_nosigpipe(int fd)
+{
+#ifdef SO_NOSIGPIPE
+    int opt = 1;
+    setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &opt, sizeof(opt));
+#else
+    (void)fd;
+#endif
 }
 
 static int create_udp_socket(unsigned short port, int broadcast)
@@ -292,6 +315,7 @@ static PT_Status posix_tcp_connect(PT_Context_Internal *ctx,
     if (fd < 0) return PT_ERR_SEND_FAILED;
 
     make_nonblocking(fd);
+    set_nosigpipe(fd);
     setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
 
     memset(&addr, 0, sizeof(addr));
@@ -432,6 +456,7 @@ static void posix_select_round(PT_Context_Internal *ctx)
             const PT_Peer_Internal *accepted;
 
             make_nonblocking(newfd);
+            set_nosigpipe(newfd);
             setsockopt(newfd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
 
             memset(&ppeer, 0, sizeof(ppeer));

@@ -16,6 +16,7 @@ A C networking SDK for LAN peer-to-peer communication between modern POSIX syste
 | Platform | Backend | Build Target | Tested Hardware |
 |----------|---------|-------------|-----------------|
 | Linux / macOS | POSIX (BSD sockets) | `build/` | Any modern system |
+| Mac OS X 10.4–10.7 (PPC + Intel) | POSIX, fat binary | `build-macosx-fat/` | Intel Mac mini (10.7.5) |
 | Mac SE (68000) | MacTCP | `build-68k/` | Mac SE, 4 MB RAM |
 | Performa 6200 (PPC 603) | MacTCP | `build-ppc-mactcp/` | Performa 6200, 40 MB RAM |
 | Performa 6400 (PPC 603e) | Open Transport | `build-ppc-ot/` | Performa 6400, 48 MB RAM |
@@ -65,6 +66,17 @@ cmake .. -DCMAKE_TOOLCHAIN_FILE=$RETRO68_TOOLCHAIN/m68k-apple-macos/cmake/retro6
 mkdir -p build-ppc-ot && cd build-ppc-ot
 cmake .. -DCMAKE_TOOLCHAIN_FILE=$RETRO68_TOOLCHAIN/powerpc-apple-macos/cmake/retroppc.toolchain.cmake \
   -DPT_PLATFORM=OT && make
+```
+
+### Fat Mac OS X binary (PPC + Intel, 10.4–10.7)
+
+The POSIX backend also builds as a single universal Mach-O that runs on any
+Mac OS X 10.4–10.7 machine, PowerPC or Intel. It needs a vintage build host
+(Intel Lion with Xcode 3.2.6 / the 10.4u SDK), not CMake — see
+[tools/build-macosx-fat.md](tools/build-macosx-fat.md):
+
+```bash
+CLOG_DIR=~/clog tools/build-macosx-fat.sh   # run on the OS X build host
 ```
 
 ## Using as a Library
