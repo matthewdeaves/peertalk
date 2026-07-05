@@ -115,7 +115,7 @@ src/core/                   # Platform-independent core
 src/platform/posix/         # BSD sockets + select()
 src/platform/mactcp/        # MacTCP async parameter blocks
 src/platform/opentransport/ # OT endpoints + notifiers
-tests/                      # 7 test apps
+tests/                      # test apps + test_seam core-logic unit tests
 ```
 
 ## Test Apps
