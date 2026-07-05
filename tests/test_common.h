@@ -143,6 +143,14 @@ static void test_install_signal_handler(void)
 static void test_init_toolbox(void)
 {
 #if !defined(PT_PLATFORM_POSIX)
+#if TARGET_API_MAC_CARBON
+    /* Carbon (OS X / CarbonLib): the system initializes the Toolbox for us.
+       The classic QuickDraw globals (qd) and the InitGraf/InitFonts/...
+       sequence don't exist under Carbon; RetroConsole sets up its own
+       window.  MaxApplZone/MoreMasters are classic Memory Manager calls
+       that don't apply to the OS X memory model either. */
+    InitCursor();
+#else
     MaxApplZone();
     MoreMasters();
     MoreMasters();
@@ -156,7 +164,7 @@ static void test_init_toolbox(void)
     TEInit();
     InitDialogs(NULL);
     InitCursor();
-
+#endif
 #endif
 }
 

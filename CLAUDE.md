@@ -63,6 +63,13 @@ mkdir -p build-ppc-mactcp && cd build-ppc-mactcp && \
 cmake .. -DCMAKE_TOOLCHAIN_FILE=$RETRO68_TOOLCHAIN/powerpc-apple-macos/cmake/retroppc.toolchain.cmake \
   -DPT_PLATFORM=MACTCP -DCLOG_DIR=$CLOG_DIR && make
 
+# Carbon (build-carbon/) — GUI app for PPC Mac OS X (10.3-10.5) via LaunchAPPL.
+# Same OT backend, carbonised: a classic-style RetroConsole window on OS X PPC.
+# (The alternative on OS X PPC is the native fat POSIX build above — dev's choice.)
+mkdir -p build-carbon && cd build-carbon && \
+cmake .. -DCMAKE_TOOLCHAIN_FILE=$RETRO68_TOOLCHAIN/powerpc-apple-macos/cmake/retrocarbon.toolchain.cmake \
+  -DPT_PLATFORM=OT -DCLOG_DIR=$CLOG_DIR && make
+
 # Fat Mac OS X (PPC + Intel, 10.4-10.7) -- NOT CMake. Reuses pt_posix.c on
 # a vintage Intel Lion host (Xcode 3.2.6 / 10.4u SDK). Driven over ssh:
 #   rsync repo + clog to the host, then:

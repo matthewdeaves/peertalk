@@ -13,6 +13,24 @@
 #include <string.h>
 #include <stdarg.h>
 
+#include <ConditionalMacros.h>   /* TARGET_API_MAC_CARBON */
+
+#if TARGET_API_MAC_CARBON
+
+/*
+ * Carbon (OS X): the RetroConsole console window already displays the test
+ * log, and WindowPtr is opaque under Carbon (no direct portRect / SetPort
+ * on a window).  The secondary status window is therefore disabled here --
+ * these are no-op stubs so the same test sources build for Carbon.
+ */
+void status_init(const char *test_name)   { (void)test_name; }
+void status_clear(void)                    { }
+void status_line(const char *text)         { (void)text; }
+void status_linef(const char *fmt, ...)    { (void)fmt; }
+void status_cleanup(void)                  { }
+
+#else
+
 #include <Quickdraw.h>
 #include <Windows.h>
 #include <Fonts.h>
@@ -126,3 +144,5 @@ void status_cleanup(void)
         g_status_win = NULL;
     }
 }
+
+#endif /* TARGET_API_MAC_CARBON */

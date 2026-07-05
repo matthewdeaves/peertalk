@@ -399,15 +399,20 @@ PT_Status PT_Init(PT_Context **out_ctx, const char *name)
     if (namelen > PT_NAME_MAX) return PT_ERR_INVALID_ARG;
 
 #if defined(PT_PLATFORM_MACTCP) || defined(PT_PLATFORM_OT)
+#if !TARGET_API_MAC_CARBON
     /* Extend heap BEFORE any allocation (R17).
      * Must be the first Memory Manager call in the application.
      * Without this, the heap stays at SIZE resource minimum and
-     * NewPtrClear below will fail or leave no room for buffers. */
+     * NewPtrClear below will fail or leave no room for buffers.
+     * Carbon (OS X): the classic application heap model doesn't apply and
+     * MaxApplZone/MoreMasters aren't provided -- the OS X allocator backs
+     * NewPtrClear directly. */
     MaxApplZone();
     MoreMasters();
     MoreMasters();
     MoreMasters();
     MoreMasters();
+#endif
 
     ctx = (PT_Context_Internal *)NewPtrClear(
         (Size)sizeof(PT_Context_Internal));

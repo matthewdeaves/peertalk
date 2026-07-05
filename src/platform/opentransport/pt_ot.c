@@ -11,12 +11,25 @@
 
 #ifdef PT_PLATFORM_OT
 
+#include <ConditionalMacros.h>   /* TARGET_API_MAC_CARBON */
+
+/*
+ * Carbon (OS X / CarbonLib) OT: with OTCARBONAPPLICATION the header keeps
+ * the *InContext macros but supplies the client context for us, so the
+ * call sites below stay identical to the classic ones and we do NOT undo
+ * the redirects.  Must be defined before including <OpenTransport.h>.
+ */
+#if TARGET_API_MAC_CARBON
+#define OTCARBONAPPLICATION 1
+#endif
+
 #include <OpenTransport.h>
 #include <OpenTransportProviders.h>
 
+#if !TARGET_API_MAC_CARBON
 /*
- * Retro68 import libraries export the non-InContext symbols
- * (OTOpenEndpoint, InitOpenTransport, CloseOpenTransport) but the
+ * Classic 68k/PPC OT: Retro68 import libraries export the non-InContext
+ * symbols (OTOpenEndpoint, InitOpenTransport, CloseOpenTransport) but the
  * header #defines those names as macros that expand to the InContext
  * variants, which don't exist in the import libs.  Undo the redirects
  * so we can call the real library symbols directly.
@@ -24,6 +37,7 @@
 #undef OTOpenEndpoint
 #undef InitOpenTransport
 #undef CloseOpenTransport
+#endif
 
 /* ------------------------------------------------------------------ */
 /* Constants                                                           */
