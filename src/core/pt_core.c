@@ -487,11 +487,27 @@ void PT_Shutdown(PT_Context *pub_ctx)
        fire during shutdown (T024) */
     memset(&ctx->callbacks, 0, sizeof(ctx->callbacks));
 
-    /* Disconnect all connected peers.  Do NOT send goodbye frames:
-     * on MacTCP, the synchronous TCPSend hangs if the remote peer is
-     * dead or quitting simultaneously (60-second TCP timeout = total
-     * machine freeze).  TCPAbort in tcp_disconnect sends RST, which
-     * is sufficient for the remote side to detect disconnection. */
+    /* Disconnect all connected peers.  Do NOT send goodbye frames here:
+     * on MacTCP the send (mactcp_tcp_send) is SYNCHRONOUS with a 60s ULP
+     * timeout, so a goodbye to a dead or simultaneously-quitting peer would
+     * hang the whole machine for up to a minute.  tcp_disconnect therefore
+     * closes gracelessly on every backend (OT: OTSndDisconnect / MacTCP:
+     * TCPAbort -> RST; POSIX: close() -> FIN) with no goodbye in flight.
+     *
+     * Consequence (by design, uniform across all three platforms): a peer
+     * still connected when we shut down observes on_disconnected with reason
+     * PT_DISCONNECT_ERROR, NOT PT_QUIT -- PT_QUIT requires a buffered goodbye
+     * frame, which only PT_Disconnect / PT_DisconnectAll send (mid-run, when
+     * the peer is known live).  The CLEAN-QUIT signal at shutdown is instead
+     * the UDP leave broadcast above (PT_DISCOVERY_FLAG_LEAVE): it fires the
+     * partner's on_peer_lost.  On the partner, handling our RST sets its slot
+     * for us to DISCONNECTED but leaves in_use set (pt_handle_peer_disconnect),
+     * so its leave handler still finds us regardless of TCP/UDP ordering.
+     * Reporting a graceless close as
+     * ERROR is truthful; delivering QUIT here would need either a per-platform
+     * orderly release (OT-only -> breaks Principle VI cross-platform parity)
+     * or a safe MacTCP goodbye (reintroduces the 60s freeze).  See the memory
+     * note ot-shutdown-goodbye-abortive-close for the full analysis. */
     for (i = 0; i < ctx->max_peers; i++) {
         if (ctx->peers[i].in_use &&
             ctx->peers[i].state == PT_PEER_CONNECTED) {

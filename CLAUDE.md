@@ -75,6 +75,14 @@ PeerTalk sends automatic keepalive frames (type `PT_MSG_TYPE_KEEPALIVE` = 254) e
 - Receiver silently consumes keepalive (no callback registered, `TCPRcv` updates `last_tcp_activity`)
 - Type 254 is reserved — `PT_RegisterMessage` rejects it (like type 255/GOODBYE)
 
+### Disconnect Semantics (QUIT vs ERROR)
+
+`on_disconnected`'s reason reflects the *transport* event, and `PT_QUIT` requires a buffered **goodbye frame** (`PT_MSG_TYPE_GOODBYE` = 255) arriving before the close:
+
+- **`PT_Disconnect` / `PT_DisconnectAll`** (mid-run) send a goodbye first → the partner buffers it → **`PT_QUIT`**.
+- **`PT_Shutdown`** deliberately sends **no** goodbye (MacTCP's send is synchronous with a 60s ULP timeout — a goodbye to a dead peer would freeze the machine) and closes gracelessly on every backend (OT `OTSndDisconnect`/MacTCP `TCPAbort` → RST; POSIX `close()` → FIN). A peer still connected at our shutdown therefore sees **`PT_DISCONNECT_ERROR`**, *uniformly across all three platforms* — this is by design, not an OT wart.
+- The **clean-quit signal at shutdown is the UDP leave broadcast** (`PT_DISCOVERY_FLAG_LEAVE`, v1.11.0), which fires the partner's **`on_peer_lost`**. On the partner, handling our RST marks its slot for us DISCONNECTED but leaves `in_use` set, so its leave handler still finds us regardless of TCP/UDP ordering. Apps that need "did the peer leave cleanly?" should watch `on_peer_lost`, not the `on_disconnected` reason. Hardware-confirmed on the OT Mac (test_chat, Mac quits mid-exchange): partner logs `ERROR`, both sides exit cleanly, `Integrity: ok`. Full analysis: memory `ot-shutdown-goodbye-abortive-close`.
+
 ### Debug Broadcast Channel
 
 PeerTalk provides a general-purpose UDP debug broadcast channel (no clog coupling — Principle VII). Apps wire clog or any other output into it if desired.
