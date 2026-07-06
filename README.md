@@ -1,6 +1,9 @@
 # PeerTalk
 
-A C networking SDK for LAN peer-to-peer communication between modern POSIX systems and Classic Macintosh computers.
+A small C library for LAN peer-to-peer networking that spans eras: the same API
+links into a 1987 Mac SE, a 1990s Power Mac, and a modern Linux or macOS
+machine, and they all discover and message each other as equal peers. One
+public header, zero heap allocation after startup, no threads.
 
 ## Features
 
@@ -37,15 +40,37 @@ PT_OnMessage(ctx, MSG_CHAT, on_chat, NULL);
 
 PT_RegisterMessage(ctx, MSG_CHAT, PT_RELIABLE);
 PT_StartDiscovery(ctx);
+PT_EnableAutoMesh(ctx, 1);   /* stay connected to everyone we discover */
 
 while (running) {
-    PT_Poll(ctx);
+    PT_Poll(ctx);            /* discovery, connections, and messages all happen here */
 }
 
 PT_Shutdown(ctx);
 ```
 
-See [API Contract](specs/001-peertalk-sdk/contracts/peertalk-api.md) for the full 31-function reference.
+Every function is documented inline in the single public header,
+[`include/peertalk.h`](include/peertalk.h) — that's the API reference.
+
+## How it works
+
+PeerTalk gives every peer the same three things — **discovery**,
+**connections**, and **messages** — all driven from one `PT_Poll(ctx)` call in
+your main loop. No threads, and callbacks only fire from inside `PT_Poll`, so
+you never need locks.
+
+- **Discovery** — each peer announces itself over UDP broadcast. You get an
+  `on_discovered` callback when one appears and `on_peer_lost` when it leaves.
+- **Connections** — call `PT_Connect` to open a TCP link to a peer, or call
+  `PT_EnableAutoMesh(ctx, 1)` once and PeerTalk keeps every discovered peer
+  connected for you: each pair is dialed from one side only (so there's no
+  connect race), and a dropped link is re-dialed automatically.
+- **Messages** — register a message type as `PT_RELIABLE` (TCP, ordered — game
+  events, chat) or `PT_FAST` (UDP — positions, anything you'd rather drop than
+  wait for), then `PT_Send` to one peer or `PT_Broadcast` to all.
+
+Peer identity is deterministic: peers are ranked by IP address, so every
+machine independently agrees on who is "player 0" — no host, no negotiation.
 
 ## Prerequisites
 
