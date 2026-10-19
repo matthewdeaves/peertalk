@@ -233,6 +233,26 @@ void pt_messaging_process_tcp_data(PT_Context_Internal *ctx,
                 peer->reassembly_stride = chunk_payload;
             }
 
+            /* TCP is ordered and the sender emits chunks 0..total-1 in
+               order, so accept only the next expected chunk of the SAME
+               message: seq == received, total unchanged, every non-final
+               chunk exactly one stride long and the last no longer.
+               Anything else (forged total, duplicate, gap) is a protocol
+               violation: drop the partial message rather than deliver a
+               wrong length or a hole. */
+            if (peer->reassembly_total > 0 && seq != 0 &&
+                (seq != peer->reassembly_received ||
+                 total != peer->reassembly_total ||
+                 msg_type != peer->reassembly_type ||
+                 (seq == total - 1 ?
+                      chunk_payload > peer->reassembly_stride :
+                      chunk_payload != peer->reassembly_stride))) {
+                CLOG_WARN("Bad chunk sequence from %s, dropping message",
+                          peer->name);
+                peer->reassembly_total = 0;
+                peer->reassembly_received = 0;
+            }
+
             if (peer->reassembly_total > 0 && seq < total &&
                 msg_type == peer->reassembly_type) {
                 /* Per-chunk bounds check against reassembly buffer */
