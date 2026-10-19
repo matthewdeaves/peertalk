@@ -1009,6 +1009,141 @@ static void test_peer_rank(void)
     reset_all_peers();
 }
 
+/* ------------------------------------------------------------------ */
+/* IP ordering is byte-wise (network order), not native-integer         */
+/* ------------------------------------------------------------------ */
+
+/* Build ip_addr the way the backends do: the four octets as bytes in
+   memory (POSIX s_addr / MacTCP ip_addr / OT InetHost), NOT as a native
+   integer.  On a little-endian host a native compare would see the LAST
+   octet as most significant, so 192.168.1.20 vs 192.168.2.10 disagrees
+   with the big-endian Mac. */
+static unsigned long ip_from_bytes(unsigned a, unsigned b, unsigned c,
+                                   unsigned d)
+{
+    unsigned char o[4];
+    unsigned long ip = 0;
+    o[0] = (unsigned char)a; o[1] = (unsigned char)b;
+    o[2] = (unsigned char)c; o[3] = (unsigned char)d;
+    memcpy(&ip, o, 4);
+    return ip;
+}
+
+/* From `local`'s point of view, with `remote` as the peer, record:
+   *init   = PT_ShouldInitiate
+   *dials  = auto-mesh sweep dialed it
+   *cancel = tiebreaker (outbound pending) cancelled our outbound
+   *swap   = tiebreaker (outbound already connected) adopted the incoming
+   *rself, *rpeer = PT_GetPeerRank of self / of the peer */
+static void ip_view(unsigned long local, unsigned long remote, int *init,
+                    int *dials, int *cancel, int *swap, int *rself,
+                    int *rpeer)
+{
+    PT_PlatformOps *saved;
+    PT_PlatformPeer incoming;
+    PT_Peer_Internal *p;
+
+    reset_all_peers();
+    g_ctx->local_ip = local;
+
+    p = fresh_peer(PT_PEER_CONNECTED);
+    p->ip_addr = remote;
+    p->inbound = 0;
+    p->platform_peer.tcp_fd = 7;
+    g_ctx->peer_count = 1;
+    *init = PT_ShouldInitiate((PT_Context *)g_ctx, (PT_Peer *)p) ? 1 : 0;
+    *rself = PT_GetPeerRank((PT_Context *)g_ctx, NULL);
+    *rpeer = PT_GetPeerRank((PT_Context *)g_ctx, (PT_Peer *)p);
+
+    /* Tiebreaker, our outbound already completed. */
+    reset_recorders();
+    saved = install_mock_ops();
+    memset(&incoming, 0, sizeof(incoming));
+    incoming.tcp_fd = 42;
+    pt_handle_incoming_connection(g_ctx, remote, &incoming);
+    g_ctx->platform_ops = saved;
+    *swap = (g_disconnect_calls == 1);
+
+    /* Tiebreaker, our outbound still pending. */
+    p = fresh_peer(PT_PEER_DISCOVERED);
+    p->ip_addr = remote;
+    p->inbound = 0;
+    reset_recorders();
+    saved = install_mock_ops();
+    pt_handle_incoming_connection(g_ctx, remote, &incoming);
+    g_ctx->platform_ops = saved;
+    *cancel = (g_disconnect_calls == 1);
+
+    /* Auto-mesh sweep. */
+    p = fresh_peer(PT_PEER_DISCOVERED);
+    p->ip_addr = remote;
+    p->connect_start = 0;
+    p->inbound = 0;
+    reset_recorders();
+    saved = install_mock_ops();
+    g_ctx->auto_mesh = 1;
+    g_ctx->mesh_dial_timer = 0;
+    g_ctx->current_time = 100;
+    pt_mesh_dial_sweep(g_ctx);
+    g_ctx->auto_mesh = 0;
+    g_ctx->platform_ops = saved;
+    *dials = (g_connect_calls == 1);
+
+    reset_all_peers();
+}
+
+static void check_ip_pair(const char *tag, unsigned long lo_ip,
+                          unsigned long hi_ip)
+{
+    int li, ld, lc, lw, lrs, lrp;   /* view from the lower-IP host  */
+    int hi, hd, hc, hw, hrs, hrp;   /* view from the higher-IP host */
+    char m[96];
+
+    ip_view(lo_ip, hi_ip, &li, &ld, &lc, &lw, &lrs, &lrp);
+    ip_view(hi_ip, lo_ip, &hi, &hd, &hc, &hw, &hrs, &hrp);
+
+    sprintf(m, "%s: lower IP is the initiator, higher is not", tag);
+    CHECK(li == 1 && hi == 0, m);
+    sprintf(m, "%s: exactly one side dials in auto-mesh", tag);
+    CHECK(ld == 1 && hd == 0, m);
+    sprintf(m, "%s: tiebreaker cancels/swaps only on the higher IP", tag);
+    CHECK(lc == 0 && hc == 1 && lw == 0 && hw == 1, m);
+    sprintf(m, "%s: tiebreaker agrees with PT_ShouldInitiate", tag);
+    CHECK(lc == !li && hc == !hi && lw == !li && hw == !hi, m);
+    sprintf(m, "%s: ranks strictly ordered (lower 0, higher 1)", tag);
+    CHECK(lrs == 0 && lrp == 1 && hrs == 1 && hrp == 0, m);
+    sprintf(m, "%s: both hosts agree on each address's rank", tag);
+    CHECK(lrs == hrp && lrp == hrs, m);
+}
+
+static void test_ip_byte_order(void)
+{
+    printf("[ip_byte_order]\n");
+    check_ip_pair("192.168.1.20 < 192.168.2.10",
+                  ip_from_bytes(192, 168, 1, 20),
+                  ip_from_bytes(192, 168, 2, 10));
+    /* First differing octet (2nd: 0 < 88) orders opposite to the last
+       (15 > 10): native-integer compare gets this backwards on little-endian. */
+    check_ip_pair("10.0.2.15 < 10.88.0.10",
+                  ip_from_bytes(10, 0, 2, 15),
+                  ip_from_bytes(10, 88, 0, 10));
+}
+
+/* Identical IPs (loopback / same host): nobody initiates and the auto-mesh
+   sweep must not dial -- the pre-PT_ShouldInitiate inline check was
+   local_ip >= peer ip -> skip. */
+static void test_ip_equal(void)
+{
+    int init, dials, cancel, swap, rself, rpeer;
+    unsigned long ip = ip_from_bytes(10, 0, 2, 15);
+    printf("[ip_equal]\n");
+
+    ip_view(ip, ip, &init, &dials, &cancel, &swap, &rself, &rpeer);
+    CHECK(init == 0, "equal IP: PT_ShouldInitiate is false");
+    CHECK(dials == 0, "equal IP: auto-mesh sweep does not dial");
+    CHECK(rself == rpeer, "equal IP: self and peer share a rank");
+}
+
 /* pt_alloc_peer must hand out every slot then return NULL at capacity. */
 static void test_alloc_peer_exhaustion(void)
 {
@@ -1307,6 +1442,8 @@ int main(void)
 
     /* Peer management + ranking */
     test_peer_rank();
+    test_ip_byte_order();
+    test_ip_equal();
     test_alloc_peer_exhaustion();
 
     /* Timeout sweeps */
