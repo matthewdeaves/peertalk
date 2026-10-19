@@ -23,8 +23,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>   /* dup, close -- real fd for the no-room test */
+#include <arpa/inet.h>   /* htonl */
 #include <sys/socket.h>  /* socketpair -- real stream for the POSIX send test */
 #include <errno.h>
+#include <sys/select.h>  /* FD_SETSIZE */
+#include <sys/resource.h> /* setrlimit -- allow fds beyond FD_SETSIZE */
 #include <fcntl.h>    /* fcntl(F_GETFD) -- probe whether an fd is still open */
 
 /* ------------------------------------------------------------------ */
@@ -1567,6 +1570,43 @@ static void test_posix_partial_send_fails_connection(void)
     p->platform_peer.tcp_fd = -1;
 }
 
+/* select() cannot watch an fd >= FD_SETSIZE: FD_SET on one is a stack
+   buffer overflow.  The backend must refuse to hand such an fd to the
+   select loop (fail the connect, close the socket). */
+static void test_posix_fd_beyond_setsize(void)
+{
+    struct rlimit rl;
+    int held[FD_SETSIZE + 8];
+    int nheld = 0, fd, i;
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_DISCONNECTED);
+    PT_PlatformOps *posix = posix_get_ops();
+    PT_Status st;
+
+    printf("[posix_fd_beyond_setsize]\n");
+    if (getrlimit(RLIMIT_NOFILE, &rl) != 0 ||
+        (rl.rlim_max != RLIM_INFINITY && rl.rlim_max < FD_SETSIZE + 16)) {
+        printf("  skip: cannot raise RLIMIT_NOFILE above FD_SETSIZE\n");
+        return;
+    }
+    rl.rlim_cur = FD_SETSIZE + 16;
+    if (setrlimit(RLIMIT_NOFILE, &rl) != 0) {
+        printf("  skip: setrlimit failed\n");
+        return;
+    }
+
+    /* Occupy every fd below FD_SETSIZE so the next socket() lands above. */
+    while ((fd = dup(0)) >= 0 && fd < FD_SETSIZE && nheld < FD_SETSIZE)
+        held[nheld++] = fd;
+    if (fd >= 0) close(fd);
+
+    p->ip_addr = htonl(0x7F000001UL);
+    st = posix->tcp_connect(g_ctx, p);
+    CHECK(st != PT_OK, "connect refused when the socket would exceed FD_SETSIZE");
+    CHECK(p->platform_peer.tcp_fd < 0, "no fd adopted by the peer");
+
+    for (i = 0; i < nheld; i++) close(held[i]);
+}
+
 /* ------------------------------------------------------------------ */
 /* Clock stepping backwards (POSIX time() is wall-clock)                */
 /* ------------------------------------------------------------------ */
@@ -1810,6 +1850,7 @@ int main(void)
 
     /* POSIX backend */
     test_posix_partial_send_fails_connection();
+    test_posix_fd_beyond_setsize();
 
     /* Clock stepping backwards */
     test_clock_step_back();
