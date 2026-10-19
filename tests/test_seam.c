@@ -23,6 +23,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>   /* dup, close -- real fd for the no-room test */
+#include <sys/socket.h>  /* socketpair -- real stream for the POSIX send test */
+#include <errno.h>
 #include <fcntl.h>    /* fcntl(F_GETFD) -- probe whether an fd is still open */
 
 /* ------------------------------------------------------------------ */
@@ -1522,6 +1524,50 @@ static void test_peer_timeouts(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* POSIX backend: partial TCP send                                      */
+/* ------------------------------------------------------------------ */
+
+/* If send() stalls part-way through a frame the wire holds a truncated
+   frame; any later frame would be mis-parsed by the receiver.  The backend
+   must fail the connection (the partner sees EOF) rather than return an
+   error and leave the stream open to desync. */
+static void test_posix_partial_send_fails_connection(void)
+{
+    static unsigned char big[1 << 20];
+    unsigned char sink[65536];
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_CONNECTED);
+    PT_PlatformOps *posix = posix_get_ops();
+    int sv[2];
+    ssize_t n;
+    PT_Status st;
+    int saw_eof = 0, i;
+
+    printf("[posix_partial_send_fails_connection]\n");
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) != 0) {
+        CHECK(0, "socketpair");
+        return;
+    }
+    fcntl(sv[0], F_SETFL, fcntl(sv[0], F_GETFL, 0) | O_NONBLOCK);
+    fcntl(sv[1], F_SETFL, fcntl(sv[1], F_GETFL, 0) | O_NONBLOCK);
+    p->platform_peer.tcp_fd = sv[0];
+
+    st = posix->tcp_send(g_ctx, p, big, sizeof(big));
+    CHECK(st == PT_ERR_SEND_FAILED, "oversized send reports failure");
+
+    /* Drain what made it onto the wire, then look for EOF. */
+    for (i = 0; i < 1000 && !saw_eof; i++) {
+        n = recv(sv[1], sink, sizeof(sink), 0);
+        if (n == 0) saw_eof = 1;
+        else if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) break;
+    }
+    CHECK(saw_eof, "partner sees EOF (connection failed, not left desynced)");
+
+    close(sv[0]);
+    close(sv[1]);
+    p->platform_peer.tcp_fd = -1;
+}
+
+/* ------------------------------------------------------------------ */
 /* Clock stepping backwards (POSIX time() is wall-clock)                */
 /* ------------------------------------------------------------------ */
 
@@ -1761,6 +1807,9 @@ int main(void)
     test_reassembly_timeout();
     test_discovery_timeout();
     test_peer_timeouts();
+
+    /* POSIX backend */
+    test_posix_partial_send_fails_connection();
 
     /* Clock stepping backwards */
     test_clock_step_back();

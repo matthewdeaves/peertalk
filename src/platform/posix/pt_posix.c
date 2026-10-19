@@ -356,16 +356,20 @@ static PT_Status posix_tcp_send(PT_Context_Internal *ctx,
                     (const char *)data + total,
                     len - total, MSG_NOSIGNAL);
         if (sent < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                break;
-            }
-            return PT_ERR_SEND_FAILED;
+            if (errno == EINTR) continue;
+            break;   /* EAGAIN (buffer full) or a hard error */
         }
         total += (size_t)sent;
     }
 
-    /* Partial send corrupts TCP framing — report failure */
-    return (total == len) ? PT_OK : PT_ERR_SEND_FAILED;
+    if (total == len) return PT_OK;
+
+    /* A partial write leaves a truncated frame on the wire and every later
+     * frame would be mis-parsed.  Fail the connection (the partner sees EOF,
+     * our next poll reports it closed) instead of letting the stream
+     * desync.  Nothing written (total == 0) leaves the stream intact. */
+    if (total > 0) shutdown(peer->platform_peer.tcp_fd, SHUT_RDWR);
+    return PT_ERR_SEND_FAILED;
 }
 
 static void posix_tcp_disconnect(PT_Context_Internal *ctx,
