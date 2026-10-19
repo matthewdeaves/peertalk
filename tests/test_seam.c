@@ -806,6 +806,69 @@ static void test_chunked_reassembly(void)
     CHECK(p->reassembly_total == 0, "reassembly state cleared after delivery");
 }
 
+/* Stage one chunk frame (8-byte header + payload) for MSG_TYPE. */
+static void stage_chunk(PT_Peer_Internal *p, unsigned seq, unsigned total,
+                        const char *payload)
+{
+    unsigned char hdr[8];
+    size_t n = strlen(payload);
+    hdr[0] = 0x00; hdr[1] = (unsigned char)n;
+    hdr[2] = MSG_TYPE; hdr[3] = PT_CHUNK_FLAG;
+    hdr[4] = 0x00; hdr[5] = (unsigned char)seq;
+    hdr[6] = 0x00; hdr[7] = (unsigned char)total;
+    stage_bytes(p, hdr, sizeof(hdr));
+    stage_bytes(p, (const unsigned char *)payload, n);
+}
+
+/* Message of 4 chunks with a short last chunk: the final length is
+   (total-1)*stride + last, and every middle chunk must be accepted. */
+static void test_chunked_many(void)
+{
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_CONNECTED);
+    printf("[chunked_many]\n");
+    stage_chunk(p, 0, 4, "AAA");
+    stage_chunk(p, 1, 4, "BBB");
+    stage_chunk(p, 2, 4, "CCC");
+    stage_chunk(p, 3, 4, "DD");
+    reset_recorders();
+    pt_messaging_process_tcp_data(g_ctx, p);
+    CHECK(g_messages == 1, "4-chunk message delivered once");
+    CHECK(g_last_msg_len == 11 &&
+          memcmp(g_last_msg, "AAABBBCCCDD", 11) == 0,
+          "4 chunks concatenated, short tail");
+    CHECK(g_errors == 0 && p->reassembly_total == 0, "clean, state cleared");
+}
+
+/* Last chunk exactly one stride long (message length is a multiple of
+   the stride) must be accepted, not mistaken for an oversize chunk. */
+static void test_chunk_last_full_stride(void)
+{
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_CONNECTED);
+    printf("[chunk_last_full_stride]\n");
+    stage_chunk(p, 0, 3, "AA");
+    stage_chunk(p, 1, 3, "BB");
+    stage_chunk(p, 2, 3, "CC");
+    reset_recorders();
+    pt_messaging_process_tcp_data(g_ctx, p);
+    CHECK(g_messages == 1, "full-stride last chunk: message delivered");
+    CHECK(g_last_msg_len == 6 && memcmp(g_last_msg, "AABBCC", 6) == 0,
+          "full-stride last chunk: payload intact");
+}
+
+/* A degenerate single-chunk "chunked" message (total == 1) completes on
+   its first chunk. */
+static void test_chunk_total_one(void)
+{
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_CONNECTED);
+    printf("[chunk_total_one]\n");
+    stage_chunk(p, 0, 1, "Z");
+    reset_recorders();
+    pt_messaging_process_tcp_data(g_ctx, p);
+    CHECK(g_messages == 1, "total=1: delivered");
+    CHECK(g_last_msg_len == 1 && g_last_msg[0] == 'Z', "total=1: payload");
+    CHECK(p->reassembly_total == 0, "total=1: state cleared");
+}
+
 /* A chunk whose offset+payload exceeds the reassembly buffer must fire
    PT_ERR_NO_ROOM and abort reassembly -- never overrun the buffer. */
 static void test_chunk_oversize_rejected(void)
@@ -2043,6 +2106,9 @@ int main(void)
     test_frame_two_back_to_back();
     test_frame_keepalive_consumed();
     test_chunked_reassembly();
+    test_chunked_many();
+    test_chunk_last_full_stride();
+    test_chunk_total_one();
     test_chunk_oversize_rejected();
     test_chunk_forged_total();
     test_chunk_duplicate();
