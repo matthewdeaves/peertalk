@@ -19,7 +19,7 @@
 /* Constants                                                           */
 /* ------------------------------------------------------------------ */
 
-#define MACTCP_DRIVER_NAME  "\p.IPP"
+#define MACTCP_DRIVER_NAME  ((StringPtr)"\p.IPP")
 #define TCP_BUF_SIZE        8192
 #define UDP_BUF_SIZE        2048
 #define MAX_TCP_STREAMS     32
