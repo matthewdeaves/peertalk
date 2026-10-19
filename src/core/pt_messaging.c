@@ -302,8 +302,10 @@ void pt_messaging_process_tcp_data(PT_Context_Internal *ctx,
             /* Internal frame types: keepalive (254) has no callback
              * and is silently consumed; goodbye (255) disconnects. */
             if (msg_type == PT_MSG_TYPE_KEEPALIVE) {
-                /* No-op — receipt already updated last_tcp_activity */
-                frame_size = PT_TCP_HEADER_SIZE;
+                /* No-op — receipt already updated last_tcp_activity.
+                   Consume the whole declared frame (the length is 0 from
+                   a conforming sender) so a non-zero length cannot desync
+                   the stream. */
                 goto consume;
             }
 
@@ -333,6 +335,10 @@ void pt_messaging_process_tcp_data(PT_Context_Internal *ctx,
 
         /* Consume frame from buffer */
         consume:
+        /* A message callback may have called PT_Disconnect, which clears
+           the receive buffer: stop rather than subtract a frame that is
+           no longer there (size_t underflow) or dispatch stale frames. */
+        if (peer->tcp_recv_len < frame_size) return;
         {
             size_t remaining = peer->tcp_recv_len - frame_size;
             if (remaining > 0) {
