@@ -65,6 +65,12 @@
 #define PT_GLOBAL_OVERHEAD      1024
 #define PT_PEER_METADATA        128
 
+/* Seconds elapsed since `then`, or 0 if the clock has stepped backwards.
+   POSIX time() is wall-clock: an NTP/manual step back would otherwise make
+   every unsigned `now - then` wrap to ~4e9 and time out every peer.
+   (CLOCK_MONOTONIC is not available on the 10.4-10.7 Mac OS X targets.) */
+#define PT_ELAPSED(now, then) ((now) >= (then) ? (now) - (then) : 0UL)
+
 /* ------------------------------------------------------------------ */
 /* Byte-order helpers                                                  */
 /* ------------------------------------------------------------------ */

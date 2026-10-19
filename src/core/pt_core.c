@@ -704,7 +704,7 @@ void pt_check_peer_timeouts(PT_Context_Internal *ctx)
 
         /* TCP connect timeout */
         if (ctx->peers[i].connect_start > 0 &&
-            ctx->current_time - ctx->peers[i].connect_start >=
+            PT_ELAPSED(ctx->current_time, ctx->peers[i].connect_start) >=
                 PT_CONNECT_TIMEOUT) {
             CLOG_WARN("Connect timeout for %s", ctx->peers[i].name);
             ctx->platform_ops->tcp_disconnect(ctx, &ctx->peers[i]);
@@ -717,7 +717,7 @@ void pt_check_peer_timeouts(PT_Context_Internal *ctx)
         /* TCP keepalive — send if no TCP data sent recently */
         if (ctx->peers[i].state == PT_PEER_CONNECTED &&
             ctx->peers[i].last_tcp_send > 0 &&
-            ctx->current_time - ctx->peers[i].last_tcp_send >=
+            PT_ELAPSED(ctx->current_time, ctx->peers[i].last_tcp_send) >=
                 PT_KEEPALIVE_INTERVAL) {
             pt_messaging_send_keepalive(ctx, &ctx->peers[i]);
         }
@@ -725,7 +725,7 @@ void pt_check_peer_timeouts(PT_Context_Internal *ctx)
         /* TCP inactivity timeout */
         if (ctx->peers[i].state == PT_PEER_CONNECTED &&
             ctx->peers[i].last_tcp_activity > 0 &&
-            ctx->current_time - ctx->peers[i].last_tcp_activity >=
+            PT_ELAPSED(ctx->current_time, ctx->peers[i].last_tcp_activity) >=
                 PT_TCP_TIMEOUT) {
             CLOG_WARN("TCP timeout for %s", ctx->peers[i].name);
             pt_handle_peer_disconnect(ctx, &ctx->peers[i],
@@ -747,6 +747,9 @@ void pt_mesh_dial_sweep(PT_Context_Internal *ctx)
     int i;
 
     if (!ctx->auto_mesh) return;
+    /* Clock stepped backwards: a timer armed in the future would stall. */
+    if (ctx->mesh_dial_timer > ctx->current_time + PT_MESH_RETRY_INTERVAL)
+        ctx->mesh_dial_timer = 0;
     /* cppcheck-suppress unsignedLessThanZero ; comparing two unsigned longs */
     if (ctx->current_time < ctx->mesh_dial_timer) return;
     ctx->mesh_dial_timer = ctx->current_time + PT_MESH_RETRY_INTERVAL;
@@ -772,6 +775,10 @@ void PT_Poll(PT_Context *pub_ctx)
     if (!ctx) return;
 
     ctx->current_time = pt_get_time();
+
+    /* Clock stepped backwards: re-arm rather than stay silent. */
+    if (ctx->discovery_timer > ctx->current_time + PT_DISCOVERY_INTERVAL)
+        ctx->discovery_timer = 0;
 
     /* Discovery broadcast timer */
     if (ctx->discovery_active &&
