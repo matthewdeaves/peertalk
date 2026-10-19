@@ -185,7 +185,7 @@ void pt_discovery_check_timeouts(PT_Context_Internal *ctx)
 
         /* Check if peer has timed out (no discovery for 10s) */
         if (ctx->peers[i].last_seen > 0 &&
-            ctx->current_time - ctx->peers[i].last_seen >=
+            PT_ELAPSED(ctx->current_time, ctx->peers[i].last_seen) >=
                 PT_DISCOVERY_TIMEOUT) {
 
             CLOG_INFO("Peer lost (timeout): %s", ctx->peers[i].name);

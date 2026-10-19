@@ -60,6 +60,7 @@ static size_t              g_tcp_last_frame_len;  /* len passed to last tcp_send
 static unsigned char       g_tcp_last_frame[8];   /* first bytes (header) of it */
 static int                 g_discovered;          /* on_peer_discovered count */
 static int                 g_lost;                /* on_peer_lost count */
+static int                 g_udp_broadcasts;      /* mock udp_broadcast calls */
 static PT_Status           g_last_error;
 static PT_DisconnectReason g_last_reason;
 static unsigned char       g_last_msg[64];
@@ -134,6 +135,7 @@ static void reset_recorders(void)
     memset(g_tcp_last_frame, 0, sizeof(g_tcp_last_frame));
     g_discovered = 0;
     g_lost = 0;
+    g_udp_broadcasts = 0;
     g_last_error = PT_OK;
     g_last_reason = (PT_DisconnectReason)-1;
     g_last_msg_len = 0;
@@ -338,7 +340,7 @@ static int mock_next_event(PT_Context_Internal *ctx, PT_Event *out)
 
 static PT_Status mock_udp_broadcast(PT_Context_Internal *c, unsigned short p,
                                     const void *d, size_t l)
-{ (void)c; (void)p; (void)d; (void)l; return PT_OK; }
+{ (void)c; (void)p; (void)d; (void)l; g_udp_broadcasts++; return PT_OK; }
 
 static PT_Status mock_udp_send(PT_Context_Internal *c,
                                const PT_Peer_Internal *pe,
@@ -1520,6 +1522,100 @@ static void test_peer_timeouts(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* Clock stepping backwards (POSIX time() is wall-clock)                */
+/* ------------------------------------------------------------------ */
+
+/* Every timer compares "now - stamp" in unsigned arithmetic.  If the clock
+   steps back, now < stamp and the subtraction wraps to ~4e9, which would
+   instantly time out every peer, drop every connection and fire keepalives.
+   A backwards step must read as "no time elapsed", and timers armed in the
+   future must not leave discovery / auto-mesh silent until the clock
+   catches up. */
+static void test_clock_step_back(void)
+{
+    PT_PlatformOps *saved;
+    PT_Peer_Internal *p;
+    printf("[clock_step_back]\n");
+    saved = install_mock_ops();
+
+    /* discovery timeout */
+    reset_all_peers();
+    reset_recorders();
+    p = &g_ctx->peers[0];
+    p->in_use = 1; p->state = PT_PEER_DISCOVERED; p->ip_addr = 1;
+    p->last_seen = 1000;
+    g_ctx->peer_count = 1;
+    g_ctx->discovery_listening = 1;
+    g_ctx->current_time = 999;
+    pt_discovery_check_timeouts(g_ctx);
+    CHECK(g_lost == 0 && p->in_use == 1, "discovery: peer not lost on clock step");
+    g_ctx->discovery_listening = 0;
+
+    /* connect timeout / keepalive / inactivity timeout */
+    reset_all_peers();
+    reset_recorders();
+    p = &g_ctx->peers[0];
+    p->in_use = 1; p->state = PT_PEER_CONNECTED;
+    p->connect_start = 1000;
+    p->last_tcp_send = 1000;
+    p->last_tcp_activity = 1000;
+    g_ctx->current_time = 990;
+    pt_check_peer_timeouts(g_ctx);
+    CHECK(g_disconnect_calls == 0 && g_disconnected == 0 && g_errors == 0,
+          "peer sweep: no connect timeout on clock step");
+
+    /* keepalive in isolation (no dial in flight) */
+    reset_all_peers();
+    reset_recorders();
+    p = &g_ctx->peers[0];
+    p->in_use = 1; p->state = PT_PEER_CONNECTED;
+    p->last_tcp_send = 1000;
+    p->last_tcp_activity = 1000;
+    g_ctx->current_time = 990;
+    pt_check_peer_timeouts(g_ctx);
+    CHECK(g_tcp_sends == 0, "peer sweep: no spurious keepalive");
+    CHECK(g_disconnected == 0, "peer sweep: no spurious inactivity timeout");
+
+    /* reassembly timeout */
+    reset_all_peers();
+    p = &g_ctx->peers[0];
+    p->in_use = 1;
+    p->reassembly_total = 2; p->reassembly_received = 1;
+    p->reassembly_timer = 1000;
+    g_ctx->current_time = 990;
+    pt_messaging_check_reassembly_timeouts(g_ctx);
+    CHECK(p->reassembly_total == 2, "reassembly: not aborted on clock step");
+
+    /* auto-mesh timer armed in the future must re-arm, not stall */
+    reset_all_peers();
+    reset_recorders();
+    g_ctx->local_ip = 0x0A000002UL;
+    p = &g_ctx->peers[0];
+    p->in_use = 1; p->state = PT_PEER_DISCOVERED;
+    p->ip_addr = 0x0A000003UL; p->connect_start = 0;
+    g_ctx->peer_count = 1;
+    g_ctx->auto_mesh = 1;
+    g_ctx->current_time = 100;
+    g_ctx->mesh_dial_timer = 100 + 3600;
+    pt_mesh_dial_sweep(g_ctx);
+    CHECK(g_connect_calls == 1, "auto-mesh: dials after clock stepped back");
+    g_ctx->auto_mesh = 0;
+
+    /* discovery broadcast timer armed in the future must re-arm too */
+    reset_all_peers();
+    reset_recorders();
+    g_script_n = 0; g_script_cursor = 0;
+    g_ctx->discovery_active = 1;
+    g_ctx->discovery_timer = (unsigned long)-1 / 2;   /* far ahead of time(NULL) */
+    PT_Poll((PT_Context *)g_ctx);
+    CHECK(g_udp_broadcasts == 1, "discovery: announce sent after clock stepped back");
+    g_ctx->discovery_active = 0;
+
+    g_ctx->platform_ops = saved;
+    reset_all_peers();
+}
+
+/* ------------------------------------------------------------------ */
 /* TCP send error paths.  The mock tcp_send is configured to fail so    */
 /* PT_Send's failure propagation and chunked-send abort -- previously   */
 /* reachable only via a real backend -- can be verified directly.       */
@@ -1665,6 +1761,9 @@ int main(void)
     test_reassembly_timeout();
     test_discovery_timeout();
     test_peer_timeouts();
+
+    /* Clock stepping backwards */
+    test_clock_step_back();
 
     /* TCP send error paths */
     test_send_error_paths();
