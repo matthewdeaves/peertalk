@@ -55,37 +55,6 @@ void pt_discovery_broadcast_leave(PT_Context_Internal *ctx)
 /* Discovery receive                                                   */
 /* ------------------------------------------------------------------ */
 
-/* Release whatever transport a peer slot still owns before it is freed:
-   a CONNECTED peer is disconnected (fires on_disconnected), a dial in
-   flight is aborted. */
-static void pt_release_transport(PT_Context_Internal *ctx,
-                                 PT_Peer_Internal *peer)
-{
-    if (peer->state == PT_PEER_CONNECTED) {
-        pt_handle_peer_disconnect(ctx, peer, PT_DISCONNECT_ERROR);
-    } else if (peer->connect_start > 0) {
-        ctx->platform_ops->tcp_disconnect(ctx, peer);
-        peer->connect_start = 0;
-    }
-}
-
-/* Fire on_peer_lost and free the slot.  A callback (on_disconnected during
-   the release, or on_peer_lost itself) may call PT_Connect on the peer it
-   was just told about, attaching a fresh transport to a slot that is about
-   to be freed -- a leaked fd (POSIX) or stale owner pointer (MacTCP/OT).
-   So release again right before the slot goes. */
-static void pt_remove_peer(PT_Context_Internal *ctx, PT_Peer_Internal *peer)
-{
-    pt_release_transport(ctx, peer);
-    if (ctx->callbacks.on_peer_lost) {
-        ctx->callbacks.on_peer_lost((PT_Peer *)peer,
-                                    ctx->callbacks.on_peer_lost_data);
-    }
-    pt_release_transport(ctx, peer);
-    peer->in_use = 0;
-    ctx->peer_count--;
-}
-
 void pt_discovery_receive(PT_Context_Internal *ctx,
                           const void *data, size_t len,
                           unsigned long source_ip)

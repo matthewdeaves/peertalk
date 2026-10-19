@@ -344,6 +344,9 @@ void      pt_fire_error(PT_Context_Internal *ctx,
 PT_Peer_Internal *pt_find_peer_by_ip(PT_Context_Internal *ctx,
                                      unsigned long ip);
 PT_Peer_Internal *pt_alloc_peer(PT_Context_Internal *ctx);
+void      pt_peer_reset_rx(PT_Peer_Internal *peer);
+void      pt_abort_dial(PT_Context_Internal *ctx, PT_Peer_Internal *peer);
+void      pt_remove_peer(PT_Context_Internal *ctx, PT_Peer_Internal *peer);
 /* Returns the peer slot that adopted *ppeer's transport, or NULL if core
    rejected it (duplicate, lost tiebreak, no room).  The accepting backend
    owns teardown of a rejected transport.  A re-entrant on_connected may

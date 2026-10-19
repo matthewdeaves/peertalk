@@ -158,6 +158,34 @@ PT_Peer_Internal *pt_find_peer_by_ip(PT_Context_Internal *ctx,
     return NULL;
 }
 
+/* Drop any partly received TCP frame / chunked message.  Called wherever a
+   slot gets a new transport or loses its old one, so no bytes from one
+   connection can bleed into the next. */
+void pt_peer_reset_rx(PT_Peer_Internal *peer)
+{
+    peer->tcp_recv_len = 0;
+    peer->reassembly_total = 0;
+    peer->reassembly_received = 0;
+}
+
+/* Cancel a dial in flight: release the half-open transport and clear the
+   "dial in flight" marker.  Does not touch peer->state. */
+void pt_abort_dial(PT_Context_Internal *ctx, PT_Peer_Internal *peer)
+{
+    ctx->platform_ops->tcp_disconnect(ctx, peer);
+    peer->connect_start = 0;
+}
+
+/* An outbound dial failed or timed out: abort it, mark the peer
+   DISCONNECTED and tell the app. */
+static void pt_fail_dial(PT_Context_Internal *ctx, PT_Peer_Internal *peer,
+                         const char *desc)
+{
+    pt_abort_dial(ctx, peer);
+    peer->state = PT_PEER_DISCONNECTED;
+    pt_fire_error(ctx, peer, PT_ERR_SEND_FAILED, desc);
+}
+
 PT_Peer_Internal *pt_alloc_peer(PT_Context_Internal *ctx)
 {
     int i;
@@ -175,10 +203,8 @@ PT_Peer_Internal *pt_alloc_peer(PT_Context_Internal *ctx)
             ctx->peers[i].connect_start = 0;
             ctx->peers[i].inbound = 0;
             ctx->peers[i].in_use = 1;
-            ctx->peers[i].tcp_recv_len = 0;
+            pt_peer_reset_rx(&ctx->peers[i]);
             ctx->peers[i].reassembly_type = 0;
-            ctx->peers[i].reassembly_received = 0;
-            ctx->peers[i].reassembly_total = 0;
             ctx->peers[i].reassembly_timer = 0;
 #if defined(PT_PLATFORM_POSIX)
             ctx->peers[i].platform_peer.tcp_fd = -1;
@@ -231,14 +257,12 @@ PT_Peer_Internal *pt_handle_incoming_connection(PT_Context_Internal *ctx,
         if (pt_ip_cmp(ctx->local_ip, peer_ip) == 0) {
             /* T022: Same IP (loopback) -- accept incoming */
             CLOG_INFO("Same-IP peer, accepting incoming");
-            ctx->platform_ops->tcp_disconnect(ctx, peer);
-            peer->connect_start = 0;
+            pt_abort_dial(ctx, peer);
         } else if (pt_ip_cmp(ctx->local_ip, peer_ip) > 0) {
             /* We should NOT initiate (higher IP) -- cancel outgoing,
                accept incoming */
             CLOG_INFO("Tiebreaker: cancelling outgoing, accepting incoming");
-            ctx->platform_ops->tcp_disconnect(ctx, peer);
-            peer->connect_start = 0;
+            pt_abort_dial(ctx, peer);
         } else {
             /* We ARE the initiator (lower IP) -- reject incoming,
                let our outgoing complete */
@@ -277,9 +301,7 @@ PT_Peer_Internal *pt_handle_incoming_connection(PT_Context_Internal *ctx,
     peer->inbound = 1;
     peer->last_tcp_activity = ctx->current_time;
     peer->last_tcp_send = ctx->current_time;
-    peer->tcp_recv_len = 0;
-    peer->reassembly_total = 0;
-    peer->reassembly_received = 0;
+    pt_peer_reset_rx(peer);
     peer->connect_start = 0;
 
     if (swap) {
@@ -305,9 +327,7 @@ void pt_handle_peer_disconnect(PT_Context_Internal *ctx,
     ctx->platform_ops->tcp_disconnect(ctx, peer);
 
     peer->state = PT_PEER_DISCONNECTED;
-    peer->tcp_recv_len = 0;
-    peer->reassembly_total = 0;
-    peer->reassembly_received = 0;
+    pt_peer_reset_rx(peer);
     peer->connect_start = 0;
 
     CLOG_INFO("Peer %s disconnected (reason: %d)",
@@ -317,6 +337,36 @@ void pt_handle_peer_disconnect(PT_Context_Internal *ctx,
         ctx->callbacks.on_disconnected((PT_Peer *)peer, reason,
                                        ctx->callbacks.on_disconnected_data);
     }
+}
+
+/* Release whatever transport a peer slot still owns before it is freed:
+   a CONNECTED peer is disconnected (fires on_disconnected), a dial in
+   flight is aborted. */
+static void pt_release_transport(PT_Context_Internal *ctx,
+                                 PT_Peer_Internal *peer)
+{
+    if (peer->state == PT_PEER_CONNECTED) {
+        pt_handle_peer_disconnect(ctx, peer, PT_DISCONNECT_ERROR);
+    } else if (peer->connect_start > 0) {
+        pt_abort_dial(ctx, peer);
+    }
+}
+
+/* Fire on_peer_lost and free the slot.  A callback (on_disconnected during
+   the release, or on_peer_lost itself) may call PT_Connect on the peer it
+   was just told about, attaching a fresh transport to a slot that is about
+   to be freed -- a leaked fd (POSIX) or stale owner pointer (MacTCP/OT).
+   So release again right before the slot goes. */
+void pt_remove_peer(PT_Context_Internal *ctx, PT_Peer_Internal *peer)
+{
+    pt_release_transport(ctx, peer);
+    if (ctx->callbacks.on_peer_lost) {
+        ctx->callbacks.on_peer_lost((PT_Peer *)peer,
+                                    ctx->callbacks.on_peer_lost_data);
+    }
+    pt_release_transport(ctx, peer);
+    peer->in_use = 0;
+    ctx->peer_count--;
 }
 
 /* ------------------------------------------------------------------ */
@@ -346,11 +396,7 @@ void pt_complete_connect(PT_Context_Internal *ctx,
                 ctx->callbacks.on_connected_data);
         }
     } else {
-        /* tcp_disconnect closes the handle and clears it */
-        ctx->platform_ops->tcp_disconnect(ctx, peer);
-        peer->state = PT_PEER_DISCONNECTED;
-        pt_fire_error(ctx, peer, PT_ERR_SEND_FAILED,
-                      "TCP connect failed");
+        pt_fail_dial(ctx, peer, "TCP connect failed");
     }
 }
 
@@ -628,9 +674,7 @@ PT_Status PT_Connect(PT_Context *pub_ctx, PT_Peer *pub_peer)
         return PT_ERR_NOT_CONNECTED;
     }
 
-    peer->tcp_recv_len = 0;
-    peer->reassembly_total = 0;
-    peer->reassembly_received = 0;
+    pt_peer_reset_rx(peer);
 
     status = ctx->platform_ops->tcp_connect(ctx, peer);
     if (status != PT_OK) return status;
@@ -728,11 +772,7 @@ void pt_check_peer_timeouts(PT_Context_Internal *ctx)
             PT_ELAPSED(ctx->current_time, ctx->peers[i].connect_start) >=
                 PT_CONNECT_TIMEOUT) {
             CLOG_WARN("Connect timeout for %s", ctx->peers[i].name);
-            ctx->platform_ops->tcp_disconnect(ctx, &ctx->peers[i]);
-            ctx->peers[i].connect_start = 0;
-            ctx->peers[i].state = PT_PEER_DISCONNECTED;
-            pt_fire_error(ctx, &ctx->peers[i], PT_ERR_SEND_FAILED,
-                          "Connection timeout");
+            pt_fail_dial(ctx, &ctx->peers[i], "Connection timeout");
         }
 
         /* TCP keepalive — send if no TCP data sent recently */
