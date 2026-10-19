@@ -825,6 +825,89 @@ static void test_chunk_oversize_rejected(void)
     p->reassembly_buf_size = saved_size;
 }
 
+/* Chunk reassembly must accept only the next expected chunk of the SAME
+   message.  A forged total in a later chunk, or a duplicated chunk, used to
+   deliver a message with a bad length or a hole; now it must be dropped and
+   the reassembly reset. */
+static void feed_bytes(PT_Peer_Internal *p, const unsigned char *b, size_t n)
+{
+    stage_bytes(p, b, n);
+    pt_messaging_process_tcp_data(g_ctx, p);
+}
+
+static void test_chunk_forged_total(void)
+{
+    static const unsigned char C0[12] = {
+        0x00, 0x04, MSG_TYPE, PT_CHUNK_FLAG, 0x00, 0x00, 0x00, 0x02,
+        'A', 'A', 'A', 'A' };
+    /* seq=1 but total forged to 60000 */
+    static const unsigned char C1[9] = {
+        0x00, 0x01, MSG_TYPE, PT_CHUNK_FLAG, 0x00, 0x01, 0xEA, 0x60, 'B' };
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_CONNECTED);
+    printf("[chunk_forged_total]\n");
+    reset_recorders();
+    feed_bytes(p, C0, sizeof(C0));
+    feed_bytes(p, C1, sizeof(C1));
+    CHECK(g_messages == 0, "chunk with changed total not delivered");
+    CHECK(p->reassembly_total == 0, "reassembly reset on total mismatch");
+}
+
+static void test_chunk_duplicate(void)
+{
+    static const unsigned char C0[10] = {
+        0x00, 0x02, MSG_TYPE, PT_CHUNK_FLAG, 0x00, 0x00, 0x00, 0x03,
+        'A', 'A' };
+    static const unsigned char C1[10] = {
+        0x00, 0x02, MSG_TYPE, PT_CHUNK_FLAG, 0x00, 0x01, 0x00, 0x03,
+        'B', 'B' };
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_CONNECTED);
+    printf("[chunk_duplicate]\n");
+    reset_recorders();
+    feed_bytes(p, C0, sizeof(C0));
+    feed_bytes(p, C1, sizeof(C1));
+    feed_bytes(p, C1, sizeof(C1));   /* duplicate: chunk 2 never arrived */
+    CHECK(g_messages == 0, "message with a missing chunk not delivered");
+    CHECK(p->reassembly_total == 0, "reassembly reset on duplicate chunk");
+}
+
+static void test_chunk_out_of_order(void)
+{
+    static const unsigned char C0[10] = {
+        0x00, 0x02, MSG_TYPE, PT_CHUNK_FLAG, 0x00, 0x00, 0x00, 0x03,
+        'A', 'A' };
+    static const unsigned char C2[10] = {
+        0x00, 0x02, MSG_TYPE, PT_CHUNK_FLAG, 0x00, 0x02, 0x00, 0x03,
+        'C', 'C' };
+    static const unsigned char C1[10] = {
+        0x00, 0x02, MSG_TYPE, PT_CHUNK_FLAG, 0x00, 0x01, 0x00, 0x03,
+        'B', 'B' };
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_CONNECTED);
+    printf("[chunk_out_of_order]\n");
+    reset_recorders();
+    feed_bytes(p, C0, sizeof(C0));
+    feed_bytes(p, C2, sizeof(C2));   /* skips chunk 1 */
+    feed_bytes(p, C1, sizeof(C1));
+    CHECK(g_messages == 0, "out-of-order chunks not delivered");
+}
+
+/* A non-final chunk whose length differs from the stride would corrupt the
+   offset math; reject it. */
+static void test_chunk_stride_mismatch(void)
+{
+    static const unsigned char C0[10] = {
+        0x00, 0x02, MSG_TYPE, PT_CHUNK_FLAG, 0x00, 0x00, 0x00, 0x03,
+        'A', 'A' };
+    static const unsigned char C1[9] = {
+        0x00, 0x01, MSG_TYPE, PT_CHUNK_FLAG, 0x00, 0x01, 0x00, 0x03, 'B' };
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_CONNECTED);
+    printf("[chunk_stride_mismatch]\n");
+    reset_recorders();
+    feed_bytes(p, C0, sizeof(C0));
+    feed_bytes(p, C1, sizeof(C1));   /* short, but not the last chunk */
+    CHECK(p->reassembly_total == 0, "short non-final chunk resets reassembly");
+    CHECK(g_messages == 0, "no message delivered");
+}
+
 /* ------------------------------------------------------------------ */
 /* UDP fast-message processing (pt_messaging_process_udp_data)          */
 /* ------------------------------------------------------------------ */
@@ -1431,6 +1514,10 @@ int main(void)
     test_frame_keepalive_consumed();
     test_chunked_reassembly();
     test_chunk_oversize_rejected();
+    test_chunk_forged_total();
+    test_chunk_duplicate();
+    test_chunk_out_of_order();
+    test_chunk_stride_mismatch();
 
     /* Wire protocol: UDP fast messages */
     test_udp_message();
