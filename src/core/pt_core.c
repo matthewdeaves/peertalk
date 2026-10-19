@@ -532,8 +532,13 @@ void PT_Shutdown(PT_Context *pub_ctx)
      * the UDP leave broadcast above (PT_DISCOVERY_FLAG_LEAVE): it fires the
      * partner's on_peer_lost.  On the partner, handling our RST sets its slot
      * for us to DISCONNECTED but leaves in_use set (pt_handle_peer_disconnect),
-     * so its leave handler still finds us regardless of TCP/UDP ordering.
-     * Reporting a graceless close as
+     * so its leave handler still finds us whichever of the RST and the leave
+     * arrives first: on_peer_lost fires either way.  What DOES depend on the
+     * order is the TCP side.  If the leave beats the TCP close, the partner
+     * tears the connection down itself (pt_release_transport) with reason
+     * ERROR, and any TCP data it has not yet read (including a goodbye) is
+     * discarded -- so there it sees ERROR, not QUIT, and may lose in-flight
+     * messages.  Documented, not redesigned.  Reporting a graceless close as
      * ERROR is truthful; delivering QUIT here would need either a per-platform
      * orderly release (OT-only -> breaks Principle VI cross-platform parity)
      * or a safe MacTCP goodbye (reintroduces the 60s freeze).  See the memory
