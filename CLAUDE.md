@@ -90,7 +90,7 @@ event-driven seam moved connection lifecycle, TCP framing/reassembly,
 discovery v2 parsing, peer ranking, and timeout sweeps out of the backends
 into core, so all of it is testable with a mock backend + synthetic events
 — no sockets, no hardware. A PASS covers all three backends. Build with the
-POSIX build (`cd build && make test_seam && ./test_seam`, 112 checks).
+POSIX build (`cd build && make test_seam && ./test_seam`, 171 checks).
 
 Conventions when adding tests here: include `pt_internal.h` for white-box
 access; drive core entry points directly (`pt_messaging_process_tcp_data`,
@@ -98,6 +98,16 @@ access; drive core entry points directly (`pt_messaging_process_tcp_data`,
 loop, etc.); set `ctx->current_time` by hand to test timeouts; and make each
 test **fail on broken/pre-seam logic** (verify by mutation) so it catches
 regressions rather than merely exercising code. Wire new tests into `main()`.
+
+### Static Analysis
+
+`CLOG_DIR=~/clog tools/static-analysis.sh` is the release gate for the POSIX
+core + backend. It runs `tools/cppcheck.sh`, clang-tidy (bugprone/cert/
+clang-analyzer/..., minus the known-noise checks listed in the script),
+scan-build, and `test_seam` under ASan+UBSan; any finding fails it. Pass
+stage names (`cppcheck tidy scan sanitize`) to run a subset. Needs LLVM's
+clang-tidy/scan-build (`brew install llvm`; found at
+`/opt/homebrew/opt/llvm/bin` automatically).
 
 ### TCP Keepalive
 
