@@ -1067,7 +1067,7 @@ void PT_DebugSend(PT_Context *pub_ctx, const char *msg, size_t len)
     total = ctx->debug_prefix_len;
 
     avail = (int)sizeof(debug_buf) - total - 2; /* room for msg + newline */
-    if ((int)len > avail) len = (size_t)avail;
+    if (len > (size_t)avail) len = (size_t)avail;
     memcpy(debug_buf + total, msg, len);
     total += (int)len;
     debug_buf[total++] = '\n';
