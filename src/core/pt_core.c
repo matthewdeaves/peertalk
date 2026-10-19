@@ -629,7 +629,9 @@ PT_Status PT_Connect(PT_Context *pub_ctx, PT_Peer *pub_peer)
     status = ctx->platform_ops->tcp_connect(ctx, peer);
     if (status != PT_OK) return status;
 
-    peer->connect_start = ctx->current_time;
+    /* connect_start == 0 means "no dial in flight", but current_time can
+       legitimately be 0 (just after boot / a TickCount wrap): never store 0. */
+    peer->connect_start = ctx->current_time ? ctx->current_time : 1;
     CLOG_INFO("Connecting to %s...", peer->name);
     return PT_OK;
 }
