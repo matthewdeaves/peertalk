@@ -1775,6 +1775,81 @@ static void test_clock_step_back(void)
     reset_all_peers();
 }
 
+/* After a backwards step the stored stamps are in the future.  PT_ELAPSED
+   reads that as 0, so without a clamp every timer would freeze for as long
+   as the step (here 100 s).  Each sweep must pull a future stamp back to
+   now so a stall lasts at most one interval. */
+static void test_clock_step_back_recovers(void)
+{
+    PT_PlatformOps *saved;
+    PT_Peer_Internal *p;
+    printf("[clock_step_back_recovers]\n");
+    saved = install_mock_ops();
+
+    /* idle link: keepalive within one interval, dead peer times out */
+    reset_all_peers();
+    reset_recorders();
+    p = &g_ctx->peers[0];
+    p->in_use = 1; p->state = PT_PEER_CONNECTED;
+    p->last_tcp_send = 1000;
+    p->last_tcp_activity = 1000;
+    g_ctx->peer_count = 1;
+    g_ctx->current_time = 900;                 /* clock stepped back 100 s */
+    pt_check_peer_timeouts(g_ctx);
+    CHECK(g_tcp_sends == 0 && g_disconnected == 0, "step back: quiet at once");
+    g_ctx->current_time = 900 + PT_KEEPALIVE_INTERVAL;
+    pt_check_peer_timeouts(g_ctx);
+    CHECK(g_tcp_sends == 1, "step back: keepalive within one interval");
+    g_ctx->current_time = 900 + PT_TCP_TIMEOUT;
+    pt_check_peer_timeouts(g_ctx);
+    CHECK(g_disconnected == 1 && g_last_reason == PT_TIMEOUT,
+          "step back: dead peer still times out");
+
+    /* in-flight dial still times out */
+    reset_all_peers();
+    reset_recorders();
+    p = &g_ctx->peers[0];
+    p->in_use = 1; p->state = PT_PEER_DISCOVERED;
+    p->connect_start = 1000;
+    g_ctx->current_time = 900;
+    pt_check_peer_timeouts(g_ctx);
+    g_ctx->current_time = 900 + PT_CONNECT_TIMEOUT;
+    pt_check_peer_timeouts(g_ctx);
+    CHECK(g_disconnect_calls == 1 && p->connect_start == 0,
+          "step back: dial still times out");
+
+    /* discovery: silent peer is still lost */
+    reset_all_peers();
+    reset_recorders();
+    p = &g_ctx->peers[0];
+    p->in_use = 1; p->state = PT_PEER_DISCOVERED; p->ip_addr = 1;
+    p->last_seen = 1000;
+    g_ctx->peer_count = 1;
+    g_ctx->discovery_listening = 1;
+    g_ctx->current_time = 900;
+    pt_discovery_check_timeouts(g_ctx);
+    CHECK(g_lost == 0, "step back: peer kept at once");
+    g_ctx->current_time = 900 + PT_DISCOVERY_TIMEOUT;
+    pt_discovery_check_timeouts(g_ctx);
+    CHECK(g_lost == 1 && p->in_use == 0, "step back: silent peer still lost");
+    g_ctx->discovery_listening = 0;
+
+    /* reassembly: stalled message is still aborted */
+    reset_all_peers();
+    p = &g_ctx->peers[0];
+    p->in_use = 1;
+    p->reassembly_total = 2; p->reassembly_received = 1;
+    p->reassembly_timer = 1000;
+    g_ctx->current_time = 900;
+    pt_messaging_check_reassembly_timeouts(g_ctx);
+    g_ctx->current_time = 900 + PT_REASSEMBLY_TIMEOUT;
+    pt_messaging_check_reassembly_timeouts(g_ctx);
+    CHECK(p->reassembly_total == 0, "step back: stalled reassembly aborted");
+
+    g_ctx->platform_ops = saved;
+    reset_all_peers();
+}
+
 /* ------------------------------------------------------------------ */
 /* TCP send error paths.  The mock tcp_send is configured to fail so    */
 /* PT_Send's failure propagation and chunked-send abort -- previously   */
@@ -1930,6 +2005,7 @@ int main(void)
 
     /* Clock stepping backwards */
     test_clock_step_back();
+    test_clock_step_back_recovers();
 
     /* TCP send error paths */
     test_send_error_paths();
