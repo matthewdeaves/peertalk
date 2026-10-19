@@ -891,25 +891,19 @@ static void ot_round_start(PT_Context_Internal *ctx)
                case where T_DISCONNECT arrives between listen/accept */
             {
                 PT_PlatformPeer ppeer;
+                PT_Peer_Internal *adopted;
                 memset(&ppeer, 0, sizeof(ppeer));
                 ppeer.endpoint = slot;
                 ppeer.events = 0;
 
                 slot->state = EP_CONNECTED;
 
-                pt_handle_incoming_connection(
+                adopted = pt_handle_incoming_connection(
                     ctx, (unsigned long)remote_addr.fHost, &ppeer);
 
-                /* Find which peer (if any) now owns this endpoint */
-                {
-                    int j;
-                    for (j = 0; j < ctx->max_peers; j++) {
-                        if (ctx->peers[j].in_use &&
-                            ctx->peers[j].platform_peer.endpoint == slot) {
-                            slot->owner = &ctx->peers[j];
-                            break;
-                        }
-                    }
+                /* Did a peer take this endpoint (and keep it)? */
+                if (adopted && adopted->platform_peer.endpoint == slot) {
+                    slot->owner = adopted;
                 }
 
                 if (!slot->owner) {

@@ -905,7 +905,7 @@ static int mactcp_next_event(PT_Context_Internal *ctx, PT_Event *out)
             if (ts->open_pb.ioResult == noErr) {
                 ip_addr remote_ip;
                 PT_PlatformPeer ppeer;
-                int j;
+                PT_Peer_Internal *adopted;
 
                 g_mactcp.listener_count--;
                 ts->state = STREAM_CONNECTED; /* tentative */
@@ -913,15 +913,16 @@ static int mactcp_next_event(PT_Context_Internal *ctx, PT_Event *out)
 
                 memset(&ppeer, 0, sizeof(ppeer));
                 ppeer.tcp_stream = ts;
-                pt_handle_incoming_connection(ctx, remote_ip, &ppeer);
-
                 ts->owner = NULL;
-                for (j = 0; j < ctx->max_peers; j++) {
-                    if (ctx->peers[j].in_use &&
-                        ctx->peers[j].platform_peer.tcp_stream == ts) {
-                        ts->owner = &ctx->peers[j];
-                        break;
-                    }
+                adopted = pt_handle_incoming_connection(ctx, remote_ip,
+                                                        &ppeer);
+
+                /* Every stream-freeing path clears owner, so a non-NULL
+                   owner here can only be a re-entrant on_connected that
+                   released this stream and dialled another peer onto the
+                   same slot (mactcp_tcp_connect set owner): keep it. */
+                if (adopted && adopted->platform_peer.tcp_stream == ts) {
+                    ts->owner = adopted;
                 }
                 if (!ts->owner) {
                     abort_stream(i);

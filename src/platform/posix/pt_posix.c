@@ -486,12 +486,11 @@ static void posix_select_round(PT_Context_Internal *ctx)
             memset(&ppeer, 0, sizeof(ppeer));
             ppeer.tcp_fd = newfd;
 
-            pt_handle_incoming_connection(ctx, from.sin_addr.s_addr,
-                                          &ppeer);
+            accepted = pt_handle_incoming_connection(
+                ctx, from.sin_addr.s_addr, &ppeer);
 
             /* Verify the fd was adopted by a peer; if not, close it
                to avoid fd leak when connection is rejected (T069). */
-            accepted = pt_find_peer_by_ip(ctx, from.sin_addr.s_addr);
             if (!accepted ||
                 accepted->platform_peer.tcp_fd != newfd) {
                 close(newfd);

@@ -563,6 +563,167 @@ static void test_tiebreak_true_duplicate_rejected(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* Incoming-connection adoption: who owns the accepted transport?       */
+/*                                                                      */
+/* After pt_handle_incoming_connection every backend must decide whether */
+/* to keep or tear down the transport it just accepted, i.e. whether a   */
+/* peer slot adopted it.  These pin that outcome for each branch, both   */
+/* by scanning the slots (what the backends used to do) and via the      */
+/* function's return value.                                              */
+/* ------------------------------------------------------------------ */
+
+static PT_Peer_Internal *adopter_of_fd(int fd)
+{
+    int i;
+    for (i = 0; i < g_ctx->max_peers; i++) {
+        if (g_ctx->peers[i].in_use &&
+            g_ctx->peers[i].platform_peer.tcp_fd == fd) {
+            return &g_ctx->peers[i];
+        }
+    }
+    return NULL;
+}
+
+static void test_incoming_adoption(void)
+{
+    PT_PlatformOps *saved;
+    PT_PlatformPeer incoming;
+    PT_Peer_Internal *p, *r;
+    int i;
+
+    printf("[incoming_adoption]\n");
+    saved = install_mock_ops();
+    memset(&incoming, 0, sizeof(incoming));
+    incoming.tcp_fd = 42;
+    g_ctx->local_ip = 0x0A000002UL;
+
+    /* unknown peer, room available: a fresh slot adopts */
+    reset_all_peers();
+    reset_recorders();
+    r = pt_handle_incoming_connection(g_ctx, 0x0A000009UL, &incoming);
+    p = adopter_of_fd(42);
+    CHECK(p != NULL && p->ip_addr == 0x0A000009UL, "new peer: slot adopts fd");
+    CHECK(r == p, "new peer: returns the adopting slot");
+    if (p) { p->platform_peer.tcp_fd = -1; p->state = PT_PEER_DISCONNECTED; }
+
+    /* pending outbound, we are higher IP: cancel ours, adopt incoming */
+    reset_all_peers();
+    reset_recorders();
+    p = fresh_peer(PT_PEER_DISCOVERED);
+    p->ip_addr = 0x0A000001UL;
+    p->platform_peer.tcp_fd = 7;
+    r = pt_handle_incoming_connection(g_ctx, p->ip_addr, &incoming);
+    CHECK(adopter_of_fd(42) == p, "pending outbound, higher IP: incoming adopted");
+    CHECK(r == p, "pending outbound, higher IP: returns the slot");
+    p->platform_peer.tcp_fd = -1; p->state = PT_PEER_DISCONNECTED;
+
+    /* pending outbound, we are lower IP: incoming rejected */
+    reset_all_peers();
+    reset_recorders();
+    g_ctx->local_ip = 0x0A000001UL;
+    p = fresh_peer(PT_PEER_DISCOVERED);
+    p->ip_addr = 0x0A000002UL;
+    p->platform_peer.tcp_fd = 7;
+    r = pt_handle_incoming_connection(g_ctx, p->ip_addr, &incoming);
+    CHECK(adopter_of_fd(42) == NULL, "pending outbound, lower IP: not adopted");
+    CHECK(r == NULL, "pending outbound, lower IP: returns NULL");
+    p->platform_peer.tcp_fd = -1; p->state = PT_PEER_DISCONNECTED;
+    p->connect_start = 0;
+
+    /* connected duplicate: rejected */
+    reset_all_peers();
+    reset_recorders();
+    g_ctx->local_ip = 0x0A000002UL;
+    p = fresh_peer(PT_PEER_CONNECTED);
+    p->ip_addr = 0x0A000001UL;
+    p->inbound = 1;
+    p->platform_peer.tcp_fd = 7;
+    r = pt_handle_incoming_connection(g_ctx, p->ip_addr, &incoming);
+    CHECK(adopter_of_fd(42) == NULL, "duplicate: not adopted");
+    CHECK(r == NULL, "duplicate: returns NULL");
+    p->platform_peer.tcp_fd = -1; p->state = PT_PEER_DISCONNECTED;
+
+    /* connected outbound, we are higher IP: swap -> existing slot adopts */
+    reset_all_peers();
+    reset_recorders();
+    g_ctx->local_ip = 0x0A000002UL;
+    p = fresh_peer(PT_PEER_CONNECTED);
+    p->ip_addr = 0x0A000001UL;
+    p->inbound = 0;
+    p->platform_peer.tcp_fd = 7;
+    r = pt_handle_incoming_connection(g_ctx, p->ip_addr, &incoming);
+    CHECK(adopter_of_fd(42) == p, "swap: existing slot adopts incoming");
+    CHECK(r == p, "swap: returns the existing slot");
+    p->platform_peer.tcp_fd = -1; p->state = PT_PEER_DISCONNECTED;
+
+    /* no room: not adopted */
+    reset_all_peers();
+    reset_recorders();
+    for (i = 0; i < g_ctx->max_peers; i++) {
+        g_ctx->peers[i].in_use = 1;
+        g_ctx->peers[i].ip_addr = 0;
+    }
+    r = pt_handle_incoming_connection(g_ctx, 0x0A0000FEUL, &incoming);
+    CHECK(adopter_of_fd(42) == NULL, "no room: not adopted");
+    CHECK(r == NULL, "no room: returns NULL");
+    for (i = 0; i < g_ctx->max_peers; i++) {
+        g_ctx->peers[i].in_use = 0;
+        g_ctx->peers[i].platform_peer.tcp_fd = -1;
+        g_ctx->peers[i].state = PT_PEER_DISCONNECTED;
+    }
+
+    g_ctx->platform_ops = saved;
+    reset_all_peers();
+}
+
+/* Re-entrant on_connected: during the accept, the app disconnects the
+   peer that just adopted the transport and dials a different one.  Core
+   must hand back the (now transport-less) adopter and leave the new dial
+   alone; backends then must not tear down the handle the dial now owns. */
+static PT_Peer_Internal *g_reent_a, *g_reent_b;
+static void on_conn_reentrant(PT_Peer *peer, void *ud)
+{
+    (void)peer; (void)ud;
+    PT_Disconnect((PT_Context *)g_ctx, (PT_Peer *)g_reent_a);
+    PT_Connect((PT_Context *)g_ctx, (PT_Peer *)g_reent_b);
+}
+
+static void test_incoming_reentrant_dial(void)
+{
+    PT_PlatformOps *saved;
+    PT_PlatformPeer incoming;
+    PT_Peer_Internal *r;
+
+    printf("[incoming_reentrant_dial]\n");
+    saved = install_mock_ops();
+    reset_all_peers();
+    reset_recorders();
+    g_ctx->local_ip = 0x0A000002UL;
+    g_reent_a = &g_ctx->peers[0];
+    g_reent_b = &g_ctx->peers[1];
+    g_reent_a->in_use = 1; g_reent_a->state = PT_PEER_DISCOVERED;
+    g_reent_a->ip_addr = 0x0A000001UL; g_reent_a->platform_peer.tcp_fd = -1;
+    g_reent_b->in_use = 1; g_reent_b->state = PT_PEER_DISCOVERED;
+    g_reent_b->ip_addr = 0x0A000003UL; g_reent_b->platform_peer.tcp_fd = -1;
+    g_ctx->peer_count = 2;
+    memset(&incoming, 0, sizeof(incoming));
+    incoming.tcp_fd = 42;
+
+    PT_OnConnected((PT_Context *)g_ctx, on_conn_reentrant, NULL);
+    r = pt_handle_incoming_connection(g_ctx, g_reent_a->ip_addr, &incoming);
+    PT_OnConnected((PT_Context *)g_ctx, on_conn, NULL);
+
+    CHECK(r == g_reent_a, "reentrant: returns the adopting slot");
+    CHECK(r->platform_peer.tcp_fd != 42, "reentrant: adopter released the handle");
+    CHECK(g_reent_b->connect_start > 0, "reentrant: second dial in flight");
+    CHECK(g_reent_b->platform_peer.tcp_fd == 78, "reentrant: second dial keeps its transport");
+
+    g_reent_b->platform_peer.tcp_fd = -1; g_reent_b->connect_start = 0;
+    g_ctx->platform_ops = saved;
+    reset_all_peers();
+}
+
+/* ------------------------------------------------------------------ */
 /* No-room incoming connection (pt_handle_incoming_connection)          */
 /*                                                                      */
 /* When every peer slot is full, an unknown peer's incoming transport   */
@@ -2096,6 +2257,8 @@ int main(void)
     test_tiebreak_lower_keeps_outbound();
     test_tiebreak_true_duplicate_rejected();
     test_no_room_leaves_fd_to_platform();
+    test_incoming_adoption();
+    test_incoming_reentrant_dial();
 
     /* Auto-mesh topology maintenance */
     test_auto_mesh_sweep();

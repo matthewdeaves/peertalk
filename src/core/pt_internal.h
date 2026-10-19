@@ -344,9 +344,16 @@ void      pt_fire_error(PT_Context_Internal *ctx,
 PT_Peer_Internal *pt_find_peer_by_ip(PT_Context_Internal *ctx,
                                      unsigned long ip);
 PT_Peer_Internal *pt_alloc_peer(PT_Context_Internal *ctx);
-void      pt_handle_incoming_connection(PT_Context_Internal *ctx,
-                                        unsigned long peer_ip,
-                                        const PT_PlatformPeer *ppeer);
+/* Returns the peer slot that adopted *ppeer's transport, or NULL if core
+   rejected it (duplicate, lost tiebreak, no room).  The accepting backend
+   owns teardown of a rejected transport.  A re-entrant on_connected may
+   already have released the adopted transport (PT_Disconnect) and even
+   dialled another peer that reuses the same handle, so the caller checks
+   that the returned slot still holds its own handle and must not tear
+   down a handle another slot now owns. */
+PT_Peer_Internal *pt_handle_incoming_connection(PT_Context_Internal *ctx,
+                                                unsigned long peer_ip,
+                                                const PT_PlatformPeer *ppeer);
 void      pt_handle_peer_disconnect(PT_Context_Internal *ctx,
                                     PT_Peer_Internal *peer,
                                     PT_DisconnectReason reason);

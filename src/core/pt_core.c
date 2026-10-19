@@ -194,9 +194,9 @@ PT_Peer_Internal *pt_alloc_peer(PT_Context_Internal *ctx)
     return NULL;
 }
 
-void pt_handle_incoming_connection(PT_Context_Internal *ctx,
-                                   unsigned long peer_ip,
-                                   const PT_PlatformPeer *ppeer)
+PT_Peer_Internal *pt_handle_incoming_connection(PT_Context_Internal *ctx,
+                                                unsigned long peer_ip,
+                                                const PT_PlatformPeer *ppeer)
 {
     PT_Peer_Internal *peer;
     int swap = 0;   /* replacing a live transport -- do not re-fire callbacks */
@@ -222,7 +222,7 @@ void pt_handle_incoming_connection(PT_Context_Internal *ctx,
         } else {
             CLOG_INFO("Rejecting duplicate incoming from %s "
                       "(already connected)", peer->name);
-            return;
+            return NULL;
         }
     }
 
@@ -243,7 +243,7 @@ void pt_handle_incoming_connection(PT_Context_Internal *ctx,
             /* We ARE the initiator (lower IP) -- reject incoming,
                let our outgoing complete */
             CLOG_INFO("Tiebreaker: rejecting incoming, keeping outgoing");
-            return;
+            return NULL;
         }
     }
 
@@ -260,7 +260,7 @@ void pt_handle_incoming_connection(PT_Context_Internal *ctx,
                hazard) and would reach across the platform seam. */
             pt_fire_error(ctx, NULL, PT_ERR_NO_ROOM,
                           "No peer slots for incoming connection");
-            return;
+            return NULL;
         }
         peer->ip_addr = peer_ip;
         pt_format_ip(peer_ip, peer->addr_str);
@@ -293,6 +293,7 @@ void pt_handle_incoming_connection(PT_Context_Internal *ctx,
                                         ctx->callbacks.on_connected_data);
         }
     }
+    return peer;
 }
 
 void pt_handle_peer_disconnect(PT_Context_Internal *ctx,
