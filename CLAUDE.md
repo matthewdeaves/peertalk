@@ -90,7 +90,7 @@ event-driven seam moved connection lifecycle, TCP framing/reassembly,
 discovery v2 parsing, peer ranking, and timeout sweeps out of the backends
 into core, so all of it is testable with a mock backend + synthetic events
 — no sockets, no hardware. A PASS covers all three backends. Build with the
-POSIX build (`cd build && make test_seam && ./test_seam`, 171 checks).
+POSIX build (`cd build && make test_seam && ./test_seam`, 198 checks).
 
 Conventions when adding tests here: include `pt_internal.h` for white-box
 access; drive core entry points directly (`pt_messaging_process_tcp_data`,
@@ -124,7 +124,7 @@ PeerTalk sends automatic keepalive frames (type `PT_MSG_TYPE_KEEPALIVE` = 254) e
 
 - **`PT_Disconnect` / `PT_DisconnectAll`** (mid-run) send a goodbye first → the partner buffers it → **`PT_QUIT`**.
 - **`PT_Shutdown`** deliberately sends **no** goodbye (MacTCP's send is synchronous with a 60s ULP timeout — a goodbye to a dead peer would freeze the machine) and closes gracelessly on every backend (OT `OTSndDisconnect`/MacTCP `TCPAbort` → RST; POSIX `close()` → FIN). A peer still connected at our shutdown therefore sees **`PT_DISCONNECT_ERROR`**, *uniformly across all three platforms* — this is by design, not an OT wart.
-- The **clean-quit signal at shutdown is the UDP leave broadcast** (`PT_DISCOVERY_FLAG_LEAVE`, v1.11.0), which fires the partner's **`on_peer_lost`**. On the partner, handling our RST marks its slot for us DISCONNECTED but leaves `in_use` set, so its leave handler still finds us regardless of TCP/UDP ordering. Apps that need "did the peer leave cleanly?" should watch `on_peer_lost`, not the `on_disconnected` reason. Hardware-confirmed on the OT Mac (test_chat, Mac quits mid-exchange): partner logs `ERROR`, both sides exit cleanly, `Integrity: ok`. Full analysis: memory `ot-shutdown-goodbye-abortive-close`.
+- The **clean-quit signal at shutdown is the UDP leave broadcast** (`PT_DISCOVERY_FLAG_LEAVE`, v1.11.0), which fires the partner's **`on_peer_lost`**. On the partner, handling our RST marks its slot for us DISCONNECTED but leaves `in_use` set, so its leave handler still finds us whichever arrives first and `on_peer_lost` fires either way. The TCP side is not order-independent: if the leave beats the TCP close, the partner releases the connection itself (reason `ERROR`) and discards any TCP data it has not yet read, so it can lose in-flight messages and never sees `QUIT`. Documented behaviour, not a bug to redesign around. Apps that need "did the peer leave cleanly?" should watch `on_peer_lost`, not the `on_disconnected` reason. Hardware-confirmed on the OT Mac (test_chat, Mac quits mid-exchange): partner logs `ERROR`, both sides exit cleanly, `Integrity: ok`. Full analysis: memory `ot-shutdown-goodbye-abortive-close`.
 
 ### Debug Broadcast Channel
 
