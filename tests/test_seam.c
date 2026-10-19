@@ -908,6 +908,51 @@ static void test_chunk_stride_mismatch(void)
     CHECK(g_messages == 0, "no message delivered");
 }
 
+/* A keepalive is defined as zero-length, but a non-zero declared length
+   must still be consumed whole so the stream stays framed. */
+static void test_keepalive_with_payload(void)
+{
+    static const unsigned char KA[6] = {
+        0x00, 0x02, PT_MSG_TYPE_KEEPALIVE, 0x00, 'h', 'i' };
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_CONNECTED);
+    printf("[keepalive_with_payload]\n");
+    reset_recorders();
+    feed_bytes(p, KA, sizeof(KA));
+    feed_bytes(p, MSG_HI, sizeof(MSG_HI));
+    CHECK(g_messages == 1, "message after a keepalive-with-payload delivered");
+    CHECK(p->tcp_recv_len == 0, "stream fully consumed");
+}
+
+/* PT_Disconnect() called from inside on_message zeroes tcp_recv_len; the
+   parser must not then subtract the frame size from it (size_t underflow
+   -> huge memmove) nor keep dispatching buffered frames. */
+static int g_cb_disconnects;
+static void on_msg_disconnect(PT_Peer *peer, const void *d, size_t l, void *ud)
+{
+    (void)d; (void)l; (void)ud;
+    g_messages++;
+    g_cb_disconnects++;
+    PT_Disconnect((PT_Context *)g_ctx, peer);
+}
+
+static void test_disconnect_inside_callback(void)
+{
+    PT_Peer_Internal *p = fresh_peer(PT_PEER_CONNECTED);
+    PT_PlatformOps *saved = install_mock_ops();
+    printf("[disconnect_inside_callback]\n");
+    reset_recorders();
+    g_cb_disconnects = 0;
+    PT_OnMessage((PT_Context *)g_ctx, MSG_TYPE, on_msg_disconnect, NULL);
+    stage_bytes(p, MSG_HI, sizeof(MSG_HI));
+    stage_bytes(p, MSG_HI, sizeof(MSG_HI));   /* a second queued frame */
+    pt_messaging_process_tcp_data(g_ctx, p);
+    PT_OnMessage((PT_Context *)g_ctx, MSG_TYPE, on_msg, NULL);
+    CHECK(g_messages == 1, "no frames dispatched after the callback disconnected");
+    CHECK(p->tcp_recv_len == 0, "receive buffer stays empty (no underflow)");
+    CHECK(p->state == PT_PEER_DISCONNECTED, "peer disconnected");
+    g_ctx->platform_ops = saved;
+}
+
 /* ------------------------------------------------------------------ */
 /* UDP fast-message processing (pt_messaging_process_udp_data)          */
 /* ------------------------------------------------------------------ */
@@ -1597,6 +1642,8 @@ int main(void)
     test_chunk_duplicate();
     test_chunk_out_of_order();
     test_chunk_stride_mismatch();
+    test_keepalive_with_payload();
+    test_disconnect_inside_callback();
 
     /* Wire protocol: UDP fast messages */
     test_udp_message();
