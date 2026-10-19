@@ -693,6 +693,12 @@ void PT_RegisterMessage(PT_Context *pub_ctx, unsigned char type,
 /* Public API: Event Loop                                              */
 /* ------------------------------------------------------------------ */
 
+unsigned long pt_clamp_stamp(unsigned long then, unsigned long now)
+{
+    if (then > now) return now ? now : 1UL;
+    return then;
+}
+
 /* Per-peer connect/keepalive/inactivity sweep.  Split out of PT_Poll so
    the core-logic unit tests can drive it directly by setting
    ctx->current_time -- matching pt_discovery_check_timeouts() and
@@ -703,6 +709,13 @@ void pt_check_peer_timeouts(PT_Context_Internal *ctx)
 
     for (i = 0; i < ctx->max_peers; i++) {
         if (!ctx->peers[i].in_use) continue;
+
+        ctx->peers[i].connect_start =
+            pt_clamp_stamp(ctx->peers[i].connect_start, ctx->current_time);
+        ctx->peers[i].last_tcp_send =
+            pt_clamp_stamp(ctx->peers[i].last_tcp_send, ctx->current_time);
+        ctx->peers[i].last_tcp_activity =
+            pt_clamp_stamp(ctx->peers[i].last_tcp_activity, ctx->current_time);
 
         /* TCP connect timeout */
         if (ctx->peers[i].connect_start > 0 &&

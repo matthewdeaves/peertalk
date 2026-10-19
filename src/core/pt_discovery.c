@@ -183,6 +183,9 @@ void pt_discovery_check_timeouts(PT_Context_Internal *ctx)
         if (!ctx->peers[i].in_use) continue;
         if (ctx->peers[i].state == PT_PEER_CONNECTED) continue;
 
+        ctx->peers[i].last_seen =
+            pt_clamp_stamp(ctx->peers[i].last_seen, ctx->current_time);
+
         /* Check if peer has timed out (no discovery for 10s) */
         if (ctx->peers[i].last_seen > 0 &&
             PT_ELAPSED(ctx->current_time, ctx->peers[i].last_seen) >=

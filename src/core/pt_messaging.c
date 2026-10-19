@@ -397,6 +397,8 @@ void pt_messaging_check_reassembly_timeouts(PT_Context_Internal *ctx)
         if (!ctx->peers[i].in_use) continue;
         if (ctx->peers[i].reassembly_total == 0) continue;
 
+        ctx->peers[i].reassembly_timer =
+            pt_clamp_stamp(ctx->peers[i].reassembly_timer, ctx->current_time);
         if (PT_ELAPSED(ctx->current_time, ctx->peers[i].reassembly_timer) >=
             PT_REASSEMBLY_TIMEOUT) {
             CLOG_WARN("Reassembly timeout for peer %s",

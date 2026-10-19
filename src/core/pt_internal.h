@@ -71,6 +71,13 @@
    (CLOCK_MONOTONIC is not available on the 10.4-10.7 Mac OS X targets.) */
 #define PT_ELAPSED(now, then) ((now) >= (then) ? (now) - (then) : 0UL)
 
+/* A stored timestamp ahead of `now` (clock stepped back, or classic Mac's
+   TickCount()/60 wrapped) reads as 0 elapsed above and would freeze its
+   timer for the whole step.  Each sweep passes its stamps through this so
+   the stall lasts at most one interval.  Never returns 0 for a stamp that
+   was non-zero, since 0 means "unset" to the sweeps. */
+unsigned long pt_clamp_stamp(unsigned long then, unsigned long now);
+
 /* ------------------------------------------------------------------ */
 /* Byte-order helpers                                                  */
 /* ------------------------------------------------------------------ */
