@@ -365,3 +365,17 @@ graph TB
     style events fill:#438dd5,stroke:#2e6295,color:#fff
     style done fill:#1168bd,stroke:#0b4884,color:#fff
 ```
+
+## Trust boundary and sender identity
+
+PeerTalk is a transport for many kinds of application, so it deliberately knows nothing about what a message means. The split is:
+
+| PeerTalk guarantees | The application is responsible for |
+|---|---|
+| Every `PT_MessageCallback` receives the `PT_Peer *` the message arrived from. TCP messages are attributed by the connection; UDP messages by the source IP of a currently connected peer (`pt_messaging_process_udp_data`), and datagrams from unknown or unconnected addresses are dropped. | Whether the sender is allowed to say what the payload says: which player, piece or user it names, who may start a game, who is the authority. |
+| Framing, length and type are validated before a callback runs (`payload_len` against the datagram, reassembly bounds). | Validating the payload contents: lengths of its own structs, indices, ranges. |
+| A stable peer rank (`PT_GetPeerRank`), the same on every machine, regardless of CPU byte order. | Turning peers into application identities (player slots, seats, nicknames) and deciding what happens when ranks change as peers come and go. |
+
+Non-goals, on purpose: authentication, encryption and anti-spoofing. UDP attribution by source IP stops accidents and casual mischief on a trusted LAN, not a determined spoofer, and two hosts behind one NAT address look like one peer. These are out of scope for the target machines and for the three reference applications (Constitution I, IV, IX).
+
+If an application needs to reject a peer that claims another peer's identity, that check lives in the application's message handlers, using the `peer` argument it is already given. BomberTalk's version of this is recorded in its `notes/known-issues.md` (KI-009). A change here is justified only if at least two of the reference apps need the same generic help, and then it should stay generic (for example, a way to get a peer from a message), never an application concept.
