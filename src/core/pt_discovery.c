@@ -55,6 +55,20 @@ void pt_discovery_broadcast_leave(PT_Context_Internal *ctx)
 /* Discovery receive                                                   */
 /* ------------------------------------------------------------------ */
 
+/* Release whatever transport a peer slot still owns before it is freed:
+   a CONNECTED peer is disconnected (fires on_disconnected), a dial in
+   flight is aborted. */
+static void pt_release_transport(PT_Context_Internal *ctx,
+                                 PT_Peer_Internal *peer)
+{
+    if (peer->state == PT_PEER_CONNECTED) {
+        pt_handle_peer_disconnect(ctx, peer, PT_DISCONNECT_ERROR);
+    } else if (peer->connect_start > 0) {
+        ctx->platform_ops->tcp_disconnect(ctx, peer);
+        peer->connect_start = 0;
+    }
+}
+
 void pt_discovery_receive(PT_Context_Internal *ctx,
                           const void *data, size_t len,
                           unsigned long source_ip)
@@ -92,6 +106,12 @@ void pt_discovery_receive(PT_Context_Internal *ctx,
         peer = pt_find_peer_by_ip(ctx, source_ip);
         if (peer) {
             CLOG_INFO("Peer leaving: %s", peer->name);
+            /* The slot may still own a transport; freeing it without
+               releasing it would leak the socket/endpoint.  A leave that
+               beats the TCP close is a graceless close, hence ERROR
+               (see PT_Shutdown).  Attribution is by source IP, as for
+               every UDP packet (ARCHITECTURE.md, trust boundary). */
+            pt_release_transport(ctx, peer);
             if (ctx->callbacks.on_peer_lost) {
                 ctx->callbacks.on_peer_lost(
                     (PT_Peer *)peer,
@@ -169,6 +189,7 @@ void pt_discovery_check_timeouts(PT_Context_Internal *ctx)
                 PT_DISCOVERY_TIMEOUT) {
 
             CLOG_INFO("Peer lost (timeout): %s", ctx->peers[i].name);
+            pt_release_transport(ctx, &ctx->peers[i]);
 
             if (ctx->callbacks.on_peer_lost) {
                 ctx->callbacks.on_peer_lost(
