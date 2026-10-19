@@ -1059,6 +1059,85 @@ static void test_discovery_leave(void)
     reset_all_peers();
 }
 
+/* A LEAVE for a peer that still owns a transport must not just free the
+   slot: a CONNECTED peer is disconnected (on_disconnected, ERROR -- a
+   graceless close, see PT_Shutdown) and a mid-dial peer has its dial
+   released.  Otherwise the socket/endpoint leaks and the app never hears
+   the connection end. */
+static void test_discovery_leave_connected(void)
+{
+    unsigned char pkt[PT_DISCOVERY_MAX];
+    size_t len;
+    PT_Peer_Internal *p;
+    PT_PlatformOps *saved = install_mock_ops();
+    printf("[discovery_leave_connected]\n");
+
+    reset_all_peers();
+    g_ctx->local_ip = 0x0A000001UL;
+    p = &g_ctx->peers[0];
+    p->in_use = 1;
+    p->state = PT_PEER_CONNECTED;
+    p->ip_addr = 0x0A000009UL;
+    strcpy(p->name, "Bob");
+    g_ctx->peer_count = 1;
+
+    len = build_discovery(pkt, PT_WIRE_VERSION, PT_DISCOVERY_FLAG_LEAVE, "Bob");
+    reset_recorders();
+    pt_discovery_receive(g_ctx, pkt, len, 0x0A000009UL);
+    CHECK(g_disconnect_calls == 1, "transport released on leave");
+    CHECK(g_disconnected == 1, "on_disconnected fired");
+    CHECK(g_last_reason == PT_DISCONNECT_ERROR, "reason is ERROR");
+    CHECK(g_lost == 1, "on_peer_lost fired");
+    CHECK(strcmp(g_order, "X") == 0, "disconnect reported before peer_lost");
+    CHECK(p->in_use == 0 && g_ctx->peer_count == 0, "slot freed");
+
+    /* Mid-dial: state DISCOVERED, connect_start set. */
+    reset_all_peers();
+    p = &g_ctx->peers[0];
+    p->in_use = 1;
+    p->state = PT_PEER_DISCOVERED;
+    p->ip_addr = 0x0A000009UL;
+    p->connect_start = 5;
+    strcpy(p->name, "Bob");
+    g_ctx->peer_count = 1;
+    reset_recorders();
+    pt_discovery_receive(g_ctx, pkt, len, 0x0A000009UL);
+    CHECK(g_disconnect_calls == 1, "in-flight dial released on leave");
+    CHECK(g_disconnected == 0, "no on_disconnected for an unconnected dial");
+    CHECK(g_lost == 1 && p->in_use == 0, "peer lost, slot freed");
+
+    g_ctx->platform_ops = saved;
+    reset_all_peers();
+}
+
+static void test_discovery_timeout_dialing(void)
+{
+    PT_Peer_Internal *p;
+    PT_PlatformOps *saved = install_mock_ops();
+    printf("[discovery_timeout_dialing]\n");
+
+    reset_all_peers();
+    g_ctx->discovery_listening = 1;
+    p = &g_ctx->peers[0];
+    p->in_use = 1;
+    p->state = PT_PEER_DISCOVERED;
+    p->ip_addr = 0x0A000009UL;
+    p->last_seen = 100;
+    p->connect_start = 100;
+    strcpy(p->name, "slow");
+    g_ctx->peer_count = 1;
+
+    reset_recorders();
+    g_ctx->current_time = 100 + PT_DISCOVERY_TIMEOUT;
+    pt_discovery_check_timeouts(g_ctx);
+    CHECK(g_lost == 1 && p->in_use == 0, "timed-out peer freed");
+    CHECK(g_disconnect_calls == 1, "in-flight dial released on timeout");
+
+    reset_all_peers();
+    g_ctx->discovery_listening = 0;
+    g_ctx->platform_ops = saved;
+}
+
 /* ------------------------------------------------------------------ */
 /* Peer ranking (PT_GetPeerRank) -- deterministic IP sort incl. self    */
 /* ------------------------------------------------------------------ */
@@ -1526,6 +1605,8 @@ int main(void)
     test_discovery_announce();
     test_discovery_rejects();
     test_discovery_leave();
+    test_discovery_leave_connected();
+    test_discovery_timeout_dialing();
 
     /* Peer management + ranking */
     test_peer_rank();
