@@ -71,6 +71,15 @@ static void set_nosigpipe(int fd)
 #endif
 }
 
+/* select() cannot watch fd >= FD_SETSIZE (FD_SET would overflow the set).
+   Close such an fd and report failure so it is never handed to the loop. */
+static int fd_fits_select(int fd)
+{
+    if (fd < FD_SETSIZE) return 1;
+    close(fd);
+    return 0;
+}
+
 static int create_udp_socket(unsigned short port, int broadcast)
 {
     int fd;
@@ -79,6 +88,7 @@ static int create_udp_socket(unsigned short port, int broadcast)
 
     fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd < 0) return -1;
+    if (!fd_fits_select(fd)) return -1;
 
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
     if (broadcast) {
@@ -107,6 +117,7 @@ static int create_tcp_listener(unsigned short port)
 
     fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) return -1;
+    if (!fd_fits_select(fd)) return -1;
 
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
@@ -320,6 +331,7 @@ static PT_Status posix_tcp_connect(PT_Context_Internal *ctx,
 
     fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) return PT_ERR_SEND_FAILED;
+    if (!fd_fits_select(fd)) return PT_ERR_SEND_FAILED;
 
     make_nonblocking(fd);
     set_nosigpipe(fd);
@@ -462,6 +474,7 @@ static void posix_select_round(PT_Context_Internal *ctx)
 
         newfd = accept(g_posix.tcp_listen_fd,
                        (struct sockaddr *)&from, &fromlen);
+        if (newfd >= 0 && !fd_fits_select(newfd)) newfd = -1;
         if (newfd >= 0) {
             PT_PlatformPeer ppeer;
             const PT_Peer_Internal *accepted;
