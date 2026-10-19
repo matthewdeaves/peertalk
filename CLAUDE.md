@@ -90,7 +90,7 @@ event-driven seam moved connection lifecycle, TCP framing/reassembly,
 discovery v2 parsing, peer ranking, and timeout sweeps out of the backends
 into core, so all of it is testable with a mock backend + synthetic events
 — no sockets, no hardware. A PASS covers all three backends. Build with the
-POSIX build (`cd build && make test_seam && ./test_seam`, 217 checks).
+POSIX build (`cd build && make test_seam && ./test_seam`, 226 checks).
 
 Conventions when adding tests here: include `pt_internal.h` for white-box
 access; drive core entry points directly (`pt_messaging_process_tcp_data`,
@@ -208,7 +208,7 @@ All design docs live in `specs/001-peertalk-sdk/`:
   - **Peer-slot lifecycle**: a UDP LEAVE of a connected peer now releases the transport and fires `on_disconnected(PT_DISCONNECT_ERROR)`; a dial in flight is aborted via `tcp_disconnect` (previously the fd leaked and the connection was orphaned). `pt_remove_peer` releases again before clearing `in_use`, covering a callback that calls `PT_Connect`. `PT_Connect` never stamps `connect_start` 0. Documented ordering limit: a LEAVE that beats the TCP close makes the partner report ERROR and may drop unread data (see ARCHITECTURE.md Known issues).
   - **Robustness**: fixed a `size_t` underflow when `on_message` disconnects its own peer (also consumes a keepalive's declared length); clock stepping backwards no longer mass-times-out peers (`PT_ELAPSED` at all subtraction sites, `pt_clamp_stamp` in each timeout sweep); POSIX partial TCP send shuts the connection down (and retries on EINTR); POSIX closes any fd >= `FD_SETSIZE` instead of passing it to `select()`; `PT_DebugSend` length clamp compares as `size_t`.
   - **Build/analysis**: 68k MacTCP interrupt-mask asm gains a `"memory"` clobber; pointer-sign casts for Retro68 (`-Wpointer-sign`); new `tools/static-analysis.sh` gate (cppcheck, clang-tidy, scan-build, `test_seam` under ASan+UBSan).
-  - **Tests**: `test_seam` 217 checks (IP byte order, chunk-reassembly rejection and 4-chunk/full-stride/total=1 cases, clock-step, LEAVE release).
+  - **Tests**: `test_seam` 226 checks (IP byte order, chunk-reassembly rejection and 4-chunk/full-stride/total=1 cases, clock-step, LEAVE release).
 - v1.13.1: Build warning fixes (POSIX strict-aliasing, unused `pt_memcpy_isr`). No behaviour change.
 - v1.13.0: Automatic full-mesh topology. New public API `PT_EnableAutoMesh(ctx, enable)` (31-function API, was 30 after PT_ShouldInitiate). Additive — existing apps and the wire protocol are unchanged.
   - **What it does**: when enabled, PeerTalk keeps a TCP connection open to every discovered peer, dialing only the pairs this node is the designated initiator for (`PT_ShouldInitiate` — lower IP dials, higher listens) and re-dialing after any drop. Each pair is dialed from exactly one side, so the simultaneous-connect race cannot arise by construction (the tiebreaker stays only as a safety net); the mesh self-heals. Opt-in and composable: an app wanting a star/host topology leaves it off and calls `PT_Connect`.

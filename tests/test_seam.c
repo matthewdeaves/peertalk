@@ -723,6 +723,53 @@ static void test_incoming_reentrant_dial(void)
     reset_all_peers();
 }
 
+/* POSIX accept path with a real socket: a re-entrant on_connected closes
+   the accepted fd (PT_Disconnect) and dials another peer, whose socket()
+   reuses that fd number.  The accept code must not close that live dial. */
+static void test_posix_accept_fd_reuse(void)
+{
+    PT_Peer_Internal *a = &g_ctx->peers[0], *b = &g_ctx->peers[1];
+    struct sockaddr_in sa;
+    int client, i;
+
+    printf("[posix_accept_fd_reuse]\n");
+    reset_all_peers();
+    reset_recorders();
+    g_ctx->local_ip = htonl(0x0A000001UL);
+    if (g_ctx->platform_ops->tcp_listen(g_ctx) != PT_OK) {
+        CHECK(0, "tcp_listen for fd-reuse test");
+        return;
+    }
+    a->in_use = 1; a->state = PT_PEER_DISCOVERED;
+    a->ip_addr = htonl(0x7F000001UL); a->platform_peer.tcp_fd = -1;
+    b->in_use = 1; b->state = PT_PEER_DISCOVERED;
+    b->ip_addr = htonl(0x7F000002UL); b->platform_peer.tcp_fd = -1;
+    g_ctx->peer_count = 2;
+    g_reent_a = a; g_reent_b = b;
+
+    client = socket(AF_INET, SOCK_STREAM, 0);
+    memset(&sa, 0, sizeof(sa));
+    sa.sin_family = AF_INET;
+    sa.sin_port = htons(PT_TCP_PORT);
+    sa.sin_addr.s_addr = htonl(0x7F000001UL);
+    CHECK(connect(client, (struct sockaddr *)&sa, sizeof(sa)) == 0,
+          "client connects to listener");
+
+    PT_OnConnected((PT_Context *)g_ctx, on_conn_reentrant, NULL);
+    for (i = 0; i < 5 && b->connect_start == 0; i++)
+        PT_Poll((PT_Context *)g_ctx);
+    PT_OnConnected((PT_Context *)g_ctx, on_conn, NULL);
+
+    CHECK(b->connect_start > 0, "fd-reuse: second dial started");
+    CHECK(b->platform_peer.tcp_fd >= 0 &&
+          fcntl(b->platform_peer.tcp_fd, F_GETFD) != -1,
+          "fd-reuse: second dial's socket not closed by accept path");
+
+    if (b->platform_peer.tcp_fd >= 0) close(b->platform_peer.tcp_fd);
+    close(client);
+    reset_all_peers();
+}
+
 /* ------------------------------------------------------------------ */
 /* No-room incoming connection (pt_handle_incoming_connection)          */
 /*                                                                      */
@@ -2279,6 +2326,7 @@ int main(void)
     test_no_room_leaves_fd_to_platform();
     test_incoming_adoption();
     test_incoming_reentrant_dial();
+    test_posix_accept_fd_reuse();
 
     /* Auto-mesh topology maintenance */
     test_auto_mesh_sweep();

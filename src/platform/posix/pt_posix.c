@@ -395,6 +395,19 @@ static void posix_tcp_disconnect(PT_Context_Internal *ctx,
     }
 }
 
+/* True if any peer slot holds fd.  A re-entrant on_connected can release the
+   accepted fd and dial another peer that reuses the number; closing it then
+   would kill that live socket. */
+static int fd_held_by_peer(const PT_Context_Internal *ctx, int fd)
+{
+    int i;
+    for (i = 0; i < ctx->max_peers; i++) {
+        if (ctx->peers[i].in_use && ctx->peers[i].platform_peer.tcp_fd == fd)
+            return 1;
+    }
+    return 0;
+}
+
 /* Build fd sets, run one non-blocking select(), and handle everything
    that is NOT a per-peer lifecycle transition inline: discovery and UDP
    datagrams (handed straight to core helpers, no duplicated state) and
@@ -491,8 +504,8 @@ static void posix_select_round(PT_Context_Internal *ctx)
 
             /* Verify the fd was adopted by a peer; if not, close it
                to avoid fd leak when connection is rejected (T069). */
-            if (!accepted ||
-                accepted->platform_peer.tcp_fd != newfd) {
+            if ((!accepted || accepted->platform_peer.tcp_fd != newfd) &&
+                !fd_held_by_peer(ctx, newfd)) {
                 close(newfd);
             }
         }
