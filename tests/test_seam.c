@@ -21,6 +21,7 @@
 #include "../src/core/pt_internal.h"
 
 #include <stdio.h>
+#include <stdlib.h>   /* malloc, free */
 #include <string.h>
 #include <unistd.h>   /* dup, close -- real fd for the no-room test */
 #include <arpa/inet.h>   /* htonl */
@@ -66,6 +67,7 @@ static unsigned char       g_tcp_last_frame[8];   /* first bytes (header) of it 
 static int                 g_discovered;          /* on_peer_discovered count */
 static int                 g_lost;                /* on_peer_lost count */
 static int                 g_udp_broadcasts;      /* mock udp_broadcast calls */
+static size_t              g_udp_last_len;        /* len of the last one */
 static PT_Status           g_last_error;
 static PT_DisconnectReason g_last_reason;
 static unsigned char       g_last_msg[64];
@@ -141,6 +143,7 @@ static void reset_recorders(void)
     g_discovered = 0;
     g_lost = 0;
     g_udp_broadcasts = 0;
+    g_udp_last_len = 0;
     g_last_error = PT_OK;
     g_last_reason = (PT_DisconnectReason)-1;
     g_last_msg_len = 0;
@@ -345,7 +348,7 @@ static int mock_next_event(PT_Context_Internal *ctx, PT_Event *out)
 
 static PT_Status mock_udp_broadcast(PT_Context_Internal *c, unsigned short p,
                                     const void *d, size_t l)
-{ (void)c; (void)p; (void)d; (void)l; g_udp_broadcasts++; return PT_OK; }
+{ (void)c; (void)p; (void)d; g_udp_broadcasts++; g_udp_last_len = l; return PT_OK; }
 
 static PT_Status mock_udp_send(PT_Context_Internal *c,
                                const PT_Peer_Internal *pe,
@@ -1607,6 +1610,43 @@ static void test_posix_fd_beyond_setsize(void)
     for (i = 0; i < nheld; i++) close(held[i]);
 }
 
+/* PT_DebugSend clamps the message to its 256-byte buffer.  The clamp
+   compared (int)len, so a size_t above INT_MAX could truncate to a small or
+   negative int, skip the clamp and memcpy gigabytes into the buffer. */
+static void test_debug_send_huge_len(void)
+{
+    PT_PlatformOps *saved = install_mock_ops();
+    char *msg;
+    size_t huge = (size_t)1 << 32;
+    printf("[debug_send_huge_len]\n");
+
+    if (sizeof(size_t) < 8) {
+        printf("  skip: 32-bit size_t\n");
+        g_ctx->platform_ops = saved;
+        return;
+    }
+    msg = (char *)malloc(huge + 16);
+    if (!msg) {
+        printf("  skip: cannot reserve 4GB of address space\n");
+        g_ctx->platform_ops = saved;
+        return;
+    }
+    memset(msg, 'x', 64);
+    g_ctx->debug_port = 7356;
+    strcpy(g_ctx->debug_prefix, "[t@1.2.3.4] ");
+    g_ctx->debug_prefix_len = (int)strlen(g_ctx->debug_prefix);
+    reset_recorders();
+
+    PT_DebugSend((PT_Context *)g_ctx, msg, huge + 10);  /* (int) cast = 10 */
+    CHECK(g_udp_broadcasts == 1, "debug message sent");
+    CHECK(g_udp_last_len <= 256, "length clamped to the debug buffer");
+
+    g_ctx->debug_port = 0;
+    g_ctx->debug_prefix_len = 0;
+    free(msg);
+    g_ctx->platform_ops = saved;
+}
+
 /* ------------------------------------------------------------------ */
 /* Clock stepping backwards (POSIX time() is wall-clock)                */
 /* ------------------------------------------------------------------ */
@@ -1851,6 +1891,7 @@ int main(void)
     /* POSIX backend */
     test_posix_partial_send_fails_connection();
     test_posix_fd_beyond_setsize();
+    test_debug_send_huge_len();
 
     /* Clock stepping backwards */
     test_clock_step_back();
