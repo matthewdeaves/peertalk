@@ -137,7 +137,7 @@ static short pt_disable_interrupts(void)
     __asm__ __volatile__(
         "move.w %%sr, %0\n\t"
         "ori.w #0x0700, %%sr"
-        : "=d"(old_sr) : : "cc"
+        : "=d"(old_sr) : : "cc", "memory"
     );
     return old_sr;
 }
@@ -146,7 +146,7 @@ static void pt_restore_interrupts(short old_sr)
 {
     __asm__ __volatile__(
         "move.w %0, %%sr"
-        : : "d"(old_sr) : "cc"
+        : : "d"(old_sr) : "cc", "memory"
     );
 }
 #else
