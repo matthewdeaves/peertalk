@@ -376,9 +376,10 @@ static void mock_tcp_disconnect(PT_Context_Internal *c, PT_Peer_Internal *pe)
 { (void)c; g_disconnect_calls++; pe->platform_peer.tcp_fd = -1; }
 
 /* Records auto-mesh / manual dials.  Returns PT_OK so PT_Connect sets
-   connect_start (marking a dial in flight), exactly like a real backend. */
+   connect_start (marking a dial in flight), exactly like a real backend.
+   tcp_fd stands in for the live transport the dial opens. */
 static PT_Status mock_tcp_connect(PT_Context_Internal *c, PT_Peer_Internal *pe)
-{ (void)c; (void)pe; g_connect_calls++; return PT_OK; }
+{ (void)c; pe->platform_peer.tcp_fd = 78; g_connect_calls++; return PT_OK; }
 
 /* Install a fully-wired mock backend (all no-ops) and return the ops that
    were in place, so the caller can restore them. */
@@ -1168,6 +1169,80 @@ static void test_discovery_leave_connected(void)
 /* A dial started while current_time is 0 (just after boot / a TickCount
    wrap) must still count as in flight: connect_start == 0 means "no dial",
    so PT_Connect must never store 0. */
+/* An on_disconnected / on_peer_lost callback may call PT_Connect on the
+   peer being removed.  That dial must not survive on the slot being freed
+   (leaked fd on POSIX, stale owner pointer on MacTCP/OT). */
+static int g_reconnect_on_disc;
+static int g_reconnect_on_lost;
+
+static void on_disc_reconnect(PT_Peer *peer, PT_DisconnectReason reason, void *ud)
+{
+    (void)reason; (void)ud;
+    if (g_reconnect_on_disc) PT_Connect((PT_Context *)g_ctx, peer);
+}
+
+static void on_lost_reconnect(PT_Peer *peer, void *ud)
+{
+    (void)ud;
+    g_lost++;
+    if (g_reconnect_on_lost) PT_Connect((PT_Context *)g_ctx, peer);
+}
+
+static void test_removal_callback_reconnect(void)
+{
+    unsigned char pkt[PT_DISCOVERY_MAX];
+    size_t len;
+    PT_Peer_Internal *p;
+    PT_PlatformOps *saved = install_mock_ops();
+    PT_DisconnectCallback old_disc = g_ctx->callbacks.on_disconnected;
+    PT_PeerCallback old_lost = g_ctx->callbacks.on_peer_lost;
+    int phase;
+    printf("[removal_callback_reconnect]\n");
+
+    g_ctx->callbacks.on_disconnected = on_disc_reconnect;
+    g_ctx->callbacks.on_peer_lost = on_lost_reconnect;
+    g_ctx->local_ip = 0x0A000001UL;
+    g_ctx->current_time = 50;
+    len = build_discovery(pkt, PT_WIRE_VERSION, PT_DISCOVERY_FLAG_LEAVE, "Bob");
+
+    /* phase 0: leave of a connected peer, reconnect from on_disconnected;
+       phase 1: leave of a dialing peer, reconnect from on_peer_lost;
+       phase 2: discovery timeout, reconnect from on_peer_lost. */
+    for (phase = 0; phase < 3; phase++) {
+        reset_all_peers();
+        reset_recorders();
+        g_reconnect_on_disc = (phase == 0);
+        g_reconnect_on_lost = (phase != 0);
+        p = &g_ctx->peers[0];
+        p->in_use = 1;
+        p->state = (phase == 0) ? PT_PEER_CONNECTED : PT_PEER_DISCOVERED;
+        p->connect_start = (phase == 0) ? 0 : 5;
+        p->ip_addr = 0x0A000009UL;
+        p->last_seen = 1;
+        p->platform_peer.tcp_fd = 77;      /* mock marks a live transport */
+        strcpy(p->name, "Bob");
+        g_ctx->peer_count = 1;
+
+        if (phase == 2) {
+            g_ctx->discovery_listening = 1;
+            pt_discovery_check_timeouts(g_ctx);
+            g_ctx->discovery_listening = 0;
+        } else {
+            pt_discovery_receive(g_ctx, pkt, len, 0x0A000009UL);
+        }
+        CHECK(g_connect_calls == 1, "callback's PT_Connect ran");
+        CHECK(p->in_use == 0 && g_ctx->peer_count == 0, "slot freed");
+        CHECK(p->platform_peer.tcp_fd == -1 && p->connect_start == 0,
+              "no live transport left on the freed slot");
+    }
+
+    g_reconnect_on_disc = g_reconnect_on_lost = 0;
+    g_ctx->callbacks.on_disconnected = old_disc;
+    g_ctx->callbacks.on_peer_lost = old_lost;
+    g_ctx->platform_ops = saved;
+    reset_all_peers();
+}
+
 static void test_dial_at_time_zero(void)
 {
     unsigned char pkt[PT_DISCOVERY_MAX];
@@ -1986,6 +2061,7 @@ int main(void)
     test_discovery_leave_connected();
     test_discovery_timeout_dialing();
     test_dial_at_time_zero();
+    test_removal_callback_reconnect();
 
     /* Peer management + ranking */
     test_peer_rank();

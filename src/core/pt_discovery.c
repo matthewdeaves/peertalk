@@ -69,6 +69,23 @@ static void pt_release_transport(PT_Context_Internal *ctx,
     }
 }
 
+/* Fire on_peer_lost and free the slot.  A callback (on_disconnected during
+   the release, or on_peer_lost itself) may call PT_Connect on the peer it
+   was just told about, attaching a fresh transport to a slot that is about
+   to be freed -- a leaked fd (POSIX) or stale owner pointer (MacTCP/OT).
+   So release again right before the slot goes. */
+static void pt_remove_peer(PT_Context_Internal *ctx, PT_Peer_Internal *peer)
+{
+    pt_release_transport(ctx, peer);
+    if (ctx->callbacks.on_peer_lost) {
+        ctx->callbacks.on_peer_lost((PT_Peer *)peer,
+                                    ctx->callbacks.on_peer_lost_data);
+    }
+    pt_release_transport(ctx, peer);
+    peer->in_use = 0;
+    ctx->peer_count--;
+}
+
 void pt_discovery_receive(PT_Context_Internal *ctx,
                           const void *data, size_t len,
                           unsigned long source_ip)
@@ -111,14 +128,7 @@ void pt_discovery_receive(PT_Context_Internal *ctx,
                beats the TCP close is a graceless close, hence ERROR
                (see PT_Shutdown).  Attribution is by source IP, as for
                every UDP packet (ARCHITECTURE.md, trust boundary). */
-            pt_release_transport(ctx, peer);
-            if (ctx->callbacks.on_peer_lost) {
-                ctx->callbacks.on_peer_lost(
-                    (PT_Peer *)peer,
-                    ctx->callbacks.on_peer_lost_data);
-            }
-            peer->in_use = 0;
-            ctx->peer_count--;
+            pt_remove_peer(ctx, peer);
         }
         return;
     }
@@ -192,17 +202,7 @@ void pt_discovery_check_timeouts(PT_Context_Internal *ctx)
                 PT_DISCOVERY_TIMEOUT) {
 
             CLOG_INFO("Peer lost (timeout): %s", ctx->peers[i].name);
-            pt_release_transport(ctx, &ctx->peers[i]);
-
-            if (ctx->callbacks.on_peer_lost) {
-                ctx->callbacks.on_peer_lost(
-                    (PT_Peer *)&ctx->peers[i],
-                    ctx->callbacks.on_peer_lost_data);
-            }
-
-            /* Free slot */
-            ctx->peers[i].in_use = 0;
-            ctx->peer_count--;
+            pt_remove_peer(ctx, &ctx->peers[i]);
         }
     }
 }
