@@ -77,6 +77,31 @@ static void pt_log_platform_info(void)
 /* IP formatting                                                       */
 /* ------------------------------------------------------------------ */
 
+/* Compare two IPs held as network-order bytes (the first 4 bytes in memory,
+   same convention as pt_format_ip).  Returns <0, 0, >0.  Comparing the
+   unsigned longs numerically is wrong: on a little-endian host the first
+   octet is the LOW byte, so hosts of different endianness would rank the
+   same pair of addresses differently.  Byte-wise order is the same
+   everywhere and needs no ntohl (absent on Retro68).
+
+   Assumption: the address lives in the FIRST 4 bytes of the unsigned long.
+   True for the 32-bit big-endian Mac backends (long is exactly the address)
+   and for 64-bit little-endian POSIX (address in the low 4 bytes, in memory
+   order).  NOT true for a 64-bit big-endian host (address would sit in the
+   last 4 bytes); pt_format_ip shares the same limit.  No such target is
+   supported, and C89 has no portable compile-time endianness test. */
+int pt_ip_cmp(unsigned long a, unsigned long b)
+{
+    const unsigned char *pa = (const unsigned char *)&a;
+    const unsigned char *pb = (const unsigned char *)&b;
+    int i;
+
+    for (i = 0; i < 4; i++) {
+        if (pa[i] != pb[i]) return pa[i] < pb[i] ? -1 : 1;
+    }
+    return 0;
+}
+
 void pt_format_ip(unsigned long ip, char *buf)
 {
     const unsigned char *b = (const unsigned char *)&ip;
@@ -189,7 +214,7 @@ void pt_handle_incoming_connection(PT_Context_Internal *ctx,
            ours -- so blindly rejecting here leaves each side holding a
            DIFFERENT connection and BOTH abort (~200ms later, reason 2),
            looping forever on slow links.  Adopt the incoming instead. */
-        if (!peer->inbound && ctx->local_ip > peer_ip) {
+        if (!peer->inbound && pt_ip_cmp(ctx->local_ip, peer_ip) > 0) {
             CLOG_INFO("Tiebreaker: replacing our outbound with incoming "
                       "(lower IP wins)");
             ctx->platform_ops->tcp_disconnect(ctx, peer);
@@ -203,12 +228,12 @@ void pt_handle_incoming_connection(PT_Context_Internal *ctx,
 
     /* T021/T022: IP tiebreaker -- our outbound still in progress */
     if (!swap && peer && peer->connect_start > 0) {
-        if (ctx->local_ip == peer_ip) {
+        if (pt_ip_cmp(ctx->local_ip, peer_ip) == 0) {
             /* T022: Same IP (loopback) -- accept incoming */
             CLOG_INFO("Same-IP peer, accepting incoming");
             ctx->platform_ops->tcp_disconnect(ctx, peer);
             peer->connect_start = 0;
-        } else if (ctx->local_ip > peer_ip) {
+        } else if (pt_ip_cmp(ctx->local_ip, peer_ip) > 0) {
             /* We should NOT initiate (higher IP) -- cancel outgoing,
                accept incoming */
             CLOG_INFO("Tiebreaker: cancelling outgoing, accepting incoming");
@@ -714,7 +739,7 @@ void pt_check_peer_timeouts(PT_Context_Internal *ctx)
    peer whose dial fails instantly (connection refused) is not re-dialed
    every poll -- PT_CONNECT_TIMEOUT / connect_start throttles an in-flight
    dial, and this timer throttles the retry after it clears.  Each pair is
-   dialed from one side only (PT_ShouldInitiate == local_ip < peer ip), so
+   dialed from one side only (PT_ShouldInitiate: byte-wise local < peer), so
    two peers never dial each other at once: the simultaneous-connect race
    is impossible by construction and the mesh self-heals after any drop. */
 void pt_mesh_dial_sweep(PT_Context_Internal *ctx)
@@ -734,7 +759,8 @@ void pt_mesh_dial_sweep(PT_Context_Internal *ctx)
         if (p->connect_start != 0) continue;
         if (p->state != PT_PEER_DISCOVERED &&
             p->state != PT_PEER_DISCONNECTED) continue;
-        if (ctx->local_ip >= p->ip_addr) continue;   /* higher IP listens */
+        if (!PT_ShouldInitiate((const PT_Context *)ctx,
+                               (const PT_Peer *)p)) continue; /* higher listens */
         PT_Connect((PT_Context *)ctx, (PT_Peer *)p);
     }
 }
@@ -937,7 +963,7 @@ int PT_ShouldInitiate(const PT_Context *pub_ctx, const PT_Peer *pub_peer)
        "lower-IP-dialed connection wins" rule (pt_handle_incoming_connection),
        so gating every PT_Connect on this means a pair is never dialed from
        both sides at once -- the simultaneous-connect race cannot arise. */
-    return ctx->local_ip < peer->ip_addr;
+    return pt_ip_cmp(ctx->local_ip, peer->ip_addr) < 0;
 }
 
 void PT_EnableAutoMesh(PT_Context *pub_ctx, int enable)
@@ -968,13 +994,13 @@ int PT_GetPeerRank(const PT_Context *pub_ctx, const PT_Peer *pub_peer)
     }
 
     /* Count connected peers + self with IP below target */
-    if (ctx->local_ip < target_ip) rank++;
+    if (pt_ip_cmp(ctx->local_ip, target_ip) < 0) rank++;
 
     for (i = 0; i < ctx->max_peers; i++) {
         if (!ctx->peers[i].in_use) continue;
         if (ctx->peers[i].state != PT_PEER_CONNECTED) continue;
-        if (peer && ctx->peers[i].ip_addr == target_ip) continue;
-        if (ctx->peers[i].ip_addr < target_ip) rank++;
+        if (peer && pt_ip_cmp(ctx->peers[i].ip_addr, target_ip) == 0) continue;
+        if (pt_ip_cmp(ctx->peers[i].ip_addr, target_ip) < 0) rank++;
     }
 
     return rank;
