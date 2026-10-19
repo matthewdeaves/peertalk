@@ -77,6 +77,8 @@
    the stall lasts at most one interval.  Never returns 0 for a stamp that
    was non-zero, since 0 means "unset" to the sweeps. */
 unsigned long pt_clamp_stamp(unsigned long then, unsigned long now);
+int pt_interval_due(unsigned long *next, unsigned long now,
+                    unsigned long interval);
 
 /* ------------------------------------------------------------------ */
 /* Byte-order helpers                                                  */

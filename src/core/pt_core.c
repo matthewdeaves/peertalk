@@ -749,6 +749,19 @@ unsigned long pt_clamp_stamp(unsigned long then, unsigned long now)
     return then;
 }
 
+/* Fixed-interval timer.  Returns 1 and re-arms *next to now + interval when
+   it is due, else 0.  A *next armed further ahead than one interval means
+   the clock stepped back (or TickCount wrapped); re-arm rather than stay
+   silent for the whole step. */
+int pt_interval_due(unsigned long *next, unsigned long now,
+                    unsigned long interval)
+{
+    if (*next > now + interval) *next = 0;
+    if (now < *next) return 0;
+    *next = now + interval;
+    return 1;
+}
+
 /* Per-peer connect/keepalive/inactivity sweep.  Split out of PT_Poll so
    the core-logic unit tests can drive it directly by setting
    ctx->current_time -- matching pt_discovery_check_timeouts() and
@@ -808,12 +821,8 @@ void pt_mesh_dial_sweep(PT_Context_Internal *ctx)
     int i;
 
     if (!ctx->auto_mesh) return;
-    /* Clock stepped backwards: a timer armed in the future would stall. */
-    if (ctx->mesh_dial_timer > ctx->current_time + PT_MESH_RETRY_INTERVAL)
-        ctx->mesh_dial_timer = 0;
-    /* cppcheck-suppress unsignedLessThanZero ; comparing two unsigned longs */
-    if (ctx->current_time < ctx->mesh_dial_timer) return;
-    ctx->mesh_dial_timer = ctx->current_time + PT_MESH_RETRY_INTERVAL;
+    if (!pt_interval_due(&ctx->mesh_dial_timer, ctx->current_time,
+                         PT_MESH_RETRY_INTERVAL)) return;
 
     for (i = 0; i < ctx->max_peers; i++) {
         PT_Peer_Internal *p = &ctx->peers[i];
@@ -837,17 +846,11 @@ void PT_Poll(PT_Context *pub_ctx)
 
     ctx->current_time = pt_get_time();
 
-    /* Clock stepped backwards: re-arm rather than stay silent. */
-    if (ctx->discovery_timer > ctx->current_time + PT_DISCOVERY_INTERVAL)
-        ctx->discovery_timer = 0;
-
     /* Discovery broadcast timer */
     if (ctx->discovery_active &&
-        /* cppcheck-suppress unsignedLessThanZero ; false positive: comparing two unsigned longs */
-        ctx->current_time >= ctx->discovery_timer) {
+        pt_interval_due(&ctx->discovery_timer, ctx->current_time,
+                        PT_DISCOVERY_INTERVAL)) {
         pt_discovery_broadcast(ctx);
-        ctx->discovery_timer = ctx->current_time +
-                               PT_DISCOVERY_INTERVAL;
     }
 
     /* Platform poll.  Backends drain one event at a time via next_event()

@@ -2074,6 +2074,26 @@ static void test_clock_step_back(void)
     reset_all_peers();
 }
 
+/* The fixed-interval timer shared by discovery broadcast and auto-mesh. */
+static void test_interval_due(void)
+{
+    unsigned long next;
+    printf("[interval_due]\n");
+
+    next = 0;
+    CHECK(pt_interval_due(&next, 100, 50) == 1, "interval: unarmed timer is due");
+    CHECK(next == 150, "interval: re-armed to now + interval");
+    CHECK(pt_interval_due(&next, 149, 50) == 0, "interval: not due early");
+    CHECK(next == 150, "interval: early poll leaves timer alone");
+    CHECK(pt_interval_due(&next, 150, 50) == 1, "interval: due exactly at deadline");
+    CHECK(next == 200, "interval: re-armed after deadline");
+    next = 100 + 50 + 1;                      /* armed beyond one interval ahead */
+    CHECK(pt_interval_due(&next, 100, 50) == 1, "interval: clock step back re-arms");
+    CHECK(next == 150, "interval: step-back timer restarts from now");
+    next = 150;                               /* exactly one interval ahead: not a step */
+    CHECK(pt_interval_due(&next, 100, 50) == 0, "interval: one interval ahead is legitimate");
+}
+
 /* After a backwards step the stored stamps are in the future.  PT_ELAPSED
    reads that as 0, so without a clamp every timer would freeze for as long
    as the step (here 100 s).  Each sweep must pull a future stamp back to
@@ -2311,6 +2331,7 @@ int main(void)
     /* Clock stepping backwards */
     test_clock_step_back();
     test_clock_step_back_recovers();
+    test_interval_due();
 
     /* TCP send error paths */
     test_send_error_paths();
